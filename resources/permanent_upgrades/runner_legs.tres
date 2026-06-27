@@ -1,0 +1,11 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/permanent_upgrade.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "runner_legs"
+display_name = "Runner Legs"
+stat_type = 1
+amount = 0.04
+max_stacks = 12

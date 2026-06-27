@@ -1,0 +1,11 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/permanent_upgrade.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "heavy_tears"
+display_name = "Heavy Tears"
+stat_type = 2
+amount = 0.12
+max_stacks = 10
