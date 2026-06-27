@@ -8,6 +8,7 @@ signal health_depleted(entity)
 @export var max_health: int = 8
 @export var body_radius: float = 17.0
 @export var arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
+@export var arena_shape: int = 0
 
 var health: int = max_health
 var move_vector: Vector2 = Vector2.ZERO
@@ -46,7 +47,7 @@ func _physics_process(_delta: float) -> void:
 		return
 	velocity = move_vector * speed
 	move_and_slide()
-	global_position = global_position.clamp(arena_bounds.position, arena_bounds.position + arena_bounds.size)
+	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
 
 
 func set_move_vector(vector: Vector2) -> void:
@@ -66,10 +67,18 @@ func set_speed_multiplier(multiplier: float) -> void:
 
 func set_arena_bounds(bounds: Rect2) -> void:
 	arena_bounds = bounds
+	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
+
+
+func set_arena_definition(bounds: Rect2, shape: int) -> void:
+	arena_bounds = bounds
+	arena_shape = shape
+	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
 
 
 func get_fire_origin() -> Vector2:
-	return global_position + aim_direction * (body_radius + 8.0)
+	var desired_origin := global_position + aim_direction * (body_radius + 8.0)
+	return ArenaGeometry.constrain_point(desired_origin, arena_bounds, arena_shape)
 
 
 func take_damage(amount: int) -> void:

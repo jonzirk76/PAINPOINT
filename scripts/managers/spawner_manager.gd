@@ -17,6 +17,8 @@ var _spawner_layer: Node = null
 var _spawners: Array = []
 var _current_enemy_count: int = 0
 var _level_definition = null
+var _arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
+var _arena_shape: int = 0
 
 
 func initialize(context: Dictionary) -> void:
@@ -25,6 +27,7 @@ func initialize(context: Dictionary) -> void:
 
 func reset_run(level_definition = null) -> void:
 	_level_definition = level_definition
+	set_arena_definition(level_definition)
 	clear_spawners()
 	var positions: Array[Vector2] = _get_spawner_positions()
 	max_active_enemies = _get_max_active_enemies()
@@ -52,9 +55,16 @@ func set_enemy_count(count: int) -> void:
 	_current_enemy_count = count
 
 
+func set_arena_definition(level_definition) -> void:
+	if level_definition == null:
+		return
+	_arena_bounds = level_definition.arena_bounds
+	_arena_shape = int(level_definition.arena_shape)
+
+
 func _spawn_spawner(spawn_position: Vector2, warmup: float) -> void:
 	var spawner = spawner_scene.instantiate()
-	spawner.global_position = spawn_position
+	spawner.global_position = ArenaGeometry.constrain_point(spawn_position, _arena_bounds, _arena_shape)
 	spawner.warmup_seconds = warmup
 	spawner.initialize(_get_spawner_health(), _get_spawn_interval(), _get_spawner_radius())
 	spawner.spawn_ready.connect(_on_spawner_spawn_ready)

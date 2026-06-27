@@ -12,6 +12,8 @@ signal death_animation_finished(enemy)
 @export var contact_cooldown: float = 0.75
 @export var score_value: int = 10
 @export var body_radius: float = 18.0
+@export var arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
+@export var arena_shape: int = 0
 
 var health: int = max_health
 var target_position: Vector2 = Vector2.ZERO
@@ -52,6 +54,7 @@ func _physics_process(delta: float) -> void:
 		velocity = _knockback_velocity
 		_knockback_velocity = _knockback_velocity.move_toward(Vector2.ZERO, 420.0 * delta)
 		move_and_slide()
+		global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
 		queue_redraw()
 		if _death_elapsed >= _death_duration:
 			death_animation_finished.emit(self)
@@ -65,12 +68,19 @@ func _physics_process(delta: float) -> void:
 	velocity = chase_velocity + _knockback_velocity
 	_knockback_velocity = _knockback_velocity.move_toward(Vector2.ZERO, 520.0 * delta)
 	move_and_slide()
+	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
 	if _hit_flash_remaining > 0.0 or _knockback_velocity.length_squared() > 1.0:
 		queue_redraw()
 
 
 func set_target_position(position: Vector2) -> void:
 	target_position = position
+
+
+func set_arena_definition(bounds: Rect2, shape: int) -> void:
+	arena_bounds = bounds
+	arena_shape = shape
+	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
 
 
 func take_damage(packet) -> void:

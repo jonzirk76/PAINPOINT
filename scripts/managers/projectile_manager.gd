@@ -15,6 +15,8 @@ const DAMAGE_PACKET_SCRIPT := preload("res://scripts/resources/damage_packet.gd"
 var enabled: bool = false
 var _projectile_layer: Node = null
 var _projectiles: Array = []
+var _arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
+var _arena_shape: int = 0
 
 
 func initialize(context: Dictionary) -> void:
@@ -30,6 +32,16 @@ func reset_run() -> void:
 
 func set_enabled(value: bool) -> void:
 	enabled = value
+
+
+func set_arena_definition(level_definition) -> void:
+	if level_definition == null:
+		return
+	_arena_bounds = level_definition.arena_bounds
+	_arena_shape = int(level_definition.arena_shape)
+	for projectile in _projectiles:
+		if is_instance_valid(projectile):
+			projectile.set_arena_definition(_arena_bounds, _arena_shape)
 
 
 func fire(origin: Vector2, direction: Vector2, modifiers: Dictionary) -> void:
@@ -55,6 +67,7 @@ func fire(origin: Vector2, direction: Vector2, modifiers: Dictionary) -> void:
 			_projectile_layer.add_child(projectile)
 		else:
 			add_child(projectile)
+		projectile.set_arena_definition(_arena_bounds, _arena_shape)
 		projectile.initialize(origin, shot_direction, packet, base_projectile_speed)
 		projectile.hit_detected.connect(_on_projectile_hit)
 		projectile.expired.connect(_on_projectile_expired)

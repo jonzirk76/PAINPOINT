@@ -18,6 +18,7 @@ const FORBIDDEN_ENTITY_SNIPPETS := [
 ]
 
 const SCRIPT_PATHS := [
+	"res://scripts/arena/arena_geometry.gd",
 	"res://scripts/arena/arena_view.gd",
 	"res://scripts/entities/player_entity.gd",
 	"res://scripts/entities/enemy_entity.gd",
@@ -57,6 +58,7 @@ func _init() -> void:
 	_test_presentation_settings(failures)
 	_test_scripts_instantiate(failures)
 	_test_level_resources(failures)
+	_test_arena_geometry_boundaries(failures)
 	_test_scene_loads(failures)
 	_test_aim_change_logic(failures)
 	_test_restart_signal(failures)
@@ -64,6 +66,7 @@ func _init() -> void:
 	_test_projectile_knockback_packet(failures)
 	_test_damageable_spawner(failures)
 	_test_projectile_hits_spawner(failures)
+	_test_spawner_explosion_effect(failures)
 
 	if failures.is_empty():
 		print("Smoke tests passed.")
@@ -169,7 +172,27 @@ func _test_level_resources(failures: Array[String]) -> void:
 			failures.append("Level has no spawners: %s" % path)
 		if level.spawner_positions.size() < previous_spawner_count:
 			failures.append("Levels should be ordered by general difficulty/spawner count: %s" % path)
+		for spawner_position in level.spawner_positions:
+			if not ArenaGeometry.contains_point(spawner_position, level.arena_bounds, int(level.arena_shape)):
+				failures.append("Level spawner position is outside the playable arena shape: %s" % path)
 		previous_spawner_count = level.spawner_positions.size()
+
+
+func _test_arena_geometry_boundaries(failures: Array[String]) -> void:
+	var diamond_bounds := Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
+	var diamond_outside := Vector2(560.0, 280.0)
+	if ArenaGeometry.contains_point(diamond_outside, diamond_bounds, 1):
+		failures.append("Diamond arena should reject points outside the diamond but inside the bounds rectangle.")
+	var diamond_constrained := ArenaGeometry.constrain_point(diamond_outside, diamond_bounds, 1)
+	if not ArenaGeometry.contains_point(diamond_constrained, diamond_bounds, 1):
+		failures.append("Diamond arena did not constrain outside points back inside the polygon.")
+	var cross_bounds := Rect2(Vector2(-660.0, -360.0), Vector2(1320.0, 720.0))
+	var cross_cutout := Vector2(520.0, 300.0)
+	if ArenaGeometry.contains_point(cross_cutout, cross_bounds, 3):
+		failures.append("Cross arena should reject points in the cut-out corners.")
+	var cross_constrained := ArenaGeometry.constrain_point(cross_cutout, cross_bounds, 3)
+	if not ArenaGeometry.contains_point(cross_constrained, cross_bounds, 3):
+		failures.append("Cross arena did not constrain cut-out corner points back inside the polygon.")
 
 
 func _test_aim_change_logic(failures: Array[String]) -> void:
@@ -307,3 +330,25 @@ func _test_projectile_hits_spawner(failures: Array[String]) -> void:
 		projectile.free()
 	if is_instance_valid(spawner):
 		spawner.free()
+
+
+func _test_spawner_explosion_effect(failures: Array[String]) -> void:
+	var effect_layer := Node2D.new()
+	var manager = load("res://scripts/managers/effects_manager.gd").new()
+	root.add_child(effect_layer)
+	root.add_child(manager)
+	manager.initialize({
+		"effect_layer": effect_layer
+	})
+	manager.set_enabled(true)
+	manager.play_spawner_explosion(Vector2.ZERO, 180.0)
+	if effect_layer.get_child_count() != 1:
+		failures.append("Spawner explosion did not create a visible effect.")
+	else:
+		var effect = effect_layer.get_child(0)
+		if effect.radius < 180.0:
+			failures.append("Spawner explosion effect radius was not large enough.")
+		if effect.lifetime_seconds < 0.5:
+			failures.append("Spawner explosion effect should last long enough to read as a death animation.")
+	manager.free()
+	effect_layer.free()

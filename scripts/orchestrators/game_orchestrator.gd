@@ -138,7 +138,10 @@ func _start_level(level_definition) -> void:
 		combat_panel.visible = true
 	if arena_view != null:
 		arena_view.configure(level_definition)
-	player_manager.set_arena_bounds(level_definition.arena_bounds)
+	player_manager.set_arena_definition(level_definition)
+	projectile_manager.set_arena_definition(level_definition)
+	enemy_manager.set_arena_definition(level_definition)
+	spawner_manager.set_arena_definition(level_definition)
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
 	spawner_manager.reset_run(level_definition)
@@ -268,6 +271,9 @@ func _on_enemy_defeated(_enemy, score_value: int) -> void:
 
 
 func _on_spawner_destroyed(_spawner, score_value: int) -> void:
+	if _spawner != null and is_instance_valid(_spawner):
+		var explosion_radius: float = max(float(_spawner.body_radius) * 4.8, 150.0)
+		effects_manager.play_spawner_explosion(_spawner.global_position, explosion_radius)
 	_score += score_value
 	_update_hud()
 	_check_level_clear()

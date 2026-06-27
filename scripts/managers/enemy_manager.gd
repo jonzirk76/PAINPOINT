@@ -14,6 +14,8 @@ var _player_provider: Callable
 var _player_ref_provider: Callable
 var _enemies: Array = []
 var _contact_timers: Dictionary = {}
+var _arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
+var _arena_shape: int = 0
 
 
 func initialize(context: Dictionary) -> void:
@@ -33,6 +35,16 @@ func reset_run() -> void:
 
 func set_enabled(value: bool) -> void:
 	enabled = value
+
+
+func set_arena_definition(level_definition) -> void:
+	if level_definition == null:
+		return
+	_arena_bounds = level_definition.arena_bounds
+	_arena_shape = int(level_definition.arena_shape)
+	for enemy in _enemies:
+		if is_instance_valid(enemy):
+			enemy.set_arena_definition(_arena_bounds, _arena_shape)
 
 
 func _physics_process(delta: float) -> void:
@@ -60,7 +72,8 @@ func spawn_enemy(profile, spawn_position: Vector2):
 	var enemy = enemy_scene.instantiate()
 	var selected_profile = profile if profile != null else default_enemy_profile
 	enemy.initialize(selected_profile)
-	enemy.global_position = spawn_position
+	enemy.global_position = ArenaGeometry.constrain_point(spawn_position, _arena_bounds, _arena_shape)
+	enemy.set_arena_definition(_arena_bounds, _arena_shape)
 	if _enemy_layer != null:
 		_enemy_layer.add_child(enemy)
 	else:

@@ -7,6 +7,8 @@ signal expired(projectile)
 @export var speed: float = 560.0
 @export var lifetime_seconds: float = 1.2
 @export var body_radius: float = 6.0
+@export var arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
+@export var arena_shape: int = 0
 
 var direction: Vector2 = Vector2.RIGHT
 var damage_packet = null
@@ -58,6 +60,9 @@ func _physics_process(delta: float) -> void:
 	var next_position := global_position + direction * speed * delta
 	global_position = next_position
 	_check_swept_hit(previous_position, next_position)
+	if not _is_expired and not ArenaGeometry.contains_point(global_position, arena_bounds, arena_shape):
+		expire()
+		return
 	_update_growth(delta)
 	queue_redraw()
 	if _age >= lifetime_seconds:
@@ -66,6 +71,11 @@ func _physics_process(delta: float) -> void:
 
 func _on_body_entered(body: Node) -> void:
 	_handle_target_hit(body)
+
+
+func set_arena_definition(bounds: Rect2, shape: int) -> void:
+	arena_bounds = bounds
+	arena_shape = shape
 
 
 func _handle_target_hit(body: Node) -> void:
