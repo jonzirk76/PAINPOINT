@@ -34,6 +34,7 @@ This project is a Godot 4.x GDScript top-down arena shooter. Keep the architectu
 - Permanent attributes currently include fire rate, move speed, bullet damage, and projectile size.
 - Fire projectile upgrades should create AoE explosion packets and a visible explosion effect on hit.
 - Water projectile upgrades should grow along their travel path and pierce through enemies.
+- Projectiles should read as flashing lemon-shaped shots, not tiny player-character copies; preserve ammo-type colors.
 - Enemy drops should include common permanent stat pickups and rarer temporary shot-upgrade pickups.
 - Enemies should keep local hit/death feedback and bullet knockback when combat logic changes.
 - Chain lightning must show visible jump arcs through `EffectsManager`; do not route chain damage invisibly.
