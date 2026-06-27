@@ -39,7 +39,15 @@ const SCRIPT_PATHS := [
 	"res://scripts/resources/damage_packet.gd",
 	"res://scripts/resources/enemy_profile.gd",
 	"res://scripts/resources/upgrade_effect.gd",
-	"res://scripts/resources/permanent_upgrade.gd"
+	"res://scripts/resources/permanent_upgrade.gd",
+	"res://scripts/resources/level_definition.gd"
+]
+
+const LEVEL_PATHS := [
+	"res://resources/levels/level_01_square.tres",
+	"res://resources/levels/level_02_diamond.tres",
+	"res://resources/levels/level_03_hexagon.tres",
+	"res://resources/levels/level_04_cross.tres"
 ]
 
 
@@ -48,11 +56,14 @@ func _init() -> void:
 	_test_architecture_rules(failures)
 	_test_presentation_settings(failures)
 	_test_scripts_instantiate(failures)
+	_test_level_resources(failures)
 	_test_scene_loads(failures)
 	_test_aim_change_logic(failures)
 	_test_restart_signal(failures)
 	_test_upgrade_modifiers_and_expiry(failures)
 	_test_projectile_knockback_packet(failures)
+	_test_damageable_spawner(failures)
+	_test_projectile_hits_spawner(failures)
 
 	if failures.is_empty():
 		print("Smoke tests passed.")
@@ -136,6 +147,8 @@ func _test_scene_loads(failures: Array[String]) -> void:
 					"UI/CombatPanel/AttributeLabel",
 					"UI/CombatPanel/StatsLabel",
 					"UI/GameOverPanel/GameOverPromptLabel",
+					"UI/LevelSelectPanel/LevelListLabel",
+					"UI/WinPanel/WinPromptLabel",
 					"World/EffectLayer",
 					"Managers/EffectsManager"
 				]
@@ -143,6 +156,20 @@ func _test_scene_loads(failures: Array[String]) -> void:
 					if not instance.has_node(node_path):
 						failures.append("Main scene missing HUD node: %s" % node_path)
 			instance.free()
+
+
+func _test_level_resources(failures: Array[String]) -> void:
+	var previous_spawner_count := 0
+	for path in LEVEL_PATHS:
+		var level = load(path)
+		if level == null:
+			failures.append("Level resource failed to load: %s" % path)
+			continue
+		if level.spawner_positions.is_empty():
+			failures.append("Level has no spawners: %s" % path)
+		if level.spawner_positions.size() < previous_spawner_count:
+			failures.append("Levels should be ordered by general difficulty/spawner count: %s" % path)
+		previous_spawner_count = level.spawner_positions.size()
 
 
 func _test_aim_change_logic(failures: Array[String]) -> void:
@@ -237,3 +264,46 @@ func _test_projectile_knockback_packet(failures: Array[String]) -> void:
 	if packet.knockback_direction.distance_to(Vector2.RIGHT) > 0.001:
 		failures.append("Projectile damage packet did not preserve knockback direction.")
 	manager.free()
+
+
+func _test_damageable_spawner(failures: Array[String]) -> void:
+	var spawner = load("res://scenes/entities/enemy_spawner_entity.tscn").instantiate()
+	var packet = load("res://scripts/resources/damage_packet.gd").new()
+	var depleted_count := [0]
+	spawner.initialize(5, 3.0, 32.0)
+	spawner.health_depleted.connect(func(_spawner) -> void:
+		depleted_count[0] += 1
+	)
+	root.add_child(spawner)
+	packet.damage = 5
+	spawner.take_damage(packet)
+	if depleted_count[0] != 1:
+		failures.append("Enemy spawner did not emit health_depleted when damaged to zero.")
+	if spawner.is_in_group("spawners"):
+		failures.append("Destroyed spawner should leave the spawners group.")
+	spawner.free()
+
+
+func _test_projectile_hits_spawner(failures: Array[String]) -> void:
+	var spawner = load("res://scenes/entities/enemy_spawner_entity.tscn").instantiate()
+	var projectile = load("res://scenes/entities/projectile_entity.tscn").instantiate()
+	var packet = load("res://scripts/resources/damage_packet.gd").new()
+	var hit_count := [0]
+	spawner.initialize(10, 3.0, 32.0)
+	spawner.global_position = Vector2(40.0, 0.0)
+	projectile.hit_detected.connect(func(_projectile, target) -> void:
+		if target == spawner:
+			hit_count[0] += 1
+	)
+	root.add_child(spawner)
+	root.add_child(projectile)
+	projectile.initialize(Vector2.ZERO, Vector2.RIGHT, packet, 560.0)
+	if (projectile.collision_mask & 16) == 0:
+		failures.append("Projectile collision mask does not include the spawner layer.")
+	projectile._handle_target_hit(spawner)
+	if hit_count[0] != 1:
+		failures.append("Projectile did not emit hit_detected for a spawner target.")
+	if is_instance_valid(projectile):
+		projectile.free()
+	if is_instance_valid(spawner):
+		spawner.free()

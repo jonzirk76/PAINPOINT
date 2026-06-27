@@ -170,3 +170,82 @@ offset_right = 464.0
 offset_bottom = 214.0
 horizontal_alignment = 1
 text = "Press R or Start/A to restart"
+
+[node name="LevelSelectPanel" type="Control" parent="UI"]
+visible = false
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -420.0
+offset_top = -260.0
+offset_right = 420.0
+offset_bottom = 260.0
+
+[node name="LevelSelectBackground" type="ColorRect" parent="UI/LevelSelectPanel"]
+offset_right = 840.0
+offset_bottom = 520.0
+color = Color(0.012, 0.014, 0.018, 0.94)
+
+[node name="LevelSelectTitle" type="Label" parent="UI/LevelSelectPanel"]
+offset_left = 44.0
+offset_top = 34.0
+offset_right = 796.0
+offset_bottom = 82.0
+horizontal_alignment = 1
+text = "SELECT LEVEL"
+
+[node name="LevelListLabel" type="Label" parent="UI/LevelSelectPanel"]
+offset_left = 72.0
+offset_top = 112.0
+offset_right = 768.0
+offset_bottom = 380.0
+text = "Levels"
+
+[node name="LevelSelectPromptLabel" type="Label" parent="UI/LevelSelectPanel"]
+offset_left = 72.0
+offset_top = 426.0
+offset_right = 768.0
+offset_bottom = 478.0
+horizontal_alignment = 1
+text = "Up/Down or D-pad to choose. Enter/A to start."
+
+[node name="WinPanel" type="Control" parent="UI"]
+visible = false
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -150.0
+offset_right = 300.0
+offset_bottom = 150.0
+
+[node name="WinBackground" type="ColorRect" parent="UI/WinPanel"]
+offset_right = 600.0
+offset_bottom = 300.0
+color = Color(0.014, 0.02, 0.018, 0.92)
+
+[node name="WinTitle" type="Label" parent="UI/WinPanel"]
+offset_left = 42.0
+offset_top = 40.0
+offset_right = 558.0
+offset_bottom = 90.0
+horizontal_alignment = 1
+text = "LEVEL CLEARED"
+
+[node name="WinScoreLabel" type="Label" parent="UI/WinPanel"]
+offset_left = 42.0
+offset_top = 118.0
+offset_right = 558.0
+offset_bottom = 154.0
+horizontal_alignment = 1
+text = "Score: 0"
+
+[node name="WinPromptLabel" type="Label" parent="UI/WinPanel"]
+offset_left = 42.0
+offset_top = 202.0
+offset_right = 558.0
+offset_bottom = 244.0
+horizontal_alignment = 1
+text = "Press R or Start to return to level select"

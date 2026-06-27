@@ -18,14 +18,22 @@ var _base_body_radius: float = 6.0
 var _collision_shape: CollisionShape2D = null
 
 
+func _init() -> void:
+	_configure_collision_identity()
+
+
 func _ready() -> void:
-	collision_layer = 4
-	collision_mask = 2
-	monitoring = true
-	monitorable = false
+	_configure_collision_identity()
 	_add_collision()
 	body_entered.connect(_on_body_entered)
 	queue_redraw()
+
+
+func _configure_collision_identity() -> void:
+	collision_layer = 4
+	collision_mask = 18
+	monitoring = true
+	monitorable = false
 
 
 func initialize(origin: Vector2, shot_direction: Vector2, packet, projectile_speed: float) -> void:
@@ -46,7 +54,10 @@ func _physics_process(delta: float) -> void:
 	if _is_expired:
 		return
 	_age += delta
-	global_position += direction * speed * delta
+	var previous_position := global_position
+	var next_position := global_position + direction * speed * delta
+	global_position = next_position
+	_check_swept_hit(previous_position, next_position)
 	_update_growth(delta)
 	queue_redraw()
 	if _age >= lifetime_seconds:
@@ -54,9 +65,13 @@ func _physics_process(delta: float) -> void:
 
 
 func _on_body_entered(body: Node) -> void:
+	_handle_target_hit(body)
+
+
+func _handle_target_hit(body: Node) -> void:
 	if _is_expired:
 		return
-	if not body.is_in_group("enemies"):
+	if not body.is_in_group("enemies") and not body.is_in_group("spawners"):
 		return
 	if hit_targets.has(body):
 		return
@@ -68,6 +83,25 @@ func _on_body_entered(body: Node) -> void:
 		expire()
 	else:
 		pierce_remaining -= 1
+
+
+func _check_swept_hit(previous_position: Vector2, next_position: Vector2) -> void:
+	if _is_expired or previous_position.distance_squared_to(next_position) <= 0.001:
+		return
+	if not is_inside_tree():
+		return
+	var world := get_world_2d()
+	if world == null:
+		return
+	var query := PhysicsRayQueryParameters2D.create(previous_position, next_position, collision_mask, [get_rid()])
+	query.collide_with_areas = false
+	query.collide_with_bodies = true
+	var result := world.direct_space_state.intersect_ray(query)
+	if result.is_empty():
+		return
+	var collider = result.get("collider", null)
+	if collider is Node:
+		_handle_target_hit(collider)
 
 
 func expire() -> void:

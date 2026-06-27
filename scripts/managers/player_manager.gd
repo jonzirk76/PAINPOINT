@@ -19,6 +19,7 @@ var _fire_cooldown_remaining: float = 0.0
 var _fire_cooldown_multiplier: float = 1.0
 var _damage_cooldown_remaining: float = 0.0
 var _last_invulnerability_remaining: float = -1.0
+var _arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 
 
 func initialize(context: Dictionary) -> void:
@@ -30,6 +31,7 @@ func reset_run() -> void:
 		player.queue_free()
 	player = player_scene.instantiate()
 	player.global_position = spawn_position
+	player.arena_bounds = _arena_bounds
 	if _player_layer != null:
 		_player_layer.add_child(player)
 	else:
@@ -42,6 +44,15 @@ func reset_run() -> void:
 	_sync_invulnerability_state()
 	player_spawned.emit(player)
 	player_health_changed.emit(player.health, player.health)
+
+
+func clear_player() -> void:
+	if player != null and is_instance_valid(player):
+		player.queue_free()
+	player = null
+	_fire_cooldown_remaining = 0.0
+	_damage_cooldown_remaining = 0.0
+	player_health_changed.emit(0, 0)
 
 
 func set_enabled(value: bool) -> void:
@@ -95,6 +106,12 @@ func set_weapon_modifiers(modifiers: Dictionary) -> void:
 	_fire_cooldown_multiplier = float(modifiers.get("fire_cooldown_multiplier", 1.0))
 	if _has_player():
 		player.set_speed_multiplier(float(modifiers.get("move_speed_multiplier", 1.0)))
+
+
+func set_arena_bounds(bounds: Rect2) -> void:
+	_arena_bounds = bounds
+	if _has_player():
+		player.set_arena_bounds(bounds)
 
 
 func get_player_position() -> Vector2:

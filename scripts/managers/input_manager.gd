@@ -5,6 +5,10 @@ signal move_changed(move_vector: Vector2)
 signal aim_changed(direction: Vector2)
 signal aim_fire_requested(direction: Vector2)
 signal restart_requested
+signal menu_up_requested
+signal menu_down_requested
+signal menu_confirm_requested
+signal menu_back_requested
 
 @export var stick_deadzone: float = 0.25
 @export var aim_change_threshold: float = 0.18
@@ -46,8 +50,22 @@ func _process(_delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and (event.physical_keycode == KEY_R or event.keycode == KEY_R):
 		restart_requested.emit()
+		menu_back_requested.emit()
+	elif event is InputEventKey and event.pressed and not event.echo and (event.physical_keycode == KEY_UP or event.keycode == KEY_UP or event.physical_keycode == KEY_W or event.keycode == KEY_W):
+		menu_up_requested.emit()
+	elif event is InputEventKey and event.pressed and not event.echo and (event.physical_keycode == KEY_DOWN or event.keycode == KEY_DOWN or event.physical_keycode == KEY_S or event.keycode == KEY_S):
+		menu_down_requested.emit()
+	elif event is InputEventKey and event.pressed and not event.echo and (event.physical_keycode == KEY_ENTER or event.keycode == KEY_ENTER or event.physical_keycode == KEY_SPACE or event.keycode == KEY_SPACE):
+		menu_confirm_requested.emit()
 	elif event is InputEventJoypadButton and event.pressed and _is_restart_controller_button(event.button_index):
 		restart_requested.emit()
+		menu_confirm_requested.emit()
+		if event.button_index == JOY_BUTTON_START:
+			menu_back_requested.emit()
+	elif event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_DPAD_UP:
+		menu_up_requested.emit()
+	elif event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_DPAD_DOWN:
+		menu_down_requested.emit()
 
 
 func _is_restart_controller_button(button_index: int) -> bool:

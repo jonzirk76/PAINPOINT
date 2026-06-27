@@ -1,0 +1,16 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/level_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "diamond_engine"
+display_name = "Diamond Engine"
+difficulty_label = "Medium"
+arena_shape = 1
+arena_bounds = Rect2(-600, -330, 1200, 660)
+spawner_positions = Array[Vector2]([Vector2(0, -250), Vector2(-430, 0), Vector2(430, 0)])
+max_active_enemies = 15
+spawner_health = 18
+spawner_radius = 33.0
+spawn_interval = 2.9

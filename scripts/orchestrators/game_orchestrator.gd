@@ -1,6 +1,13 @@
 extends Node2D
 class_name GameOrchestrator
 
+const LEVELS := [
+	preload("res://resources/levels/level_01_square.tres"),
+	preload("res://resources/levels/level_02_diamond.tres"),
+	preload("res://resources/levels/level_03_hexagon.tres"),
+	preload("res://resources/levels/level_04_cross.tres")
+]
+
 @onready var input_manager = $Managers/InputManager
 @onready var player_manager = $Managers/PlayerManager
 @onready var projectile_manager = $Managers/ProjectileManager
@@ -10,7 +17,9 @@ class_name GameOrchestrator
 @onready var upgrade_manager = $Managers/UpgradeManager
 @onready var combat_manager = $Managers/CombatManager
 @onready var effects_manager = $Managers/EffectsManager
+@onready var arena_view = $World/Arena
 @onready var hud_label: Label = $UI/HUDLabel
+@onready var combat_panel: Control = $UI/CombatPanel
 @onready var health_fill: ColorRect = $UI/CombatPanel/HealthBarBack/HealthBarFill
 @onready var health_label: Label = $UI/CombatPanel/HealthLabel
 @onready var invulnerability_fill: ColorRect = $UI/CombatPanel/InvulnerabilityBarBack/InvulnerabilityBarFill
@@ -18,6 +27,10 @@ class_name GameOrchestrator
 @onready var stats_label: Label = $UI/CombatPanel/StatsLabel
 @onready var game_over_panel: Control = $UI/GameOverPanel
 @onready var game_over_score_label: Label = $UI/GameOverPanel/GameOverScoreLabel
+@onready var level_select_panel: Control = $UI/LevelSelectPanel
+@onready var level_list_label: Label = $UI/LevelSelectPanel/LevelListLabel
+@onready var win_panel: Control = $UI/WinPanel
+@onready var win_score_label: Label = $UI/WinPanel/WinScoreLabel
 
 var _score: int = 0
 var _last_health: int = 0
@@ -28,12 +41,14 @@ var _status: String = "RUNNING"
 var _latest_modifiers: Dictionary = {}
 var _attribute_modifiers: Dictionary = {}
 var _permanent_stats: Array = []
+var _selected_level_index: int = 0
+var _current_level = null
 
 
 func _ready() -> void:
 	_connect_manager_signals()
 	_initialize_managers()
-	_reset_run()
+	_enter_level_select()
 
 
 func _connect_manager_signals() -> void:
@@ -41,6 +56,10 @@ func _connect_manager_signals() -> void:
 	input_manager.aim_changed.connect(player_manager.set_aim_direction)
 	input_manager.aim_fire_requested.connect(_on_aim_fire_requested)
 	input_manager.restart_requested.connect(_on_restart_requested)
+	input_manager.menu_up_requested.connect(_on_menu_up_requested)
+	input_manager.menu_down_requested.connect(_on_menu_down_requested)
+	input_manager.menu_confirm_requested.connect(_on_menu_confirm_requested)
+	input_manager.menu_back_requested.connect(_on_menu_back_requested)
 
 	player_manager.player_health_changed.connect(_on_player_health_changed)
 	player_manager.player_invulnerability_changed.connect(_on_player_invulnerability_changed)
@@ -59,6 +78,8 @@ func _connect_manager_signals() -> void:
 	enemy_manager.player_contact_requested.connect(_on_player_contact_requested)
 
 	spawner_manager.spawn_requested.connect(_on_spawn_requested)
+	spawner_manager.spawner_destroyed.connect(_on_spawner_destroyed)
+	spawner_manager.spawner_count_changed.connect(_on_spawner_count_changed)
 	item_manager.pickup_collected.connect(upgrade_manager.activate_pickup)
 	item_manager.pickup_count_changed.connect(_on_pickup_count_changed)
 	upgrade_manager.upgrade_changed.connect(_on_upgrade_changed)
@@ -93,28 +114,71 @@ func _initialize_managers() -> void:
 	})
 
 
-func _reset_run() -> void:
+func _start_selected_level() -> void:
+	_start_level(LEVELS[_selected_level_index])
+
+
+func _start_level(level_definition) -> void:
+	_current_level = level_definition
 	_score = 0
-	_status = "RUNNING"
+	_status = "STARTING"
 	_last_health = 0
 	_last_max_health = 0
 	_last_invulnerability_remaining = 0.0
 	_last_invulnerability_duration = 0.0
 	_attribute_modifiers = {}
 	_permanent_stats = []
+	if level_select_panel != null:
+		level_select_panel.visible = false
 	if game_over_panel != null:
 		game_over_panel.visible = false
+	if win_panel != null:
+		win_panel.visible = false
+	if combat_panel != null:
+		combat_panel.visible = true
+	if arena_view != null:
+		arena_view.configure(level_definition)
+	player_manager.set_arena_bounds(level_definition.arena_bounds)
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
-	spawner_manager.reset_run()
+	spawner_manager.reset_run(level_definition)
 	item_manager.reset_run()
 	upgrade_manager.reset_run()
 	combat_manager.reset_run()
 	effects_manager.reset_run()
 	player_manager.reset_run()
 	_set_all_enabled(true)
+	_status = "RUNNING"
 	_on_upgrade_changed(upgrade_manager.get_modifiers(), upgrade_manager.get_active_effects())
 	_update_hud()
+
+
+func _enter_level_select() -> void:
+	_status = "LEVEL_SELECT"
+	_current_level = null
+	_set_all_enabled(false)
+	_clear_gameplay()
+	if combat_panel != null:
+		combat_panel.visible = false
+	if game_over_panel != null:
+		game_over_panel.visible = false
+	if win_panel != null:
+		win_panel.visible = false
+	if level_select_panel != null:
+		level_select_panel.visible = true
+	_update_level_select_ui()
+	_update_hud()
+
+
+func _clear_gameplay() -> void:
+	projectile_manager.reset_run()
+	enemy_manager.reset_run()
+	spawner_manager.clear_spawners()
+	item_manager.clear_pickups()
+	upgrade_manager.reset_run()
+	combat_manager.reset_run()
+	effects_manager.reset_run()
+	player_manager.clear_player()
 
 
 func _set_all_enabled(value: bool) -> void:
@@ -143,7 +207,12 @@ func _on_projectile_hit(projectile, target: Node, packet) -> void:
 
 
 func _on_damage_resolved(target: Node, packet) -> void:
-	enemy_manager.apply_damage(target, packet)
+	if target == null or packet == null or not is_instance_valid(target):
+		return
+	if target.is_in_group("enemies"):
+		enemy_manager.apply_damage(target, packet)
+	elif target.is_in_group("spawners"):
+		spawner_manager.apply_damage(target, packet)
 
 
 func _on_chain_requested(origin_target: Node, packet) -> void:
@@ -152,6 +221,7 @@ func _on_chain_requested(origin_target: Node, packet) -> void:
 	var excluded: Array[Node] = [origin_target]
 	excluded.append_array(packet.hit_targets)
 	var candidates = enemy_manager.get_nearby_enemies(origin_target.global_position, packet.chain_radius, excluded)
+	candidates.append_array(spawner_manager.get_nearby_spawners(origin_target.global_position, packet.chain_radius, excluded))
 	if candidates.is_empty():
 		return
 	var next_target = candidates[0]
@@ -171,9 +241,10 @@ func _on_explosion_requested(origin: Vector2, packet) -> void:
 	explosion_packet.source_position = origin
 	var excluded: Array[Node] = packet.hit_targets.duplicate()
 	var candidates = enemy_manager.get_nearby_enemies(origin, packet.explosion_radius, excluded)
+	candidates.append_array(spawner_manager.get_nearby_spawners(origin, packet.explosion_radius, excluded))
 	for target in candidates:
 		explosion_packet.knockback_direction = (target.global_position - origin).normalized()
-		enemy_manager.apply_damage(target, explosion_packet)
+		_on_damage_resolved(target, explosion_packet)
 
 
 func _on_player_contact_requested(enemy, player, damage: int) -> void:
@@ -193,6 +264,13 @@ func _on_enemy_defeated(_enemy, score_value: int) -> void:
 	if _enemy != null and is_instance_valid(_enemy):
 		item_manager.roll_enemy_drop(_enemy.global_position)
 	_update_hud()
+	_check_level_clear()
+
+
+func _on_spawner_destroyed(_spawner, score_value: int) -> void:
+	_score += score_value
+	_update_hud()
+	_check_level_clear()
 
 
 func _on_player_health_changed(_old_value: int, new_value: int) -> void:
@@ -214,9 +292,8 @@ func _on_player_defeated(_player) -> void:
 
 
 func _on_restart_requested() -> void:
-	if _status != "DOWN":
-		return
-	_reset_run()
+	if _status == "DOWN" and _current_level != null:
+		_start_level(_current_level)
 
 
 func _on_upgrade_changed(modifiers: Dictionary, _active_effects: Array) -> void:
@@ -233,6 +310,12 @@ func _on_permanent_upgrades_changed(attribute_modifiers: Dictionary, permanent_s
 
 func _on_enemy_count_changed(_count: int) -> void:
 	_update_hud()
+	_check_level_clear()
+
+
+func _on_spawner_count_changed(_count: int) -> void:
+	_update_hud()
+	_check_level_clear()
 
 
 func _on_pickup_count_changed(_count: int) -> void:
@@ -245,6 +328,9 @@ func _get_player_ref():
 
 func _update_hud() -> void:
 	if hud_label == null:
+		return
+	if _status == "LEVEL_SELECT":
+		hud_label.text = "SHOOTY  |  LEVEL SELECT"
 		return
 	var active_effects: Array = upgrade_manager.get_active_effects()
 	var upgrade_lines: Array[String] = _get_upgrade_lines(active_effects)
@@ -294,6 +380,10 @@ func _update_game_over_panel() -> void:
 	game_over_panel.visible = _status == "DOWN"
 	if game_over_score_label != null:
 		game_over_score_label.text = "Score: %d" % _score
+	if win_panel != null:
+		win_panel.visible = _status == "WON"
+	if win_score_label != null:
+		win_score_label.text = "Score: %d" % _score
 
 
 func _get_upgrade_lines(active_effects: Array) -> Array[String]:
@@ -327,3 +417,52 @@ func _get_attribute_text() -> String:
 		roundi(size_bonus * 100.0),
 		", ".join(stack_lines)
 	]
+
+
+func _check_level_clear() -> void:
+	if _status != "RUNNING":
+		return
+	if spawner_manager.get_spawner_count() > 0 or enemy_manager.get_enemy_count() > 0:
+		return
+	_status = "WON"
+	_set_all_enabled(false)
+	if win_panel != null:
+		win_panel.visible = true
+	_update_hud()
+
+
+func _on_menu_up_requested() -> void:
+	if _status != "LEVEL_SELECT":
+		return
+	_selected_level_index = wrapi(_selected_level_index - 1, 0, LEVELS.size())
+	_update_level_select_ui()
+
+
+func _on_menu_down_requested() -> void:
+	if _status != "LEVEL_SELECT":
+		return
+	_selected_level_index = wrapi(_selected_level_index + 1, 0, LEVELS.size())
+	_update_level_select_ui()
+
+
+func _on_menu_confirm_requested() -> void:
+	if _status == "LEVEL_SELECT":
+		_start_selected_level()
+	elif _status == "WON":
+		_enter_level_select()
+
+
+func _on_menu_back_requested() -> void:
+	if _status == "WON":
+		_enter_level_select()
+
+
+func _update_level_select_ui() -> void:
+	if level_list_label == null:
+		return
+	var lines: Array[String] = []
+	for index in range(LEVELS.size()):
+		var level = LEVELS[index]
+		var marker := ">" if index == _selected_level_index else " "
+		lines.append("%s %d. %s  [%s]" % [marker, index + 1, level.display_name, level.get_summary()])
+	level_list_label.text = "\n".join(lines)

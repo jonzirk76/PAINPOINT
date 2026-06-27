@@ -2,5 +2,5 @@
 
 [ext_resource type="Script" path="res://scripts/entities/enemy_spawner_entity.gd" id="1"]
 
-[node name="EnemySpawnerEntity" type="Node2D"]
+[node name="EnemySpawnerEntity" type="StaticBody2D"]
 script = ExtResource("1")

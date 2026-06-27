@@ -1,0 +1,16 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/level_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "square_yard"
+display_name = "Square Yard"
+difficulty_label = "Easy"
+arena_shape = 0
+arena_bounds = Rect2(-560, -310, 1120, 620)
+spawner_positions = Array[Vector2]([Vector2(-430, -210), Vector2(430, 210)])
+max_active_enemies = 10
+spawner_health = 14
+spawner_radius = 31.0
+spawn_interval = 3.4

@@ -19,12 +19,14 @@ This project is a Godot 4.x GDScript top-down arena shooter. Keep the architectu
 - Prefer one scene per gameplay concept.
 - Prefer Resource files for tuning profiles and temporary upgrade data.
 - Keep greybox visuals code-driven until real art exists.
+- The game opens in level select. Do not auto-start gameplay from `_ready()`.
 
 ## Gameplay Intent
 
 - Twin-stick movement: move with left stick/WASD, aim with right stick or fallback controls.
 - Shooting is triggered when the aim state changes, not by holding a static aim vector.
 - Enemies spawn from slow respawners, chase the player, and take several hits.
+- Enemy spawners are damageable structures and level objectives. They should be tough, visibly physical, and show damage as health falls.
 - Temporary pickups refresh active upgrade timers and can modify spread, piercing, and chain lightning behavior.
 - The `DOWN` state must remain recoverable through `InputManager.restart_requested`; do not leave the player in an unrestartable frozen arena.
 - Contact damage should respect player-side invulnerability frames so overlapping enemies cannot all damage the player in the same instant.
@@ -39,4 +41,5 @@ This project is a Godot 4.x GDScript top-down arena shooter. Keep the architectu
 - Enemies should keep local hit/death feedback and bullet knockback when combat logic changes.
 - Chain lightning must show visible jump arcs through `EffectsManager`; do not route chain damage invisibly.
 - Restart controls must support keyboard and controller while in the `DOWN` state.
+- A level is cleared only when both enemy count and spawner count reach zero; winning should offer a return to level select.
 - Preserve the 1280x720 logical viewport with 2D stretch scaling and a larger desktop window so the game remains comfortable on 3840x2160 displays.

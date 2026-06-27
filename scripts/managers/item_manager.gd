@@ -35,10 +35,7 @@ func initialize(context: Dictionary) -> void:
 
 
 func reset_run() -> void:
-	for pickup in _pickups:
-		if is_instance_valid(pickup):
-			pickup.queue_free()
-	_pickups.clear()
+	clear_pickups()
 	_spawn_timer = pickup_spawn_interval
 	_effect_index = 0
 	var positions := [
@@ -49,6 +46,14 @@ func reset_run() -> void:
 	for index in range(positions.size()):
 		spawn_pickup(upgrade_effects[index % upgrade_effects.size()], positions[index])
 	pickup_count_changed.emit(_pickups.size())
+
+
+func clear_pickups() -> void:
+	for pickup in _pickups:
+		if is_instance_valid(pickup):
+			pickup.queue_free()
+	_pickups.clear()
+	pickup_count_changed.emit(0)
 
 
 func set_enabled(value: bool) -> void:

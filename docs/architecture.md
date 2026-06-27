@@ -38,6 +38,14 @@ The orchestrator receives those signals and decides which manager command runs n
 - `CombatManager`: resolves hit/contact events into damage events and chain-lightning requests.
 - `EffectsManager`: owns short-lived visual effect entities such as chain-lightning arcs.
 
+## Level Flow
+
+The game starts in `LEVEL_SELECT`. `GameOrchestrator` owns the selected level index, displays levels in increasing difficulty, and starts the selected `LevelDefinition` only after player confirmation.
+
+Level definitions configure arena bounds, arena shape, spawner positions, spawner health, spawn interval, and max active enemies. `ArenaView`, `PlayerManager`, and `SpawnerManager` consume those values through orchestrator commands.
+
+A level is won only when `SpawnerManager.get_spawner_count()` and `EnemyManager.get_enemy_count()` both reach zero. The win state disables gameplay managers and shows a return-to-level-select prompt.
+
 ## Presentation Scale
 
 The project uses a 1280x720 logical viewport and scales canvas items into a larger 2560x1440 desktop window. Keep this separation: gameplay distances, arena bounds, UI offsets, and hitboxes stay authored in the logical 720p space, while Godot stretch settings make the game visually comfortable on 3840x2160 displays.
@@ -61,6 +69,14 @@ Projectile hit:
 5. `GameOrchestrator` calls `EnemyManager.apply_damage(...)`.
 6. When a chain target is selected, `GameOrchestrator` commands `EffectsManager.play_chain_lightning(...)` before resolving the chained hit.
 7. `EnemyEntity` applies local knockback, hit flash, and death animation without calling upward dependencies.
+
+Spawner hit:
+
+1. `ProjectileEntity` can hit bodies in the `spawners` group.
+2. `GameOrchestrator` routes resolved damage to `SpawnerManager.apply_damage(...)`.
+3. `EnemySpawnerEntity` emits `health_depleted` when destroyed.
+4. `SpawnerManager` removes it from active spawners and emits `spawner_destroyed`.
+5. `GameOrchestrator` updates score and rechecks level clear conditions.
 
 Pickup:
 

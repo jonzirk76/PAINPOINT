@@ -64,6 +64,10 @@ func set_speed_multiplier(multiplier: float) -> void:
 	speed = _base_speed * max(multiplier, 0.1)
 
 
+func set_arena_bounds(bounds: Rect2) -> void:
+	arena_bounds = bounds
+
+
 func get_fire_origin() -> Vector2:
 	return global_position + aim_direction * (body_radius + 8.0)
 

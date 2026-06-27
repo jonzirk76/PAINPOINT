@@ -1,0 +1,16 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/level_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "crossfire_foundry"
+display_name = "Crossfire Foundry"
+difficulty_label = "Very Hard"
+arena_shape = 3
+arena_bounds = Rect2(-660, -360, 1320, 720)
+spawner_positions = Array[Vector2]([Vector2(0, -285), Vector2(-540, 0), Vector2(540, 0), Vector2(0, 285), Vector2(0, 0)])
+max_active_enemies = 24
+spawner_health = 26
+spawner_radius = 36.0
+spawn_interval = 2.25
