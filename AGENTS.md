@@ -42,7 +42,11 @@ This project is a Godot 4.x GDScript top-down arena shooter. Keep the architectu
 - The `DOWN` state must remain recoverable through `InputManager.restart_requested`; do not leave the player in an unrestartable frozen arena.
 - Contact damage should respect player-side invulnerability frames so overlapping enemies cannot all damage the player in the same instant.
 - Player damage must be visually readable: hit flash, translucent invulnerability flicker, and HUD invulnerability meter.
+- Player parry is a long-cooldown defensive "get off me" command. It should push enemies without damage, erase hostile projectiles in range, and convert erased hostile projectiles into ammo for currently active ammo-based shot upgrades. Very close projectile parries currently award 10 ammo instead of 1.
+- Parry readiness should be visually obvious on the player, including a clear flash when cooldown returns to ready.
+- Parry absorption should be visually readable: erased hostile bullets should swoop into the player, perfect parries should add a special shine, and ammo buff squares should flash/jump when refilled.
 - Bullet upgrades use ammo instead of duration; do not add timers to ammo-based projectile upgrades.
+- Keep the upper-right combat HUD compact: health/invulnerability only. Ammo upgrades should appear as right-side buff squares with visible meters, while detailed attribute/stat readouts belong in the pause menu.
 - Spread shot is intentionally capped at a 3-way spread for now; do not return it to 5-way without explicit retuning.
 - Permanent upgrades are run-long attribute stacks. Keep them small, frequent, and displayed in the combat HUD attributes area.
 - Permanent attributes currently include fire rate, move speed, bullet damage, and projectile size.
@@ -57,6 +61,7 @@ This project is a Godot 4.x GDScript top-down arena shooter. Keep the architectu
 - Enemies should keep local hit/death feedback and bullet knockback when combat logic changes.
 - Chain lightning must show visible jump arcs through `EffectsManager`; do not route chain damage invisibly.
 - Restart controls must support keyboard and controller while in the `DOWN` state.
+- Controller Start should primarily drive pause/resume. Controller A remains a restart/confirm input, and Start while `DOWN` may still restart through the orchestrator pause path.
 - A level is cleared only when both enemy count and spawner count reach zero; winning should offer a return to level select.
 - Preserve the 1280x720 logical viewport with 2D stretch scaling and a larger desktop window so the game remains comfortable on 3840x2160 displays.
 - Dungeon crawling experiments should use `RoomPieceDefinition` resources, `DungeonManager` for spatial room layout state, and `RoomManager` for generated door entities.

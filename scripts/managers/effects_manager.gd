@@ -3,6 +3,7 @@ class_name EffectsManager
 
 @export var chain_lightning_scene: PackedScene = preload("res://scenes/entities/chain_lightning_effect.tscn")
 @export var explosion_scene: PackedScene = preload("res://scenes/entities/explosion_effect.tscn")
+@export var parry_absorb_scene: PackedScene = preload("res://scenes/entities/parry_absorb_effect.tscn")
 @export var max_active_effects: int = 80
 
 var enabled: bool = false
@@ -30,6 +31,7 @@ func play_chain_lightning(from_position: Vector2, to_position: Vector2) -> void:
 		return
 	_trim_effects()
 	var effect = chain_lightning_scene.instantiate()
+	effect.process_mode = Node.PROCESS_MODE_ALWAYS
 	if _effect_layer != null:
 		_effect_layer.add_child(effect)
 	else:
@@ -44,6 +46,7 @@ func play_explosion(spawn_position: Vector2, radius: float, lifetime: float = -1
 		return
 	_trim_effects()
 	var effect = explosion_scene.instantiate()
+	effect.process_mode = Node.PROCESS_MODE_ALWAYS
 	if _effect_layer != null:
 		_effect_layer.add_child(effect)
 	else:
@@ -55,6 +58,32 @@ func play_explosion(spawn_position: Vector2, radius: float, lifetime: float = -1
 
 func play_spawner_explosion(spawn_position: Vector2, radius: float) -> void:
 	play_explosion(spawn_position, radius, 0.55)
+
+
+func play_parry_absorbs(absorbed_projectiles: Array, target_position: Vector2) -> void:
+	for info in absorbed_projectiles:
+		if info is Dictionary:
+			play_parry_absorb(
+				info.get("position", target_position),
+				target_position,
+				bool(info.get("perfect", false)),
+				float(info.get("radius", 7.0))
+			)
+
+
+func play_parry_absorb(from_position: Vector2, to_position: Vector2, is_perfect: bool, radius: float = 7.0) -> void:
+	if not enabled:
+		return
+	_trim_effects()
+	var effect = parry_absorb_scene.instantiate()
+	effect.process_mode = Node.PROCESS_MODE_ALWAYS
+	if _effect_layer != null:
+		_effect_layer.add_child(effect)
+	else:
+		add_child(effect)
+	effect.initialize(from_position, to_position, is_perfect, radius)
+	effect.expired.connect(_on_effect_expired)
+	_effects.append(effect)
 
 
 func _on_effect_expired(effect) -> void:

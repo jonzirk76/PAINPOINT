@@ -9,15 +9,22 @@ signal menu_up_requested
 signal menu_down_requested
 signal menu_confirm_requested
 signal menu_back_requested
+signal parry_requested
+signal pause_requested
 
 @export var stick_deadzone: float = 0.25
 @export var aim_change_threshold: float = 0.18
 @export var move_change_threshold: float = 0.03
 
 var enabled: bool = false
+@export var extra_pause_button_indices: Array[int] = []
 var _last_move: Vector2 = Vector2.ZERO
 var _last_aim: Vector2 = Vector2.ZERO
 var _aim_origin_provider: Callable
+
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 
 
 func initialize(context: Dictionary) -> void:
@@ -51,17 +58,23 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and (event.physical_keycode == KEY_R or event.keycode == KEY_R):
 		restart_requested.emit()
 		menu_back_requested.emit()
+	elif event is InputEventKey and event.pressed and not event.echo and (event.physical_keycode == KEY_ESCAPE or event.keycode == KEY_ESCAPE):
+		pause_requested.emit()
 	elif event is InputEventKey and event.pressed and not event.echo and (event.physical_keycode == KEY_UP or event.keycode == KEY_UP or event.physical_keycode == KEY_W or event.keycode == KEY_W):
 		menu_up_requested.emit()
 	elif event is InputEventKey and event.pressed and not event.echo and (event.physical_keycode == KEY_DOWN or event.keycode == KEY_DOWN or event.physical_keycode == KEY_S or event.keycode == KEY_S):
 		menu_down_requested.emit()
 	elif event is InputEventKey and event.pressed and not event.echo and (event.physical_keycode == KEY_ENTER or event.keycode == KEY_ENTER or event.physical_keycode == KEY_SPACE or event.keycode == KEY_SPACE):
-		menu_confirm_requested.emit()
-	elif event is InputEventJoypadButton and event.pressed and _is_restart_controller_button(event.button_index):
+		menu_confirm_requested      .emit()
+	elif event is InputEventKey and event.pressed and not event.echo and (event.physical_keycode == KEY_Q or event.keycode == KEY_Q):
+		parry_requested.emit()
+	elif event is InputEventJoypadButton and event.pressed and _is_pause_controller_button(event.button_index):
+		pause_requested.emit()
+	elif event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_A:
 		restart_requested.emit()
 		menu_confirm_requested.emit()
-		if event.button_index == JOY_BUTTON_START:
-			menu_back_requested.emit()
+	elif event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_RIGHT_SHOULDER:
+		parry_requested.emit()
 	elif event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_DPAD_UP:
 		menu_up_requested.emit()
 	elif event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_DPAD_DOWN:
@@ -69,7 +82,16 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _is_restart_controller_button(button_index: int) -> bool:
-	return button_index == JOY_BUTTON_START or button_index == JOY_BUTTON_A
+	return button_index == JOY_BUTTON_A
+
+
+func _is_pause_controller_button(button_index: int) -> bool:
+	if button_index == JOY_BUTTON_START:
+		return true
+	for extra_index in extra_pause_button_indices:
+		if button_index == int(extra_index):
+			return true
+	return false
 
 
 func should_fire_for_aim_change(raw_direction: Vector2) -> bool:

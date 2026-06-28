@@ -18,10 +18,10 @@ const FULL_HEAL := preload("res://resources/pickups/full_heal.tres")
 
 @export var pickup_scene: PackedScene = preload("res://scenes/entities/pickup_entity.tscn")
 @export var pickup_spawn_interval: float = 10.0
-@export var enemy_permanent_drop_chance: float = 0.25
-@export var enemy_temporary_drop_chance: float = 0.08
-@export var enemy_heal_drop_chance: float = 0.14
-@export var spawner_full_heal_drop_chance: float = 0.2
+@export var enemy_permanent_drop_chance: float = 0.18
+@export var enemy_temporary_drop_chance: float = 0.055
+@export var enemy_heal_drop_chance: float = 0.1
+@export var spawner_full_heal_drop_chance: float = 0.16
 
 var enabled: bool = false
 var upgrade_effects: Array = [SPREAD_SHOT, PIERCING_SHOT, CHAIN_LIGHTNING, FIRE_BURST, WATER_SWELL]

@@ -103,6 +103,44 @@ func consume_shot() -> void:
 		upgrade_changed.emit(get_modifiers(), get_active_effects())
 
 
+func add_ammo_to_active_upgrades(amount: int) -> int:
+	if amount <= 0 or _active_effects.is_empty():
+		return 0
+	var refill_ids: Array[String] = []
+	for id in _active_effects.keys():
+		var state: Dictionary = _active_effects[id]
+		var effect = state["effect"]
+		var max_ammo := int(effect.max_ammo)
+		if max_ammo <= 0:
+			continue
+		if int(state.get("ammo", max_ammo)) < max_ammo:
+			refill_ids.append(id)
+	var total_added := 0
+	var remaining := amount
+	while remaining > 0 and not refill_ids.is_empty():
+		var added_this_pass := false
+		for id in refill_ids.duplicate():
+			if remaining <= 0:
+				break
+			var state: Dictionary = _active_effects[id]
+			var effect = state["effect"]
+			var max_ammo := int(effect.max_ammo)
+			var current_ammo := int(state.get("ammo", max_ammo))
+			if current_ammo >= max_ammo:
+				refill_ids.erase(id)
+				continue
+			state["ammo"] = current_ammo + 1
+			_active_effects[id] = state
+			total_added += 1
+			remaining -= 1
+			added_this_pass = true
+		if not added_this_pass:
+			break
+	if total_added > 0:
+		upgrade_changed.emit(get_modifiers(), get_active_effects())
+	return total_added
+
+
 func get_modifiers() -> Dictionary:
 	var modifiers := {
 		"damage_multiplier": 1.0,

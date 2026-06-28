@@ -49,4 +49,4 @@ arena_bounds = Rect2(-900, -520, 1800, 1040)
 arena_shape = 0
 wall_rects = Array[Rect2]([Rect2(-900, 120, 520, 400), Rect2(380, 120, 520, 400), Rect2(-110, -80, 220, 160)])
 spawner_placements = Array[Resource]([SubResource("SpawnerPlacement_basic_1"), SubResource("SpawnerPlacement_shooter_1"), SubResource("SpawnerPlacement_fast_1"), SubResource("SpawnerPlacement_tank_1"), SubResource("SpawnerPlacement_shooter_2")])
-max_active_enemies = 30
+max_active_enemies = 36

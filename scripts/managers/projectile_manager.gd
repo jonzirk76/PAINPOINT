@@ -24,9 +24,12 @@ func initialize(context: Dictionary) -> void:
 
 
 func reset_run() -> void:
-	for projectile in _projectiles:
-		if is_instance_valid(projectile):
-			projectile.queue_free()
+	for projectile in _projectiles.duplicate():
+		_discard_projectile(projectile)
+	_projectiles.clear()
+	if _projectile_layer != null:
+		for child in _projectile_layer.get_children():
+			_discard_projectile(child)
 	_projectiles.clear()
 
 
@@ -95,6 +98,44 @@ func fire_hostile(origin: Vector2, direction: Vector2, shot_config: Dictionary) 
 		_spawn_hostile_projectile(origin, projectile_direction, shot_config, shot_speed)
 
 
+func absorb_hostile_projectiles(origin: Vector2, radius: float, perfect_radius: float) -> Dictionary:
+	var absorbed_count := 0
+	var perfect_count := 0
+	var ammo_awarded := 0
+	var absorbed_projectiles: Array[Dictionary] = []
+	for projectile in _projectiles.duplicate():
+		if not is_instance_valid(projectile):
+			_projectiles.erase(projectile)
+			continue
+		if projectile.projectile_team != "hostile":
+			continue
+		var projectile_radius: float = float(projectile.body_radius)
+		var distance_squared: float = projectile.global_position.distance_squared_to(origin)
+		var effect_radius: float = radius + projectile_radius
+		if distance_squared > effect_radius * effect_radius:
+			continue
+		var perfect_effect_radius: float = perfect_radius + projectile_radius
+		var is_perfect: bool = distance_squared <= perfect_effect_radius * perfect_effect_radius
+		absorbed_count += 1
+		if is_perfect:
+			perfect_count += 1
+			ammo_awarded += 10
+		else:
+			ammo_awarded += 1
+		absorbed_projectiles.append({
+			"position": projectile.global_position,
+			"perfect": is_perfect,
+			"radius": projectile_radius
+		})
+		projectile.expire()
+	return {
+		"absorbed_count": absorbed_count,
+		"perfect_count": perfect_count,
+		"ammo_awarded": ammo_awarded,
+		"absorbed_projectiles": absorbed_projectiles
+	}
+
+
 func _spawn_hostile_projectile(origin: Vector2, direction: Vector2, shot_config: Dictionary, shot_speed: float) -> void:
 	var packet = _create_hostile_damage_packet(shot_config, origin, direction)
 	var projectile = projectile_scene.instantiate()
@@ -159,3 +200,22 @@ func _on_projectile_hit(projectile, target: Node) -> void:
 func _on_projectile_expired(projectile) -> void:
 	_projectiles.erase(projectile)
 	projectile_expired.emit(projectile)
+
+
+func _discard_projectile(projectile) -> void:
+	if projectile == null or not is_instance_valid(projectile):
+		return
+	_projectiles.erase(projectile)
+	if projectile.has_signal("hit_detected"):
+		var hit_callable := Callable(self, "_on_projectile_hit")
+		if projectile.hit_detected.is_connected(hit_callable):
+			projectile.hit_detected.disconnect(hit_callable)
+	if projectile.has_signal("expired"):
+		var expired_callable := Callable(self, "_on_projectile_expired")
+		if projectile.expired.is_connected(expired_callable):
+			projectile.expired.disconnect(expired_callable)
+	if projectile.has_method("despawn"):
+		projectile.despawn()
+	elif projectile is Node:
+		projectile.hide()
+		projectile.queue_free()

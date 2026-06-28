@@ -141,6 +141,20 @@ func expire() -> void:
 	queue_free()
 
 
+func despawn() -> void:
+	if _is_expired:
+		return
+	_is_expired = true
+	visible = false
+	set_process(false)
+	set_physics_process(false)
+	monitoring = false
+	monitorable = false
+	collision_layer = 0
+	collision_mask = 0
+	queue_free()
+
+
 func _draw() -> void:
 	var fill_color := Color(1.0, 0.92, 0.24)
 	var streak_color := Color(1.0, 0.42, 0.08)

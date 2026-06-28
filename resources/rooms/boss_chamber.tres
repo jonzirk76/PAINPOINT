@@ -44,6 +44,6 @@ arena_bounds = Rect2(-820, -520, 1640, 1040)
 arena_shape = 2
 wall_rects = Array[Rect2]([Rect2(-130, -80, 260, 160)])
 spawner_placements = Array[Resource]([SubResource("SpawnerPlacement_shooter_1"), SubResource("SpawnerPlacement_tank_1"), SubResource("SpawnerPlacement_fast_1"), SubResource("SpawnerPlacement_basic_1")])
-max_active_enemies = 14
+max_active_enemies = 26
 boss_profile = ExtResource("2")
 boss_spawn_position = Vector2(260, 0)

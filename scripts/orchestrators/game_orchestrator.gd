@@ -23,7 +23,10 @@ const LEVELS := [
 @onready var room_manager = $Managers/RoomManager
 @onready var arena_view = $World/Arena
 @onready var gameplay_camera: Camera2D = $Camera2D
+@onready var hud_background: ColorRect = $UI/HUDBackground
 @onready var hud_label: Label = $UI/HUDLabel
+@onready var score_panel: Control = $UI/ScorePanel
+@onready var score_label: Label = $UI/ScorePanel/ScoreLabel
 @onready var dungeon_minimap: Control = $UI/DungeonMinimap
 @onready var combat_panel: Control = $UI/CombatPanel
 @onready var health_fill: ColorRect = $UI/CombatPanel/HealthBarBack/HealthBarFill
@@ -31,6 +34,11 @@ const LEVELS := [
 @onready var invulnerability_fill: ColorRect = $UI/CombatPanel/InvulnerabilityBarBack/InvulnerabilityBarFill
 @onready var attribute_label: Label = $UI/CombatPanel/AttributeLabel
 @onready var stats_label: Label = $UI/CombatPanel/StatsLabel
+@onready var ammo_counter_panel: Control = $UI/AmmoCounterPanel
+@onready var pause_panel: Control = $UI/PausePanel
+@onready var pause_stats_label: Label = $UI/PausePanel/PauseStatsLabel
+@onready var pause_prompt_label: Label = $UI/PausePanel/PausePromptLabel
+@onready var pause_confirm_panel: Control = $UI/PausePanel/PauseConfirmPanel
 @onready var game_over_panel: Control = $UI/GameOverPanel
 @onready var game_over_title_label: Label = $UI/GameOverPanel/GameOverTitle
 @onready var game_over_score_label: Label = $UI/GameOverPanel/GameOverScoreLabel
@@ -48,6 +56,8 @@ var _last_health: int = 0
 var _last_max_health: int = 0
 var _last_invulnerability_remaining: float = 0.0
 var _last_invulnerability_duration: float = 0.0
+var _last_parry_cooldown_remaining: float = 0.0
+var _last_parry_cooldown_duration: float = 0.0
 var _status: String = "RUNNING"
 var _latest_modifiers: Dictionary = {}
 var _attribute_modifiers: Dictionary = {}
@@ -57,6 +67,7 @@ var _current_level = null
 var _is_dungeon_run: bool = false
 var _is_main_loop_run: bool = false
 var _is_loading_room: bool = false
+var _paused_previous_status: String = ""
 var _main_loop_floor: int = 1
 var _run_seed: int = 0
 var _run_enemy_kills: int = 0
@@ -67,57 +78,79 @@ var _run_ammo_upgrades: int = 0
 var _run_permanent_upgrades: int = 0
 var _run_heals: int = 0
 var _run_floors_cleared: int = 0
+var _tree_pause_requested: bool = false
+var _boss_clear_delay_remaining: float = 0.0
+var _boss_clear_pending_status: String = ""
+var _ammo_refill_flash_remaining: float = 0.0
+var _ammo_refill_flash_duration: float = 0.48
 
 const DUNGEON_OPTION_COUNT := 2
+const BOSS_CLEAR_DELAY_SECONDS := 0.85
 
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	_set_tree_paused(false)
 	_connect_manager_signals()
 	_initialize_managers()
 	_enter_level_select()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	if _status == "BOSS_CLEARING":
+		_update_boss_clear_transition(delta)
+	if _ammo_refill_flash_remaining > 0.0:
+		_ammo_refill_flash_remaining = max(_ammo_refill_flash_remaining - delta, 0.0)
+		_update_hud()
 	if _is_gameplay_running():
 		_update_camera()
 
 
 func _connect_manager_signals() -> void:
-	input_manager.move_changed.connect(player_manager.set_move_vector)
-	input_manager.aim_changed.connect(player_manager.set_aim_direction)
-	input_manager.aim_fire_requested.connect(_on_aim_fire_requested)
-	input_manager.restart_requested.connect(_on_restart_requested)
-	input_manager.menu_up_requested.connect(_on_menu_up_requested)
-	input_manager.menu_down_requested.connect(_on_menu_down_requested)
-	input_manager.menu_confirm_requested.connect(_on_menu_confirm_requested)
-	input_manager.menu_back_requested.connect(_on_menu_back_requested)
+	_connect_once(input_manager, &"move_changed", player_manager.set_move_vector)
+	_connect_once(input_manager, &"aim_changed", player_manager.set_aim_direction)
+	_connect_once(input_manager, &"aim_fire_requested", _on_aim_fire_requested)
+	_connect_once(input_manager, &"restart_requested", _on_restart_requested)
+	_connect_once(input_manager, &"menu_up_requested", _on_menu_up_requested)
+	_connect_once(input_manager, &"menu_down_requested", _on_menu_down_requested)
+	_connect_once(input_manager, &"menu_confirm_requested", _on_menu_confirm_requested)
+	_connect_once(input_manager, &"menu_back_requested", _on_menu_back_requested)
+	_connect_once(input_manager, &"parry_requested", _on_input_parry_requested)
+	_connect_once(input_manager, &"pause_requested", _on_pause_requested)
 
-	player_manager.player_health_changed.connect(_on_player_health_changed)
-	player_manager.player_invulnerability_changed.connect(_on_player_invulnerability_changed)
-	player_manager.player_defeated.connect(_on_player_defeated)
-	player_manager.shoot_requested.connect(_on_player_shoot_requested)
+	_connect_once(player_manager, &"player_health_changed", _on_player_health_changed)
+	_connect_once(player_manager, &"player_invulnerability_changed", _on_player_invulnerability_changed)
+	_connect_once(player_manager, &"parry_cooldown_changed", _on_player_parry_cooldown_changed)
+	_connect_once(player_manager, &"player_defeated", _on_player_defeated)
+	_connect_once(player_manager, &"shoot_requested", _on_player_shoot_requested)
+	_connect_once(player_manager, &"parry_requested", _on_player_parry_requested)
 
-	projectile_manager.projectile_hit.connect(_on_projectile_hit)
-	combat_manager.damage_resolved.connect(_on_damage_resolved)
-	combat_manager.player_damage_resolved.connect(_on_player_damage_resolved)
-	combat_manager.chain_requested.connect(_on_chain_requested)
-	combat_manager.explosion_requested.connect(_on_explosion_requested)
+	_connect_once(projectile_manager, &"projectile_hit", _on_projectile_hit)
+	_connect_once(combat_manager, &"damage_resolved", _on_damage_resolved)
+	_connect_once(combat_manager, &"player_damage_resolved", _on_player_damage_resolved)
+	_connect_once(combat_manager, &"chain_requested", _on_chain_requested)
+	_connect_once(combat_manager, &"explosion_requested", _on_explosion_requested)
 
-	enemy_manager.enemy_defeated.connect(_on_enemy_defeated)
-	enemy_manager.enemy_count_changed.connect(spawner_manager.set_enemy_count)
-	enemy_manager.enemy_count_changed.connect(_on_enemy_count_changed)
-	enemy_manager.player_contact_requested.connect(_on_player_contact_requested)
-	enemy_manager.hostile_shot_requested.connect(_on_hostile_shot_requested)
+	_connect_once(enemy_manager, &"enemy_defeated", _on_enemy_defeated)
+	_connect_once(enemy_manager, &"enemy_count_changed", spawner_manager.set_enemy_count)
+	_connect_once(enemy_manager, &"enemy_count_changed", _on_enemy_count_changed)
+	_connect_once(enemy_manager, &"player_contact_requested", _on_player_contact_requested)
+	_connect_once(enemy_manager, &"hostile_shot_requested", _on_hostile_shot_requested)
 
-	spawner_manager.spawn_requested.connect(_on_spawn_requested)
-	spawner_manager.spawner_destroyed.connect(_on_spawner_destroyed)
-	spawner_manager.spawner_count_changed.connect(_on_spawner_count_changed)
-	spawner_manager.hostile_shot_requested.connect(_on_hostile_shot_requested)
-	item_manager.pickup_collected.connect(_on_pickup_collected)
-	item_manager.pickup_count_changed.connect(_on_pickup_count_changed)
-	upgrade_manager.upgrade_changed.connect(_on_upgrade_changed)
-	upgrade_manager.permanent_upgrades_changed.connect(_on_permanent_upgrades_changed)
-	room_manager.door_entered.connect(_on_room_door_entered)
+	_connect_once(spawner_manager, &"spawn_requested", _on_spawn_requested)
+	_connect_once(spawner_manager, &"spawner_destroyed", _on_spawner_destroyed)
+	_connect_once(spawner_manager, &"spawner_count_changed", _on_spawner_count_changed)
+	_connect_once(spawner_manager, &"hostile_shot_requested", _on_hostile_shot_requested)
+	_connect_once(item_manager, &"pickup_collected", _on_pickup_collected)
+	_connect_once(item_manager, &"pickup_count_changed", _on_pickup_count_changed)
+	_connect_once(upgrade_manager, &"upgrade_changed", _on_upgrade_changed)
+	_connect_once(upgrade_manager, &"permanent_upgrades_changed", _on_permanent_upgrades_changed)
+	_connect_once(room_manager, &"door_entered", _on_room_door_entered)
+
+
+func _connect_once(source: Object, signal_name: StringName, target: Callable) -> void:
+	if source != null and not source.is_connected(signal_name, target):
+		source.connect(signal_name, target)
 
 
 func _initialize_managers() -> void:
@@ -163,17 +196,22 @@ func _start_selected_level() -> void:
 
 
 func _start_level(level_definition) -> void:
+	_set_tree_paused(false)
 	_is_dungeon_run = false
 	_is_main_loop_run = false
 	_current_level = level_definition
 	_score = 0
 	_run_seed = 0
+	_paused_previous_status = ""
 	_reset_run_tally()
 	_status = "STARTING"
 	_last_health = 0
 	_last_max_health = 0
 	_last_invulnerability_remaining = 0.0
 	_last_invulnerability_duration = 0.0
+	_last_parry_cooldown_remaining = 0.0
+	_last_parry_cooldown_duration = 0.0
+	_ammo_refill_flash_remaining = 0.0
 	_attribute_modifiers = {}
 	_permanent_stats = []
 	if level_select_panel != null:
@@ -208,17 +246,22 @@ func _start_level(level_definition) -> void:
 
 
 func _start_dungeon_run() -> void:
+	_set_tree_paused(false)
 	_is_dungeon_run = true
 	_is_main_loop_run = false
 	_score = 0
 	_main_loop_floor = 1
 	_run_seed = _generate_run_seed()
+	_paused_previous_status = ""
 	_reset_run_tally()
 	_status = "STARTING"
 	_last_health = 0
 	_last_max_health = 0
 	_last_invulnerability_remaining = 0.0
 	_last_invulnerability_duration = 0.0
+	_last_parry_cooldown_remaining = 0.0
+	_last_parry_cooldown_duration = 0.0
+	_ammo_refill_flash_remaining = 0.0
 	_attribute_modifiers = {}
 	_permanent_stats = []
 	if level_select_panel != null:
@@ -246,17 +289,22 @@ func _start_dungeon_run() -> void:
 
 
 func _start_main_loop_run() -> void:
+	_set_tree_paused(false)
 	_is_dungeon_run = true
 	_is_main_loop_run = true
 	_score = 0
 	_main_loop_floor = 1
 	_run_seed = _generate_run_seed()
+	_paused_previous_status = ""
 	_reset_run_tally()
 	_status = "STARTING"
 	_last_health = 0
 	_last_max_health = 0
 	_last_invulnerability_remaining = 0.0
 	_last_invulnerability_duration = 0.0
+	_last_parry_cooldown_remaining = 0.0
+	_last_parry_cooldown_duration = 0.0
+	_ammo_refill_flash_remaining = 0.0
 	_attribute_modifiers = {}
 	_permanent_stats = []
 	if level_select_panel != null:
@@ -286,6 +334,7 @@ func _start_main_loop_run() -> void:
 func _advance_main_loop_floor() -> void:
 	if not _is_main_loop_run:
 		return
+	_set_tree_paused(false)
 	_main_loop_floor += 1
 	_status = "STARTING"
 	if win_panel != null:
@@ -304,11 +353,14 @@ func _advance_main_loop_floor() -> void:
 
 
 func _enter_level_select() -> void:
+	_set_tree_paused(false)
 	_status = "LEVEL_SELECT"
 	_current_level = null
 	_is_dungeon_run = false
 	_is_main_loop_run = false
 	_run_seed = 0
+	_paused_previous_status = ""
+	_ammo_refill_flash_remaining = 0.0
 	_set_all_enabled(false)
 	_clear_gameplay()
 	_clear_minimap()
@@ -352,6 +404,12 @@ func _set_all_enabled(value: bool) -> void:
 	room_manager.set_enabled(value and _is_dungeon_run)
 
 
+func _set_tree_paused(value: bool) -> void:
+	_tree_pause_requested = value
+	if is_inside_tree():
+		get_tree().paused = value
+
+
 func _on_aim_fire_requested(direction: Vector2) -> void:
 	player_manager.request_fire(direction)
 
@@ -382,6 +440,10 @@ func _on_chain_requested(origin_target: Node, packet) -> void:
 	var candidates = enemy_manager.get_nearby_enemies(origin_target.global_position, packet.chain_radius, excluded)
 	candidates.append_array(spawner_manager.get_nearby_spawners(origin_target.global_position, packet.chain_radius, excluded))
 	if candidates.is_empty():
+		var overload_packet = packet.copy_for_chain()
+		overload_packet.chain_count = 0
+		overload_packet.damage = max(roundi(float(packet.damage) * 0.65), 1)
+		_on_damage_resolved(origin_target, overload_packet)
 		return
 	var next_target = candidates[0]
 	var chain_packet = packet.copy_for_chain()
@@ -398,7 +460,7 @@ func _on_explosion_requested(origin: Vector2, packet) -> void:
 	effects_manager.play_explosion(origin, packet.explosion_radius)
 	var explosion_packet = packet.copy_for_explosion()
 	explosion_packet.source_position = origin
-	var excluded: Array[Node] = packet.hit_targets.duplicate()
+	var excluded: Array[Node] = []
 	var candidates = enemy_manager.get_nearby_enemies(origin, packet.explosion_radius, excluded)
 	candidates.append_array(spawner_manager.get_nearby_spawners(origin, packet.explosion_radius, excluded))
 	for target in candidates:
@@ -429,7 +491,7 @@ func _on_enemy_defeated(_enemy, score_value: int) -> void:
 			_run_boss_kills += 1
 			if _is_main_loop_run:
 				_score += _get_boss_floor_bonus()
-				_complete_main_loop_floor()
+				_begin_boss_clear_transition(_enemy.global_position, float(_enemy.body_radius), "FLOOR_CLEARED")
 				_update_hud()
 				return
 		else:
@@ -459,6 +521,33 @@ func _on_player_health_changed(_old_value: int, new_value: int) -> void:
 func _on_player_invulnerability_changed(remaining: float, duration: float) -> void:
 	_last_invulnerability_remaining = remaining
 	_last_invulnerability_duration = duration
+	_update_hud()
+
+
+func _on_input_parry_requested() -> void:
+	player_manager.request_parry()
+
+
+func _on_player_parry_cooldown_changed(remaining: float, duration: float) -> void:
+	_last_parry_cooldown_remaining = remaining
+	_last_parry_cooldown_duration = duration
+	_update_hud()
+
+
+func _on_player_parry_requested(origin: Vector2, effect_radius: float, perfect_radius: float, enemy_knockback: float) -> void:
+	if not _is_gameplay_running():
+		return
+	var absorbed: Dictionary = projectile_manager.absorb_hostile_projectiles(origin, effect_radius, perfect_radius)
+	var absorbed_projectiles: Array = absorbed.get("absorbed_projectiles", [])
+	if not absorbed_projectiles.is_empty():
+		effects_manager.play_parry_absorbs(absorbed_projectiles, origin)
+	var ammo_awarded := int(absorbed.get("ammo_awarded", 0))
+	var ammo_added := 0
+	if ammo_awarded > 0:
+		ammo_added = upgrade_manager.add_ammo_to_active_upgrades(ammo_awarded)
+	if ammo_added > 0:
+		_ammo_refill_flash_remaining = _ammo_refill_flash_duration
+	enemy_manager.apply_parry_pushback(origin, effect_radius, enemy_knockback)
 	_update_hud()
 
 
@@ -531,23 +620,60 @@ func _on_room_door_entered(direction: String) -> void:
 		_load_dungeon_current_room(direction, false)
 
 
+func _on_pause_requested() -> void:
+	if _is_gameplay_running():
+		_paused_previous_status = _status
+		_status = "PAUSED"
+		_set_all_enabled(false)
+		_set_tree_paused(true)
+		_update_hud()
+	elif _status == "DOWN":
+		_on_restart_requested()
+	elif _status == "PAUSED":
+		_resume_from_pause()
+	elif _status == "PAUSE_EXIT_CONFIRM":
+		_status = "PAUSED"
+		_set_tree_paused(true)
+		_update_hud()
+	elif _status == "WON" or _status == "FLOOR_CLEARED":
+		_enter_level_select()
+
+
+func _resume_from_pause() -> void:
+	if _status != "PAUSED":
+		return
+	_set_tree_paused(false)
+	_status = _paused_previous_status if not _paused_previous_status.is_empty() else "RUNNING"
+	_paused_previous_status = ""
+	_set_all_enabled(true)
+	_update_hud()
+
+
 func _update_hud() -> void:
 	if hud_label == null:
 		return
+	_update_score_panel()
 	if _status == "LEVEL_SELECT":
 		hud_label.text = "SHOOTY  |  LEVEL SELECT"
+		_update_minimap()
+		_update_combat_panel([])
+		_update_game_over_panel()
+		_update_pause_panel()
 		return
 	var active_effects: Array = upgrade_manager.get_active_effects()
-	var upgrade_lines: Array[String] = _get_upgrade_lines(active_effects)
-	var upgrade_text: String = "none" if upgrade_lines.is_empty() else "\n".join(upgrade_lines)
-	var footer: String = "WASD/Left Stick move. Right Stick, Arrows, or hold LMB and move mouse to fire on aim changes."
+	var footer: String = "Aim-change fire  |  Q/R-Shoulder parry"
 	if _status == "DOWN":
 		footer = "DOWN. Press R or Start/A on controller to restart."
+	elif _status == "BOSS_CLEARING":
+		footer = "BOSS DEFEATED. Hold steady..."
 	elif _status == "FLOOR_CLEARED":
 		footer = "FLOOR CLEARED. Press Enter/A for next floor, or R/Start to return to level select."
-	hud_label.text = "SHOOTY  |  %s\nScore: %d  Enemies: %d  Pickups: %d\n%s" % [
+	elif _status == "PAUSED":
+		footer = "PAUSED. Esc/Start resumes. Enter/A opens exit prompt."
+	elif _status == "PAUSE_EXIT_CONFIRM":
+		footer = "EXIT TO MAIN MENU? Enter/A confirms. R/Esc cancels."
+	hud_label.text = "%s\nEnemies: %d  Pickups: %d\n%s" % [
 		_get_status_label(),
-		_score,
 		enemy_manager.get_enemy_count(),
 		item_manager.get_pickup_count(),
 		footer
@@ -555,11 +681,19 @@ func _update_hud() -> void:
 	if _is_dungeon_run and _status == "DUNGEON":
 		hud_label.text += _get_dungeon_hud_suffix()
 	_update_minimap()
-	_update_combat_panel(upgrade_text)
+	_update_combat_panel(active_effects)
 	_update_game_over_panel()
+	_update_pause_panel()
 
 
-func _update_combat_panel(upgrade_text: String) -> void:
+func _update_score_panel() -> void:
+	if score_panel != null:
+		score_panel.visible = _status != "LEVEL_SELECT"
+	if score_label != null:
+		score_label.text = "SCORE %06d" % _score
+
+
+func _update_combat_panel(active_effects: Array) -> void:
 	var max_health: int = max(_last_max_health, 1)
 	var health_ratio: float = clamp(float(_last_health) / float(max_health), 0.0, 1.0)
 	if health_fill != null:
@@ -572,16 +706,174 @@ func _update_combat_panel(upgrade_text: String) -> void:
 			invulnerability_ratio = clamp(_last_invulnerability_remaining / _last_invulnerability_duration, 0.0, 1.0)
 		invulnerability_fill.size.x = 306.0 * invulnerability_ratio
 	if stats_label != null:
-		stats_label.text = "Bullet Upgrade Ammo\n%s\nShot x%d  Pierce %d  Chain %d  AoE %d  Size %d%%" % [
-			upgrade_text,
+		stats_label.visible = false
+		var parry_text := "READY"
+		if _last_parry_cooldown_remaining > 0.0:
+			parry_text = "%.1fs" % _last_parry_cooldown_remaining
+		stats_label.text = "Shot x%d  Pierce %d  Chain %d  AoE %d  Size %d%%\nParry %s" % [
 			int(_latest_modifiers.get("projectile_count", 1)),
 			int(_latest_modifiers.get("pierce_count", 0)),
 			int(_latest_modifiers.get("chain_count", 0)),
 			roundi(float(_latest_modifiers.get("explosion_radius", 0.0))),
-			roundi(float(_latest_modifiers.get("projectile_size_multiplier", 1.0)) * 100.0)
+			roundi(float(_latest_modifiers.get("projectile_size_multiplier", 1.0)) * 100.0),
+			parry_text
 		]
 	if attribute_label != null:
+		attribute_label.visible = false
 		attribute_label.text = _get_attribute_text()
+	_update_ammo_counter_panel(active_effects)
+	_update_ammo_warning(active_effects)
+
+
+func _update_ammo_counter_panel(active_effects: Array) -> void:
+	if ammo_counter_panel == null:
+		return
+	for child in ammo_counter_panel.get_children():
+		child.free()
+	var ammo_states: Array = []
+	for state in active_effects:
+		if int(state.get("max_ammo", 0)) > 0:
+			ammo_states.append(state)
+	if ammo_states.is_empty():
+		return
+	for index in range(min(ammo_states.size(), 5)):
+		var state: Dictionary = ammo_states[index]
+		var effect = state["effect"]
+		var refill_flash_ratio: float = 0.0
+		if _ammo_refill_flash_duration > 0.0:
+			refill_flash_ratio = clamp(_ammo_refill_flash_remaining / _ammo_refill_flash_duration, 0.0, 1.0)
+		_add_ammo_counter_square(
+			String(effect.display_name),
+			int(state.get("ammo", 0)),
+			max(int(state.get("max_ammo", 1)), 1),
+			_get_ammo_counter_color(effect),
+			_get_ammo_counter_icon(effect),
+			index,
+			refill_flash_ratio
+		)
+
+
+func _update_ammo_warning(active_effects: Array) -> void:
+	var lowest_ratio := 1.0
+	var lowest_ammo := 0
+	var lowest_icon := ""
+	for state in active_effects:
+		var max_ammo := int(state.get("max_ammo", 0))
+		if max_ammo <= 0:
+			continue
+		var ammo := int(state.get("ammo", max_ammo))
+		var ratio: float = clamp(float(ammo) / float(max_ammo), 0.0, 1.0)
+		if ratio < lowest_ratio:
+			lowest_ratio = ratio
+			lowest_ammo = ammo
+			lowest_icon = _get_ammo_counter_icon(state["effect"])
+	if lowest_icon.is_empty() or (lowest_ratio > 0.2 and lowest_ammo > 10):
+		player_manager.set_ammo_warning_state(false, "", 1.0)
+		return
+	player_manager.set_ammo_warning_state(true, "%s %d" % [lowest_icon, lowest_ammo], lowest_ratio)
+
+
+func _add_ammo_counter_square(display_name: String, ammo: int, max_ammo: int, fill_color: Color, icon_text: String, index: int, refill_flash_ratio: float = 0.0) -> void:
+	var row := Control.new()
+	row.name = "AmmoCounter%d" % index
+	row.size = Vector2(56.0, 56.0)
+	row.pivot_offset = Vector2(28.0, 28.0)
+	var jump_wave: float = max(sin((1.0 - refill_flash_ratio) * PI), 0.0)
+	var jump: float = jump_wave * 10.0 * refill_flash_ratio
+	row.position = Vector2(0.0, float(index) * 62.0 - jump)
+	row.scale = Vector2.ONE * (1.0 + refill_flash_ratio * 0.12)
+	ammo_counter_panel.add_child(row)
+
+	var back := ColorRect.new()
+	back.name = "Back"
+	back.position = Vector2.ZERO
+	back.size = Vector2(56.0, 56.0)
+	back.color = Color(0.045, 0.05, 0.06, 0.92)
+	if refill_flash_ratio > 0.0:
+		back.color = back.color.lerp(Color(0.18, 0.17, 0.08, 0.98), refill_flash_ratio)
+	row.add_child(back)
+
+	var ratio: float = clamp(float(ammo) / float(max_ammo), 0.0, 1.0)
+	var is_low := ratio <= 0.2 or ammo <= 10
+	if is_low:
+		var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.018)
+		back.color = Color(0.18 + pulse * 0.12, 0.055, 0.04, 0.96)
+	var fill := ColorRect.new()
+	fill.name = "Fill"
+	fill.position = Vector2(4.0, 52.0 - 48.0 * ratio)
+	fill.size = Vector2(48.0, 48.0 * ratio)
+	fill.color = Color(fill_color.r, fill_color.g, fill_color.b, 0.62 + refill_flash_ratio * 0.26)
+	row.add_child(fill)
+
+	if refill_flash_ratio > 0.0:
+		var flash := ColorRect.new()
+		flash.name = "RefillFlash"
+		flash.position = Vector2.ZERO
+		flash.size = Vector2(56.0, 56.0)
+		flash.color = Color(1.0, 1.0, 0.74, 0.28 * refill_flash_ratio)
+		row.add_child(flash)
+
+	var icon := Label.new()
+	icon.name = "Icon"
+	icon.position = Vector2(4.0, 5.0)
+	icon.size = Vector2(48.0, 26.0)
+	icon.text = icon_text
+	icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	icon.add_theme_font_size_override("font_size", 17 + roundi(refill_flash_ratio * 3.0))
+	if refill_flash_ratio > 0.0:
+		icon.add_theme_color_override("font_color", Color(1.0, 1.0, 0.72, 1.0))
+	row.add_child(icon)
+
+	var count := Label.new()
+	count.name = "Count"
+	count.position = Vector2(4.0, 32.0)
+	count.size = Vector2(48.0, 20.0)
+	count.text = "%d" % ammo
+	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	count.add_theme_font_size_override("font_size", 13 + roundi(refill_flash_ratio * 2.0))
+	if refill_flash_ratio > 0.0:
+		count.add_theme_color_override("font_color", Color(1.0, 1.0, 0.82, 1.0))
+	row.add_child(count)
+
+	if is_low:
+		var border := ColorRect.new()
+		border.name = "LowAmmoEdge"
+		border.position = Vector2.ZERO
+		border.size = Vector2(56.0, 4.0)
+		border.color = Color(1.0, 0.9, 0.18, 0.92)
+		row.add_child(border)
+
+	row.tooltip_text = "%s  %d/%d" % [display_name, ammo, max_ammo]
+
+
+func _get_ammo_counter_color(effect) -> Color:
+	match String(effect.id):
+		"spread_shot":
+			return Color(1.0, 0.82, 0.24)
+		"piercing_shot":
+			return Color(0.72, 0.95, 1.0)
+		"chain_lightning":
+			return Color(0.7, 0.45, 1.0)
+		"fire_burst":
+			return Color(1.0, 0.28, 0.08)
+		"water_swell":
+			return Color(0.18, 0.62, 1.0)
+	return Color(0.48, 1.0, 0.62)
+
+
+func _get_ammo_counter_icon(effect) -> String:
+	match String(effect.id):
+		"spread_shot":
+			return "SP"
+		"piercing_shot":
+			return "PI"
+		"chain_lightning":
+			return "CH"
+		"fire_burst":
+			return "F"
+		"water_swell":
+			return "W"
+	return "AM"
 
 
 func _update_game_over_panel() -> void:
@@ -604,6 +896,47 @@ func _update_game_over_panel() -> void:
 		game_over_tally_label.text = _get_tally_text()
 	if game_over_prompt_label != null:
 		game_over_prompt_label.text = "Press R or Start/A to restart"
+
+
+func _update_pause_panel() -> void:
+	if pause_panel == null:
+		return
+	var is_paused: bool = _status == "PAUSED" or _status == "PAUSE_EXIT_CONFIRM"
+	pause_panel.visible = is_paused
+	if not is_paused:
+		return
+	if pause_stats_label != null:
+		pause_stats_label.text = _get_pause_stats_text()
+	if pause_prompt_label != null:
+		pause_prompt_label.text = "Esc/Start resumes. Enter/A opens exit prompt." if _status == "PAUSED" else "Exit confirmation is open."
+	if pause_confirm_panel != null:
+		pause_confirm_panel.visible = _status == "PAUSE_EXIT_CONFIRM"
+
+
+func _get_pause_stats_text() -> String:
+	var active_effects: Array = upgrade_manager.get_active_effects()
+	var ammo_lines: Array[String] = []
+	for state in active_effects:
+		if int(state.get("max_ammo", 0)) > 0:
+			var effect = state["effect"]
+			ammo_lines.append("%s %d/%d" % [
+				effect.display_name,
+				int(state.get("ammo", 0)),
+				int(state.get("max_ammo", 0))
+			])
+	var ammo_text: String = "None" if ammo_lines.is_empty() else ", ".join(ammo_lines)
+	var parry_text: String = "READY" if _last_parry_cooldown_remaining <= 0.0 else "%.1fs" % _last_parry_cooldown_remaining
+	return "Score: %d\nHealth: %d / %d\nEnemies: %d  Spawners: %d  Pickups: %d\nParry: %s\n\n%s\n\nAmmo: %s" % [
+		_score,
+		_last_health,
+		max(_last_max_health, 1),
+		enemy_manager.get_enemy_count(),
+		spawner_manager.get_spawner_count(),
+		item_manager.get_pickup_count(),
+		parry_text,
+		_get_attribute_text(),
+		ammo_text
+	]
 
 
 func _get_upgrade_lines(active_effects: Array) -> Array[String]:
@@ -652,12 +985,14 @@ func _check_level_clear() -> void:
 		if dungeon_manager.is_current_boss_room() and not _is_main_loop_run:
 			_status = "WON"
 			_set_all_enabled(false)
+			_set_tree_paused(true)
 			if win_panel != null:
 				win_panel.visible = true
 		_update_hud()
 		return
 	_status = "WON"
 	_set_all_enabled(false)
+	_set_tree_paused(true)
 	if win_panel != null:
 		win_panel.visible = true
 	_update_hud()
@@ -680,6 +1015,11 @@ func _on_menu_down_requested() -> void:
 func _on_menu_confirm_requested() -> void:
 	if _status == "LEVEL_SELECT":
 		_start_selected_level()
+	elif _status == "PAUSED":
+		_status = "PAUSE_EXIT_CONFIRM"
+		_update_hud()
+	elif _status == "PAUSE_EXIT_CONFIRM":
+		_enter_level_select()
 	elif _status == "FLOOR_CLEARED":
 		_advance_main_loop_floor()
 	elif _status == "WON":
@@ -687,7 +1027,12 @@ func _on_menu_confirm_requested() -> void:
 
 
 func _on_menu_back_requested() -> void:
-	if _status == "WON" or _status == "FLOOR_CLEARED":
+	if _status == "PAUSED":
+		_resume_from_pause()
+	elif _status == "PAUSE_EXIT_CONFIRM":
+		_status = "PAUSED"
+		_update_hud()
+	elif _status == "WON" or _status == "FLOOR_CLEARED":
 		_enter_level_select()
 
 
@@ -794,6 +1139,8 @@ func _get_status_label() -> String:
 		return "FLOOR %d" % _main_loop_floor
 	if _is_main_loop_run and _status == "FLOOR_CLEARED":
 		return "FLOOR %d CLEARED" % _main_loop_floor
+	if _status == "BOSS_CLEARING":
+		return "BOSS DEFEATED"
 	if _is_dungeon_run and _status == "DUNGEON":
 		return "DUNGEON"
 	return _status
@@ -817,7 +1164,7 @@ func _get_select_option_count() -> int:
 func _update_minimap() -> void:
 	if dungeon_minimap == null:
 		return
-	if _is_dungeon_run and (_status == "DUNGEON" or _status == "DOWN" or _status == "WON" or _status == "FLOOR_CLEARED"):
+	if _is_dungeon_run and (_status == "DUNGEON" or _status == "DOWN" or _status == "WON" or _status == "FLOOR_CLEARED" or _status == "BOSS_CLEARING"):
 		if dungeon_minimap.has_method("set_map"):
 			dungeon_minimap.call("set_map", dungeon_manager.get_minimap_rooms(), dungeon_manager.current_room_id)
 	else:
@@ -857,10 +1204,44 @@ func _complete_main_loop_floor() -> void:
 	_run_floors_cleared = max(_run_floors_cleared, _main_loop_floor)
 	_status = "FLOOR_CLEARED"
 	_set_all_enabled(false)
+	_set_tree_paused(true)
 	if win_panel != null:
 		win_panel.visible = true
 	_update_minimap()
 	_update_game_over_panel()
+
+
+func _begin_boss_clear_transition(boss_position: Vector2, boss_radius: float, pending_status: String) -> void:
+	if _status == "BOSS_CLEARING" or _status == "FLOOR_CLEARED" or _status == "WON":
+		return
+	_status = "BOSS_CLEARING"
+	_boss_clear_pending_status = pending_status
+	_boss_clear_delay_remaining = BOSS_CLEAR_DELAY_SECONDS
+	var explosion_radius: float = max(boss_radius * 5.6, 220.0)
+	effects_manager.play_explosion(boss_position, explosion_radius, BOSS_CLEAR_DELAY_SECONDS)
+	_set_all_enabled(false)
+	_set_tree_paused(true)
+	if win_panel != null:
+		win_panel.visible = false
+	_update_minimap()
+	_update_hud()
+
+
+func _update_boss_clear_transition(delta: float) -> void:
+	_boss_clear_delay_remaining = max(_boss_clear_delay_remaining - delta, 0.0)
+	if _boss_clear_delay_remaining > 0.0:
+		return
+	var pending_status := _boss_clear_pending_status
+	_boss_clear_pending_status = ""
+	if pending_status == "FLOOR_CLEARED":
+		_complete_main_loop_floor()
+	elif pending_status == "WON":
+		_status = "WON"
+		_set_all_enabled(false)
+		_set_tree_paused(true)
+		if win_panel != null:
+			win_panel.visible = true
+		_update_hud()
 
 
 func _get_boss_floor_bonus() -> int:
@@ -893,7 +1274,7 @@ func _get_tally_text() -> String:
 			_run_spawner_kills,
 			_run_pickups_collected
 		]
-	return "Seed: %d\nFloors cleared: %d\nEnemies: %d  Bosses: %d\nSpawners: %d\nPickups: %d  Ammo: %d  Permanent: %d  Heals: %d" % [
+	return "Seed: %d\nFloors cleared: %d\nEnemies: %d  Bosses: %d\nSpawners: %d\nPickups: %d\nAmmo: %d  Permanent: %d  Heals: %d" % [
 		_run_seed,
 		_run_floors_cleared,
 		_run_enemy_kills,

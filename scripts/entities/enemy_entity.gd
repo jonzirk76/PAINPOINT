@@ -16,6 +16,7 @@ signal shot_ready(enemy, origin: Vector2, direction: Vector2, shot_config: Dicti
 @export var knockback_multiplier: float = 1.0
 @export var arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 @export var arena_shape: int = 0
+@export var wall_rects: Array[Rect2] = []
 @export var behavior_kind: String = "chaser"
 @export var body_color: Color = Color(1.0, 0.27, 0.22)
 @export var accent_color: Color = Color(1.0, 0.72, 0.18)
@@ -32,6 +33,7 @@ signal shot_ready(enemy, origin: Vector2, direction: Vector2, shot_config: Dicti
 var health: int = max_health
 var target_position: Vector2 = Vector2.ZERO
 var _knockback_velocity: Vector2 = Vector2.ZERO
+var _crowd_separation_velocity: Vector2 = Vector2.ZERO
 var _hit_flash_remaining: float = 0.0
 var _is_dying: bool = false
 var _death_elapsed: float = 0.0
@@ -104,8 +106,9 @@ func _physics_process(delta: float) -> void:
 	var to_target := target_position - global_position
 	var intent_velocity := _get_ranged_velocity(to_target) if behavior_kind == "shooter" or behavior_kind == "boss" else _get_chaser_velocity(to_target)
 	_try_emit_shot(to_target)
-	velocity = intent_velocity + _knockback_velocity
+	velocity = intent_velocity + _knockback_velocity + _crowd_separation_velocity
 	_knockback_velocity = _knockback_velocity.move_toward(Vector2.ZERO, 520.0 * delta)
+	_crowd_separation_velocity = _crowd_separation_velocity.move_toward(Vector2.ZERO, 900.0 * delta)
 	move_and_slide()
 	if (behavior_kind == "shooter" or behavior_kind == "boss") and get_slide_collision_count() > 0:
 		_strafe_sign *= -1.0
@@ -121,9 +124,13 @@ func set_target_position(position: Vector2) -> void:
 		queue_redraw()
 
 
-func set_arena_definition(bounds: Rect2, shape: int) -> void:
+func set_arena_definition(bounds: Rect2, shape: int, walls: Array = []) -> void:
 	arena_bounds = bounds
 	arena_shape = shape
+	wall_rects.clear()
+	for wall in walls:
+		if wall is Rect2:
+			wall_rects.append(wall)
 	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
 
 
@@ -139,6 +146,24 @@ func take_damage(packet) -> void:
 	if health == 0:
 		health_depleted.emit(self)
 		_play_death_animation()
+
+
+func apply_pushback(source_position: Vector2, force: float) -> void:
+	if force <= 0.0 or health <= 0 or _is_dying:
+		return
+	var push_direction := global_position - source_position
+	if push_direction.length_squared() <= 0.001:
+		push_direction = Vector2.RIGHT
+	_knockback_velocity += push_direction.normalized() * force
+	_knockback_velocity = _knockback_velocity.limit_length(max(force, 260.0))
+	queue_redraw()
+
+
+func apply_crowd_separation(push_vector: Vector2) -> void:
+	if health <= 0 or _is_dying or push_vector.length_squared() <= 0.001:
+		return
+	_crowd_separation_velocity += push_vector
+	_crowd_separation_velocity = _crowd_separation_velocity.limit_length(150.0)
 
 
 func _draw() -> void:
@@ -183,12 +208,21 @@ func _apply_knockback(packet) -> void:
 func _get_chaser_velocity(to_target: Vector2) -> Vector2:
 	if to_target.length_squared() <= 4.0:
 		return Vector2.ZERO
-	return to_target.normalized() * speed
+	var steering_target := _get_path_steering_target(target_position)
+	var to_steering := steering_target - global_position
+	if to_steering.length_squared() <= 4.0:
+		return Vector2.ZERO
+	return to_steering.normalized() * speed
 
 
 func _get_ranged_velocity(to_target: Vector2) -> Vector2:
 	if to_target.length_squared() <= 4.0:
 		return Vector2.ZERO
+	if _path_blocks_segment(global_position, target_position, body_radius + 8.0):
+		var steering_target := _get_path_steering_target(target_position)
+		var to_steering := steering_target - global_position
+		if to_steering.length_squared() > 4.0:
+			return to_steering.normalized() * speed
 	var distance := to_target.length()
 	var direction := to_target / distance
 	var radial_velocity := Vector2.ZERO
@@ -206,6 +240,11 @@ func _try_emit_shot(to_target: Vector2) -> void:
 	if _shot_cooldown_remaining > 0.0 or to_target.length_squared() <= 4.0:
 		return
 	var shot_direction := to_target.normalized()
+	var shot_origin := global_position + shot_direction * (body_radius + projectile_radius + 4.0)
+	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
+		return
+	if _wall_blocks_segment(global_position, target_position) or _wall_blocks_segment(global_position, shot_origin):
+		return
 	var shot_config := {
 		"speed": projectile_speed,
 		"damage": projectile_damage,
@@ -214,7 +253,7 @@ func _try_emit_shot(to_target: Vector2) -> void:
 		"projectile_count": max(shot_projectile_count, 1),
 		"spread_angle_degrees": shot_spread_degrees
 	}
-	shot_ready.emit(self, global_position + shot_direction * (body_radius + projectile_radius + 4.0), shot_direction, shot_config)
+	shot_ready.emit(self, shot_origin, shot_direction, shot_config)
 	_shot_cooldown_remaining = shot_cooldown
 
 
@@ -247,3 +286,118 @@ func _add_collision() -> void:
 	collision_shape.name = "CollisionShape2D"
 	collision_shape.shape = shape
 	add_child(collision_shape)
+
+
+func _wall_blocks_segment(from_position: Vector2, to_position: Vector2) -> bool:
+	for wall_rect in wall_rects:
+		if _segment_intersects_rect(from_position, to_position, wall_rect.grow(max(projectile_radius, 2.0))):
+			return true
+	if not is_inside_tree() or from_position.distance_squared_to(to_position) <= 0.001:
+		return false
+	var world := get_world_2d()
+	if world == null:
+		return false
+	var query := PhysicsRayQueryParameters2D.create(from_position, to_position, 32, [get_rid()])
+	query.collide_with_areas = false
+	query.collide_with_bodies = true
+	var result := world.direct_space_state.intersect_ray(query)
+	return not result.is_empty()
+
+
+func _get_path_steering_target(final_target: Vector2) -> Vector2:
+	var clearance: float = body_radius + 10.0
+	if not _path_blocks_segment(global_position, final_target, clearance):
+		return final_target
+	var blocking_wall := _get_blocking_wall_rect(global_position, final_target, clearance)
+	if blocking_wall.size == Vector2.ZERO:
+		return final_target
+	var expanded_wall := blocking_wall.grow(body_radius + 28.0)
+	var candidates := [
+		expanded_wall.position,
+		expanded_wall.position + Vector2(expanded_wall.size.x, 0.0),
+		expanded_wall.position + expanded_wall.size,
+		expanded_wall.position + Vector2(0.0, expanded_wall.size.y)
+	]
+	var best_target := final_target
+	var best_score: float = INF
+	for candidate in candidates:
+		if not ArenaGeometry.contains_point(candidate, arena_bounds, arena_shape):
+			continue
+		if _point_inside_wall(candidate, body_radius * 0.75):
+			continue
+		var score: float = global_position.distance_to(candidate) + candidate.distance_to(final_target)
+		if _path_blocks_segment(global_position, candidate, body_radius * 0.35):
+			score += 12000.0
+		if _path_blocks_segment(candidate, final_target, body_radius * 0.35):
+			score += 2400.0
+		if score < best_score:
+			best_score = score
+			best_target = candidate
+	return best_target
+
+
+func _get_blocking_wall_rect(from_position: Vector2, to_position: Vector2, margin: float) -> Rect2:
+	var best_rect := Rect2()
+	var best_distance := INF
+	for wall_rect in wall_rects:
+		var expanded_wall := wall_rect.grow(margin)
+		if not _segment_intersects_rect(from_position, to_position, expanded_wall):
+			continue
+		var distance := from_position.distance_squared_to(expanded_wall.get_center())
+		if distance < best_distance:
+			best_distance = distance
+			best_rect = wall_rect
+	return best_rect
+
+
+func _path_blocks_segment(from_position: Vector2, to_position: Vector2, margin: float) -> bool:
+	if from_position.distance_squared_to(to_position) <= 0.001:
+		return false
+	for wall_rect in wall_rects:
+		if _segment_intersects_rect(from_position, to_position, wall_rect.grow(margin)):
+			return true
+	return false
+
+
+func _point_inside_wall(point: Vector2, margin: float) -> bool:
+	for wall_rect in wall_rects:
+		if wall_rect.grow(margin).has_point(point):
+			return true
+	return false
+
+
+func _segment_intersects_rect(from_position: Vector2, to_position: Vector2, rect: Rect2) -> bool:
+	if rect.has_point(from_position) or rect.has_point(to_position):
+		return true
+	var top_left := rect.position
+	var top_right := rect.position + Vector2(rect.size.x, 0.0)
+	var bottom_right := rect.position + rect.size
+	var bottom_left := rect.position + Vector2(0.0, rect.size.y)
+	if _segments_intersect(from_position, to_position, top_left, top_right):
+		return true
+	if _segments_intersect(from_position, to_position, top_right, bottom_right):
+		return true
+	if _segments_intersect(from_position, to_position, bottom_right, bottom_left):
+		return true
+	if _segments_intersect(from_position, to_position, bottom_left, top_left):
+		return true
+	return false
+
+
+func _segments_intersect(a: Vector2, b: Vector2, c: Vector2, d: Vector2) -> bool:
+	var r := b - a
+	var s := d - c
+	var denominator := r.cross(s)
+	var c_to_a := c - a
+	if abs(denominator) <= 0.001:
+		if abs(c_to_a.cross(r)) > 0.001:
+			return false
+		var use_x: bool = abs(r.x) >= abs(r.y)
+		var a0: float = a.x if use_x else a.y
+		var b0: float = b.x if use_x else b.y
+		var c0: float = c.x if use_x else c.y
+		var d0: float = d.x if use_x else d.y
+		return max(min(a0, b0), min(c0, d0)) <= min(max(a0, b0), max(c0, d0))
+	var t := c_to_a.cross(s) / denominator
+	var u := c_to_a.cross(r) / denominator
+	return t >= 0.0 and t <= 1.0 and u >= 0.0 and u <= 1.0

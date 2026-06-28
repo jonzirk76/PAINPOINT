@@ -1,4 +1,4 @@
-extends StaticBody2D
+extends CharacterBody2D
 class_name EnemySpawnerEntity
 
 signal spawn_ready(spawner, spawn_position: Vector2)
@@ -7,6 +7,7 @@ signal health_depleted(spawner)
 signal shot_ready(spawner, origin: Vector2, direction: Vector2, shot_config: Dictionary)
 
 @export var spawn_interval: float = 2.8
+@export var spawn_batch_count: int = 1
 @export var warmup_seconds: float = 1.0
 @export var active: bool = true
 @export var body_radius: float = 32.0
@@ -21,6 +22,15 @@ signal shot_ready(spawner, origin: Vector2, direction: Vector2, shot_config: Dic
 @export var projectile_speed: float = 250.0
 @export var projectile_damage: int = 1
 @export var projectile_radius: float = 7.0
+@export var shot_projectile_count: int = 1
+@export var shot_spread_degrees: float = 0.0
+@export var move_speed: float = 18.0
+@export var preferred_distance: float = 340.0
+@export var distance_band: float = 85.0
+@export var strafe_speed: float = 8.0
+@export var arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
+@export var arena_shape: int = 0
+@export var wall_rects: Array[Rect2] = []
 
 var health: int = max_health
 var enemy_profile: Resource = null
@@ -29,6 +39,7 @@ var _timer: float = 0.0
 var _shot_timer: float = 0.0
 var _hit_flash_remaining: float = 0.0
 var _is_destroyed: bool = false
+var _strafe_sign: float = 1.0
 var _collision_shape: CollisionShape2D = null
 
 
@@ -46,7 +57,7 @@ func _ready() -> void:
 
 func _configure_collision_identity() -> void:
 	collision_layer = 16
-	collision_mask = 0
+	collision_mask = 32
 	add_to_group("spawners")
 
 
@@ -68,14 +79,30 @@ func _process(delta: float) -> void:
 			_try_emit_shot()
 
 
+func _physics_process(_delta: float) -> void:
+	if _is_destroyed or not active:
+		velocity = Vector2.ZERO
+		return
+	velocity = _get_general_velocity()
+	move_and_slide()
+	if get_slide_collision_count() > 0:
+		_strafe_sign *= -1.0
+	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
+	if velocity.length_squared() > 1.0:
+		queue_redraw()
+
+
 func set_enabled(value: bool) -> void:
 	active = value and not _is_destroyed
+	if not active:
+		velocity = Vector2.ZERO
 
 
 func initialize(spawner_health: int, interval: float, radius: float) -> void:
 	max_health = spawner_health
 	health = max_health
 	spawn_interval = interval
+	spawn_batch_count = 1
 	body_radius = radius
 	_shot_timer = shot_cooldown * 0.5
 
@@ -87,6 +114,7 @@ func initialize_from_profile(profile) -> void:
 	max_health = profile.max_health
 	health = max_health
 	spawn_interval = profile.spawn_interval
+	spawn_batch_count = max(int(profile.spawn_batch_count), 1)
 	body_radius = profile.body_radius
 	score_value = profile.score_value
 	base_color = profile.base_color
@@ -98,11 +126,28 @@ func initialize_from_profile(profile) -> void:
 	projectile_speed = profile.projectile_speed
 	projectile_damage = profile.projectile_damage
 	projectile_radius = profile.projectile_radius
+	shot_projectile_count = profile.shot_projectile_count
+	shot_spread_degrees = profile.shot_spread_degrees
+	move_speed = profile.move_speed
+	preferred_distance = profile.preferred_distance
+	distance_band = profile.distance_band
+	strafe_speed = profile.strafe_speed
 	_shot_timer = shot_cooldown * 0.5
 
 
 func set_target_position(position: Vector2) -> void:
 	target_position = position
+	queue_redraw()
+
+
+func set_arena_definition(bounds: Rect2, shape: int, walls: Array = []) -> void:
+	arena_bounds = bounds
+	arena_shape = shape
+	wall_rects.clear()
+	for wall in walls:
+		if wall is Rect2:
+			wall_rects.append(wall)
+	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
 
 
 func take_damage(packet) -> void:
@@ -118,6 +163,7 @@ func take_damage(packet) -> void:
 		active = false
 		collision_layer = 0
 		collision_mask = 0
+		velocity = Vector2.ZERO
 		remove_from_group("spawners")
 		health_depleted.emit(self)
 
@@ -202,10 +248,90 @@ func _try_emit_shot() -> void:
 	if to_target.length_squared() <= 4.0:
 		return
 	var shot_direction := to_target.normalized()
+	var shot_origin := global_position + shot_direction * (body_radius + projectile_radius + 5.0)
+	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
+		return
+	if _wall_blocks_segment(global_position, target_position) or _wall_blocks_segment(global_position, shot_origin):
+		return
 	var shot_config := {
 		"speed": projectile_speed,
 		"damage": projectile_damage,
 		"radius": projectile_radius,
-		"kind": "hostile"
+		"kind": "hostile",
+		"projectile_count": max(shot_projectile_count, 1),
+		"spread_angle_degrees": shot_spread_degrees
 	}
-	shot_ready.emit(self, global_position + shot_direction * (body_radius + projectile_radius + 5.0), shot_direction, shot_config)
+	shot_ready.emit(self, shot_origin, shot_direction, shot_config)
+
+
+func _get_general_velocity() -> Vector2:
+	if move_speed <= 0.0:
+		return Vector2.ZERO
+	var to_target := target_position - global_position
+	if to_target.length_squared() <= 4.0:
+		return Vector2.ZERO
+	var distance := to_target.length()
+	var direction := to_target / distance
+	var radial_velocity := Vector2.ZERO
+	if distance > preferred_distance + distance_band:
+		radial_velocity = direction * move_speed
+	elif distance < preferred_distance - distance_band:
+		radial_velocity = -direction * move_speed * 0.72
+	var orbit_scale := 1.0
+	if distance < preferred_distance + distance_band:
+		orbit_scale = 0.5
+	var strafe_velocity := direction.orthogonal() * _strafe_sign * strafe_speed * orbit_scale
+	return radial_velocity + strafe_velocity
+
+
+func _wall_blocks_segment(from_position: Vector2, to_position: Vector2) -> bool:
+	for wall_rect in wall_rects:
+		if _segment_intersects_rect(from_position, to_position, wall_rect.grow(max(projectile_radius, 2.0))):
+			return true
+	if not is_inside_tree() or from_position.distance_squared_to(to_position) <= 0.001:
+		return false
+	var world := get_world_2d()
+	if world == null:
+		return false
+	var query := PhysicsRayQueryParameters2D.create(from_position, to_position, 32, [get_rid()])
+	query.collide_with_areas = false
+	query.collide_with_bodies = true
+	var result := world.direct_space_state.intersect_ray(query)
+	return not result.is_empty()
+
+
+func _segment_intersects_rect(from_position: Vector2, to_position: Vector2, rect: Rect2) -> bool:
+	if rect.has_point(from_position) or rect.has_point(to_position):
+		return true
+	var top_left := rect.position
+	var top_right := rect.position + Vector2(rect.size.x, 0.0)
+	var bottom_right := rect.position + rect.size
+	var bottom_left := rect.position + Vector2(0.0, rect.size.y)
+	if _segments_intersect(from_position, to_position, top_left, top_right):
+		return true
+	if _segments_intersect(from_position, to_position, top_right, bottom_right):
+		return true
+	if _segments_intersect(from_position, to_position, bottom_right, bottom_left):
+		return true
+	if _segments_intersect(from_position, to_position, bottom_left, top_left):
+		return true
+	return false
+
+
+func _segments_intersect(a: Vector2, b: Vector2, c: Vector2, d: Vector2) -> bool:
+	var r := b - a
+	var s := d - c
+	var denominator := r.cross(s)
+	var c_to_a := c - a
+	if abs(denominator) <= 0.001:
+		if abs(c_to_a.cross(r)) > 0.001:
+			return false
+		var use_x: bool = abs(r.x) >= abs(r.y)
+		var a0: float = a.x if use_x else a.y
+		var b0: float = b.x if use_x else b.y
+		var c0: float = c.x if use_x else c.y
+		var d0: float = d.x if use_x else d.y
+		return max(min(a0, b0), min(c0, d0)) <= min(max(a0, b0), max(c0, d0))
+	var t := c_to_a.cross(s) / denominator
+	var u := c_to_a.cross(r) / denominator
+	return t >= 0.0 and t <= 1.0 and u >= 0.0 and u <= 1.0

@@ -9,6 +9,9 @@ const WIDE_PIECE := preload("res://resources/rooms/combat_wide.tres")
 const TALL_PIECE := preload("res://resources/rooms/combat_tall.tres")
 const L_PIECE := preload("res://resources/rooms/combat_l_room.tres")
 const T_PIECE := preload("res://resources/rooms/combat_t_room.tres")
+const RING_PIECE := preload("res://resources/rooms/combat_ring.tres")
+const HOURGLASS_PIECE := preload("res://resources/rooms/combat_hourglass.tres")
+const CROSSROADS_PIECE := preload("res://resources/rooms/combat_crossroads.tres")
 const TREASURE_PIECE := preload("res://resources/rooms/treasure_nook.tres")
 const CHALLENGE_PIECE := preload("res://resources/rooms/challenge_zigzag.tres")
 const BOSS_PIECE := preload("res://resources/rooms/boss_chamber.tres")
@@ -29,7 +32,10 @@ const COMBAT_PIECES := [
 	WIDE_PIECE,
 	TALL_PIECE,
 	L_PIECE,
-	T_PIECE
+	T_PIECE,
+	RING_PIECE,
+	HOURGLASS_PIECE,
+	CROSSROADS_PIECE
 ]
 
 const BRANCH_DIRECTIONS := ["north", "south", "west"]
@@ -202,7 +208,8 @@ func _generate_layout() -> void:
 	_place_room("start", START_PIECE, Vector2i.ZERO, true)
 	var path_room_ids := _build_boss_path(rng)
 	_try_place_required_branch("treasure_1", TREASURE_PIECE, path_room_ids, rng)
-	_try_place_required_branch("challenge_1", CHALLENGE_PIECE, path_room_ids, rng)
+	if not _try_place_connected("start", "south", "challenge_1", CHALLENGE_PIECE):
+		_try_place_required_branch("challenge_1", CHALLENGE_PIECE, path_room_ids, rng)
 	_fill_optional_branches(path_room_ids, rng)
 	current_room_id = "start"
 	_reveal_room(current_room_id)

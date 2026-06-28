@@ -19,6 +19,16 @@ var invulnerable_duration: float = 0.0
 var _base_speed: float = 260.0
 var _hit_flash_remaining: float = 0.0
 var _heal_flash_remaining: float = 0.0
+var _parry_pulse_remaining: float = 0.0
+var _parry_pulse_duration: float = 0.28
+var _parry_ready_flash_remaining: float = 0.0
+var _parry_ready_flash_duration: float = 0.42
+var _parry_ready: bool = false
+var _parry_effect_radius: float = 154.0
+var _parry_perfect_radius: float = 42.0
+var _ammo_warning_active: bool = false
+var _ammo_warning_text: String = ""
+var _ammo_warning_ratio: float = 1.0
 var _death_elapsed: float = 0.0
 var _death_duration: float = 0.75
 var _is_dead: bool = false
@@ -47,9 +57,14 @@ func _process(delta: float) -> void:
 		_hit_flash_remaining = max(_hit_flash_remaining - delta, 0.0)
 	if _heal_flash_remaining > 0.0:
 		_heal_flash_remaining = max(_heal_flash_remaining - delta, 0.0)
+	if _parry_pulse_remaining > 0.0:
+		_parry_pulse_remaining = max(_parry_pulse_remaining - delta, 0.0)
+	if _parry_ready_flash_remaining > 0.0:
+		_parry_ready_flash_remaining = max(_parry_ready_flash_remaining - delta, 0.0)
 	if _is_dead:
 		_death_elapsed = min(_death_elapsed + delta, _death_duration)
-	queue_redraw()
+	if _ammo_warning_active or _parry_ready or _parry_ready_flash_remaining > 0.0 or _parry_pulse_remaining > 0.0 or _hit_flash_remaining > 0.0 or _heal_flash_remaining > 0.0 or _is_dead:
+		queue_redraw()
 
 
 func _physics_process(_delta: float) -> void:
@@ -65,6 +80,11 @@ func set_move_vector(vector: Vector2) -> void:
 	move_vector = vector.limit_length(1.0)
 
 
+func stop_movement() -> void:
+	move_vector = Vector2.ZERO
+	velocity = Vector2.ZERO
+
+
 func set_aim_direction(direction: Vector2) -> void:
 	if direction.length_squared() <= 0.001:
 		return
@@ -74,6 +94,13 @@ func set_aim_direction(direction: Vector2) -> void:
 
 func set_speed_multiplier(multiplier: float) -> void:
 	speed = _base_speed * max(multiplier, 0.1)
+
+
+func set_ammo_warning_state(is_active: bool, text: String, ratio: float) -> void:
+	_ammo_warning_active = is_active and not _is_dead
+	_ammo_warning_text = text
+	_ammo_warning_ratio = clamp(ratio, 0.0, 1.0)
+	queue_redraw()
 
 
 func set_arena_bounds(bounds: Rect2) -> void:
@@ -122,6 +149,31 @@ func play_hit_response() -> void:
 	queue_redraw()
 
 
+func play_parry_response(effect_radius: float, perfect_radius: float) -> void:
+	if _is_dead:
+		return
+	_parry_ready = false
+	_parry_effect_radius = max(effect_radius, body_radius + 1.0)
+	_parry_perfect_radius = clamp(perfect_radius, body_radius + 1.0, _parry_effect_radius)
+	_parry_pulse_remaining = _parry_pulse_duration
+	queue_redraw()
+
+
+func set_parry_ready_state(is_ready: bool) -> void:
+	_parry_ready = is_ready and not _is_dead
+	queue_redraw()
+
+
+func play_parry_ready_response(effect_radius: float, perfect_radius: float) -> void:
+	if _is_dead:
+		return
+	_parry_effect_radius = max(effect_radius, body_radius + 1.0)
+	_parry_perfect_radius = clamp(perfect_radius, body_radius + 1.0, _parry_effect_radius)
+	_parry_ready_flash_remaining = _parry_ready_flash_duration
+	_parry_ready = true
+	queue_redraw()
+
+
 func set_invulnerability_state(remaining: float, duration: float) -> void:
 	invulnerable_remaining = max(remaining, 0.0)
 	invulnerable_duration = max(duration, 0.0)
@@ -142,6 +194,8 @@ func play_death_animation() -> void:
 	move_vector = Vector2.ZERO
 	velocity = Vector2.ZERO
 	invulnerable_remaining = 0.0
+	_parry_ready = false
+	_ammo_warning_active = false
 	modulate.a = 1.0
 	collision_layer = 0
 	collision_mask = 0
@@ -155,6 +209,10 @@ func reset_health() -> void:
 	_death_elapsed = 0.0
 	_hit_flash_remaining = 0.0
 	_heal_flash_remaining = 0.0
+	_parry_pulse_remaining = 0.0
+	_parry_ready_flash_remaining = 0.0
+	_parry_ready = false
+	_ammo_warning_active = false
 	_configure_collision_identity()
 	set_invulnerability_state(0.0, 0.0)
 	health_changed.emit(old_health, health)
@@ -180,6 +238,14 @@ func _draw() -> void:
 	if invulnerable_remaining > 0.0 and invulnerable_duration > 0.0:
 		var ratio: float = clamp(invulnerable_remaining / invulnerable_duration, 0.0, 1.0)
 		draw_arc(Vector2.ZERO, body_radius + 10.0, -PI / 2.0, -PI / 2.0 + TAU * ratio, 32, Color(0.45, 1.0, 1.0), 3.0)
+	if _parry_ready:
+		_draw_parry_ready_idle()
+	if _parry_ready_flash_remaining > 0.0:
+		_draw_parry_ready_flash()
+	if _parry_pulse_remaining > 0.0:
+		_draw_parry_pulse()
+	if _ammo_warning_active:
+		_draw_ammo_warning()
 
 
 func _draw_death_animation() -> void:
@@ -191,6 +257,50 @@ func _draw_death_animation() -> void:
 	for index in range(8):
 		var direction := Vector2.RIGHT.rotated(TAU * float(index) / 8.0)
 		draw_line(direction * body_radius * 0.35, direction * (body_radius + progress * 58.0), Color(1.0, 0.35, 0.28, alpha), 3.0)
+
+
+func _draw_parry_pulse() -> void:
+	var progress: float = 1.0 - clamp(_parry_pulse_remaining / _parry_pulse_duration, 0.0, 1.0)
+	var alpha: float = 1.0 - progress
+	draw_circle(Vector2.ZERO, _parry_effect_radius * (0.18 + progress * 0.82), Color(0.2, 0.94, 1.0, alpha * 0.18))
+	draw_arc(Vector2.ZERO, _parry_effect_radius * (0.42 + progress * 0.58), 0.0, TAU, 48, Color(0.36, 1.0, 0.95, alpha), 5.0)
+	draw_arc(Vector2.ZERO, _parry_perfect_radius, 0.0, TAU, 32, Color(1.0, 1.0, 0.78, alpha), 4.0)
+	for index in range(10):
+		var direction := Vector2.RIGHT.rotated(TAU * float(index) / 10.0 + progress * 0.35)
+		draw_line(direction * body_radius * 0.7, direction * _parry_effect_radius * (0.7 + progress * 0.3), Color(0.68, 1.0, 1.0, alpha * 0.8), 2.0 + alpha * 2.0)
+
+
+func _draw_parry_ready_idle() -> void:
+	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.012)
+	var alpha: float = 0.34 + pulse * 0.34
+	draw_arc(Vector2.ZERO, body_radius + 13.0, 0.0, TAU, 32, Color(0.55, 1.0, 0.95, alpha), 2.5)
+	draw_arc(Vector2.ZERO, body_radius + 18.0, PI * 0.15, PI * 1.85, 32, Color(1.0, 1.0, 0.72, alpha * 0.7), 2.0)
+
+
+func _draw_parry_ready_flash() -> void:
+	var remaining_ratio: float = clamp(_parry_ready_flash_remaining / _parry_ready_flash_duration, 0.0, 1.0)
+	var progress: float = 1.0 - remaining_ratio
+	var alpha: float = remaining_ratio
+	var outer_radius: float = lerp(_parry_perfect_radius * 1.45, body_radius + 12.0, progress)
+	var inner_radius: float = lerp(_parry_perfect_radius * 0.92, body_radius + 4.0, progress)
+	draw_arc(Vector2.ZERO, outer_radius, 0.0, TAU, 40, Color(0.42, 1.0, 0.95, alpha), 4.0)
+	draw_arc(Vector2.ZERO, inner_radius, 0.0, TAU, 32, Color(1.0, 1.0, 0.7, alpha * 0.9), 3.0)
+	for index in range(8):
+		var direction := Vector2.RIGHT.rotated(TAU * float(index) / 8.0 - progress * 0.4)
+		draw_line(direction * outer_radius, direction * (body_radius + 7.0), Color(0.75, 1.0, 1.0, alpha * 0.75), 2.0)
+
+
+func _draw_ammo_warning() -> void:
+	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.02)
+	var urgency: float = 1.0 - _ammo_warning_ratio
+	var alpha: float = 0.42 + pulse * 0.45
+	var warning_color := Color(1.0, lerp(0.18, 0.78, _ammo_warning_ratio), 0.08, alpha)
+	var radius: float = body_radius + 26.0 + pulse * 5.0
+	draw_arc(Vector2.ZERO, radius, -PI * 0.15, TAU - PI * 0.15, 44, warning_color, 3.0 + urgency * 2.0)
+	draw_arc(Vector2.ZERO, body_radius + 21.0, -PI / 2.0, -PI / 2.0 + TAU * _ammo_warning_ratio, 36, Color(1.0, 0.92, 0.16, 0.88), 4.0)
+	var font := ThemeDB.fallback_font
+	if font != null and not _ammo_warning_text.is_empty():
+		draw_string(font, Vector2(-42.0, -body_radius - 38.0), _ammo_warning_text, HORIZONTAL_ALIGNMENT_CENTER, 84.0, 14, Color(1.0, 0.96, 0.72, alpha))
 
 
 func _add_collision() -> void:

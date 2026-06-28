@@ -1,0 +1,52 @@
+[gd_resource type="Resource" load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/room_piece_definition.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/resources/spawner_placement.gd" id="2"]
+[ext_resource type="Resource" path="res://resources/spawners/basic_spawner.tres" id="3"]
+[ext_resource type="Resource" path="res://resources/spawners/fast_spawner.tres" id="4"]
+[ext_resource type="Resource" path="res://resources/spawners/shooter_spawner.tres" id="5"]
+[ext_resource type="Resource" path="res://resources/spawners/tank_spawner.tres" id="6"]
+
+[sub_resource type="Resource" id="SpawnerPlacement_basic_1"]
+script = ExtResource("2")
+position = Vector2(-650, -220)
+profile = ExtResource("3")
+warmup_seconds = 1.0
+
+[sub_resource type="Resource" id="SpawnerPlacement_fast_1"]
+script = ExtResource("2")
+position = Vector2(650, 220)
+profile = ExtResource("4")
+warmup_seconds = 1.4
+
+[sub_resource type="Resource" id="SpawnerPlacement_shooter_1"]
+script = ExtResource("2")
+position = Vector2(-650, 220)
+profile = ExtResource("5")
+warmup_seconds = 2.2
+
+[sub_resource type="Resource" id="SpawnerPlacement_tank_1"]
+script = ExtResource("2")
+position = Vector2(650, -220)
+profile = ExtResource("6")
+warmup_seconds = 3.0
+
+[sub_resource type="Resource" id="SpawnerPlacement_basic_2"]
+script = ExtResource("2")
+position = Vector2(0, 330)
+profile = ExtResource("3")
+warmup_seconds = 2.8
+
+[resource]
+script = ExtResource("1")
+id = "combat_hourglass"
+display_name = "Hourglass Room"
+room_kind = "combat"
+difficulty_weight = 3
+footprint_cells = Array[Vector2i]([Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0)])
+connector_directions = PackedStringArray("west", "east", "north", "south")
+arena_bounds = Rect2(-900, -440, 1800, 880)
+arena_shape = 2
+wall_rects = Array[Rect2]([Rect2(-180, -440, 110, 300), Rect2(70, 140, 110, 300), Rect2(-90, -70, 180, 140)])
+spawner_placements = Array[Resource]([SubResource("SpawnerPlacement_basic_1"), SubResource("SpawnerPlacement_fast_1"), SubResource("SpawnerPlacement_shooter_1"), SubResource("SpawnerPlacement_tank_1"), SubResource("SpawnerPlacement_basic_2")])
+max_active_enemies = 34

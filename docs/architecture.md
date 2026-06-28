@@ -31,9 +31,9 @@ The orchestrator receives those signals and decides which manager command runs n
 ## Manager Responsibilities
 
 - `InputManager`: polls controller, keyboard, and mouse fallback; emits movement and aim-state events.
-- `PlayerManager`: owns the player, movement commands, aim direction, weapon cooldown, player health, and player-side hit invulnerability.
-- `ProjectileManager`: owns projectiles, applies upgrade-derived projectile spawning, and stamps damage packets with knockback source/direction, projectile size, growth, explosion, and chain fields.
-- `EnemyManager`: owns enemies, target updates, contact checks, and enemy damage application.
+- `PlayerManager`: owns the player, movement commands, aim direction, weapon cooldown, parry cooldown, player health, and player-side hit invulnerability.
+- `ProjectileManager`: owns projectiles, applies upgrade-derived projectile spawning, handles hostile projectile absorption, and stamps damage packets with knockback source/direction, projectile size, growth, explosion, and chain fields.
+- `EnemyManager`: owns enemies, target updates, contact checks, enemy damage application, and non-damaging parry pushback.
 - `SpawnerManager`: owns respawner entities and gates spawn requests by current enemy count.
 - `ItemManager`: owns pickups and pickup spawn timing.
 - `UpgradeManager`: owns ammo-based shot upgrades, optional timed effects, permanent run-long attribute stacks, and combines active modifiers.
@@ -67,6 +67,12 @@ Boss rooms can also include typed spawner placements. Their enemy budget must al
 The dungeon minimap is UI-only rendering of `DungeonManager` state. `DungeonManager` owns room reveal state as rooms are entered, and `GameOrchestrator` syncs that state into `DungeonMinimap`.
 
 `Main Game Loop Test` layers floor progression on top of the dungeon room flow. Boss death awards a large floor-clear score bonus, disables the room, shows the next-floor prompt, and advances to a freshly generated floor on confirm. Run stats such as the run seed, enemies, bosses, spawners, pickups, upgrades, heals, and floors cleared are tracked by `GameOrchestrator` and displayed on the death tally screen.
+
+## HUD And Pause Flow
+
+The normal combat HUD stays intentionally light: top-center score, lower-corner state info, upper-right health/invulnerability, and right-side ammo buff squares. Detailed attribute modifiers, ammo totals, and run stats are shown in `PausePanel` instead of occupying combat space.
+
+Pause input flows through `InputManager.pause_requested` into `GameOrchestrator`; controller Start is the primary pause/resume button. The orchestrator disables gameplay managers, preserves the previous gameplay status, displays `PausePanel`, owns the exit-to-main-menu confirmation state before returning to `LEVEL_SELECT`, and treats Start while `DOWN` as a restart convenience. Controller A remains the direct controller confirm/restart input.
 
 ## Presentation Scale
 
@@ -112,9 +118,17 @@ Shot upgrade ammo:
 
 1. `UpgradeManager` tracks remaining ammo for shot upgrades; ammo-based projectile upgrades do not expire by timer.
 2. `GameOrchestrator` calls `UpgradeManager.consume_shot()` after routing a player shot.
-3. `UpgradeManager` emits `upgrade_changed` so the upper-right combat HUD can show current ammo, spread, pierce, chain, AoE, and projectile size.
+3. `UpgradeManager` emits `upgrade_changed` so right-side buff squares can show current ammo while the pause menu can show detailed spread, pierce, chain, AoE, and projectile-size stats.
 4. Fire upgrades stamp explosion fields onto damage packets; `CombatManager` emits `explosion_requested`, and `GameOrchestrator` routes AoE damage plus `EffectsManager.play_explosion(...)`.
 5. Water upgrades stamp projectile growth and high pierce onto damage packets; `ProjectileEntity` grows its drawn/collision radius while traveling.
+
+Parry:
+
+1. `InputManager` emits `parry_requested` from keyboard/controller input.
+2. `GameOrchestrator` calls `PlayerManager.request_parry()`.
+3. `PlayerManager` enforces the long cooldown, plays the player pulse, and emits `parry_requested(origin, radius, perfect_radius, knockback)`.
+4. `GameOrchestrator` commands `ProjectileManager.absorb_hostile_projectiles(...)`, `EnemyManager.apply_parry_pushback(...)`, and `UpgradeManager.add_ammo_to_active_upgrades(...)`.
+5. Parry pushback never creates a damage packet. Absorbed hostile projectiles award 1 ammo each, or 10 ammo each when inside the small perfect radius, to each currently active ammo-based shot upgrade up to that upgrade's ammo cap.
 
 Combat reward drops:
 
@@ -137,5 +151,5 @@ Player down/restart:
 2. `PlayerManager` emits `player_defeated`.
 3. `GameOrchestrator` enters `DOWN`, disables gameplay managers, and updates the HUD with restart text.
 4. `PlayerEntity` plays its local death animation, while the centered game-over panel shows restart controls.
-5. `InputManager` still emits `restart_requested` when R, controller Start, or controller A is pressed.
+5. `InputManager` still emits `restart_requested` when R or controller A is pressed; controller Start emits `pause_requested`, which `GameOrchestrator` treats as restart only from `DOWN`.
 6. `GameOrchestrator` calls `reset_run()` only from that restart event.

@@ -6,11 +6,17 @@ signal player_health_changed(old_value: int, new_value: int)
 signal player_invulnerability_changed(remaining: float, duration: float)
 signal player_defeated(player)
 signal shoot_requested(origin: Vector2, direction: Vector2)
+signal parry_requested(origin: Vector2, effect_radius: float, perfect_radius: float, enemy_knockback: float)
+signal parry_cooldown_changed(remaining: float, duration: float)
 
 @export var player_scene: PackedScene = preload("res://scenes/entities/player_entity.tscn")
 @export var spawn_position: Vector2 = Vector2.ZERO
 @export var base_fire_cooldown: float = 0.09
 @export var damage_invulnerability_seconds: float = 0.6
+@export var parry_cooldown_seconds: float = 8.0
+@export var parry_effect_radius: float = 154.0
+@export var parry_perfect_radius: float = 42.0
+@export var parry_enemy_knockback: float = 430.0
 
 var player = null
 var enabled: bool = false
@@ -19,6 +25,8 @@ var _fire_cooldown_remaining: float = 0.0
 var _fire_cooldown_multiplier: float = 1.0
 var _damage_cooldown_remaining: float = 0.0
 var _last_invulnerability_remaining: float = -1.0
+var _parry_cooldown_remaining: float = 0.0
+var _last_parry_cooldown_remaining: float = -1.0
 var _arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 var _arena_shape: int = 0
 
@@ -42,7 +50,10 @@ func reset_run() -> void:
 	_fire_cooldown_remaining = 0.0
 	_damage_cooldown_remaining = 0.0
 	_last_invulnerability_remaining = -1.0
+	_parry_cooldown_remaining = 0.0
+	_last_parry_cooldown_remaining = -1.0
 	_sync_invulnerability_state()
+	_sync_parry_state()
 	player_spawned.emit(player)
 	player_health_changed.emit(player.health, player.health)
 
@@ -53,11 +64,15 @@ func clear_player() -> void:
 	player = null
 	_fire_cooldown_remaining = 0.0
 	_damage_cooldown_remaining = 0.0
+	_parry_cooldown_remaining = 0.0
 	player_health_changed.emit(0, 0)
+	_sync_parry_state()
 
 
 func set_enabled(value: bool) -> void:
 	enabled = value
+	if not enabled and _has_player():
+		player.stop_movement()
 
 
 func _process(delta: float) -> void:
@@ -67,6 +82,10 @@ func _process(delta: float) -> void:
 		_damage_cooldown_remaining = max(_damage_cooldown_remaining - delta, 0.0)
 	if _damage_cooldown_remaining > 0.0 or _last_invulnerability_remaining > 0.0:
 		_sync_invulnerability_state()
+	if _parry_cooldown_remaining > 0.0:
+		_parry_cooldown_remaining = max(_parry_cooldown_remaining - delta, 0.0)
+	if _parry_cooldown_remaining > 0.0 or _last_parry_cooldown_remaining > 0.0:
+		_sync_parry_state()
 
 
 func set_move_vector(vector: Vector2) -> void:
@@ -91,6 +110,16 @@ func request_fire(direction: Vector2) -> void:
 	shoot_requested.emit(player.get_fire_origin(), direction.normalized())
 
 
+func request_parry() -> void:
+	if not enabled or not _has_player() or _parry_cooldown_remaining > 0.0:
+		return
+	_parry_cooldown_remaining = parry_cooldown_seconds
+	if player.has_method("play_parry_response"):
+		player.play_parry_response(parry_effect_radius, parry_perfect_radius)
+	_sync_parry_state()
+	parry_requested.emit(player.global_position, parry_effect_radius, parry_perfect_radius, parry_enemy_knockback)
+
+
 func apply_damage(amount: int) -> void:
 	if not enabled or not _has_player() or _damage_cooldown_remaining > 0.0:
 		return
@@ -113,6 +142,11 @@ func set_weapon_modifiers(modifiers: Dictionary) -> void:
 	_fire_cooldown_multiplier = float(modifiers.get("fire_cooldown_multiplier", 1.0))
 	if _has_player():
 		player.set_speed_multiplier(float(modifiers.get("move_speed_multiplier", 1.0)))
+
+
+func set_ammo_warning_state(is_active: bool, text: String, ratio: float) -> void:
+	if _has_player() and player.has_method("set_ammo_warning_state"):
+		player.set_ammo_warning_state(is_active, text, ratio)
 
 
 func set_arena_bounds(bounds: Rect2) -> void:
@@ -163,6 +197,14 @@ func get_invulnerability_duration() -> float:
 	return damage_invulnerability_seconds
 
 
+func get_parry_cooldown_remaining() -> float:
+	return _parry_cooldown_remaining
+
+
+func get_parry_cooldown_duration() -> float:
+	return parry_cooldown_seconds
+
+
 func _has_player() -> bool:
 	return player != null and is_instance_valid(player)
 
@@ -174,7 +216,9 @@ func _on_player_health_changed(old_value: int, new_value: int) -> void:
 func _on_player_health_depleted(entity) -> void:
 	enabled = false
 	_damage_cooldown_remaining = 0.0
+	_parry_cooldown_remaining = 0.0
 	_sync_invulnerability_state()
+	_sync_parry_state()
 	if _has_player():
 		player.play_death_animation()
 	player_defeated.emit(entity)
@@ -185,3 +229,15 @@ func _sync_invulnerability_state() -> void:
 	if _has_player():
 		player.set_invulnerability_state(_damage_cooldown_remaining, damage_invulnerability_seconds)
 	player_invulnerability_changed.emit(_damage_cooldown_remaining, damage_invulnerability_seconds)
+
+
+func _sync_parry_state() -> void:
+	var previous_remaining := _last_parry_cooldown_remaining
+	_last_parry_cooldown_remaining = _parry_cooldown_remaining
+	if _has_player():
+		var is_ready := _parry_cooldown_remaining <= 0.0
+		if player.has_method("set_parry_ready_state"):
+			player.set_parry_ready_state(is_ready)
+		if is_ready and (previous_remaining > 0.0 or previous_remaining < 0.0) and player.has_method("play_parry_ready_response"):
+			player.play_parry_ready_response(parry_effect_radius, parry_perfect_radius)
+	parry_cooldown_changed.emit(_parry_cooldown_remaining, parry_cooldown_seconds)
