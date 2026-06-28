@@ -1,6 +1,21 @@
-[gd_resource type="Resource" load_steps=2 format=3]
+[gd_resource type="Resource" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/resources/level_definition.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/resources/spawner_placement.gd" id="2"]
+[ext_resource type="Resource" path="res://resources/spawners/basic_spawner.tres" id="3"]
+[ext_resource type="Resource" path="res://resources/spawners/fast_spawner.tres" id="4"]
+
+[sub_resource type="Resource" id="SpawnerPlacement_basic_1"]
+script = ExtResource("2")
+position = Vector2(-430, -210)
+profile = ExtResource("3")
+warmup_seconds = 1.0
+
+[sub_resource type="Resource" id="SpawnerPlacement_fast_1"]
+script = ExtResource("2")
+position = Vector2(430, 210)
+profile = ExtResource("4")
+warmup_seconds = 2.0
 
 [resource]
 script = ExtResource("1")
@@ -9,8 +24,5 @@ display_name = "Square Yard"
 difficulty_label = "Easy"
 arena_shape = 0
 arena_bounds = Rect2(-560, -310, 1120, 620)
-spawner_positions = Array[Vector2]([Vector2(-430, -210), Vector2(430, 210)])
-max_active_enemies = 10
-spawner_health = 14
-spawner_radius = 31.0
-spawn_interval = 3.4
+spawner_placements = Array[Resource]([SubResource("SpawnerPlacement_basic_1"), SubResource("SpawnerPlacement_fast_1")])
+max_active_enemies = 11

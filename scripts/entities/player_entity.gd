@@ -23,14 +23,22 @@ var _death_duration: float = 0.75
 var _is_dead: bool = false
 
 
+func _init() -> void:
+	_configure_collision_identity()
+
+
 func _ready() -> void:
 	_base_speed = speed
 	health = max_health
-	collision_layer = 1
-	collision_mask = 2
-	add_to_group("player")
+	_configure_collision_identity()
 	_add_collision()
 	queue_redraw()
+
+
+func _configure_collision_identity() -> void:
+	collision_layer = 1
+	collision_mask = 34
+	add_to_group("player")
 
 
 func _process(delta: float) -> void:
@@ -131,6 +139,7 @@ func reset_health() -> void:
 	_is_dead = false
 	_death_elapsed = 0.0
 	_hit_flash_remaining = 0.0
+	_configure_collision_identity()
 	set_invulnerability_state(0.0, 0.0)
 	health_changed.emit(old_health, health)
 	queue_redraw()

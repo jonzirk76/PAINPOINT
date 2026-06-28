@@ -1,0 +1,21 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/spawner_profile.gd" id="1"]
+[ext_resource type="Resource" path="res://resources/enemies/shooter_enemy.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+enemy_profile = ExtResource("2")
+max_health = 22
+spawn_interval = 4.2
+body_radius = 34.0
+score_value = 110
+base_color = Color(0.24, 0.16, 0.38, 1)
+core_color = Color(0.74, 0.2, 0.96, 1)
+accent_color = Color(0.32, 0.96, 1, 1)
+shape_kind = "shooter"
+shoots_projectiles = true
+shot_cooldown = 1.8
+projectile_speed = 250.0
+projectile_damage = 1
+projectile_radius = 7.0

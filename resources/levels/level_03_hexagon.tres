@@ -1,6 +1,35 @@
-[gd_resource type="Resource" load_steps=2 format=3]
+[gd_resource type="Resource" load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/resources/level_definition.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/resources/spawner_placement.gd" id="2"]
+[ext_resource type="Resource" path="res://resources/spawners/basic_spawner.tres" id="3"]
+[ext_resource type="Resource" path="res://resources/spawners/tank_spawner.tres" id="4"]
+[ext_resource type="Resource" path="res://resources/spawners/fast_spawner.tres" id="5"]
+[ext_resource type="Resource" path="res://resources/spawners/shooter_spawner.tres" id="6"]
+
+[sub_resource type="Resource" id="SpawnerPlacement_basic_1"]
+script = ExtResource("2")
+position = Vector2(-400, -210)
+profile = ExtResource("3")
+warmup_seconds = 1.0
+
+[sub_resource type="Resource" id="SpawnerPlacement_tank_1"]
+script = ExtResource("2")
+position = Vector2(400, -210)
+profile = ExtResource("4")
+warmup_seconds = 2.5
+
+[sub_resource type="Resource" id="SpawnerPlacement_fast_1"]
+script = ExtResource("2")
+position = Vector2(-400, 210)
+profile = ExtResource("5")
+warmup_seconds = 1.8
+
+[sub_resource type="Resource" id="SpawnerPlacement_shooter_1"]
+script = ExtResource("2")
+position = Vector2(400, 210)
+profile = ExtResource("6")
+warmup_seconds = 3.2
 
 [resource]
 script = ExtResource("1")
@@ -9,8 +38,5 @@ display_name = "Hex Pressure"
 difficulty_label = "Hard"
 arena_shape = 2
 arena_bounds = Rect2(-630, -350, 1260, 700)
-spawner_positions = Array[Vector2]([Vector2(-400, -210), Vector2(400, -210), Vector2(-400, 210), Vector2(400, 210)])
+spawner_placements = Array[Resource]([SubResource("SpawnerPlacement_basic_1"), SubResource("SpawnerPlacement_tank_1"), SubResource("SpawnerPlacement_fast_1"), SubResource("SpawnerPlacement_shooter_1")])
 max_active_enemies = 20
-spawner_health = 22
-spawner_radius = 35.0
-spawn_interval = 2.55

@@ -9,6 +9,7 @@ signal expired(projectile)
 @export var body_radius: float = 6.0
 @export var arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 @export var arena_shape: int = 0
+@export var projectile_team: String = "player"
 
 var direction: Vector2 = Vector2.RIGHT
 var damage_packet = null
@@ -33,7 +34,7 @@ func _ready() -> void:
 
 func _configure_collision_identity() -> void:
 	collision_layer = 4
-	collision_mask = 18
+	collision_mask = 33 if projectile_team == "hostile" else 50
 	monitoring = true
 	monitorable = false
 
@@ -78,10 +79,24 @@ func set_arena_definition(bounds: Rect2, shape: int) -> void:
 	arena_shape = shape
 
 
+func set_projectile_team(team: String) -> void:
+	projectile_team = team
+	_configure_collision_identity()
+
+
 func _handle_target_hit(body: Node) -> void:
 	if _is_expired:
 		return
-	if not body.is_in_group("enemies") and not body.is_in_group("spawners"):
+	if body.is_in_group("arena_walls"):
+		expire()
+		return
+	if projectile_team == "hostile":
+		if not body.is_in_group("player"):
+			return
+	else:
+		if not body.is_in_group("enemies") and not body.is_in_group("spawners"):
+			return
+	if damage_packet == null:
 		return
 	if hit_targets.has(body):
 		return
@@ -130,13 +145,17 @@ func _draw() -> void:
 	var fill_color := Color(1.0, 0.92, 0.24)
 	var streak_color := Color(1.0, 0.42, 0.08)
 	if damage_packet != null:
-		match damage_packet.projectile_kind:
-			"fire":
-				fill_color = Color(1.0, 0.26, 0.08)
-				streak_color = Color(1.0, 0.82, 0.16)
-			"water":
-				fill_color = Color(0.18, 0.62, 1.0)
-				streak_color = Color(0.75, 0.95, 1.0)
+		if projectile_team == "hostile":
+			fill_color = Color(0.9, 0.18, 1.0)
+			streak_color = Color(0.34, 0.95, 1.0)
+		else:
+			match damage_packet.projectile_kind:
+				"fire":
+					fill_color = Color(1.0, 0.26, 0.08)
+					streak_color = Color(1.0, 0.82, 0.16)
+				"water":
+					fill_color = Color(0.18, 0.62, 1.0)
+					streak_color = Color(0.75, 0.95, 1.0)
 	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.022 + _age * 18.0)
 	var glow_color := Color(fill_color.r, fill_color.g, fill_color.b, 0.2 + pulse * 0.32)
 	var glow_points := _build_lemon_points(body_radius * (1.95 + pulse * 0.25), body_radius * (1.05 + pulse * 0.12))

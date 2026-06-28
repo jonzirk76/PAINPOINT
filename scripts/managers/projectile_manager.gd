@@ -68,10 +68,34 @@ func fire(origin: Vector2, direction: Vector2, modifiers: Dictionary) -> void:
 		else:
 			add_child(projectile)
 		projectile.set_arena_definition(_arena_bounds, _arena_shape)
+		projectile.set_projectile_team("player")
 		projectile.initialize(origin, shot_direction, packet, base_projectile_speed)
 		projectile.hit_detected.connect(_on_projectile_hit)
 		projectile.expired.connect(_on_projectile_expired)
 		_projectiles.append(projectile)
+
+
+func fire_hostile(origin: Vector2, direction: Vector2, shot_config: Dictionary) -> void:
+	if not enabled or direction.length_squared() <= 0.001 or _projectiles.size() >= max_active_projectiles:
+		return
+	var shot_direction := direction.normalized()
+	var shot_speed: float = max(float(shot_config.get("speed", 250.0)), 1.0)
+	var packet = _create_hostile_damage_packet(shot_config, origin, shot_direction)
+	var projectile = projectile_scene.instantiate()
+	projectile.body_radius = float(shot_config.get("radius", 7.0))
+	var player_projectile_range: float = base_projectile_speed * projectile.lifetime_seconds
+	var requested_lifetime: float = float(shot_config.get("lifetime", 0.0))
+	projectile.lifetime_seconds = max(requested_lifetime, player_projectile_range / shot_speed)
+	if _projectile_layer != null:
+		_projectile_layer.add_child(projectile)
+	else:
+		add_child(projectile)
+	projectile.set_arena_definition(_arena_bounds, _arena_shape)
+	projectile.set_projectile_team("hostile")
+	projectile.initialize(origin, shot_direction, packet, shot_speed)
+	projectile.hit_detected.connect(_on_projectile_hit)
+	projectile.expired.connect(_on_projectile_expired)
+	_projectiles.append(projectile)
 
 
 func _create_damage_packet(modifiers: Dictionary, origin: Vector2, direction: Vector2):
@@ -87,6 +111,24 @@ func _create_damage_packet(modifiers: Dictionary, origin: Vector2, direction: Ve
 	packet.projectile_max_size_multiplier = float(modifiers.get("projectile_max_size_multiplier", packet.projectile_size_multiplier))
 	packet.projectile_kind = String(modifiers.get("projectile_kind", "normal"))
 	packet.knockback = base_knockback
+	packet.source_position = origin
+	packet.knockback_direction = direction.normalized()
+	return packet
+
+
+func _create_hostile_damage_packet(shot_config: Dictionary, origin: Vector2, direction: Vector2):
+	var packet = DAMAGE_PACKET_SCRIPT.new()
+	packet.damage = max(int(shot_config.get("damage", 1)), 1)
+	packet.pierce_count = 0
+	packet.chain_count = 0
+	packet.chain_radius = 0.0
+	packet.explosion_radius = 0.0
+	packet.explosion_damage_multiplier = 0.0
+	packet.projectile_size_multiplier = 1.0
+	packet.projectile_growth_per_second = 0.0
+	packet.projectile_max_size_multiplier = 1.0
+	packet.projectile_kind = String(shot_config.get("kind", "hostile"))
+	packet.knockback = 0.0
 	packet.source_position = origin
 	packet.knockback_direction = direction.normalized()
 	return packet

@@ -4,6 +4,7 @@ class_name EnemyManager
 signal enemy_defeated(enemy, score_value: int)
 signal enemy_count_changed(count: int)
 signal player_contact_requested(enemy, player, damage: int)
+signal hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: Dictionary)
 
 @export var enemy_scene: PackedScene = preload("res://scenes/entities/enemy_entity.tscn")
 @export var default_enemy_profile: Resource = preload("res://resources/enemies/basic_enemy.tres")
@@ -60,7 +61,7 @@ func _physics_process(delta: float) -> void:
 		var id: int = enemy.get_instance_id()
 		_contact_timers[id] = max(float(_contact_timers.get(id, 0.0)) - delta, 0.0)
 		if player != null and is_instance_valid(player):
-			var contact_range: float = enemy.contact_radius
+			var contact_range: float = _get_effective_contact_range(enemy, player)
 			if enemy.global_position.distance_squared_to(player.global_position) <= contact_range * contact_range and float(_contact_timers[id]) <= 0.0:
 				_contact_timers[id] = enemy.contact_cooldown
 				player_contact_requested.emit(enemy, player, enemy.contact_damage)
@@ -79,6 +80,7 @@ func spawn_enemy(profile, spawn_position: Vector2):
 	else:
 		add_child(enemy)
 	enemy.health_depleted.connect(_on_enemy_health_depleted)
+	enemy.shot_ready.connect(_on_enemy_shot_ready)
 	_enemies.append(enemy)
 	enemy_count_changed.emit(_enemies.size())
 	return enemy
@@ -120,6 +122,17 @@ func _on_enemy_health_depleted(enemy) -> void:
 	_contact_timers.erase(enemy.get_instance_id())
 	enemy_defeated.emit(enemy, enemy.score_value)
 	enemy_count_changed.emit(_enemies.size())
+
+
+func _on_enemy_shot_ready(_enemy, origin: Vector2, direction: Vector2, shot_config: Dictionary) -> void:
+	if not enabled or direction.length_squared() <= 0.001:
+		return
+	hostile_shot_requested.emit(origin, direction, shot_config)
+
+
+func _get_effective_contact_range(enemy, player) -> float:
+	var body_touch_range: float = float(enemy.body_radius) + float(player.body_radius) + 4.0
+	return max(float(enemy.contact_radius), body_touch_range)
 
 
 func _get_player_position() -> Vector2:

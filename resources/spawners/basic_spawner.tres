@@ -1,0 +1,16 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/spawner_profile.gd" id="1"]
+[ext_resource type="Resource" path="res://resources/enemies/basic_enemy.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+enemy_profile = ExtResource("2")
+max_health = 14
+spawn_interval = 3.4
+body_radius = 31.0
+score_value = 75
+base_color = Color(0.34, 0.28, 0.38, 1)
+core_color = Color(0.72, 0.24, 0.92, 1)
+accent_color = Color(0.52, 1, 0.42, 1)
+shape_kind = "basic"

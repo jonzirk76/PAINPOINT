@@ -24,6 +24,9 @@ func set_enabled(value: bool) -> void:
 func resolve_projectile_hit(_projectile, target: Node, packet) -> void:
 	if not enabled or target == null or packet == null:
 		return
+	if target.is_in_group("player"):
+		player_damage_resolved.emit(packet.damage)
+		return
 	damage_resolved.emit(target, packet)
 	if packet.explosion_radius > 0.0 and packet.explosion_damage_multiplier > 0.0:
 		explosion_requested.emit(target.global_position, packet)

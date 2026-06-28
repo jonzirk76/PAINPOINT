@@ -5,6 +5,7 @@ const SHAPE_RECTANGLE := 0
 const SHAPE_DIAMOND := 1
 const SHAPE_HEXAGON := 2
 const SHAPE_CROSS := 3
+const SHAPE_CIRCLE := 4
 const EDGE_EPSILON := 0.001
 
 
@@ -45,6 +46,13 @@ static func build_polygon(arena_bounds: Rect2, arena_shape: int) -> PackedVector
 				center + Vector2(-half.x, -arm_y),
 				center + Vector2(-arm_x, -arm_y)
 			])
+		SHAPE_CIRCLE:
+			var points := PackedVector2Array()
+			var segments := 32
+			for index in range(segments):
+				var angle: float = TAU * float(index) / float(segments)
+				points.append(center + Vector2(cos(angle) * half.x, sin(angle) * half.y))
+			return points
 	return PackedVector2Array([
 		arena_bounds.position,
 		arena_bounds.position + Vector2(arena_bounds.size.x, 0.0),

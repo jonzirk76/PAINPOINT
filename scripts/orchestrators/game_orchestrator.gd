@@ -5,7 +5,9 @@ const LEVELS := [
 	preload("res://resources/levels/level_01_square.tres"),
 	preload("res://resources/levels/level_02_diamond.tres"),
 	preload("res://resources/levels/level_03_hexagon.tres"),
-	preload("res://resources/levels/level_04_cross.tres")
+	preload("res://resources/levels/level_04_cross.tres"),
+	preload("res://resources/levels/level_05_circle.tres"),
+	preload("res://resources/levels/level_06_maze.tres")
 ]
 
 @onready var input_manager = $Managers/InputManager
@@ -76,10 +78,12 @@ func _connect_manager_signals() -> void:
 	enemy_manager.enemy_count_changed.connect(spawner_manager.set_enemy_count)
 	enemy_manager.enemy_count_changed.connect(_on_enemy_count_changed)
 	enemy_manager.player_contact_requested.connect(_on_player_contact_requested)
+	enemy_manager.hostile_shot_requested.connect(_on_hostile_shot_requested)
 
 	spawner_manager.spawn_requested.connect(_on_spawn_requested)
 	spawner_manager.spawner_destroyed.connect(_on_spawner_destroyed)
 	spawner_manager.spawner_count_changed.connect(_on_spawner_count_changed)
+	spawner_manager.hostile_shot_requested.connect(_on_hostile_shot_requested)
 	item_manager.pickup_collected.connect(upgrade_manager.activate_pickup)
 	item_manager.pickup_count_changed.connect(_on_pickup_count_changed)
 	upgrade_manager.upgrade_changed.connect(_on_upgrade_changed)
@@ -102,7 +106,8 @@ func _initialize_managers() -> void:
 		"player_ref_provider": Callable(self, "_get_player_ref")
 	})
 	spawner_manager.initialize({
-		"spawner_layer": $World/SpawnerLayer
+		"spawner_layer": $World/SpawnerLayer,
+		"player_position_provider": Callable(player_manager, "get_player_position")
 	})
 	item_manager.initialize({
 		"pickup_layer": $World/PickupLayer
@@ -260,6 +265,10 @@ func _on_player_damage_resolved(amount: int) -> void:
 
 func _on_spawn_requested(spawn_position: Vector2, profile) -> void:
 	enemy_manager.spawn_enemy(profile, spawn_position)
+
+
+func _on_hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: Dictionary) -> void:
+	projectile_manager.fire_hostile(origin, direction, shot_config)
 
 
 func _on_enemy_defeated(_enemy, score_value: int) -> void:
