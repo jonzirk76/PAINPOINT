@@ -65,8 +65,10 @@ func expire() -> void:
 func _draw() -> void:
 	var color := Color(0.35, 1.0, 0.45)
 	var is_permanent := false
+	var is_heal := false
 	if upgrade_effect != null:
-		if upgrade_effect.has_method("get_pickup_kind") and upgrade_effect.get_pickup_kind() == "permanent":
+		var pickup_kind: String = upgrade_effect.get_pickup_kind() if upgrade_effect.has_method("get_pickup_kind") else "temporary"
+		if pickup_kind == "permanent":
 			is_permanent = true
 			match upgrade_effect.get_stat_key():
 				"fire_rate":
@@ -77,6 +79,9 @@ func _draw() -> void:
 					color = Color(1.0, 0.36, 0.26)
 				"projectile_size":
 					color = Color(1.0, 0.58, 0.22)
+		elif pickup_kind == "heal":
+			is_heal = true
+			color = Color(0.24, 1.0, 0.36)
 		else:
 			match int(upgrade_effect.upgrade_type):
 				0:
@@ -106,6 +111,9 @@ func _draw() -> void:
 	draw_line(Vector2(-body_radius * 0.65, 0.0), Vector2(body_radius * 0.65, 0.0), Color(0.08, 0.08, 0.09), 2.0)
 	if is_permanent:
 		draw_line(Vector2(0.0, -body_radius * 0.65), Vector2(0.0, body_radius * 0.65), Color(0.08, 0.08, 0.09), 2.0)
+	if is_heal:
+		draw_line(Vector2(0.0, -body_radius * 0.62), Vector2(0.0, body_radius * 0.62), Color(0.04, 0.09, 0.05), 3.0)
+		draw_line(Vector2(-body_radius * 0.62, 0.0), Vector2(body_radius * 0.62, 0.0), Color(0.04, 0.09, 0.05), 3.0)
 
 
 func _add_collision() -> void:

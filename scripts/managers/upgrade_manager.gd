@@ -150,7 +150,7 @@ func get_attribute_modifiers() -> Dictionary:
 			3:
 				projectile_size_bonus += upgrade.amount * float(stacks)
 	return {
-		"fire_cooldown_multiplier": max(1.0 - fire_rate_bonus, 0.52),
+		"fire_cooldown_multiplier": max(1.0 - fire_rate_bonus, 0.4),
 		"move_speed_multiplier": 1.0 + move_speed_bonus,
 		"damage_multiplier": 1.0 + damage_bonus,
 		"projectile_size_multiplier": 1.0 + projectile_size_bonus,

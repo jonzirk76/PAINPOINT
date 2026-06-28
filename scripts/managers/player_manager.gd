@@ -103,6 +103,12 @@ func apply_damage(amount: int) -> void:
 		_sync_invulnerability_state()
 
 
+func apply_healing(amount: int) -> void:
+	if not enabled or not _has_player() or amount <= 0:
+		return
+	player.heal(amount)
+
+
 func set_weapon_modifiers(modifiers: Dictionary) -> void:
 	_fire_cooldown_multiplier = float(modifiers.get("fire_cooldown_multiplier", 1.0))
 	if _has_player():
@@ -122,6 +128,13 @@ func set_arena_definition(level_definition) -> void:
 	_arena_shape = int(level_definition.arena_shape)
 	if _has_player():
 		player.set_arena_definition(_arena_bounds, _arena_shape)
+
+
+func set_player_position(position: Vector2) -> void:
+	if not _has_player():
+		return
+	player.global_position = ArenaGeometry.constrain_point(position, _arena_bounds, _arena_shape)
+	player.set_move_vector(Vector2.ZERO)
 
 
 func get_player_position() -> Vector2:

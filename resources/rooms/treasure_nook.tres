@@ -1,0 +1,15 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/room_piece_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "treasure_nook"
+display_name = "Treasure Nook"
+room_kind = "treasure"
+difficulty_weight = 0
+footprint_cells = Array[Vector2i]([Vector2i(0, 0)])
+connector_directions = PackedStringArray("south", "west")
+arena_bounds = Rect2(-500, -290, 1000, 580)
+arena_shape = 1
+max_active_enemies = 0

@@ -18,6 +18,7 @@ var invulnerable_duration: float = 0.0
 
 var _base_speed: float = 260.0
 var _hit_flash_remaining: float = 0.0
+var _heal_flash_remaining: float = 0.0
 var _death_elapsed: float = 0.0
 var _death_duration: float = 0.75
 var _is_dead: bool = false
@@ -44,6 +45,8 @@ func _configure_collision_identity() -> void:
 func _process(delta: float) -> void:
 	if _hit_flash_remaining > 0.0:
 		_hit_flash_remaining = max(_hit_flash_remaining - delta, 0.0)
+	if _heal_flash_remaining > 0.0:
+		_heal_flash_remaining = max(_heal_flash_remaining - delta, 0.0)
 	if _is_dead:
 		_death_elapsed = min(_death_elapsed + delta, _death_duration)
 	queue_redraw()
@@ -100,6 +103,18 @@ func take_damage(amount: int) -> void:
 		health_depleted.emit(self)
 
 
+func heal(amount: int) -> void:
+	if amount <= 0 or health <= 0 or _is_dead:
+		return
+	var old_health := health
+	health = min(health + amount, max_health)
+	if health == old_health:
+		return
+	_heal_flash_remaining = 0.24
+	health_changed.emit(old_health, health)
+	queue_redraw()
+
+
 func play_hit_response() -> void:
 	if _is_dead:
 		return
@@ -139,6 +154,7 @@ func reset_health() -> void:
 	_is_dead = false
 	_death_elapsed = 0.0
 	_hit_flash_remaining = 0.0
+	_heal_flash_remaining = 0.0
 	_configure_collision_identity()
 	set_invulnerability_state(0.0, 0.0)
 	health_changed.emit(old_health, health)
@@ -158,6 +174,9 @@ func _draw() -> void:
 	draw_line(Vector2.ZERO, nose, Color(1.0, 0.95, 0.35), 4.0)
 	if _hit_flash_remaining > 0.0:
 		draw_arc(Vector2.ZERO, body_radius + 7.0, 0.0, TAU, 32, Color(1.0, 1.0, 1.0), 4.0)
+	if _heal_flash_remaining > 0.0:
+		var heal_ratio: float = clamp(_heal_flash_remaining / 0.24, 0.0, 1.0)
+		draw_arc(Vector2.ZERO, body_radius + 8.0, 0.0, TAU, 32, Color(0.28, 1.0, 0.45, heal_ratio), 4.0)
 	if invulnerable_remaining > 0.0 and invulnerable_duration > 0.0:
 		var ratio: float = clamp(invulnerable_remaining / invulnerable_duration, 0.0, 1.0)
 		draw_arc(Vector2.ZERO, body_radius + 10.0, -PI / 2.0, -PI / 2.0 + TAU * ratio, 32, Color(0.45, 1.0, 1.0), 3.0)

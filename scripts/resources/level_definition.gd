@@ -21,6 +21,8 @@ enum ArenaShape {
 @export var spawner_health: int = 16
 @export var spawner_radius: float = 32.0
 @export var spawn_interval: float = 3.2
+@export var boss_profile: Resource = null
+@export var boss_spawn_position: Vector2 = Vector2.ZERO
 
 
 func get_summary() -> String:

@@ -8,4 +8,4 @@ id = "heavy_tears"
 display_name = "Heavy Tears"
 stat_type = 2
 amount = 0.12
-max_stacks = 10
+max_stacks = 14

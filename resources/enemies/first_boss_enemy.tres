@@ -1,0 +1,26 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/enemy_profile.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+behavior_kind = "boss"
+max_health = 64
+speed = 56.0
+contact_damage = 2
+contact_radius = 72.0
+contact_cooldown = 1.1
+score_value = 250
+body_radius = 46.0
+knockback_multiplier = 0.15
+body_color = Color(0.35, 0.06, 0.42, 1)
+accent_color = Color(1, 0.22, 0.78, 1)
+preferred_distance = 360.0
+distance_band = 95.0
+strafe_speed = 82.0
+shot_cooldown = 1.05
+projectile_speed = 285.0
+projectile_damage = 1
+projectile_radius = 8.0
+shot_projectile_count = 3
+shot_spread_degrees = 26.0

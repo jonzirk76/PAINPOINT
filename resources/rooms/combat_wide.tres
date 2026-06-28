@@ -1,0 +1,44 @@
+[gd_resource type="Resource" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/room_piece_definition.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/resources/spawner_placement.gd" id="2"]
+[ext_resource type="Resource" path="res://resources/spawners/basic_spawner.tres" id="3"]
+[ext_resource type="Resource" path="res://resources/spawners/fast_spawner.tres" id="4"]
+
+[sub_resource type="Resource" id="SpawnerPlacement_basic_1"]
+script = ExtResource("2")
+position = Vector2(-560, -170)
+profile = ExtResource("3")
+warmup_seconds = 1.0
+
+[sub_resource type="Resource" id="SpawnerPlacement_fast_1"]
+script = ExtResource("2")
+position = Vector2(560, 170)
+profile = ExtResource("4")
+warmup_seconds = 1.8
+
+[sub_resource type="Resource" id="SpawnerPlacement_basic_2"]
+script = ExtResource("2")
+position = Vector2(0, 250)
+profile = ExtResource("3")
+warmup_seconds = 2.4
+
+[sub_resource type="Resource" id="SpawnerPlacement_fast_2"]
+script = ExtResource("2")
+position = Vector2(0, -250)
+profile = ExtResource("4")
+warmup_seconds = 3.0
+
+[resource]
+script = ExtResource("1")
+id = "combat_wide"
+display_name = "Wide Pressure Room"
+room_kind = "combat"
+difficulty_weight = 2
+footprint_cells = Array[Vector2i]([Vector2i(0, 0), Vector2i(1, 0)])
+connector_directions = PackedStringArray("west", "east", "north", "south")
+arena_bounds = Rect2(-980, -330, 1960, 660)
+arena_shape = 0
+wall_rects = Array[Rect2]([Rect2(-120, -110, 240, 70), Rect2(-120, 40, 240, 70)])
+spawner_placements = Array[Resource]([SubResource("SpawnerPlacement_basic_1"), SubResource("SpawnerPlacement_fast_1"), SubResource("SpawnerPlacement_basic_2"), SubResource("SpawnerPlacement_fast_2")])
+max_active_enemies = 24

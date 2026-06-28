@@ -8,4 +8,4 @@ id = "runner_legs"
 display_name = "Runner Legs"
 stat_type = 1
 amount = 0.04
-max_stacks = 12
+max_stacks = 16

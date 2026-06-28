@@ -2,6 +2,17 @@
 
 This project is a Godot 4.x GDScript top-down arena shooter. Keep the architecture explicit and boring in the good way: gameplay entities signal upward, managers own entities, and the orchestrator routes between managers.
 
+## Branch And Playable Main Workflow
+
+- Treat `main` as the user's stable playable/test area.
+- Agents should do feature work primarily on git feature branches, not directly on `main`, unless the user explicitly requests otherwise or the work is a tiny documentation-only edit.
+- When a feature is requested, create a feature branch before implementation and keep that branch's commit history meaningful enough for easy tweak rollbacks.
+- When the feature is finished and ready for user testing, move the active repo checkout to that feature branch and clearly tell the user which branch contains the test build.
+- If the user requests tweaks while the active checkout is a feature branch, the first action should be to move the repo back to the working `main` branch so the user's playable environment is restored before new branch work continues.
+- Do not strand the user's active checkout on a broken or half-finished feature branch. If testing requires staying on a feature branch, say that explicitly.
+- Before switching branches, check for uncommitted work and avoid overwriting user changes.
+- Final summaries for feature work should include the exact git commands the user can run to merge the feature branch back into `main`.
+
 ## Hard Architecture Rules
 
 - Generated gameplay entities never call managers, the orchestrator, siblings, or `/root`.
@@ -32,14 +43,26 @@ This project is a Godot 4.x GDScript top-down arena shooter. Keep the architectu
 - Contact damage should respect player-side invulnerability frames so overlapping enemies cannot all damage the player in the same instant.
 - Player damage must be visually readable: hit flash, translucent invulnerability flicker, and HUD invulnerability meter.
 - Bullet upgrades use ammo instead of duration; do not add timers to ammo-based projectile upgrades.
+- Spread shot is intentionally capped at a 3-way spread for now; do not return it to 5-way without explicit retuning.
 - Permanent upgrades are run-long attribute stacks. Keep them small, frequent, and displayed in the combat HUD attributes area.
 - Permanent attributes currently include fire rate, move speed, bullet damage, and projectile size.
 - Fire projectile upgrades should create AoE explosion packets and a visible explosion effect on hit.
 - Water projectile upgrades should grow along their travel path and pierce through enemies.
 - Projectiles should read as flashing lemon-shaped shots, not tiny player-character copies; preserve ammo-type colors.
-- Enemy drops should include common permanent stat pickups and rarer temporary shot-upgrade pickups.
+- Upgrades should come from combat rewards, not random timer/map spawning.
+- Enemies should drop ammo upgrades infrequently and permanent stat pickups sometimes, currently around a 25% permanent drop chance.
+- Enemies should also drop small health pickups slightly more often than ammo upgrades; the current small heal restores 1 health and must not exceed max player health.
+- Spawners should always drop one reward when destroyed: usually an ammo-based shot upgrade, with a chance to drop a full heal instead.
+- Spawners should request a small opening wave of enemies when a room starts so combat begins as suppression pressure, not a pure spawner-rush race.
 - Enemies should keep local hit/death feedback and bullet knockback when combat logic changes.
 - Chain lightning must show visible jump arcs through `EffectsManager`; do not route chain damage invisibly.
 - Restart controls must support keyboard and controller while in the `DOWN` state.
 - A level is cleared only when both enemy count and spawner count reach zero; winning should offer a return to level select.
 - Preserve the 1280x720 logical viewport with 2D stretch scaling and a larger desktop window so the game remains comfortable on 3840x2160 displays.
+- Dungeon crawling experiments should use `RoomPieceDefinition` resources, `DungeonManager` for spatial room layout state, and `RoomManager` for generated door entities.
+- Dungeon floors should be generated from a run seed plus floor-number recipe: a guaranteed start-to-boss path, guaranteed treasure and challenge branches, optional side branches, and floor-scaled room count/spawner pressure. `GameOrchestrator` owns the run seed and passes it to `DungeonManager`; do not let entities or room pieces create their own gameplay seeds.
+- `Main Game Loop Test` is the floor-to-floor roguelike loop entry. It should preserve the run's score/upgrades/tally across floors, regenerate a self-contained dungeon per floor, and treat boss death as the floor-clear trigger.
+- Dungeon doors are generated entities too: they emit upward to `RoomManager`, and only `GameOrchestrator` may turn a door event into a room transition.
+- Room transitions must not mark a room cleared while old contents are being torn down or new boss/spawner contents are still being created.
+- Boss rooms may include spawners; keep their `max_active_enemies` high enough for the boss plus spawned adds.
+- Dungeon minimap reveal state belongs to `DungeonManager`; UI drawing belongs to `DungeonMinimap`, with `GameOrchestrator` only syncing manager state into the UI.

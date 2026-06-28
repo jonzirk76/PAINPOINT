@@ -3,8 +3,9 @@ class_name EnemyProfile
 
 const BEHAVIOR_CHASER := "chaser"
 const BEHAVIOR_SHOOTER := "shooter"
+const BEHAVIOR_BOSS := "boss"
 
-@export_enum("chaser", "shooter") var behavior_kind: String = BEHAVIOR_CHASER
+@export_enum("chaser", "shooter", "boss") var behavior_kind: String = BEHAVIOR_CHASER
 @export var max_health: int = 3
 @export var speed: float = 85.0
 @export var contact_damage: int = 1
@@ -22,3 +23,5 @@ const BEHAVIOR_SHOOTER := "shooter"
 @export var projectile_speed: float = 250.0
 @export var projectile_damage: int = 1
 @export var projectile_radius: float = 7.0
+@export var shot_projectile_count: int = 1
+@export var shot_spread_degrees: float = 0.0

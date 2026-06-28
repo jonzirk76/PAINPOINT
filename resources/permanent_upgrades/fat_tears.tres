@@ -8,4 +8,4 @@ id = "fat_tears"
 display_name = "Fat Tears"
 stat_type = 3
 amount = 0.06
-max_stacks = 10
+max_stacks = 14

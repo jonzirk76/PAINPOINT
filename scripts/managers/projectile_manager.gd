@@ -80,7 +80,23 @@ func fire_hostile(origin: Vector2, direction: Vector2, shot_config: Dictionary) 
 		return
 	var shot_direction := direction.normalized()
 	var shot_speed: float = max(float(shot_config.get("speed", 250.0)), 1.0)
-	var packet = _create_hostile_damage_packet(shot_config, origin, shot_direction)
+	var projectile_count: int = max(int(shot_config.get("projectile_count", 1)), 1)
+	var spread_degrees: float = float(shot_config.get("spread_angle_degrees", 0.0))
+	var base_angle := shot_direction.angle()
+	var angle_step := 0.0
+	var start_angle := base_angle
+	if projectile_count > 1:
+		angle_step = deg_to_rad(spread_degrees) / float(projectile_count - 1)
+		start_angle = base_angle - deg_to_rad(spread_degrees) * 0.5
+	for index in range(projectile_count):
+		if _projectiles.size() >= max_active_projectiles:
+			return
+		var projectile_direction := Vector2.RIGHT.rotated(start_angle + angle_step * float(index))
+		_spawn_hostile_projectile(origin, projectile_direction, shot_config, shot_speed)
+
+
+func _spawn_hostile_projectile(origin: Vector2, direction: Vector2, shot_config: Dictionary, shot_speed: float) -> void:
+	var packet = _create_hostile_damage_packet(shot_config, origin, direction)
 	var projectile = projectile_scene.instantiate()
 	projectile.body_radius = float(shot_config.get("radius", 7.0))
 	var player_projectile_range: float = base_projectile_speed * projectile.lifetime_seconds
@@ -92,7 +108,7 @@ func fire_hostile(origin: Vector2, direction: Vector2, shot_config: Dictionary) 
 		add_child(projectile)
 	projectile.set_arena_definition(_arena_bounds, _arena_shape)
 	projectile.set_projectile_team("hostile")
-	projectile.initialize(origin, shot_direction, packet, shot_speed)
+	projectile.initialize(origin, direction, packet, shot_speed)
 	projectile.hit_detected.connect(_on_projectile_hit)
 	projectile.expired.connect(_on_projectile_expired)
 	_projectiles.append(projectile)

@@ -26,6 +26,8 @@ signal shot_ready(enemy, origin: Vector2, direction: Vector2, shot_config: Dicti
 @export var projectile_speed: float = 250.0
 @export var projectile_damage: int = 1
 @export var projectile_radius: float = 7.0
+@export var shot_projectile_count: int = 1
+@export var shot_spread_degrees: float = 0.0
 
 var health: int = max_health
 var target_position: Vector2 = Vector2.ZERO
@@ -76,6 +78,8 @@ func initialize(profile) -> void:
 	projectile_speed = profile.projectile_speed
 	projectile_damage = profile.projectile_damage
 	projectile_radius = profile.projectile_radius
+	shot_projectile_count = profile.shot_projectile_count
+	shot_spread_degrees = profile.shot_spread_degrees
 	health = max_health
 	_shot_cooldown_remaining = shot_cooldown * 0.65
 
@@ -98,22 +102,22 @@ func _physics_process(delta: float) -> void:
 		return
 
 	var to_target := target_position - global_position
-	var intent_velocity := _get_shooter_velocity(to_target) if behavior_kind == "shooter" else _get_chaser_velocity(to_target)
+	var intent_velocity := _get_ranged_velocity(to_target) if behavior_kind == "shooter" or behavior_kind == "boss" else _get_chaser_velocity(to_target)
 	_try_emit_shot(to_target)
 	velocity = intent_velocity + _knockback_velocity
 	_knockback_velocity = _knockback_velocity.move_toward(Vector2.ZERO, 520.0 * delta)
 	move_and_slide()
-	if behavior_kind == "shooter" and get_slide_collision_count() > 0:
+	if (behavior_kind == "shooter" or behavior_kind == "boss") and get_slide_collision_count() > 0:
 		_strafe_sign *= -1.0
 	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
-	if behavior_kind == "shooter" or _hit_flash_remaining > 0.0 or _knockback_velocity.length_squared() > 1.0:
+	if behavior_kind == "shooter" or behavior_kind == "boss" or _hit_flash_remaining > 0.0 or _knockback_velocity.length_squared() > 1.0:
 		queue_redraw()
 
 
 func set_target_position(position: Vector2) -> void:
 	var previous_position := target_position
 	target_position = position
-	if behavior_kind == "shooter" and previous_position.distance_squared_to(target_position) > 1.0:
+	if (behavior_kind == "shooter" or behavior_kind == "boss") and previous_position.distance_squared_to(target_position) > 1.0:
 		queue_redraw()
 
 
@@ -150,10 +154,13 @@ func _draw() -> void:
 	draw_circle(Vector2.ZERO, body_radius, draw_color)
 	draw_arc(Vector2.ZERO, body_radius + 2.0, 0.0, TAU, 24, Color(0.22, 0.05, 0.05), 2.0)
 	draw_line(Vector2(-body_radius, -body_radius - 8.0), Vector2(-body_radius + body_radius * 2.0 * health_ratio, -body_radius - 8.0), Color(0.4, 1.0, 0.35), 3.0)
-	if behavior_kind == "shooter":
+	if behavior_kind == "shooter" or behavior_kind == "boss":
 		var aim := (target_position - global_position).normalized()
 		if aim.length_squared() <= 0.001:
 			aim = Vector2.RIGHT
+		if behavior_kind == "boss":
+			draw_arc(Vector2.ZERO, body_radius + 7.0, 0.0, TAU, 36, accent_color, 4.0)
+			draw_circle(-aim * body_radius * 0.22, body_radius * 0.25, Color(0.05, 0.04, 0.06))
 		draw_line(Vector2.ZERO, aim * (body_radius + 14.0), accent_color, 5.0)
 		draw_circle(aim * (body_radius + 14.0), 4.5, Color(0.06, 0.05, 0.08))
 	else:
@@ -179,7 +186,7 @@ func _get_chaser_velocity(to_target: Vector2) -> Vector2:
 	return to_target.normalized() * speed
 
 
-func _get_shooter_velocity(to_target: Vector2) -> Vector2:
+func _get_ranged_velocity(to_target: Vector2) -> Vector2:
 	if to_target.length_squared() <= 4.0:
 		return Vector2.ZERO
 	var distance := to_target.length()
@@ -194,14 +201,18 @@ func _get_shooter_velocity(to_target: Vector2) -> Vector2:
 
 
 func _try_emit_shot(to_target: Vector2) -> void:
-	if behavior_kind != "shooter" or _shot_cooldown_remaining > 0.0 or to_target.length_squared() <= 4.0:
+	if behavior_kind != "shooter" and behavior_kind != "boss":
+		return
+	if _shot_cooldown_remaining > 0.0 or to_target.length_squared() <= 4.0:
 		return
 	var shot_direction := to_target.normalized()
 	var shot_config := {
 		"speed": projectile_speed,
 		"damage": projectile_damage,
 		"radius": projectile_radius,
-		"kind": "hostile"
+		"kind": "hostile",
+		"projectile_count": max(shot_projectile_count, 1),
+		"spread_angle_degrees": shot_spread_degrees
 	}
 	shot_ready.emit(self, global_position + shot_direction * (body_radius + projectile_radius + 4.0), shot_direction, shot_config)
 	_shot_cooldown_remaining = shot_cooldown

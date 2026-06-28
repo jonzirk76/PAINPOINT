@@ -13,15 +13,21 @@ const FASTER_REFLEXES := preload("res://resources/permanent_upgrades/faster_refl
 const RUNNER_LEGS := preload("res://resources/permanent_upgrades/runner_legs.tres")
 const HEAVY_TEARS := preload("res://resources/permanent_upgrades/heavy_tears.tres")
 const FAT_TEARS := preload("res://resources/permanent_upgrades/fat_tears.tres")
+const SMALL_HEAL := preload("res://resources/pickups/small_heal.tres")
+const FULL_HEAL := preload("res://resources/pickups/full_heal.tres")
 
 @export var pickup_scene: PackedScene = preload("res://scenes/entities/pickup_entity.tscn")
 @export var pickup_spawn_interval: float = 10.0
-@export var enemy_permanent_drop_chance: float = 0.42
-@export var enemy_temporary_drop_chance: float = 0.12
+@export var enemy_permanent_drop_chance: float = 0.25
+@export var enemy_temporary_drop_chance: float = 0.08
+@export var enemy_heal_drop_chance: float = 0.14
+@export var spawner_full_heal_drop_chance: float = 0.2
 
 var enabled: bool = false
 var upgrade_effects: Array = [SPREAD_SHOT, PIERCING_SHOT, CHAIN_LIGHTNING, FIRE_BURST, WATER_SWELL]
 var permanent_upgrades: Array = [FASTER_REFLEXES, RUNNER_LEGS, HEAVY_TEARS, FAT_TEARS]
+var healing_pickups: Array = [SMALL_HEAL]
+var full_heal_pickup = FULL_HEAL
 var _pickup_layer: Node = null
 var _pickups: Array = []
 var _rng := RandomNumberGenerator.new()
@@ -38,13 +44,6 @@ func reset_run() -> void:
 	clear_pickups()
 	_spawn_timer = pickup_spawn_interval
 	_effect_index = 0
-	var positions := [
-		Vector2(-240.0, 0.0),
-		Vector2(240.0, 0.0),
-		Vector2(0.0, -190.0)
-	]
-	for index in range(positions.size()):
-		spawn_pickup(upgrade_effects[index % upgrade_effects.size()], positions[index])
 	pickup_count_changed.emit(_pickups.size())
 
 
@@ -63,13 +62,7 @@ func set_enabled(value: bool) -> void:
 func _process(delta: float) -> void:
 	if not enabled:
 		return
-	_spawn_timer -= delta
-	if _spawn_timer <= 0.0:
-		_spawn_timer = pickup_spawn_interval
-		var effect = upgrade_effects[_effect_index % upgrade_effects.size()]
-		_effect_index += 1
-		var position := Vector2(_rng.randf_range(-430.0, 430.0), _rng.randf_range(-240.0, 240.0))
-		spawn_pickup(effect, position)
+	_spawn_timer = max(_spawn_timer - delta, 0.0)
 
 
 func spawn_pickup(effect, spawn_position: Vector2):
@@ -89,11 +82,21 @@ func spawn_pickup(effect, spawn_position: Vector2):
 func roll_enemy_drop(enemy_position: Vector2) -> void:
 	if not enabled:
 		return
-	var roll := _rng.randf()
-	if roll < enemy_temporary_drop_chance:
+	if _rng.randf() < enemy_temporary_drop_chance:
 		spawn_pickup(_choose_temporary_upgrade(), _jitter_drop_position(enemy_position))
-	elif roll < enemy_temporary_drop_chance + enemy_permanent_drop_chance:
+	if _rng.randf() < enemy_permanent_drop_chance:
 		spawn_pickup(_choose_permanent_upgrade(), _jitter_drop_position(enemy_position))
+	if _rng.randf() < enemy_heal_drop_chance:
+		spawn_pickup(_choose_heal_pickup(), _jitter_drop_position(enemy_position))
+
+
+func drop_spawner_reward(spawner_position: Vector2) -> void:
+	if not enabled:
+		return
+	if _rng.randf() < spawner_full_heal_drop_chance:
+		spawn_pickup(full_heal_pickup, _jitter_drop_position(spawner_position))
+	else:
+		spawn_pickup(_choose_temporary_upgrade(), _jitter_drop_position(spawner_position))
 
 
 func get_pickup_count() -> int:
@@ -117,6 +120,10 @@ func _choose_temporary_upgrade():
 
 func _choose_permanent_upgrade():
 	return permanent_upgrades[_rng.randi_range(0, permanent_upgrades.size() - 1)]
+
+
+func _choose_heal_pickup():
+	return healing_pickups[_rng.randi_range(0, healing_pickups.size() - 1)]
 
 
 func _jitter_drop_position(origin: Vector2) -> Vector2:

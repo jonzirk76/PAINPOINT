@@ -8,4 +8,4 @@ id = "faster_reflexes"
 display_name = "Faster Reflexes"
 stat_type = 0
 amount = 0.04
-max_stacks = 12
+max_stacks = 16

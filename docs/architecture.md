@@ -13,6 +13,7 @@ Entities emit upward:
 - `ProjectileEntity`: `hit_detected`, `expired`
 - `EnemySpawnerEntity`: `spawn_ready`
 - `PickupEntity`: `collected`, `expired`
+- `DoorEntity`: `entered`
 
 Managers translate entity signals into manager-level events:
 
@@ -23,6 +24,7 @@ Managers translate entity signals into manager-level events:
 - `ItemManager.pickup_collected`
 - `UpgradeManager.upgrade_changed`
 - `PlayerManager.shoot_requested`
+- `RoomManager.door_entered`
 
 The orchestrator receives those signals and decides which manager command runs next.
 
@@ -37,6 +39,8 @@ The orchestrator receives those signals and decides which manager command runs n
 - `UpgradeManager`: owns ammo-based shot upgrades, optional timed effects, permanent run-long attribute stacks, and combines active modifiers.
 - `CombatManager`: resolves hit/contact events into damage events and chain-lightning requests.
 - `EffectsManager`: owns short-lived visual effect entities such as chain-lightning arcs.
+- `DungeonManager`: owns generated dungeon room graph state, room clear state, and spatial room-piece placement.
+- `RoomManager`: owns generated door entities for the currently loaded dungeon room.
 
 ## Level Flow
 
@@ -45,6 +49,24 @@ The game starts in `LEVEL_SELECT`. `GameOrchestrator` owns the selected level in
 Level definitions configure arena bounds, arena shape, spawner positions, spawner health, spawn interval, and max active enemies. `ArenaView`, `PlayerManager`, and `SpawnerManager` consume those values through orchestrator commands.
 
 A level is won only when `SpawnerManager.get_spawner_count()` and `EnemyManager.get_enemy_count()` both reach zero. The win state disables gameplay managers and shows a return-to-level-select prompt.
+
+## Dungeon Prototype Flow
+
+The level-select menu includes `Dungeon Prototype` and `Main Game Loop Test` entries beside the authored arena levels. Both modes keep the same managers and entity rules, but `DungeonManager` generates a puzzle-piece room graph from `RoomPieceDefinition` resources.
+
+Room pieces define footprint cells, connector directions, arena geometry, internal wall rectangles, typed spawner placements, and optional boss profile data. `DungeonManager` places pieces with cell-footprint collision so pieces fit spatially, tracks which rooms are cleared, and exposes only room-state queries/commands to `GameOrchestrator`.
+
+Dungeon layout is recipe-driven rather than a single fixed prototype. `GameOrchestrator` creates one run seed when a dungeon or main-loop run starts, preserves it across floor advances, and passes it into `DungeonManager.reset_run(floor, run_seed)`. `DungeonManager` combines the run seed and floor number into the floor generation seed, builds a guaranteed start-to-boss path, attaches guaranteed treasure and challenge branches, then fills optional side branches from the combat room-piece pool. Later floors increase the required boss-path length, total room target, active enemy budget, and extra typed spawner pressure applied to eligible room `LevelDefinition` instances.
+
+`RoomManager` creates `DoorEntity` instances for the current room's connected exits. Doors are locked while the room has active enemies or spawners, then unlock after `GameOrchestrator` marks the room cleared. Door entry emits upward to `RoomManager`, and only `GameOrchestrator` commands `DungeonManager.enter_direction(...)` and reloads the next room.
+
+The first boss is still an `EnemyEntity` using a boss `EnemyProfile`. Boss behavior branches through profile data, keeping the one-enemy-scene rule while adding boss-scale health, ranged strafing, a stronger visual body, and a hostile spread-shot request.
+
+Boss rooms can also include typed spawner placements. Their enemy budget must allow the boss and spawned adds to coexist; otherwise spawners will be starved while the boss is alive.
+
+The dungeon minimap is UI-only rendering of `DungeonManager` state. `DungeonManager` owns room reveal state as rooms are entered, and `GameOrchestrator` syncs that state into `DungeonMinimap`.
+
+`Main Game Loop Test` layers floor progression on top of the dungeon room flow. Boss death awards a large floor-clear score bonus, disables the room, shows the next-floor prompt, and advances to a freshly generated floor on confirm. Run stats such as the run seed, enemies, bosses, spawners, pickups, upgrades, heals, and floors cleared are tracked by `GameOrchestrator` and displayed on the death tally screen.
 
 ## Presentation Scale
 
@@ -94,13 +116,20 @@ Shot upgrade ammo:
 4. Fire upgrades stamp explosion fields onto damage packets; `CombatManager` emits `explosion_requested`, and `GameOrchestrator` routes AoE damage plus `EffectsManager.play_explosion(...)`.
 5. Water upgrades stamp projectile growth and high pierce onto damage packets; `ProjectileEntity` grows its drawn/collision radius while traveling.
 
-Permanent upgrades:
+Combat reward drops:
 
 1. `EnemyManager.enemy_defeated` is routed by `GameOrchestrator` to `ItemManager.roll_enemy_drop(...)`.
-2. `ItemManager` drops common small permanent stat pickups and rarer temporary shot-upgrade pickups.
-3. Permanent pickups flow through `ItemManager.pickup_collected` into `UpgradeManager.activate_pickup(...)`.
+2. `ItemManager` rolls infrequent ammo-based shot-upgrade drops, slightly more frequent 1-health pickups, and occasional permanent stat pickups.
+3. `ItemManager.pickup_collected` flows to `GameOrchestrator`, which routes heal pickups to `PlayerManager.apply_healing(...)` and upgrade pickups to `UpgradeManager.activate_pickup(...)`.
 4. `UpgradeManager` stacks run-long attributes for fire-rate cooldown reduction, movement speed, bullet damage, and projectile size.
 5. `GameOrchestrator` applies the combined modifiers to `PlayerManager` and `ProjectileManager` paths, and displays attributes under the health bar.
+6. `SpawnerManager.spawner_destroyed` is routed by `GameOrchestrator` to `ItemManager.drop_spawner_reward(...)`, which always drops one reward: usually an ammo-based shot upgrade, with a chance for a full heal instead.
+
+Opening suppression:
+
+1. `SpawnerManager.reset_run(...)` creates room spawners and marks an opening wave as pending.
+2. When `GameOrchestrator` enables the room, `SpawnerManager` emits initial `spawn_requested` events for each spawner, respecting `max_active_enemies`.
+3. `GameOrchestrator` routes those requests to `EnemyManager.spawn_enemy(...)`, so spawners never directly create enemies.
 
 Player down/restart:
 

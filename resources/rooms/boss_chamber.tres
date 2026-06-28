@@ -1,0 +1,49 @@
+[gd_resource type="Resource" load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/room_piece_definition.gd" id="1"]
+[ext_resource type="Resource" path="res://resources/enemies/first_boss_enemy.tres" id="2"]
+[ext_resource type="Script" path="res://scripts/resources/spawner_placement.gd" id="3"]
+[ext_resource type="Resource" path="res://resources/spawners/shooter_spawner.tres" id="4"]
+[ext_resource type="Resource" path="res://resources/spawners/tank_spawner.tres" id="5"]
+[ext_resource type="Resource" path="res://resources/spawners/fast_spawner.tres" id="6"]
+[ext_resource type="Resource" path="res://resources/spawners/basic_spawner.tres" id="7"]
+
+[sub_resource type="Resource" id="SpawnerPlacement_shooter_1"]
+script = ExtResource("3")
+position = Vector2(-520, -260)
+profile = ExtResource("4")
+warmup_seconds = 1.6
+
+[sub_resource type="Resource" id="SpawnerPlacement_tank_1"]
+script = ExtResource("3")
+position = Vector2(-520, 260)
+profile = ExtResource("5")
+warmup_seconds = 3.2
+
+[sub_resource type="Resource" id="SpawnerPlacement_fast_1"]
+script = ExtResource("3")
+position = Vector2(520, -260)
+profile = ExtResource("6")
+warmup_seconds = 2.3
+
+[sub_resource type="Resource" id="SpawnerPlacement_basic_1"]
+script = ExtResource("3")
+position = Vector2(520, 260)
+profile = ExtResource("7")
+warmup_seconds = 3.7
+
+[resource]
+script = ExtResource("1")
+id = "boss_chamber"
+display_name = "Boss Chamber"
+room_kind = "boss"
+difficulty_weight = 5
+footprint_cells = Array[Vector2i]([Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)])
+connector_directions = PackedStringArray("west")
+arena_bounds = Rect2(-820, -520, 1640, 1040)
+arena_shape = 2
+wall_rects = Array[Rect2]([Rect2(-130, -80, 260, 160)])
+spawner_placements = Array[Resource]([SubResource("SpawnerPlacement_shooter_1"), SubResource("SpawnerPlacement_tank_1"), SubResource("SpawnerPlacement_fast_1"), SubResource("SpawnerPlacement_basic_1")])
+max_active_enemies = 14
+boss_profile = ExtResource("2")
+boss_spawn_position = Vector2(260, 0)

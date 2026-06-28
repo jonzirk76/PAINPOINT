@@ -1,0 +1,52 @@
+[gd_resource type="Resource" load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/room_piece_definition.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/resources/spawner_placement.gd" id="2"]
+[ext_resource type="Resource" path="res://resources/spawners/fast_spawner.tres" id="3"]
+[ext_resource type="Resource" path="res://resources/spawners/basic_spawner.tres" id="4"]
+[ext_resource type="Resource" path="res://resources/spawners/tank_spawner.tres" id="5"]
+[ext_resource type="Resource" path="res://resources/spawners/shooter_spawner.tres" id="6"]
+
+[sub_resource type="Resource" id="SpawnerPlacement_fast_1"]
+script = ExtResource("2")
+position = Vector2(-470, -260)
+profile = ExtResource("3")
+warmup_seconds = 1.0
+
+[sub_resource type="Resource" id="SpawnerPlacement_basic_1"]
+script = ExtResource("2")
+position = Vector2(470, 260)
+profile = ExtResource("4")
+warmup_seconds = 2.2
+
+[sub_resource type="Resource" id="SpawnerPlacement_shooter_1"]
+script = ExtResource("2")
+position = Vector2(-470, 320)
+profile = ExtResource("6")
+warmup_seconds = 2.8
+
+[sub_resource type="Resource" id="SpawnerPlacement_tank_1"]
+script = ExtResource("2")
+position = Vector2(470, -320)
+profile = ExtResource("5")
+warmup_seconds = 3.5
+
+[sub_resource type="Resource" id="SpawnerPlacement_fast_2"]
+script = ExtResource("2")
+position = Vector2(0, 430)
+profile = ExtResource("3")
+warmup_seconds = 4.0
+
+[resource]
+script = ExtResource("1")
+id = "challenge_zigzag"
+display_name = "Zig-Zag Branch"
+room_kind = "challenge"
+difficulty_weight = 3
+footprint_cells = Array[Vector2i]([Vector2i(0, 0), Vector2i(1, 0), Vector2i(1, 1)])
+connector_directions = PackedStringArray("north", "west", "east")
+arena_bounds = Rect2(-760, -520, 1520, 1040)
+arena_shape = 0
+wall_rects = Array[Rect2]([Rect2(-210, -520, 90, 620), Rect2(120, -100, 90, 620), Rect2(-620, 120, 360, 70), Rect2(260, -190, 360, 70)])
+spawner_placements = Array[Resource]([SubResource("SpawnerPlacement_fast_1"), SubResource("SpawnerPlacement_basic_1"), SubResource("SpawnerPlacement_shooter_1"), SubResource("SpawnerPlacement_tank_1"), SubResource("SpawnerPlacement_fast_2")])
+max_active_enemies = 30

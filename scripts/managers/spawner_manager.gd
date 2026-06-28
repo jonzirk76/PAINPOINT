@@ -13,6 +13,7 @@ signal hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: 
 @export var default_spawner_health: int = 18
 @export var default_spawn_interval: float = 2.8
 @export var default_spawner_radius: float = 32.0
+@export var initial_enemies_per_spawner: int = 2
 
 const SPAWNER_PLACEMENT_SCRIPT := preload("res://scripts/resources/spawner_placement.gd")
 
@@ -24,6 +25,7 @@ var _level_definition = null
 var _arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 var _arena_shape: int = 0
 var _player_provider: Callable
+var _initial_spawns_pending: bool = false
 
 
 func initialize(context: Dictionary) -> void:
@@ -39,6 +41,7 @@ func reset_run(level_definition = null) -> void:
 	max_active_enemies = _get_max_active_enemies()
 	for index in range(placements.size()):
 		_spawn_spawner(placements[index], index)
+	_initial_spawns_pending = not _spawners.is_empty()
 	spawner_count_changed.emit(_spawners.size())
 
 
@@ -47,6 +50,7 @@ func clear_spawners() -> void:
 		if is_instance_valid(spawner):
 			spawner.queue_free()
 	_spawners.clear()
+	_initial_spawns_pending = false
 	spawner_count_changed.emit(0)
 
 
@@ -55,6 +59,9 @@ func set_enabled(value: bool) -> void:
 	for spawner in _spawners:
 		if is_instance_valid(spawner):
 			spawner.set_enabled(value)
+	if enabled and _initial_spawns_pending:
+		_initial_spawns_pending = false
+		_emit_initial_spawn_requests()
 
 
 func set_enemy_count(count: int) -> void:
@@ -105,6 +112,23 @@ func _on_spawner_spawn_ready(_spawner, spawn_position: Vector2) -> void:
 		return
 	var profile = _spawner.enemy_profile if _spawner != null and _spawner.enemy_profile != null else default_enemy_profile
 	spawn_requested.emit(spawn_position, profile)
+
+
+func _emit_initial_spawn_requests() -> void:
+	if initial_enemies_per_spawner <= 0:
+		return
+	var projected_enemy_count := _current_enemy_count
+	for spawner_index in range(_spawners.size()):
+		var spawner = _spawners[spawner_index]
+		if not is_instance_valid(spawner):
+			continue
+		var profile = spawner.enemy_profile if spawner.enemy_profile != null else default_enemy_profile
+		for spawn_index in range(initial_enemies_per_spawner):
+			if projected_enemy_count >= max_active_enemies:
+				return
+			var spawn_position := _get_initial_spawn_position(spawner, spawner_index, spawn_index)
+			spawn_requested.emit(spawn_position, profile)
+			projected_enemy_count += 1
 
 
 func apply_damage(target: Node, packet) -> void:
@@ -194,6 +218,26 @@ func _get_spawner_radius() -> float:
 	if _level_definition != null:
 		return _level_definition.spawner_radius
 	return default_spawner_radius
+
+
+func _get_initial_spawn_position(spawner, spawner_index: int, spawn_index: int) -> Vector2:
+	var count: int = max(initial_enemies_per_spawner, 1)
+	var distance: float = max(float(spawner.body_radius) + 46.0, 64.0)
+	for attempt in range(10):
+		var angle: float = (TAU * float(spawn_index) / float(count)) + float(spawner_index) * 0.73 + float(attempt) * 0.51
+		var candidate := ArenaGeometry.constrain_point(spawner.global_position + Vector2.RIGHT.rotated(angle) * distance, _arena_bounds, _arena_shape)
+		if _position_is_clear_of_walls(candidate):
+			return candidate
+	return spawner.global_position
+
+
+func _position_is_clear_of_walls(position: Vector2) -> bool:
+	if _level_definition == null:
+		return true
+	for wall_rect in _level_definition.wall_rects:
+		if wall_rect.grow(24.0).has_point(position):
+			return false
+	return true
 
 
 func _get_player_position() -> Vector2:
