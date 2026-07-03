@@ -4,6 +4,8 @@ class_name PlayerEntity
 signal health_changed(old_value: int, new_value: int)
 signal health_depleted(entity)
 
+const PLAYER_UPPER_TEXTURE := preload("res://art/characters/player_upper_body_gun.svg")
+
 @export var speed: float = 260.0
 @export var max_health: int = 8
 @export var body_radius: float = 17.0
@@ -34,6 +36,7 @@ var _ammo_warning_ratio: float = 1.0
 var _death_elapsed: float = 0.0
 var _death_duration: float = 0.75
 var _is_dead: bool = false
+var _walk_cycle: float = 0.0
 
 
 func _init() -> void:
@@ -55,6 +58,9 @@ func _configure_collision_identity() -> void:
 
 
 func _process(delta: float) -> void:
+	var is_walking := move_vector.length_squared() > 0.01 and not _is_dead
+	if is_walking:
+		_walk_cycle += delta * 12.0
 	if _hit_flash_remaining > 0.0:
 		_hit_flash_remaining = max(_hit_flash_remaining - delta, 0.0)
 	if _heal_flash_remaining > 0.0:
@@ -67,7 +73,7 @@ func _process(delta: float) -> void:
 		_parry_ready_flash_remaining = max(_parry_ready_flash_remaining - delta, 0.0)
 	if _is_dead:
 		_death_elapsed = min(_death_elapsed + delta, _death_duration)
-	if _ammo_warning_active or _parry_ready or _parry_ready_flash_remaining > 0.0 or _parry_pulse_remaining > 0.0 or _perfect_parry_flash_remaining > 0.0 or _hit_flash_remaining > 0.0 or _heal_flash_remaining > 0.0 or _is_dead:
+	if is_walking or _ammo_warning_active or _parry_ready or _parry_ready_flash_remaining > 0.0 or _parry_pulse_remaining > 0.0 or _perfect_parry_flash_remaining > 0.0 or _hit_flash_remaining > 0.0 or _heal_flash_remaining > 0.0 or _is_dead:
 		queue_redraw()
 
 
@@ -237,13 +243,7 @@ func _draw() -> void:
 	if _is_dead:
 		_draw_death_animation()
 		return
-	var body_color := Color(0.28, 0.66, 1.0)
-	if _hit_flash_remaining > 0.0:
-		body_color = Color(1.0, 0.96, 0.72)
-	draw_circle(Vector2.ZERO, body_radius, body_color)
-	draw_arc(Vector2.ZERO, body_radius + 2.0, 0.0, TAU, 32, Color(0.05, 0.12, 0.18), 2.0)
-	var nose := aim_direction.normalized() * (body_radius + 11.0)
-	draw_line(Vector2.ZERO, nose, Color(1.0, 0.95, 0.35), 4.0)
+	_draw_player_character_art()
 	if _hit_flash_remaining > 0.0:
 		draw_arc(Vector2.ZERO, body_radius + 7.0, 0.0, TAU, 32, Color(1.0, 1.0, 1.0), 4.0)
 	if _heal_flash_remaining > 0.0:
@@ -262,6 +262,48 @@ func _draw() -> void:
 		_draw_perfect_parry_flash()
 	if _ammo_warning_active:
 		_draw_ammo_warning()
+
+
+func _draw_player_character_art() -> void:
+	_draw_player_walk_feet()
+	var tint := Color.WHITE
+	if _hit_flash_remaining > 0.0:
+		tint = Color(1.0, 0.96, 0.74)
+	var visual_radius: float = body_radius * 2.35
+	_draw_centered_texture(PLAYER_UPPER_TEXTURE, visual_radius, aim_direction.angle(), tint)
+
+
+func _draw_player_walk_feet() -> void:
+	var is_walking := move_vector.length_squared() > 0.01
+	var foot_direction := move_vector.normalized() if is_walking else aim_direction.normalized()
+	if foot_direction.length_squared() <= 0.001:
+		foot_direction = Vector2.RIGHT
+	var side := foot_direction.orthogonal()
+	var stride: float = sin(_walk_cycle) * body_radius * 0.34 if is_walking else 0.0
+	var lift: float = abs(sin(_walk_cycle)) * 0.22 if is_walking else 0.0
+	var base_back: Vector2 = -foot_direction * body_radius * 0.42
+	var left_center: Vector2 = base_back - side * body_radius * 0.46 + foot_direction * stride
+	var right_center: Vector2 = base_back + side * body_radius * 0.46 - foot_direction * stride
+	var left_scale := Vector2(body_radius * 0.38, body_radius * (0.64 + lift))
+	var right_scale := Vector2(body_radius * 0.38, body_radius * (0.64 + (0.22 - lift if is_walking else 0.0)))
+	_draw_oval(left_center, foot_direction.angle() - PI * 0.5, left_scale, Color(0.08, 0.18, 0.44, 1.0))
+	_draw_oval(right_center, foot_direction.angle() - PI * 0.5, right_scale, Color(0.1, 0.25, 0.62, 1.0))
+	_draw_oval(left_center - foot_direction * body_radius * 0.08, foot_direction.angle() - PI * 0.5, left_scale * 0.55, Color(0.22, 0.5, 1.0, 0.72))
+	_draw_oval(right_center - foot_direction * body_radius * 0.08, foot_direction.angle() - PI * 0.5, right_scale * 0.55, Color(0.22, 0.5, 1.0, 0.72))
+
+
+func _draw_centered_texture(texture: Texture2D, visual_radius: float, rotation: float, tint: Color = Color.WHITE) -> void:
+	if texture == null:
+		return
+	draw_set_transform(Vector2.ZERO, rotation, Vector2.ONE)
+	draw_texture_rect(texture, Rect2(Vector2(-visual_radius, -visual_radius), Vector2(visual_radius * 2.0, visual_radius * 2.0)), false, tint)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+func _draw_oval(center: Vector2, rotation: float, scale: Vector2, color: Color) -> void:
+	draw_set_transform(center, rotation, scale)
+	draw_circle(Vector2.ZERO, 1.0, color)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _draw_death_animation() -> void:

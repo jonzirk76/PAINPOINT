@@ -95,6 +95,7 @@ const SFX_PATHS := [
 
 const CHARACTER_SVG_PATHS := [
 	"res://art/characters/player_character.svg",
+	"res://art/characters/player_upper_body_gun.svg",
 	"res://art/characters/basic_enemy_chaser.svg",
 	"res://art/characters/fast_enemy_runner.svg",
 	"res://art/characters/tank_enemy_brute.svg",
@@ -123,6 +124,7 @@ func _init() -> void:
 	_test_architecture_rules(failures)
 	_test_presentation_settings(failures)
 	_test_character_svg_assets(failures)
+	_test_character_art_applied_to_entities(failures)
 	_test_scripts_instantiate(failures)
 	_test_enemy_and_spawner_profiles(failures)
 	_test_level_resources(failures)
@@ -223,6 +225,31 @@ func _test_character_svg_assets(failures: Array[String]) -> void:
 				failures.append("Player SVG should keep separate top-body/gun and bottom-feet groups for animation.")
 			if not source.contains("id=\"left_foot\"") or not source.contains("id=\"right_foot\""):
 				failures.append("Player SVG should expose simple oval foot shapes for walking animation.")
+
+
+func _test_character_art_applied_to_entities(failures: Array[String]) -> void:
+	var player_source := _read_text("res://scripts/entities/player_entity.gd")
+	if not player_source.contains("res://art/characters/player_upper_body_gun.svg"):
+		failures.append("PlayerEntity should draw the upper-body/gun SVG asset.")
+	if not player_source.contains("_draw_player_walk_feet"):
+		failures.append("PlayerEntity should draw animated oval feet separately from the upper-body art.")
+	var enemy_source := _read_text("res://scripts/entities/enemy_entity.gd")
+	for path in [
+		"res://art/characters/basic_enemy_chaser.svg",
+		"res://art/characters/fast_enemy_runner.svg",
+		"res://art/characters/tank_enemy_brute.svg",
+		"res://art/characters/shooter_enemy_orbiter.svg",
+		"res://art/characters/boss_enemy_overlord.svg"
+	]:
+		if not enemy_source.contains(path):
+			failures.append("EnemyEntity should draw character SVG asset: %s" % path)
+
+
+func _read_text(path: String) -> String:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return ""
+	return file.get_as_text()
 
 
 func _test_scripts_instantiate(failures: Array[String]) -> void:

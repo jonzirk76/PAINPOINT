@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>Top Down Purple-Haired Player Upper Body And Gun</title>
+  <g id="ground_shadow">
+    <ellipse cx="64" cy="75" rx="43" ry="39" fill="#08111f" opacity="0.22"/>
+  </g>
+  <g id="top_half_body_and_gun">
+    <path d="M30 58 C27 36 42 17 64 15 C86 17 101 36 98 58 C96 78 82 91 64 92 C46 91 32 78 30 58 Z" fill="#220b39"/>
+    <path d="M39 54 C35 36 45 23 64 20 C83 23 93 36 89 54 C82 48 73 46 64 46 C55 46 46 48 39 54 Z" fill="#8d36d7"/>
+    <path d="M31 59 C24 66 22 78 27 88 C34 80 40 68 39 55 Z" fill="#5d1aa4"/>
+    <path d="M97 59 C104 66 106 78 101 88 C94 80 88 68 89 55 Z" fill="#5d1aa4"/>
+    <circle cx="64" cy="48" r="17" fill="#f1b38f"/>
+    <path d="M46 43 C53 29 75 28 84 43 C77 39 69 39 62 42 C55 45 50 46 46 43 Z" fill="#b151ff"/>
+    <circle cx="57" cy="48" r="2.6" fill="#3a1830"/>
+    <circle cx="71" cy="48" r="2.6" fill="#3a1830"/>
+    <path d="M58 58 C62 61 67 61 71 58" fill="none" stroke="#8d3b59" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M39 74 C42 56 51 48 64 48 C77 48 86 56 89 74 C81 85 47 85 39 74 Z" fill="#1554c8"/>
+    <path d="M45 68 C49 55 56 51 64 51 C72 51 79 55 83 68 C76 73 52 73 45 68 Z" fill="#3aa7ff"/>
+    <path d="M43 70 C50 79 78 79 85 70 L90 90 C77 99 51 99 38 90 Z" fill="#0f3e9b"/>
+    <path d="M37 67 C31 69 27 75 27 82 C36 82 43 78 48 70 Z" fill="#f1b38f"/>
+    <path d="M81 68 C88 62 96 58 104 56 L108 66 C99 68 91 72 84 78 Z" fill="#f1b38f"/>
+    <path d="M101 52 L119 55 C122 56 124 58 124 61 L124 66 C124 68 122 70 119 70 L98 68 Z" fill="#17202d"/>
+    <path d="M105 57 L120 59 L120 65 L104 64 Z" fill="#35475e"/>
+    <rect x="93" y="63" width="11" height="19" rx="4" transform="rotate(-12 98.5 72.5)" fill="#101720"/>
+    <path d="M94 55 L103 54 L104 69 L95 70 Z" fill="#26364a"/>
+    <path d="M47 86 C56 94 72 94 81 86" fill="none" stroke="#7fe4ff" stroke-width="4" stroke-linecap="round" opacity="0.75"/>
+    <path d="M30 58 C27 36 42 17 64 15 C86 17 101 36 98 58 C96 78 82 91 64 92 C46 91 32 78 30 58 Z" fill="none" stroke="#d7a4ff" stroke-width="3" opacity="0.72"/>
+  </g>
+</svg>

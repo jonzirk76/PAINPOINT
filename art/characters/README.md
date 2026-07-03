@@ -3,6 +3,7 @@
 Top-down vector character concepts for the current greybox style.
 
 - `player_character.svg`
+- `player_upper_body_gun.svg`
 - `basic_enemy_chaser.svg`
 - `fast_enemy_runner.svg`
 - `tank_enemy_brute.svg`
@@ -15,3 +16,5 @@ Each SVG uses a transparent background and a `128x128` viewBox so it can be impo
 
 - `bottom_half_feet`: simple oval feet intended for walking offsets or frame swaps.
 - `top_half_body_and_gun`: the purple-haired upper body, blue outfit, arms, and gun.
+
+`player_upper_body_gun.svg` is the runtime upper-body layer. `PlayerEntity` draws animated oval feet in code underneath it so walking can read without needing frame-by-frame sprite art yet.
