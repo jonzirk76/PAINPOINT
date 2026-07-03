@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>Top Down Velora Player Body Back</title>
+  <g id="body_back_outfit">
+    <path d="M24 58 C19 41 27 23 45 15 C58 8 77 9 89 19 C104 32 108 51 101 68 C100 84 91 99 76 105 C59 112 39 103 31 87 C27 78 25 68 24 58 Z" fill="#1a0b31"/>
+    <path d="M27 56 C17 63 14 80 22 96 C34 91 43 75 42 56 Z" fill="#5d22ac"/>
+    <path d="M101 56 C111 63 114 80 106 96 C94 91 85 75 86 56 Z" fill="#5d22ac"/>
+    <path d="M35 39 C38 24 50 16 64 15 C79 16 91 25 94 40 C87 35 76 32 64 32 C52 32 41 35 35 39 Z" fill="#7a35d4"/>
+    <path d="M30 48 C34 28 49 18 64 18 C79 18 94 28 98 48 C99 68 90 91 73 100 C58 108 39 97 33 80 C29 68 27 58 30 48 Z" fill="#2a0d4d"/>
+    <path d="M38 43 C43 31 53 25 64 25 C76 25 86 31 90 43 C91 59 84 81 72 91 C58 102 43 88 39 73 C36 61 35 51 38 43 Z" fill="#6b2cc2"/>
+    <path d="M47 34 C43 48 42 66 45 87" fill="none" stroke="#d39cff" stroke-width="3.4" stroke-linecap="round" opacity="0.78"/>
+    <path d="M82 34 C87 50 87 68 82 89" fill="none" stroke="#3c126c" stroke-width="5" stroke-linecap="round" opacity="0.72"/>
+    <path d="M54 26 C62 21 75 23 84 31" fill="none" stroke="#c78dff" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+    <path d="M42 71 C46 56 54 49 64 49 C75 49 83 56 87 71 L84 95 C73 101 55 101 44 95 Z" fill="#0f48b7"/>
+    <path d="M45 58 L83 58" fill="none" stroke="#07111f" stroke-width="5" stroke-linecap="round"/>
+    <path d="M47 72 L81 72" fill="none" stroke="#07111f" stroke-width="4" stroke-linecap="round"/>
+    <path d="M51 84 C58 89 70 89 77 84" fill="none" stroke="#21c8f6" stroke-width="3.4" stroke-linecap="round" opacity="0.85"/>
+    <path d="M57 57 L64 65 L71 57" fill="none" stroke="#7cecff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+    <path d="M49 95 L58 103 L64 98 L70 103 L79 95" fill="none" stroke="#09111f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

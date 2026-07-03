@@ -98,6 +98,7 @@ const SFX_PATHS := [
 const CHARACTER_SVG_PATHS := [
 	"res://art/characters/player_character.svg",
 	"res://art/characters/player_body.svg",
+	"res://art/characters/player_body_back.svg",
 	"res://art/characters/player_arms_gun.svg",
 	"res://art/characters/player_arms_gun_left.svg",
 	"res://art/characters/player_resting_pistol.svg",
@@ -255,12 +256,17 @@ func _test_character_svg_assets(failures: Array[String]) -> void:
 		if path.contains("player_resting_pistol"):
 			if not source.contains("id=\"resting_pistol\""):
 				failures.append("Player resting pistol SVG should expose a resting_pistol group.")
+		if path.ends_with("player_body_back.svg"):
+			if not source.contains("id=\"body_back_outfit\""):
+				failures.append("Player back-facing body SVG should expose a body_back_outfit group.")
 
 
 func _test_character_art_applied_to_entities(failures: Array[String]) -> void:
 	var player_source := _read_text("res://scripts/entities/player_entity.gd")
 	if not player_source.contains("res://art/characters/player_body.svg"):
 		failures.append("PlayerEntity should draw the upright body SVG asset.")
+	if not player_source.contains("res://art/characters/player_body_back.svg"):
+		failures.append("PlayerEntity should draw a back-facing body SVG asset for upward aim.")
 	if not player_source.contains("res://art/characters/player_arms_gun.svg"):
 		failures.append("PlayerEntity should draw the separate arms/gun SVG asset.")
 	if not player_source.contains("_draw_player_walk_feet"):
@@ -275,6 +281,10 @@ func _test_character_art_applied_to_entities(failures: Array[String]) -> void:
 		failures.append("PlayerEntity should draw the lowered off-hand pistol as its own sprite layer.")
 	if not player_source.contains("resting_rotation: float = clamp(aim.y * 0.18"):
 		failures.append("PlayerEntity should only slightly rotate the resting pistol instead of matching the active gun rotation.")
+	if not player_source.contains("is_back_facing := aim.y < -0.001"):
+		failures.append("PlayerEntity should switch to the back-facing body for the upper aim half.")
+	if not player_source.contains("if is_back_facing:") or not player_source.contains("_draw_centered_texture(weapon_texture, visual_radius, weapon_rotation, tint)") or not player_source.contains("_draw_centered_texture(body_texture, visual_radius, 0.0, tint)"):
+		failures.append("PlayerEntity should draw the gun behind the back-facing body when aiming upward.")
 	if not player_source.contains("body_radius + 13.0") or player_source.contains("sparkle_center"):
 		failures.append("PlayerEntity should use a circular barrier effect, not a pistol glint, when parry is ready.")
 	var enemy_source := _read_text("res://scripts/entities/enemy_entity.gd")

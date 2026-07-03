@@ -4,6 +4,7 @@ Top-down vector character concepts for the current greybox style.
 
 - `player_character.svg`
 - `player_body.svg`
+- `player_body_back.svg`
 - `player_arms_gun.svg`
 - `player_arms_gun_left.svg`
 - `player_resting_pistol.svg`
@@ -22,7 +23,7 @@ Each SVG uses a transparent background and a `128x128` viewBox so it can be impo
 - `bottom_half_feet`: simple oval feet intended for walking offsets or frame swaps.
 - `top_half_body_and_gun`: the purple-haired upper body, blue outfit, arms, and gun.
 
-`player_body.svg`, `player_arms_gun.svg`, `player_arms_gun_left.svg`, `player_resting_pistol.svg`, and `player_resting_pistol_left.svg` are the runtime layers. `PlayerEntity` draws animated oval feet in code, keeps the body layer upright, rotates the active aimed pistol layer toward the normalized aim direction, and draws the lowered off-hand pistol as a separate lightly-tilting layer.
+`player_body.svg`, `player_body_back.svg`, `player_arms_gun.svg`, `player_arms_gun_left.svg`, `player_resting_pistol.svg`, and `player_resting_pistol_left.svg` are the runtime layers. `PlayerEntity` draws animated oval feet in code, keeps the body layer upright, switches to the long-haired back body when aiming into the upper half, rotates the active aimed pistol layer toward the normalized aim direction, and draws the lowered off-hand pistol as a separate lightly-tilting layer.
 
 `player_upper_body_gun.svg` is kept as a combined reference layer.
 

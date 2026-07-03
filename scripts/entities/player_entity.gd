@@ -5,6 +5,7 @@ signal health_changed(old_value: int, new_value: int)
 signal health_depleted(entity)
 
 const PLAYER_BODY_TEXTURE := preload("res://art/characters/player_body.svg")
+const PLAYER_BODY_BACK_TEXTURE := preload("res://art/characters/player_body_back.svg")
 const PLAYER_ARMS_GUN_TEXTURE := preload("res://art/characters/player_arms_gun.svg")
 const PLAYER_ARMS_GUN_LEFT_TEXTURE := preload("res://art/characters/player_arms_gun_left.svg")
 const PLAYER_RESTING_PISTOL_TEXTURE := preload("res://art/characters/player_resting_pistol.svg")
@@ -279,18 +280,27 @@ func _draw_player_character_art() -> void:
 		aim = Vector2.RIGHT
 	var weapon_texture: Texture2D = PLAYER_ARMS_GUN_TEXTURE
 	var resting_texture: Texture2D = PLAYER_RESTING_PISTOL_TEXTURE
+	var body_texture: Texture2D = PLAYER_BODY_TEXTURE
+	var is_back_facing := aim.y < -0.001
 	var weapon_rotation := aim.angle()
 	var resting_rotation: float = clamp(aim.y * 0.18, -0.18, 0.18)
 	if move_vector.length_squared() > 0.01:
 		resting_rotation += sin(_walk_cycle) * 0.035
+	if is_back_facing:
+		body_texture = PLAYER_BODY_BACK_TEXTURE
 	if aim.x < -0.001:
 		weapon_texture = PLAYER_ARMS_GUN_LEFT_TEXTURE
 		resting_texture = PLAYER_RESTING_PISTOL_LEFT_TEXTURE
 		weapon_rotation = (-aim).angle()
 		resting_rotation = -resting_rotation
-	_draw_centered_texture(PLAYER_BODY_TEXTURE, visual_radius, 0.0, tint)
-	_draw_centered_texture(resting_texture, visual_radius, resting_rotation, tint)
-	_draw_centered_texture(weapon_texture, visual_radius, weapon_rotation, tint)
+	if is_back_facing:
+		_draw_centered_texture(resting_texture, visual_radius, resting_rotation, tint)
+		_draw_centered_texture(weapon_texture, visual_radius, weapon_rotation, tint)
+		_draw_centered_texture(body_texture, visual_radius, 0.0, tint)
+	else:
+		_draw_centered_texture(body_texture, visual_radius, 0.0, tint)
+		_draw_centered_texture(resting_texture, visual_radius, resting_rotation, tint)
+		_draw_centered_texture(weapon_texture, visual_radius, weapon_rotation, tint)
 
 
 func _draw_player_walk_feet() -> void:
