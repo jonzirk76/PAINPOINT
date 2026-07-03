@@ -295,12 +295,16 @@ func _draw_player_walk_feet() -> void:
 	var lift: float = abs(sin(_walk_cycle)) * 0.22 if is_walking else 0.0
 	var left_center: Vector2 = foot_anchor - side * body_radius * 0.42 + stride_direction * stride
 	var right_center: Vector2 = foot_anchor + side * body_radius * 0.42 - stride_direction * stride
-	var left_scale := Vector2(body_radius * 0.38, body_radius * (0.64 + lift))
-	var right_scale := Vector2(body_radius * 0.38, body_radius * (0.64 + (0.22 - lift if is_walking else 0.0)))
-	_draw_oval(left_center, 0.0, left_scale, Color(0.08, 0.18, 0.44, 1.0))
-	_draw_oval(right_center, 0.0, right_scale, Color(0.1, 0.25, 0.62, 1.0))
-	_draw_oval(left_center - Vector2.DOWN * body_radius * 0.08, 0.0, left_scale * 0.55, Color(0.22, 0.5, 1.0, 0.72))
-	_draw_oval(right_center - Vector2.DOWN * body_radius * 0.08, 0.0, right_scale * 0.55, Color(0.22, 0.5, 1.0, 0.72))
+	var left_scale := Vector2(body_radius * 0.34, body_radius * (0.7 + lift))
+	var right_scale := Vector2(body_radius * 0.34, body_radius * (0.7 + (0.22 - lift if is_walking else 0.0)))
+	var boot_lift := Vector2.DOWN * body_radius * 0.04
+	var upper_lift := Vector2.DOWN * body_radius * 0.1
+	_draw_oval(left_center + boot_lift, 0.0, left_scale, Color(0.03, 0.07, 0.13, 1.0))
+	_draw_oval(right_center + boot_lift, 0.0, right_scale, Color(0.03, 0.07, 0.13, 1.0))
+	_draw_oval(left_center - upper_lift, 0.0, left_scale * Vector2(0.62, 0.58), Color(0.06, 0.3, 0.74, 0.88))
+	_draw_oval(right_center - upper_lift, 0.0, right_scale * Vector2(0.62, 0.58), Color(0.07, 0.38, 0.86, 0.88))
+	_draw_oval(left_center - Vector2.DOWN * body_radius * 0.18, 0.0, left_scale * Vector2(0.3, 0.22), Color(0.13, 0.82, 1.0, 0.7))
+	_draw_oval(right_center - Vector2.DOWN * body_radius * 0.18, 0.0, right_scale * Vector2(0.3, 0.22), Color(0.13, 0.82, 1.0, 0.7))
 
 
 func _draw_centered_texture(texture: Texture2D, visual_radius: float, rotation: float, tint: Color = Color.WHITE) -> void:

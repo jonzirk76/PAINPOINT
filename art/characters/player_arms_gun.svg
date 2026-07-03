@@ -1,13 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <title>Top Down Player Arms And Gun</title>
+  <title>Top Down Velora Arms And Gun</title>
   <g id="arms_and_gun">
-    <path d="M37 67 C31 69 27 75 27 82 C36 82 43 78 48 70 Z" fill="#f1b38f"/>
-    <path d="M81 68 C88 62 96 58 104 56 L108 66 C99 68 91 72 84 78 Z" fill="#f1b38f"/>
-    <path d="M101 52 L119 55 C122 56 124 58 124 61 L124 66 C124 68 122 70 119 70 L98 68 Z" fill="#17202d"/>
-    <path d="M105 57 L120 59 L120 65 L104 64 Z" fill="#35475e"/>
-    <rect x="93" y="63" width="11" height="19" rx="4" transform="rotate(-12 98.5 72.5)" fill="#101720"/>
-    <path d="M94 55 L103 54 L104 69 L95 70 Z" fill="#26364a"/>
-    <path d="M80 66 C87 61 95 57 103 55 L105 61 C96 64 89 68 83 74 Z" fill="#ffd1b3" opacity="0.55"/>
-    <path d="M101 52 L119 55 C122 56 124 58 124 61" fill="none" stroke="#61758c" stroke-width="2.2" stroke-linecap="round" opacity="0.85"/>
+    <path d="M39 70 C31 72 26 79 26 87 C37 87 46 80 50 70 Z" fill="#0b1a2b"/>
+    <path d="M41 68 C33 70 29 76 30 82 C39 81 46 76 50 68 Z" fill="#1266d8"/>
+    <path d="M78 66 C86 59 96 55 107 53 L111 65 C100 67 91 72 82 80 Z" fill="#0b1a2b"/>
+    <path d="M80 65 C87 60 96 57 105 55 L108 62 C98 65 90 69 84 75 Z" fill="#156fe8"/>
+    <path d="M100 50 L121 53 C124 54 126 57 126 60 L126 68 C126 71 124 73 121 74 L98 71 Z" fill="#0b1018"/>
+    <path d="M104 54 L121 56 L121 64 L103 64 Z" fill="#202b39"/>
+    <path d="M109 57 L120 58 L120 62 L108 62 Z" fill="#24d5ff"/>
+    <path d="M106 52 L111 52 L112 72 L103 71 Z" fill="#2c3a4d"/>
+    <rect x="92" y="61" width="13" height="21" rx="4" transform="rotate(-13 98.5 71.5)" fill="#070b11"/>
+    <path d="M94 56 L103 55 L105 71 L95 72 Z" fill="#182334"/>
+    <circle cx="112" cy="60" r="3.1" fill="#0d1522"/>
+    <circle cx="112" cy="60" r="1.8" fill="#21c8f6"/>
+    <path d="M101 50 L121 53 C124 54 126 57 126 60" fill="none" stroke="#798aa0" stroke-width="2.1" stroke-linecap="round" opacity="0.75"/>
+    <path d="M100 70 L119 72" fill="none" stroke="#38475c" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M82 64 C89 60 97 57 106 55 L107 60 C97 63 90 67 84 73 Z" fill="#69ddff" opacity="0.34"/>
+    <path d="M80 70 C87 66 96 63 106 62" fill="none" stroke="#0a101a" stroke-width="3" stroke-linecap="round"/>
   </g>
 </svg>
