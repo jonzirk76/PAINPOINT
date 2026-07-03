@@ -66,7 +66,7 @@ func play_projectile_impact(spawn_position: Vector2, direction: Vector2, radius:
 		return
 	_trim_effects()
 	var effect = projectile_impact_scene.instantiate()
-	effect.process_mode = Node.PROCESS_MODE_ALWAYS
+	_configure_effect_process_mode(effect)
 	if _effect_layer != null:
 		_effect_layer.add_child(effect)
 	else:

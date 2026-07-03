@@ -982,6 +982,9 @@ func _test_projectile_impact_visuals(failures: Array[String]) -> void:
 	if effect_layer.get_child_count() != 2:
 		failures.append("EffectsManager should create projectile impact effects for normal and blocked hits.")
 	else:
+		for child in effect_layer.get_children():
+			if child.process_mode != Node.PROCESS_MODE_PAUSABLE:
+				failures.append("Projectile impact effects should pause with gameplay.")
 		var blocked_effect = effect_layer.get_child(1)
 		if not bool(blocked_effect.get("blocked")):
 			failures.append("Blocked projectile impacts should use the shield-block visual variant.")
