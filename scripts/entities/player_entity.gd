@@ -286,21 +286,21 @@ func _draw_player_character_art() -> void:
 
 func _draw_player_walk_feet() -> void:
 	var is_walking := move_vector.length_squared() > 0.01
-	var foot_direction := move_vector.normalized() if is_walking else aim_direction.normalized()
-	if foot_direction.length_squared() <= 0.001:
-		foot_direction = Vector2.RIGHT
-	var side := foot_direction.orthogonal()
-	var stride: float = sin(_walk_cycle) * body_radius * 0.34 if is_walking else 0.0
+	var stride_direction := move_vector.normalized() if is_walking else Vector2.RIGHT
+	if stride_direction.length_squared() <= 0.001:
+		stride_direction = Vector2.RIGHT
+	var foot_anchor := Vector2.DOWN * body_radius * 0.78
+	var side := Vector2.RIGHT
+	var stride: float = sin(_walk_cycle) * body_radius * 0.26 if is_walking else 0.0
 	var lift: float = abs(sin(_walk_cycle)) * 0.22 if is_walking else 0.0
-	var base_back: Vector2 = -foot_direction * body_radius * 0.42
-	var left_center: Vector2 = base_back - side * body_radius * 0.46 + foot_direction * stride
-	var right_center: Vector2 = base_back + side * body_radius * 0.46 - foot_direction * stride
+	var left_center: Vector2 = foot_anchor - side * body_radius * 0.42 + stride_direction * stride
+	var right_center: Vector2 = foot_anchor + side * body_radius * 0.42 - stride_direction * stride
 	var left_scale := Vector2(body_radius * 0.38, body_radius * (0.64 + lift))
 	var right_scale := Vector2(body_radius * 0.38, body_radius * (0.64 + (0.22 - lift if is_walking else 0.0)))
-	_draw_oval(left_center, foot_direction.angle() - PI * 0.5, left_scale, Color(0.08, 0.18, 0.44, 1.0))
-	_draw_oval(right_center, foot_direction.angle() - PI * 0.5, right_scale, Color(0.1, 0.25, 0.62, 1.0))
-	_draw_oval(left_center - foot_direction * body_radius * 0.08, foot_direction.angle() - PI * 0.5, left_scale * 0.55, Color(0.22, 0.5, 1.0, 0.72))
-	_draw_oval(right_center - foot_direction * body_radius * 0.08, foot_direction.angle() - PI * 0.5, right_scale * 0.55, Color(0.22, 0.5, 1.0, 0.72))
+	_draw_oval(left_center, 0.0, left_scale, Color(0.08, 0.18, 0.44, 1.0))
+	_draw_oval(right_center, 0.0, right_scale, Color(0.1, 0.25, 0.62, 1.0))
+	_draw_oval(left_center - Vector2.DOWN * body_radius * 0.08, 0.0, left_scale * 0.55, Color(0.22, 0.5, 1.0, 0.72))
+	_draw_oval(right_center - Vector2.DOWN * body_radius * 0.08, 0.0, right_scale * 0.55, Color(0.22, 0.5, 1.0, 0.72))
 
 
 func _draw_centered_texture(texture: Texture2D, visual_radius: float, rotation: float, tint: Color = Color.WHITE) -> void:

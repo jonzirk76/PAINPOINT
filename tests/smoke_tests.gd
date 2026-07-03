@@ -249,6 +249,8 @@ func _test_character_art_applied_to_entities(failures: Array[String]) -> void:
 		failures.append("PlayerEntity should draw the separate arms/gun SVG asset.")
 	if not player_source.contains("_draw_player_walk_feet"):
 		failures.append("PlayerEntity should draw animated oval feet separately from the upper-body art.")
+	if not player_source.contains("foot_anchor := Vector2.DOWN") or not player_source.contains("body_radius * 0.78"):
+		failures.append("PlayerEntity should anchor walking feet lower on the upright body.")
 	if not player_source.contains("PLAYER_ARMS_GUN_TEXTURE") or not player_source.contains("aim.angle()"):
 		failures.append("PlayerEntity should rotate the separate arms/gun sprite using the normalized aim direction.")
 	if not player_source.contains("PLAYER_ARMS_GUN_LEFT_TEXTURE") or not player_source.contains("(-aim).angle()"):

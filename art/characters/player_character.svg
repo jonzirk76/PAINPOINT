@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
   <title>Top Down Purple-Haired Player Girl</title>
   <g id="bottom_half_feet">
-    <ellipse id="left_foot" cx="49" cy="91" rx="11" ry="18" transform="rotate(-10 49 91)" fill="#10265d"/>
-    <ellipse id="right_foot" cx="76" cy="91" rx="11" ry="18" transform="rotate(10 76 91)" fill="#10265d"/>
-    <ellipse cx="49" cy="87" rx="6" ry="10" transform="rotate(-10 49 87)" fill="#2f67d8" opacity="0.78"/>
-    <ellipse cx="76" cy="87" rx="6" ry="10" transform="rotate(10 76 87)" fill="#2f67d8" opacity="0.78"/>
+    <ellipse id="left_foot" cx="49" cy="99" rx="11" ry="18" transform="rotate(-10 49 99)" fill="#10265d"/>
+    <ellipse id="right_foot" cx="76" cy="99" rx="11" ry="18" transform="rotate(10 76 99)" fill="#10265d"/>
+    <ellipse cx="49" cy="95" rx="6" ry="10" transform="rotate(-10 49 95)" fill="#2f67d8" opacity="0.78"/>
+    <ellipse cx="76" cy="95" rx="6" ry="10" transform="rotate(10 76 95)" fill="#2f67d8" opacity="0.78"/>
   </g>
   <g id="top_half_body_and_gun">
     <path d="M30 58 C27 36 42 17 64 15 C86 17 101 36 98 58 C96 78 82 91 64 92 C46 91 32 78 30 58 Z" fill="#220b39"/>
