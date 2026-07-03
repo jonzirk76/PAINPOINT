@@ -40,6 +40,7 @@ const SCRIPT_PATHS := [
 	"res://scripts/managers/upgrade_manager.gd",
 	"res://scripts/managers/combat_manager.gd",
 	"res://scripts/managers/effects_manager.gd",
+	"res://scripts/managers/audio_manager.gd",
 	"res://scripts/managers/dungeon_manager.gd",
 	"res://scripts/managers/room_manager.gd",
 	"res://scripts/ui/dungeon_minimap.gd",
@@ -79,6 +80,19 @@ const SPAWNER_PROFILE_PATHS := [
 	"res://resources/spawners/shooter_spawner.tres"
 ]
 
+const SFX_PATHS := [
+	"res://audio/bullet_impact.wav",
+	"res://audio/enemy_bullet_shot.wav",
+	"res://audio/floor_start.wav",
+	"res://audio/game_over.wav",
+	"res://audio/item_pick_up.wav",
+	"res://audio/parry.wav",
+	"res://audio/parry_ready.wav",
+	"res://audio/perfect_parry_follow_up.wav",
+	"res://audio/player_bullet_shot.wav",
+	"res://audio/room_entry.wav"
+]
+
 const ROOM_PIECE_PATHS := [
 	"res://resources/rooms/start_square.tres",
 	"res://resources/rooms/combat_wide.tres",
@@ -115,6 +129,7 @@ func _init() -> void:
 	_test_low_ammo_warning(failures)
 	_test_parry_absorbs_hostile_projectiles_for_ammo(failures)
 	_test_parry_absorb_visuals_and_ammo_flash(failures)
+	_test_audio_assets_and_pitch_variation(failures)
 	_test_reward_driven_pickup_drops(failures)
 	_test_health_pickup_and_player_healing(failures)
 	_test_projectile_knockback_packet(failures)
@@ -244,6 +259,7 @@ func _test_scene_loads(failures: Array[String]) -> void:
 					"World/EffectLayer",
 					"Managers/InputManager",
 					"Managers/EffectsManager",
+					"Managers/AudioManager",
 					"Managers/DungeonManager",
 					"Managers/RoomManager"
 				]
@@ -774,8 +790,19 @@ func _test_parry_absorb_visuals_and_ammo_flash(failures: Array[String]) -> void:
 	main._on_player_parry_requested(Vector2.ZERO, 100.0, 24.0, 430.0)
 	if main._ammo_refill_flash_remaining <= 0.0:
 		failures.append("Parry ammo refill should trigger a short HUD flash timer.")
+	if main._ammo_refill_perfect_flash_remaining <= 0.0:
+		failures.append("Perfect parry ammo refill should trigger a stronger HUD flash timer.")
+	if Engine.time_scale >= 1.0:
+		failures.append("Perfect parry should briefly slow down time.")
+	if main.player_manager.player == null or main.player_manager.player._perfect_parry_flash_remaining <= 0.0:
+		failures.append("Perfect parry should create a bright player flash.")
 	if main.get_node("World/EffectLayer").get_child_count() <= 0:
 		failures.append("Parry absorption should create a visible swoop effect in the effect layer.")
+	else:
+		var absorb_effect = main.get_node("World/EffectLayer").get_child(0)
+		var absorb_target: Vector2 = absorb_effect.get("end_position")
+		if absorb_target.distance_squared_to(Vector2.ZERO) <= 1.0:
+			failures.append("Parry absorb effects should fly toward ammo counters instead of ending on the player.")
 	main._process(0.12)
 	if main.ammo_counter_panel.get_child_count() <= 0:
 		failures.append("Active ammo upgrades should render ammo counter squares.")
@@ -783,9 +810,60 @@ func _test_parry_absorb_visuals_and_ammo_flash(failures: Array[String]) -> void:
 		var row: Control = main.ammo_counter_panel.get_child(0)
 		if row.get_node_or_null("RefillFlash") == null:
 			failures.append("Ammo counter squares should flash while parry ammo fills them.")
-		if row.position.y >= 0.0:
-			failures.append("Ammo counter squares should visibly jump during parry refill feedback.")
+		if row.get_node_or_null("PerfectRefillFlash") == null:
+			failures.append("Perfect parry ammo counter squares should flash white.")
+		if row.position.y >= -10.0:
+			failures.append("Perfect parry ammo counter squares should visibly jump higher during refill feedback.")
+	main._stop_perfect_parry_slowmo()
 	main.free()
+
+
+func _test_audio_assets_and_pitch_variation(failures: Array[String]) -> void:
+	for path in SFX_PATHS:
+		if not FileAccess.file_exists(path):
+			failures.append("Sound effect should live in the shared audio folder: %s" % path)
+			continue
+		if load(path) == null:
+			failures.append("Sound effect failed to load: %s" % path)
+	var manager = load("res://scripts/managers/audio_manager.gd").new()
+	root.add_child(manager)
+	manager.set_enabled(true)
+	manager._rng.seed = 12345
+	manager.play_player_shot()
+	manager.play_player_shot()
+	manager.play_parry_ready()
+	manager.play_perfect_parry()
+	if manager._active_players.size() != 4:
+		failures.append("AudioManager should create short-lived AudioStreamPlayers for overlapping SFX.")
+	else:
+		var first_player: AudioStreamPlayer = manager._active_players[0]
+		var second_player: AudioStreamPlayer = manager._active_players[1]
+		var ready_player: AudioStreamPlayer = manager._active_players[2]
+		var perfect_player: AudioStreamPlayer = manager._active_players[3]
+		if first_player.stream == null or perfect_player.stream == null:
+			failures.append("AudioManager should assign streams before playback.")
+		if first_player.pitch_scale == second_player.pitch_scale:
+			failures.append("Repeated SFX should receive pitch variation from AudioStreamPlayer controls.")
+		if first_player.pitch_scale < 0.88 or first_player.pitch_scale > 1.12:
+			failures.append("Player shot pitch variation is outside its expected range.")
+		if ready_player.pitch_scale < 0.96 or ready_player.pitch_scale > 1.08:
+			failures.append("Parry-ready pitch variation is outside its expected range.")
+		if perfect_player.pitch_scale < 0.96 or perfect_player.pitch_scale > 1.04:
+			failures.append("Perfect parry follow-up pitch variation is outside its expected range.")
+	manager.set_enabled(false)
+	if manager._active_players.size() != 0:
+		failures.append("AudioManager should clear active SFX players when disabled.")
+	manager.play_game_over()
+	if manager._active_players.size() != 1:
+		failures.append("Game-over SFX should be allowed to play after gameplay audio is disabled.")
+	else:
+		var game_over_player: AudioStreamPlayer = manager._active_players[0]
+		if game_over_player.stream == null:
+			failures.append("Game-over SFX should assign a stream before playback.")
+		if game_over_player.pitch_scale < 0.97 or game_over_player.pitch_scale > 1.03:
+			failures.append("Game-over pitch variation is outside its expected range.")
+	manager.reset_run()
+	manager.free()
 
 
 func _test_reward_driven_pickup_drops(failures: Array[String]) -> void:
@@ -1755,6 +1833,7 @@ func _prime_main_for_direct_test_calls(main) -> void:
 	main.effects_manager = main.get_node("Managers/EffectsManager")
 	main.dungeon_manager = main.get_node("Managers/DungeonManager")
 	main.room_manager = main.get_node("Managers/RoomManager")
+	main.audio_manager = main.get_node("Managers/AudioManager")
 	main.arena_view = main.get_node("World/Arena")
 	main.gameplay_camera = main.get_node("Camera2D")
 	main.hud_background = main.get_node("UI/HUDBackground")

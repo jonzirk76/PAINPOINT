@@ -60,18 +60,20 @@ func play_spawner_explosion(spawn_position: Vector2, radius: float) -> void:
 	play_explosion(spawn_position, radius, 0.55)
 
 
-func play_parry_absorbs(absorbed_projectiles: Array, target_position: Vector2) -> void:
+func play_parry_absorbs(absorbed_projectiles: Array, default_target_position: Vector2) -> void:
 	for info in absorbed_projectiles:
 		if info is Dictionary:
+			var target_position: Vector2 = info.get("target_position", default_target_position)
 			play_parry_absorb(
 				info.get("position", target_position),
 				target_position,
 				bool(info.get("perfect", false)),
-				float(info.get("radius", 7.0))
+				float(info.get("radius", 7.0)),
+				float(info.get("arc_seed", 0.0))
 			)
 
 
-func play_parry_absorb(from_position: Vector2, to_position: Vector2, is_perfect: bool, radius: float = 7.0) -> void:
+func play_parry_absorb(from_position: Vector2, to_position: Vector2, is_perfect: bool, radius: float = 7.0, arc_seed: float = 0.0) -> void:
 	if not enabled:
 		return
 	_trim_effects()
@@ -81,7 +83,7 @@ func play_parry_absorb(from_position: Vector2, to_position: Vector2, is_perfect:
 		_effect_layer.add_child(effect)
 	else:
 		add_child(effect)
-	effect.initialize(from_position, to_position, is_perfect, radius)
+	effect.initialize(from_position, to_position, is_perfect, radius, arc_seed)
 	effect.expired.connect(_on_effect_expired)
 	_effects.append(effect)
 

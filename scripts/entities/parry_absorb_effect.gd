@@ -13,21 +13,28 @@ var radius: float = 7.0
 
 var _age: float = 0.0
 var _control_position: Vector2 = Vector2.ZERO
+var _arc_seed: float = 0.0
 
 
-func initialize(from_position: Vector2, to_position: Vector2, perfect: bool, projectile_radius: float = 7.0) -> void:
+func initialize(from_position: Vector2, to_position: Vector2, perfect: bool, projectile_radius: float = 7.0, arc_seed: float = 0.0) -> void:
 	start_position = from_position
 	end_position = to_position
 	is_perfect = perfect
 	radius = max(projectile_radius, 3.0)
+	_arc_seed = arc_seed
 	global_position = Vector2.ZERO
 	if is_perfect:
-		lifetime_seconds = 0.42
+		lifetime_seconds = 0.46
 	var delta: Vector2 = end_position - start_position
 	var normal: Vector2 = delta.orthogonal().normalized() if delta.length_squared() > 0.001 else Vector2.UP
-	var side: float = -1.0 if int(abs(start_position.x * 31.0 + start_position.y * 17.0)) % 2 == 0 else 1.0
-	var swoop_distance: float = clamp(delta.length() * 0.3, 34.0, 96.0)
-	_control_position = start_position.lerp(end_position, 0.52) + normal * swoop_distance * side
+	var seed_basis: float = start_position.x * 0.37 + start_position.y * 0.61 + end_position.x * 0.19 + end_position.y * 0.43 + _arc_seed
+	var side: float = -1.0 if _hash01(seed_basis) < 0.5 else 1.0
+	var bend_ratio: float = lerp(0.25, 0.48, _hash01(seed_basis + 17.0))
+	var mid_ratio: float = lerp(0.38, 0.66, _hash01(seed_basis + 41.0))
+	var swoop_distance: float = clamp(delta.length() * bend_ratio, 42.0, 176.0)
+	if is_perfect:
+		swoop_distance *= 1.22
+	_control_position = start_position.lerp(end_position, mid_ratio) + normal * swoop_distance * side
 	queue_redraw()
 
 
@@ -87,3 +94,8 @@ func _draw_perfect_shine(position: Vector2, fade: float, progress: float) -> voi
 func _quadratic_bezier(a: Vector2, b: Vector2, c: Vector2, t: float) -> Vector2:
 	var one_minus_t: float = 1.0 - t
 	return a * one_minus_t * one_minus_t + b * 2.0 * one_minus_t * t + c * t * t
+
+
+func _hash01(value: float) -> float:
+	var raw: float = sin(value * 12.9898 + 78.233) * 43758.5453
+	return raw - floor(raw)
