@@ -774,8 +774,19 @@ func _test_parry_absorb_visuals_and_ammo_flash(failures: Array[String]) -> void:
 	main._on_player_parry_requested(Vector2.ZERO, 100.0, 24.0, 430.0)
 	if main._ammo_refill_flash_remaining <= 0.0:
 		failures.append("Parry ammo refill should trigger a short HUD flash timer.")
+	if main._ammo_refill_perfect_flash_remaining <= 0.0:
+		failures.append("Perfect parry ammo refill should trigger a stronger HUD flash timer.")
+	if Engine.time_scale >= 1.0:
+		failures.append("Perfect parry should briefly slow down time.")
+	if main.player_manager.player == null or main.player_manager.player._perfect_parry_flash_remaining <= 0.0:
+		failures.append("Perfect parry should create a bright player flash.")
 	if main.get_node("World/EffectLayer").get_child_count() <= 0:
 		failures.append("Parry absorption should create a visible swoop effect in the effect layer.")
+	else:
+		var absorb_effect = main.get_node("World/EffectLayer").get_child(0)
+		var absorb_target: Vector2 = absorb_effect.get("end_position")
+		if absorb_target.distance_squared_to(Vector2.ZERO) <= 1.0:
+			failures.append("Parry absorb effects should fly toward ammo counters instead of ending on the player.")
 	main._process(0.12)
 	if main.ammo_counter_panel.get_child_count() <= 0:
 		failures.append("Active ammo upgrades should render ammo counter squares.")
@@ -783,8 +794,11 @@ func _test_parry_absorb_visuals_and_ammo_flash(failures: Array[String]) -> void:
 		var row: Control = main.ammo_counter_panel.get_child(0)
 		if row.get_node_or_null("RefillFlash") == null:
 			failures.append("Ammo counter squares should flash while parry ammo fills them.")
-		if row.position.y >= 0.0:
-			failures.append("Ammo counter squares should visibly jump during parry refill feedback.")
+		if row.get_node_or_null("PerfectRefillFlash") == null:
+			failures.append("Perfect parry ammo counter squares should flash white.")
+		if row.position.y >= -10.0:
+			failures.append("Perfect parry ammo counter squares should visibly jump higher during refill feedback.")
+	main._stop_perfect_parry_slowmo()
 	main.free()
 
 

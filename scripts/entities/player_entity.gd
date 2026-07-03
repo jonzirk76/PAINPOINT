@@ -21,6 +21,8 @@ var _hit_flash_remaining: float = 0.0
 var _heal_flash_remaining: float = 0.0
 var _parry_pulse_remaining: float = 0.0
 var _parry_pulse_duration: float = 0.28
+var _perfect_parry_flash_remaining: float = 0.0
+var _perfect_parry_flash_duration: float = 0.36
 var _parry_ready_flash_remaining: float = 0.0
 var _parry_ready_flash_duration: float = 0.42
 var _parry_ready: bool = false
@@ -59,11 +61,13 @@ func _process(delta: float) -> void:
 		_heal_flash_remaining = max(_heal_flash_remaining - delta, 0.0)
 	if _parry_pulse_remaining > 0.0:
 		_parry_pulse_remaining = max(_parry_pulse_remaining - delta, 0.0)
+	if _perfect_parry_flash_remaining > 0.0:
+		_perfect_parry_flash_remaining = max(_perfect_parry_flash_remaining - delta, 0.0)
 	if _parry_ready_flash_remaining > 0.0:
 		_parry_ready_flash_remaining = max(_parry_ready_flash_remaining - delta, 0.0)
 	if _is_dead:
 		_death_elapsed = min(_death_elapsed + delta, _death_duration)
-	if _ammo_warning_active or _parry_ready or _parry_ready_flash_remaining > 0.0 or _parry_pulse_remaining > 0.0 or _hit_flash_remaining > 0.0 or _heal_flash_remaining > 0.0 or _is_dead:
+	if _ammo_warning_active or _parry_ready or _parry_ready_flash_remaining > 0.0 or _parry_pulse_remaining > 0.0 or _perfect_parry_flash_remaining > 0.0 or _hit_flash_remaining > 0.0 or _heal_flash_remaining > 0.0 or _is_dead:
 		queue_redraw()
 
 
@@ -159,6 +163,15 @@ func play_parry_response(effect_radius: float, perfect_radius: float) -> void:
 	queue_redraw()
 
 
+func play_perfect_parry_response(effect_radius: float, perfect_radius: float) -> void:
+	if _is_dead:
+		return
+	_parry_effect_radius = max(effect_radius, body_radius + 1.0)
+	_parry_perfect_radius = clamp(perfect_radius, body_radius + 1.0, _parry_effect_radius)
+	_perfect_parry_flash_remaining = _perfect_parry_flash_duration
+	queue_redraw()
+
+
 func set_parry_ready_state(is_ready: bool) -> void:
 	_parry_ready = is_ready and not _is_dead
 	queue_redraw()
@@ -210,6 +223,7 @@ func reset_health() -> void:
 	_hit_flash_remaining = 0.0
 	_heal_flash_remaining = 0.0
 	_parry_pulse_remaining = 0.0
+	_perfect_parry_flash_remaining = 0.0
 	_parry_ready_flash_remaining = 0.0
 	_parry_ready = false
 	_ammo_warning_active = false
@@ -244,6 +258,8 @@ func _draw() -> void:
 		_draw_parry_ready_flash()
 	if _parry_pulse_remaining > 0.0:
 		_draw_parry_pulse()
+	if _perfect_parry_flash_remaining > 0.0:
+		_draw_perfect_parry_flash()
 	if _ammo_warning_active:
 		_draw_ammo_warning()
 
@@ -268,6 +284,19 @@ func _draw_parry_pulse() -> void:
 	for index in range(10):
 		var direction := Vector2.RIGHT.rotated(TAU * float(index) / 10.0 + progress * 0.35)
 		draw_line(direction * body_radius * 0.7, direction * _parry_effect_radius * (0.7 + progress * 0.3), Color(0.68, 1.0, 1.0, alpha * 0.8), 2.0 + alpha * 2.0)
+
+
+func _draw_perfect_parry_flash() -> void:
+	var remaining_ratio: float = clamp(_perfect_parry_flash_remaining / _perfect_parry_flash_duration, 0.0, 1.0)
+	var progress: float = 1.0 - remaining_ratio
+	var alpha: float = remaining_ratio
+	var bloom_radius: float = lerp(_parry_perfect_radius * 0.8, _parry_effect_radius * 0.72, progress)
+	draw_circle(Vector2.ZERO, bloom_radius, Color(1.0, 1.0, 1.0, alpha * 0.2))
+	draw_arc(Vector2.ZERO, bloom_radius, 0.0, TAU, 56, Color(1.0, 1.0, 1.0, alpha), 5.5)
+	draw_arc(Vector2.ZERO, bloom_radius * 0.72, -PI * 0.2, TAU - PI * 0.2, 44, Color(1.0, 0.92, 0.36, alpha * 0.95), 4.0)
+	for index in range(14):
+		var direction := Vector2.RIGHT.rotated(TAU * float(index) / 14.0 + progress * 0.9)
+		draw_line(direction * (body_radius + 5.0), direction * (bloom_radius + 18.0), Color(1.0, 1.0, 0.85, alpha * 0.82), 2.5)
 
 
 func _draw_parry_ready_idle() -> void:

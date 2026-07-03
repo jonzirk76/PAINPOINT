@@ -83,9 +83,15 @@ var _boss_clear_delay_remaining: float = 0.0
 var _boss_clear_pending_status: String = ""
 var _ammo_refill_flash_remaining: float = 0.0
 var _ammo_refill_flash_duration: float = 0.48
+var _ammo_refill_perfect_flash_remaining: float = 0.0
+var _ammo_refill_perfect_flash_duration: float = 0.58
+var _perfect_parry_slowmo_until_msec: int = 0
+var _perfect_parry_slowmo_restore_scale: float = 1.0
 
 const DUNGEON_OPTION_COUNT := 2
 const BOSS_CLEAR_DELAY_SECONDS := 0.85
+const PERFECT_PARRY_TIME_SCALE := 0.24
+const PERFECT_PARRY_SLOWMO_SECONDS := 0.16
 
 
 func _ready() -> void:
@@ -96,11 +102,22 @@ func _ready() -> void:
 	_enter_level_select()
 
 
+func _exit_tree() -> void:
+	_stop_perfect_parry_slowmo()
+
+
 func _process(delta: float) -> void:
 	if _status == "BOSS_CLEARING":
 		_update_boss_clear_transition(delta)
+	_update_perfect_parry_slowmo()
+	var hud_feedback_changed := false
 	if _ammo_refill_flash_remaining > 0.0:
 		_ammo_refill_flash_remaining = max(_ammo_refill_flash_remaining - delta, 0.0)
+		hud_feedback_changed = true
+	if _ammo_refill_perfect_flash_remaining > 0.0:
+		_ammo_refill_perfect_flash_remaining = max(_ammo_refill_perfect_flash_remaining - delta, 0.0)
+		hud_feedback_changed = true
+	if hud_feedback_changed:
 		_update_hud()
 	if _is_gameplay_running():
 		_update_camera()
@@ -212,6 +229,8 @@ func _start_level(level_definition) -> void:
 	_last_parry_cooldown_remaining = 0.0
 	_last_parry_cooldown_duration = 0.0
 	_ammo_refill_flash_remaining = 0.0
+	_ammo_refill_perfect_flash_remaining = 0.0
+	_stop_perfect_parry_slowmo()
 	_attribute_modifiers = {}
 	_permanent_stats = []
 	if level_select_panel != null:
@@ -262,6 +281,8 @@ func _start_dungeon_run() -> void:
 	_last_parry_cooldown_remaining = 0.0
 	_last_parry_cooldown_duration = 0.0
 	_ammo_refill_flash_remaining = 0.0
+	_ammo_refill_perfect_flash_remaining = 0.0
+	_stop_perfect_parry_slowmo()
 	_attribute_modifiers = {}
 	_permanent_stats = []
 	if level_select_panel != null:
@@ -305,6 +326,8 @@ func _start_main_loop_run() -> void:
 	_last_parry_cooldown_remaining = 0.0
 	_last_parry_cooldown_duration = 0.0
 	_ammo_refill_flash_remaining = 0.0
+	_ammo_refill_perfect_flash_remaining = 0.0
+	_stop_perfect_parry_slowmo()
 	_attribute_modifiers = {}
 	_permanent_stats = []
 	if level_select_panel != null:
@@ -361,6 +384,8 @@ func _enter_level_select() -> void:
 	_run_seed = 0
 	_paused_previous_status = ""
 	_ammo_refill_flash_remaining = 0.0
+	_ammo_refill_perfect_flash_remaining = 0.0
+	_stop_perfect_parry_slowmo()
 	_set_all_enabled(false)
 	_clear_gameplay()
 	_clear_minimap()
@@ -405,6 +430,8 @@ func _set_all_enabled(value: bool) -> void:
 
 
 func _set_tree_paused(value: bool) -> void:
+	if value:
+		_stop_perfect_parry_slowmo()
 	_tree_pause_requested = value
 	if is_inside_tree():
 		get_tree().paused = value
@@ -539,19 +566,104 @@ func _on_player_parry_requested(origin: Vector2, effect_radius: float, perfect_r
 		return
 	var absorbed: Dictionary = projectile_manager.absorb_hostile_projectiles(origin, effect_radius, perfect_radius)
 	var absorbed_projectiles: Array = absorbed.get("absorbed_projectiles", [])
-	if not absorbed_projectiles.is_empty():
-		effects_manager.play_parry_absorbs(absorbed_projectiles, origin)
 	var ammo_awarded := int(absorbed.get("ammo_awarded", 0))
+	var perfect_count := int(absorbed.get("perfect_count", 0))
+	var was_perfect := perfect_count > 0
 	var ammo_added := 0
 	if ammo_awarded > 0:
 		ammo_added = upgrade_manager.add_ammo_to_active_upgrades(ammo_awarded)
 	if ammo_added > 0:
 		_ammo_refill_flash_remaining = _ammo_refill_flash_duration
+		if was_perfect:
+			_ammo_refill_perfect_flash_remaining = _ammo_refill_perfect_flash_duration
+		_update_hud()
+	if was_perfect:
+		player_manager.play_perfect_parry_response(effect_radius, perfect_radius)
+		_start_perfect_parry_slowmo()
+	if not absorbed_projectiles.is_empty():
+		_target_parry_absorbs_at_ammo_counters(absorbed_projectiles)
+		effects_manager.play_parry_absorbs(absorbed_projectiles, origin)
 	enemy_manager.apply_parry_pushback(origin, effect_radius, enemy_knockback)
 	_update_hud()
 
 
+func _target_parry_absorbs_at_ammo_counters(absorbed_projectiles: Array) -> void:
+	var targets := _get_ammo_counter_world_targets()
+	if targets.is_empty():
+		return
+	var seed_base: float = float(Time.get_ticks_msec() % 10000)
+	for index in range(absorbed_projectiles.size()):
+		var info = absorbed_projectiles[index]
+		if not (info is Dictionary):
+			continue
+		var target_position: Vector2 = targets[index % targets.size()]
+		var perfect := bool(info.get("perfect", false))
+		var jitter_angle: float = float(index) * 2.399963 + seed_base * 0.017
+		var jitter_distance: float = 4.0 + fposmod(seed_base + float(index) * 11.0, 10.0)
+		if perfect:
+			jitter_distance *= 0.55
+		info["target_position"] = target_position + Vector2.RIGHT.rotated(jitter_angle) * jitter_distance
+		info["arc_seed"] = seed_base + float(index) * 23.0
+		absorbed_projectiles[index] = info
+
+
+func _get_ammo_counter_world_targets() -> Array[Vector2]:
+	var targets: Array[Vector2] = []
+	if ammo_counter_panel == null:
+		return targets
+	for child in ammo_counter_panel.get_children():
+		var counter := child as Control
+		if counter == null:
+			continue
+		targets.append(_screen_to_world_position(counter.get_global_rect().get_center()))
+	if not targets.is_empty():
+		return targets
+	var fallback_count := 0
+	for state in upgrade_manager.get_active_effects():
+		if int(state.get("max_ammo", 0)) > 0:
+			fallback_count += 1
+	fallback_count = min(fallback_count, 5)
+	var panel_origin: Vector2 = ammo_counter_panel.get_global_rect().position
+	if panel_origin == Vector2.ZERO:
+		var viewport_size := Vector2(1280.0, 720.0)
+		if is_inside_tree():
+			viewport_size = get_viewport_rect().size
+			if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+				viewport_size = Vector2(1280.0, 720.0)
+		panel_origin = Vector2(viewport_size.x - 72.0, 104.0)
+	for index in range(fallback_count):
+		targets.append(_screen_to_world_position(panel_origin + Vector2(28.0, float(index) * 62.0 + 28.0)))
+	return targets
+
+
+func _screen_to_world_position(screen_position: Vector2) -> Vector2:
+	if not is_inside_tree():
+		return screen_position
+	return get_viewport().get_canvas_transform().affine_inverse() * screen_position
+
+
+func _start_perfect_parry_slowmo() -> void:
+	if _perfect_parry_slowmo_until_msec <= 0:
+		_perfect_parry_slowmo_restore_scale = Engine.time_scale
+	Engine.time_scale = min(max(_perfect_parry_slowmo_restore_scale, 0.01), PERFECT_PARRY_TIME_SCALE)
+	_perfect_parry_slowmo_until_msec = Time.get_ticks_msec() + roundi(PERFECT_PARRY_SLOWMO_SECONDS * 1000.0)
+
+
+func _update_perfect_parry_slowmo() -> void:
+	if _perfect_parry_slowmo_until_msec > 0 and Time.get_ticks_msec() >= _perfect_parry_slowmo_until_msec:
+		_stop_perfect_parry_slowmo()
+
+
+func _stop_perfect_parry_slowmo() -> void:
+	if _perfect_parry_slowmo_until_msec <= 0:
+		return
+	_perfect_parry_slowmo_until_msec = 0
+	Engine.time_scale = max(_perfect_parry_slowmo_restore_scale, 0.01)
+	_perfect_parry_slowmo_restore_scale = 1.0
+
+
 func _on_player_defeated(_player) -> void:
+	_stop_perfect_parry_slowmo()
 	_status = "DOWN"
 	_set_all_enabled(false)
 	_update_hud()
@@ -622,6 +734,7 @@ func _on_room_door_entered(direction: String) -> void:
 
 func _on_pause_requested() -> void:
 	if _is_gameplay_running():
+		_stop_perfect_parry_slowmo()
 		_paused_previous_status = _status
 		_status = "PAUSED"
 		_set_all_enabled(false)
@@ -742,6 +855,9 @@ func _update_ammo_counter_panel(active_effects: Array) -> void:
 		var refill_flash_ratio: float = 0.0
 		if _ammo_refill_flash_duration > 0.0:
 			refill_flash_ratio = clamp(_ammo_refill_flash_remaining / _ammo_refill_flash_duration, 0.0, 1.0)
+		var perfect_flash_ratio: float = 0.0
+		if _ammo_refill_perfect_flash_duration > 0.0:
+			perfect_flash_ratio = clamp(_ammo_refill_perfect_flash_remaining / _ammo_refill_perfect_flash_duration, 0.0, 1.0)
 		_add_ammo_counter_square(
 			String(effect.display_name),
 			int(state.get("ammo", 0)),
@@ -749,7 +865,8 @@ func _update_ammo_counter_panel(active_effects: Array) -> void:
 			_get_ammo_counter_color(effect),
 			_get_ammo_counter_icon(effect),
 			index,
-			refill_flash_ratio
+			refill_flash_ratio,
+			perfect_flash_ratio
 		)
 
 
@@ -773,15 +890,16 @@ func _update_ammo_warning(active_effects: Array) -> void:
 	player_manager.set_ammo_warning_state(true, "%s %d" % [lowest_icon, lowest_ammo], lowest_ratio)
 
 
-func _add_ammo_counter_square(display_name: String, ammo: int, max_ammo: int, fill_color: Color, icon_text: String, index: int, refill_flash_ratio: float = 0.0) -> void:
+func _add_ammo_counter_square(display_name: String, ammo: int, max_ammo: int, fill_color: Color, icon_text: String, index: int, refill_flash_ratio: float = 0.0, perfect_flash_ratio: float = 0.0) -> void:
 	var row := Control.new()
 	row.name = "AmmoCounter%d" % index
 	row.size = Vector2(56.0, 56.0)
 	row.pivot_offset = Vector2(28.0, 28.0)
 	var jump_wave: float = max(sin((1.0 - refill_flash_ratio) * PI), 0.0)
-	var jump: float = jump_wave * 10.0 * refill_flash_ratio
+	var perfect_jump_wave: float = max(sin((1.0 - perfect_flash_ratio) * PI), 0.0)
+	var jump: float = jump_wave * 10.0 * refill_flash_ratio + perfect_jump_wave * 20.0 * perfect_flash_ratio
 	row.position = Vector2(0.0, float(index) * 62.0 - jump)
-	row.scale = Vector2.ONE * (1.0 + refill_flash_ratio * 0.12)
+	row.scale = Vector2.ONE * (1.0 + refill_flash_ratio * 0.12 + perfect_flash_ratio * 0.18)
 	ammo_counter_panel.add_child(row)
 
 	var back := ColorRect.new()
@@ -791,6 +909,8 @@ func _add_ammo_counter_square(display_name: String, ammo: int, max_ammo: int, fi
 	back.color = Color(0.045, 0.05, 0.06, 0.92)
 	if refill_flash_ratio > 0.0:
 		back.color = back.color.lerp(Color(0.18, 0.17, 0.08, 0.98), refill_flash_ratio)
+	if perfect_flash_ratio > 0.0:
+		back.color = back.color.lerp(Color(1.0, 1.0, 1.0, 0.98), perfect_flash_ratio * 0.62)
 	row.add_child(back)
 
 	var ratio: float = clamp(float(ammo) / float(max_ammo), 0.0, 1.0)
@@ -802,7 +922,7 @@ func _add_ammo_counter_square(display_name: String, ammo: int, max_ammo: int, fi
 	fill.name = "Fill"
 	fill.position = Vector2(4.0, 52.0 - 48.0 * ratio)
 	fill.size = Vector2(48.0, 48.0 * ratio)
-	fill.color = Color(fill_color.r, fill_color.g, fill_color.b, 0.62 + refill_flash_ratio * 0.26)
+	fill.color = Color(fill_color.r, fill_color.g, fill_color.b, 0.62 + refill_flash_ratio * 0.22 + perfect_flash_ratio * 0.16)
 	row.add_child(fill)
 
 	if refill_flash_ratio > 0.0:
@@ -812,6 +932,13 @@ func _add_ammo_counter_square(display_name: String, ammo: int, max_ammo: int, fi
 		flash.size = Vector2(56.0, 56.0)
 		flash.color = Color(1.0, 1.0, 0.74, 0.28 * refill_flash_ratio)
 		row.add_child(flash)
+	if perfect_flash_ratio > 0.0:
+		var perfect_flash := ColorRect.new()
+		perfect_flash.name = "PerfectRefillFlash"
+		perfect_flash.position = Vector2.ZERO
+		perfect_flash.size = Vector2(56.0, 56.0)
+		perfect_flash.color = Color(1.0, 1.0, 1.0, 0.48 * perfect_flash_ratio)
+		row.add_child(perfect_flash)
 
 	var icon := Label.new()
 	icon.name = "Icon"
@@ -819,9 +946,9 @@ func _add_ammo_counter_square(display_name: String, ammo: int, max_ammo: int, fi
 	icon.size = Vector2(48.0, 26.0)
 	icon.text = icon_text
 	icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	icon.add_theme_font_size_override("font_size", 17 + roundi(refill_flash_ratio * 3.0))
-	if refill_flash_ratio > 0.0:
-		icon.add_theme_color_override("font_color", Color(1.0, 1.0, 0.72, 1.0))
+	icon.add_theme_font_size_override("font_size", 17 + roundi(refill_flash_ratio * 3.0 + perfect_flash_ratio * 3.0))
+	if refill_flash_ratio > 0.0 or perfect_flash_ratio > 0.0:
+		icon.add_theme_color_override("font_color", Color(1.0, 1.0, lerp(0.72, 1.0, perfect_flash_ratio), 1.0))
 	row.add_child(icon)
 
 	var count := Label.new()
@@ -830,9 +957,9 @@ func _add_ammo_counter_square(display_name: String, ammo: int, max_ammo: int, fi
 	count.size = Vector2(48.0, 20.0)
 	count.text = "%d" % ammo
 	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	count.add_theme_font_size_override("font_size", 13 + roundi(refill_flash_ratio * 2.0))
-	if refill_flash_ratio > 0.0:
-		count.add_theme_color_override("font_color", Color(1.0, 1.0, 0.82, 1.0))
+	count.add_theme_font_size_override("font_size", 13 + roundi(refill_flash_ratio * 2.0 + perfect_flash_ratio * 2.0))
+	if refill_flash_ratio > 0.0 or perfect_flash_ratio > 0.0:
+		count.add_theme_color_override("font_color", Color(1.0, 1.0, lerp(0.82, 1.0, perfect_flash_ratio), 1.0))
 	row.add_child(count)
 
 	if is_low:
