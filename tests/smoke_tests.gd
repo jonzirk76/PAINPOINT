@@ -93,6 +93,15 @@ const SFX_PATHS := [
 	"res://audio/room_entry.wav"
 ]
 
+const CHARACTER_SVG_PATHS := [
+	"res://art/characters/player_character.svg",
+	"res://art/characters/basic_enemy_chaser.svg",
+	"res://art/characters/fast_enemy_runner.svg",
+	"res://art/characters/tank_enemy_brute.svg",
+	"res://art/characters/shooter_enemy_orbiter.svg",
+	"res://art/characters/boss_enemy_overlord.svg"
+]
+
 const ROOM_PIECE_PATHS := [
 	"res://resources/rooms/start_square.tres",
 	"res://resources/rooms/combat_wide.tres",
@@ -113,6 +122,7 @@ func _init() -> void:
 	var failures: Array[String] = []
 	_test_architecture_rules(failures)
 	_test_presentation_settings(failures)
+	_test_character_svg_assets(failures)
 	_test_scripts_instantiate(failures)
 	_test_enemy_and_spawner_profiles(failures)
 	_test_level_resources(failures)
@@ -194,6 +204,20 @@ func _test_presentation_settings(failures: Array[String]) -> void:
 		failures.append("Window height override should be large enough for 4K displays.")
 	if String(ProjectSettings.get_setting("display/window/stretch/mode")) != "canvas_items":
 		failures.append("Stretch mode should scale canvas items for high-resolution displays.")
+
+
+func _test_character_svg_assets(failures: Array[String]) -> void:
+	for path in CHARACTER_SVG_PATHS:
+		if not FileAccess.file_exists(path):
+			failures.append("Missing character SVG asset: %s" % path)
+			continue
+		var file := FileAccess.open(path, FileAccess.READ)
+		if file == null:
+			failures.append("Character SVG asset could not be opened: %s" % path)
+			continue
+		var source := file.get_as_text()
+		if not source.contains("<svg") or not source.contains("viewBox=\"0 0 128 128\"") or not source.contains("</svg>"):
+			failures.append("Character SVG should use a complete 128x128 SVG document: %s" % path)
 
 
 func _test_scripts_instantiate(failures: Array[String]) -> void:

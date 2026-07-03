@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>Shooty Player Character</title>
+  <path d="M18 64 C18 39 37 20 62 20 C85 20 101 37 104 59 C106 76 99 94 84 103 C73 110 56 111 42 105 C27 98 18 83 18 64 Z" fill="#12334a" opacity="0.35"/>
+  <path d="M17 64 C17 38 37 18 63 18 C86 18 103 35 106 59 C109 79 99 98 81 107 C67 114 50 113 36 105 C24 98 17 83 17 64 Z" fill="#06111a"/>
+  <path d="M23 64 C23 42 40 25 63 25 C82 25 97 39 100 60 C102 76 94 92 79 99 C67 105 52 104 40 98 C29 92 23 79 23 64 Z" fill="#2c96f2"/>
+  <path d="M34 43 C43 32 63 28 78 34 C89 39 95 49 96 61 C88 55 74 52 60 54 C48 55 38 52 34 43 Z" fill="#7fd6ff" opacity="0.72"/>
+  <path d="M73 42 L114 64 L73 86 C82 75 82 53 73 42 Z" fill="#ffd94a"/>
+  <path d="M82 53 L102 64 L82 75 C86 68 86 60 82 53 Z" fill="#fff4a8"/>
+  <path d="M25 49 L8 39 L13 63 Z" fill="#1f5f96"/>
+  <path d="M25 79 L8 89 L13 65 Z" fill="#1f5f96"/>
+  <circle cx="56" cy="64" r="13" fill="#12456d"/>
+  <circle cx="56" cy="64" r="7" fill="#80e7ff"/>
+  <path d="M32 92 C44 105 66 109 81 99" fill="none" stroke="#8ff0ff" stroke-width="4" stroke-linecap="round" opacity="0.72"/>
+  <path d="M18 64 C18 38 38 19 63 19 C86 19 103 35 106 59 C109 79 99 98 81 107 C67 114 50 113 36 105 C24 98 18 83 18 64 Z" fill="none" stroke="#9ff6ff" stroke-width="3" opacity="0.65"/>
+</svg>

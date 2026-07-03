@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>Shooter Enemy Orbiter</title>
+  <path d="M64 18 C90 18 111 39 111 64 C111 89 90 110 64 110 C38 110 17 89 17 64 C17 39 38 18 64 18 Z" fill="#10081d"/>
+  <path d="M64 25 C86 25 103 42 103 64 C103 86 86 103 64 103 C42 103 25 86 25 64 C25 42 42 25 64 25 Z" fill="#7d45db"/>
+  <path d="M64 36 C80 36 92 48 92 64 C92 80 80 92 64 92 C48 92 36 80 36 64 C36 48 48 36 64 36 Z" fill="#2c164d"/>
+  <path d="M64 45 C75 45 83 53 83 64 C83 75 75 83 64 83 C53 83 45 75 45 64 C45 53 53 45 64 45 Z" fill="#b98cff"/>
+  <circle cx="64" cy="64" r="8" fill="#f7ecff"/>
+  <path d="M100 44 L123 36 L111 58 Z" fill="#4a2780"/>
+  <path d="M100 84 L123 92 L111 70 Z" fill="#4a2780"/>
+  <path d="M28 44 L5 36 L17 58 Z" fill="#4a2780"/>
+  <path d="M28 84 L5 92 L17 70 Z" fill="#4a2780"/>
+  <circle cx="104" cy="64" r="7" fill="#ffde5a"/>
+  <circle cx="24" cy="64" r="7" fill="#ffde5a"/>
+  <path d="M64 25 C86 25 103 42 103 64 C103 86 86 103 64 103 C42 103 25 86 25 64 C25 42 42 25 64 25 Z" fill="none" stroke="#e1caff" stroke-width="3" opacity="0.72"/>
+  <path d="M46 40 C57 31 78 33 88 47" fill="none" stroke="#f3dcff" stroke-width="5" stroke-linecap="round" opacity="0.45"/>
+</svg>
