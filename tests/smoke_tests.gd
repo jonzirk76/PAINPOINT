@@ -225,6 +225,13 @@ func _test_character_svg_assets(failures: Array[String]) -> void:
 				failures.append("Player SVG should keep separate top-body/gun and bottom-feet groups for animation.")
 			if not source.contains("id=\"left_foot\"") or not source.contains("id=\"right_foot\""):
 				failures.append("Player SVG should expose simple oval foot shapes for walking animation.")
+		if path.ends_with("player_character.svg") or path.ends_with("player_upper_body_gun.svg"):
+			if source.contains("ground_shadow"):
+				failures.append("Player SVG should not include a circular ground shadow or shield halo: %s" % path)
+			if not source.contains("id=\"forehead_bang\""):
+				failures.append("Player SVG should include a larger forehead bang shape: %s" % path)
+			if source.contains("id=\"mouth\""):
+				failures.append("Player SVG should not include a mouth shape: %s" % path)
 
 
 func _test_character_art_applied_to_entities(failures: Array[String]) -> void:
