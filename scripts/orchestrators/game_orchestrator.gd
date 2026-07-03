@@ -456,16 +456,54 @@ func _on_player_shoot_requested(origin: Vector2, direction: Vector2) -> void:
 
 func _on_projectile_hit(projectile, target: Node, packet) -> void:
 	audio_manager.play_bullet_impact()
-	combat_manager.resolve_projectile_hit(projectile, target, packet)
+	var impact_position := Vector2.ZERO
+	var impact_direction := Vector2.RIGHT
+	var impact_radius := 7.0
+	if projectile != null and is_instance_valid(projectile):
+		impact_position = projectile.global_position
+		impact_radius = float(projectile.body_radius)
+		if projectile.direction.length_squared() > 0.001:
+			impact_direction = projectile.direction
+	elif target != null and is_instance_valid(target):
+		impact_position = target.global_position
+	if target != null and target.is_in_group("player"):
+		effects_manager.play_projectile_impact(impact_position, impact_direction, impact_radius, false)
+		combat_manager.resolve_projectile_hit(projectile, target, packet)
+		return
+	var damage_landed := _apply_damage_to_target(target, packet)
+	var blocked := not damage_landed and _target_has_active_projectile_shield(target)
+	effects_manager.play_projectile_impact(impact_position, impact_direction, impact_radius, blocked)
+	if damage_landed:
+		_request_projectile_damage_side_effects(target, packet)
 
 
-func _on_damage_resolved(target: Node, packet) -> void:
+func _on_damage_resolved(target: Node, packet) -> bool:
+	return _apply_damage_to_target(target, packet)
+
+
+func _apply_damage_to_target(target: Node, packet) -> bool:
+	if target == null or packet == null or not is_instance_valid(target):
+		return false
+	if target.is_in_group("enemies"):
+		return bool(enemy_manager.apply_damage(target, packet))
+	elif target.is_in_group("spawners"):
+		return bool(spawner_manager.apply_damage(target, packet))
+	return false
+
+
+func _request_projectile_damage_side_effects(target: Node, packet) -> void:
 	if target == null or packet == null or not is_instance_valid(target):
 		return
-	if target.is_in_group("enemies"):
-		enemy_manager.apply_damage(target, packet)
-	elif target.is_in_group("spawners"):
-		spawner_manager.apply_damage(target, packet)
+	if packet.explosion_radius > 0.0 and packet.explosion_damage_multiplier > 0.0:
+		_on_explosion_requested(target.global_position, packet)
+	if packet.chain_count > 0 and packet.chain_radius > 0.0:
+		_on_chain_requested(target, packet)
+
+
+func _target_has_active_projectile_shield(target: Node) -> bool:
+	if target == null or not is_instance_valid(target) or not target.has_method("is_projectile_shield_active"):
+		return false
+	return bool(target.is_projectile_shield_active())
 
 
 func _on_chain_requested(origin_target: Node, packet) -> void:

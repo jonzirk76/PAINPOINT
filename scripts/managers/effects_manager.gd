@@ -4,6 +4,7 @@ class_name EffectsManager
 @export var chain_lightning_scene: PackedScene = preload("res://scenes/entities/chain_lightning_effect.tscn")
 @export var explosion_scene: PackedScene = preload("res://scenes/entities/explosion_effect.tscn")
 @export var parry_absorb_scene: PackedScene = preload("res://scenes/entities/parry_absorb_effect.tscn")
+@export var projectile_impact_scene: PackedScene = preload("res://scenes/entities/projectile_impact_effect.tscn")
 @export var max_active_effects: int = 80
 
 var enabled: bool = false
@@ -58,6 +59,21 @@ func play_explosion(spawn_position: Vector2, radius: float, lifetime: float = -1
 
 func play_spawner_explosion(spawn_position: Vector2, radius: float) -> void:
 	play_explosion(spawn_position, radius, 0.55)
+
+
+func play_projectile_impact(spawn_position: Vector2, direction: Vector2, radius: float = 7.0, blocked: bool = false) -> void:
+	if not enabled:
+		return
+	_trim_effects()
+	var effect = projectile_impact_scene.instantiate()
+	effect.process_mode = Node.PROCESS_MODE_ALWAYS
+	if _effect_layer != null:
+		_effect_layer.add_child(effect)
+	else:
+		add_child(effect)
+	effect.initialize(spawn_position, direction, radius, blocked)
+	effect.expired.connect(_on_effect_expired)
+	_effects.append(effect)
 
 
 func play_parry_absorbs(absorbed_projectiles: Array, default_target_position: Vector2) -> void:

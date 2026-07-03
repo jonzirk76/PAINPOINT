@@ -28,6 +28,9 @@ signal shot_ready(spawner, origin: Vector2, direction: Vector2, shot_config: Dic
 @export var preferred_distance: float = 340.0
 @export var distance_band: float = 85.0
 @export var strafe_speed: float = 8.0
+@export var projectile_shield_lead_seconds: float = 0.72
+@export var projectile_shield_after_spawn_seconds: float = 0.34
+@export var projectile_shield_radius_bonus: float = 14.0
 @export var arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 @export var arena_shape: int = 0
 @export var wall_rects: Array[Rect2] = []
@@ -41,6 +44,8 @@ var _hit_flash_remaining: float = 0.0
 var _is_destroyed: bool = false
 var _strafe_sign: float = 1.0
 var _collision_shape: CollisionShape2D = null
+var _projectile_shield_remaining: float = 0.0
+var _projectile_shield_block_flash_remaining: float = 0.0
 
 
 func _init() -> void:
@@ -65,9 +70,12 @@ func _process(delta: float) -> void:
 	if _hit_flash_remaining > 0.0:
 		_hit_flash_remaining = max(_hit_flash_remaining - delta, 0.0)
 		queue_redraw()
+	_update_projectile_shield(delta)
 	if _is_destroyed or not active:
 		return
 	_timer -= delta
+	if _timer <= projectile_shield_lead_seconds:
+		activate_projectile_shield(max(_timer, 0.0) + projectile_shield_after_spawn_seconds)
 	if _timer <= 0.0:
 		_timer = spawn_interval
 		spawn_ready.emit(self, global_position)
@@ -150,9 +158,11 @@ func set_arena_definition(bounds: Rect2, shape: int, walls: Array = []) -> void:
 	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
 
 
-func take_damage(packet) -> void:
+func take_damage(packet) -> bool:
 	if packet == null or health <= 0 or _is_destroyed:
-		return
+		return false
+	if blocks_projectile_damage(packet):
+		return false
 	var old_health := health
 	health = max(health - max(packet.damage, 0), 0)
 	_hit_flash_remaining = 0.18
@@ -166,6 +176,28 @@ func take_damage(packet) -> void:
 		velocity = Vector2.ZERO
 		remove_from_group("spawners")
 		health_depleted.emit(self)
+	return true
+
+
+func activate_projectile_shield(duration: float) -> void:
+	if duration <= 0.0 or _is_destroyed:
+		return
+	_projectile_shield_remaining = max(_projectile_shield_remaining, duration)
+	queue_redraw()
+
+
+func is_projectile_shield_active() -> bool:
+	return _projectile_shield_remaining > 0.0 and not _is_destroyed
+
+
+func blocks_projectile_damage(packet) -> bool:
+	if packet == null or not is_projectile_shield_active():
+		return false
+	if String(packet.projectile_kind) == "hostile":
+		return false
+	_projectile_shield_block_flash_remaining = 0.18
+	queue_redraw()
+	return true
 
 
 func _draw() -> void:
@@ -188,6 +220,8 @@ func _draw() -> void:
 	draw_colored_polygon(base_points, draw_base_color)
 	draw_polyline(_closed_points(base_points), Color(0.08, 0.06, 0.1), 3.0, true)
 	_draw_type_details(draw_core_color)
+	if is_projectile_shield_active() or _projectile_shield_block_flash_remaining > 0.0:
+		_draw_projectile_shield()
 	draw_arc(Vector2.ZERO, body_radius * 0.38, 0.0, TAU * health_ratio, 28, accent_color, 4.0)
 	var damage_level := 1.0 - health_ratio
 	if damage_level > 0.22:
@@ -243,6 +277,15 @@ func _draw_type_details(draw_core_color: Color) -> void:
 			draw_circle(Vector2.ZERO, body_radius * 0.28, draw_core_color)
 
 
+func _draw_projectile_shield() -> void:
+	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.016)
+	var block_ratio: float = clamp(_projectile_shield_block_flash_remaining / 0.18, 0.0, 1.0)
+	var radius: float = body_radius + projectile_shield_radius_bonus + pulse * 2.0 + block_ratio * 4.0
+	draw_circle(Vector2.ZERO, radius, Color(0.28, 0.9, 1.0, 0.09 + block_ratio * 0.12))
+	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 44, Color(0.52, 1.0, 0.95, 0.58 + block_ratio * 0.32), 3.0 + block_ratio * 1.5)
+	draw_arc(Vector2.ZERO, radius * 0.82, PI * 0.12, PI * 1.88, 36, Color(1.0, 1.0, 0.78, 0.36 + block_ratio * 0.34), 2.0)
+
+
 func _try_emit_shot() -> void:
 	var to_target := target_position - global_position
 	if to_target.length_squared() <= 4.0:
@@ -262,6 +305,16 @@ func _try_emit_shot() -> void:
 		"spread_angle_degrees": shot_spread_degrees
 	}
 	shot_ready.emit(self, shot_origin, shot_direction, shot_config)
+
+
+func _update_projectile_shield(delta: float) -> void:
+	var had_visual := _projectile_shield_remaining > 0.0 or _projectile_shield_block_flash_remaining > 0.0
+	if _projectile_shield_remaining > 0.0:
+		_projectile_shield_remaining = max(_projectile_shield_remaining - delta, 0.0)
+	if _projectile_shield_block_flash_remaining > 0.0:
+		_projectile_shield_block_flash_remaining = max(_projectile_shield_block_flash_remaining - delta, 0.0)
+	if had_visual or _projectile_shield_remaining > 0.0 or _projectile_shield_block_flash_remaining > 0.0:
+		queue_redraw()
 
 
 func _get_general_velocity() -> Vector2:

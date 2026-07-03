@@ -147,17 +147,17 @@ func _emit_initial_spawn_requests() -> void:
 			projected_enemy_count += 1
 
 
-func apply_damage(target: Node, packet) -> void:
+func apply_damage(target: Node, packet) -> bool:
 	if target == null or packet == null or not is_instance_valid(target):
-		return
+		return false
 	if not target.is_in_group("spawners") or not target.has_method("take_damage"):
-		return
+		return false
 	if not _spawners.has(target):
-		return
+		return false
 	var damage_packet = packet
 	if _should_apply_pressure_damage(target, packet):
 		damage_packet = packet.copy_with_damage_bonus(pressure_damage_bonus)
-	target.take_damage(damage_packet)
+	return bool(target.take_damage(damage_packet))
 
 
 func get_nearby_spawners(origin: Vector2, radius: float, excluded: Array[Node]) -> Array:
