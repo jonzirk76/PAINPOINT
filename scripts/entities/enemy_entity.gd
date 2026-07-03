@@ -47,6 +47,7 @@ var _death_duration: float = 0.34
 var _shot_cooldown_remaining: float = 0.0
 var _strafe_sign: float = 1.0
 var _visual_kind: String = "basic"
+var _visual_direction: Vector2 = Vector2.RIGHT
 
 
 func _init() -> void:
@@ -115,13 +116,14 @@ func _physics_process(delta: float) -> void:
 	var intent_velocity := _get_ranged_velocity(to_target) if behavior_kind == "shooter" or behavior_kind == "boss" else _get_chaser_velocity(to_target)
 	_try_emit_shot(to_target)
 	velocity = intent_velocity + _knockback_velocity + _crowd_separation_velocity
+	_update_visual_direction(velocity)
 	_knockback_velocity = _knockback_velocity.move_toward(Vector2.ZERO, 520.0 * delta)
 	_crowd_separation_velocity = _crowd_separation_velocity.move_toward(Vector2.ZERO, 900.0 * delta)
 	move_and_slide()
 	if (behavior_kind == "shooter" or behavior_kind == "boss") and get_slide_collision_count() > 0:
 		_strafe_sign *= -1.0
 	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
-	if behavior_kind == "shooter" or behavior_kind == "boss" or _hit_flash_remaining > 0.0 or _knockback_velocity.length_squared() > 1.0:
+	if velocity.length_squared() > 1.0 or behavior_kind == "shooter" or behavior_kind == "boss" or _hit_flash_remaining > 0.0 or _knockback_velocity.length_squared() > 1.0:
 		queue_redraw()
 
 
@@ -235,16 +237,15 @@ func _get_visual_scale() -> float:
 
 
 func _get_visual_rotation() -> float:
-	var direction := Vector2.RIGHT
-	if behavior_kind == "shooter" or behavior_kind == "boss":
-		direction = target_position - global_position
-	elif velocity.length_squared() > 1.0:
-		direction = velocity
-	elif target_position.distance_squared_to(global_position) > 1.0:
-		direction = target_position - global_position
-	if direction.length_squared() <= 0.001:
-		direction = Vector2.RIGHT
-	return direction.angle()
+	if _visual_direction.length_squared() <= 0.001:
+		return 0.0
+	return _visual_direction.angle()
+
+
+func _update_visual_direction(movement: Vector2) -> void:
+	if movement.length_squared() <= 1.0:
+		return
+	_visual_direction = movement.normalized()
 
 
 func _get_visual_kind(profile) -> String:

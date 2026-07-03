@@ -262,6 +262,10 @@ func _test_character_art_applied_to_entities(failures: Array[String]) -> void:
 	]:
 		if not enemy_source.contains(path):
 			failures.append("EnemyEntity should draw character SVG asset: %s" % path)
+	if not enemy_source.contains("_visual_direction") or not enemy_source.contains("_update_visual_direction(velocity)"):
+		failures.append("EnemyEntity should rotate character art using the last meaningful movement direction.")
+	if not enemy_source.contains("velocity.length_squared() > 1.0"):
+		failures.append("EnemyEntity should redraw moving enemies so movement-facing rotation updates.")
 
 
 func _read_text(path: String) -> String:
