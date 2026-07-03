@@ -253,6 +253,8 @@ func _test_character_art_applied_to_entities(failures: Array[String]) -> void:
 		failures.append("PlayerEntity should rotate the separate arms/gun sprite using the normalized aim direction.")
 	if not player_source.contains("PLAYER_ARMS_GUN_LEFT_TEXTURE") or not player_source.contains("(-aim).angle()"):
 		failures.append("PlayerEntity should use folded left-facing weapon art so left aim points with the shot direction.")
+	if not player_source.contains("body_radius + 13.0") or player_source.contains("sparkle_center"):
+		failures.append("PlayerEntity should use a circular barrier effect, not a pistol glint, when parry is ready.")
 	var enemy_source := _read_text("res://scripts/entities/enemy_entity.gd")
 	for path in [
 		"res://art/characters/basic_enemy_chaser.svg",

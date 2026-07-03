@@ -354,15 +354,9 @@ func _draw_perfect_parry_flash() -> void:
 
 func _draw_parry_ready_idle() -> void:
 	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.012)
-	var alpha: float = 0.42 + pulse * 0.38
-	var aim := aim_direction.normalized()
-	if aim.length_squared() <= 0.001:
-		aim = Vector2.RIGHT
-	var sparkle_center := aim * (body_radius + 18.0)
-	var side := aim.orthogonal()
-	draw_line(sparkle_center - side * 5.0, sparkle_center + side * 5.0, Color(0.7, 1.0, 1.0, alpha), 2.0)
-	draw_line(sparkle_center - aim * 5.0, sparkle_center + aim * 5.0, Color(1.0, 1.0, 0.72, alpha), 2.0)
-	draw_circle(sparkle_center, 2.0 + pulse * 1.2, Color(1.0, 1.0, 1.0, alpha * 0.8))
+	var alpha: float = 0.34 + pulse * 0.34
+	draw_arc(Vector2.ZERO, body_radius + 13.0, 0.0, TAU, 32, Color(0.55, 1.0, 0.95, alpha), 2.5)
+	draw_arc(Vector2.ZERO, body_radius + 18.0, PI * 0.15, PI * 1.85, 32, Color(1.0, 1.0, 0.72, alpha * 0.7), 2.0)
 
 
 func _draw_parry_ready_flash() -> void:
