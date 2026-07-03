@@ -218,6 +218,11 @@ func _test_character_svg_assets(failures: Array[String]) -> void:
 		var source := file.get_as_text()
 		if not source.contains("<svg") or not source.contains("viewBox=\"0 0 128 128\"") or not source.contains("</svg>"):
 			failures.append("Character SVG should use a complete 128x128 SVG document: %s" % path)
+		if path.ends_with("player_character.svg"):
+			if not source.contains("id=\"bottom_half_feet\"") or not source.contains("id=\"top_half_body_and_gun\""):
+				failures.append("Player SVG should keep separate top-body/gun and bottom-feet groups for animation.")
+			if not source.contains("id=\"left_foot\"") or not source.contains("id=\"right_foot\""):
+				failures.append("Player SVG should expose simple oval foot shapes for walking animation.")
 
 
 func _test_scripts_instantiate(failures: Array[String]) -> void:
