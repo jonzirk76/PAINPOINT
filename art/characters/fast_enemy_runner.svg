@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>Fast Enemy Runner</title>
+  <path d="M13 44 C31 39 48 41 65 50 L102 27 L92 57 L116 64 L92 71 L102 101 L65 78 C48 87 31 89 13 84 C29 75 32 53 13 44 Z" fill="#071712"/>
+  <path d="M21 48 C36 45 50 47 64 55 L91 38 L84 59 L105 64 L84 69 L91 90 L64 73 C50 81 36 83 21 80 C34 71 36 57 21 48 Z" fill="#39d67a"/>
+  <path d="M38 56 C49 50 66 54 79 64 C66 74 49 78 38 72 C43 66 43 62 38 56 Z" fill="#c6ff58"/>
+  <path d="M69 49 L91 38 L84 59 L105 64 L84 69 L91 90 L69 79 C80 70 80 58 69 49 Z" fill="#00a6ff"/>
+  <circle cx="56" cy="64" r="7" fill="#052b24"/>
+  <circle cx="58" cy="64" r="3" fill="#ffffff"/>
+  <path d="M4 50 L28 56 M1 64 L26 64 M4 78 L28 72" fill="none" stroke="#a8ff7a" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
+  <path d="M21 48 C36 45 50 47 64 55 L91 38 L84 59 L105 64 L84 69 L91 90 L64 73 C50 81 36 83 21 80" fill="none" stroke="#e8ffd0" stroke-width="3" stroke-linejoin="round" opacity="0.7"/>
+</svg>

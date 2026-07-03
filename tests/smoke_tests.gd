@@ -93,6 +93,19 @@ const SFX_PATHS := [
 	"res://audio/room_entry.wav"
 ]
 
+const CHARACTER_SVG_PATHS := [
+	"res://art/characters/player_character.svg",
+	"res://art/characters/player_body.svg",
+	"res://art/characters/player_arms_gun.svg",
+	"res://art/characters/player_arms_gun_left.svg",
+	"res://art/characters/player_upper_body_gun.svg",
+	"res://art/characters/basic_enemy_chaser.svg",
+	"res://art/characters/fast_enemy_runner.svg",
+	"res://art/characters/tank_enemy_brute.svg",
+	"res://art/characters/shooter_enemy_orbiter.svg",
+	"res://art/characters/boss_enemy_overlord.svg"
+]
+
 const ROOM_PIECE_PATHS := [
 	"res://resources/rooms/start_square.tres",
 	"res://resources/rooms/combat_wide.tres",
@@ -113,6 +126,8 @@ func _init() -> void:
 	var failures: Array[String] = []
 	_test_architecture_rules(failures)
 	_test_presentation_settings(failures)
+	_test_character_svg_assets(failures)
+	_test_character_art_applied_to_entities(failures)
 	_test_scripts_instantiate(failures)
 	_test_enemy_and_spawner_profiles(failures)
 	_test_level_resources(failures)
@@ -194,6 +209,75 @@ func _test_presentation_settings(failures: Array[String]) -> void:
 		failures.append("Window height override should be large enough for 4K displays.")
 	if String(ProjectSettings.get_setting("display/window/stretch/mode")) != "canvas_items":
 		failures.append("Stretch mode should scale canvas items for high-resolution displays.")
+
+
+func _test_character_svg_assets(failures: Array[String]) -> void:
+	for path in CHARACTER_SVG_PATHS:
+		if not FileAccess.file_exists(path):
+			failures.append("Missing character SVG asset: %s" % path)
+			continue
+		var file := FileAccess.open(path, FileAccess.READ)
+		if file == null:
+			failures.append("Character SVG asset could not be opened: %s" % path)
+			continue
+		var source := file.get_as_text()
+		if not source.contains("<svg") or not source.contains("viewBox=\"0 0 128 128\"") or not source.contains("</svg>"):
+			failures.append("Character SVG should use a complete 128x128 SVG document: %s" % path)
+		if path.ends_with("player_character.svg"):
+			if not source.contains("id=\"bottom_half_feet\"") or not source.contains("id=\"top_half_body_and_gun\""):
+				failures.append("Player SVG should keep separate top-body/gun and bottom-feet groups for animation.")
+			if not source.contains("id=\"left_foot\"") or not source.contains("id=\"right_foot\""):
+				failures.append("Player SVG should expose simple oval foot shapes for walking animation.")
+		if path.contains("/player_"):
+			if source.contains("ground_shadow"):
+				failures.append("Player SVG should not include a circular ground shadow or shield halo: %s" % path)
+			if source.contains("id=\"mouth\""):
+				failures.append("Player SVG should not include a mouth shape: %s" % path)
+		if path.ends_with("player_character.svg") or path.ends_with("player_body.svg") or path.ends_with("player_upper_body_gun.svg"):
+			if not source.contains("id=\"forehead_bang\""):
+				failures.append("Player SVG should include a larger forehead bang shape: %s" % path)
+		if path.contains("player_arms_gun"):
+			if not source.contains("id=\"arms_and_gun\""):
+				failures.append("Player arms/gun SVG should expose an arms_and_gun group.")
+
+
+func _test_character_art_applied_to_entities(failures: Array[String]) -> void:
+	var player_source := _read_text("res://scripts/entities/player_entity.gd")
+	if not player_source.contains("res://art/characters/player_body.svg"):
+		failures.append("PlayerEntity should draw the upright body SVG asset.")
+	if not player_source.contains("res://art/characters/player_arms_gun.svg"):
+		failures.append("PlayerEntity should draw the separate arms/gun SVG asset.")
+	if not player_source.contains("_draw_player_walk_feet"):
+		failures.append("PlayerEntity should draw animated oval feet separately from the upper-body art.")
+	if not player_source.contains("foot_anchor := Vector2.DOWN") or not player_source.contains("body_radius * 0.78"):
+		failures.append("PlayerEntity should anchor walking feet lower on the upright body.")
+	if not player_source.contains("PLAYER_ARMS_GUN_TEXTURE") or not player_source.contains("aim.angle()"):
+		failures.append("PlayerEntity should rotate the separate arms/gun sprite using the normalized aim direction.")
+	if not player_source.contains("PLAYER_ARMS_GUN_LEFT_TEXTURE") or not player_source.contains("(-aim).angle()"):
+		failures.append("PlayerEntity should use folded left-facing weapon art so left aim points with the shot direction.")
+	if not player_source.contains("body_radius + 13.0") or player_source.contains("sparkle_center"):
+		failures.append("PlayerEntity should use a circular barrier effect, not a pistol glint, when parry is ready.")
+	var enemy_source := _read_text("res://scripts/entities/enemy_entity.gd")
+	for path in [
+		"res://art/characters/basic_enemy_chaser.svg",
+		"res://art/characters/fast_enemy_runner.svg",
+		"res://art/characters/tank_enemy_brute.svg",
+		"res://art/characters/shooter_enemy_orbiter.svg",
+		"res://art/characters/boss_enemy_overlord.svg"
+	]:
+		if not enemy_source.contains(path):
+			failures.append("EnemyEntity should draw character SVG asset: %s" % path)
+	if not enemy_source.contains("_visual_direction") or not enemy_source.contains("_update_visual_direction(velocity)"):
+		failures.append("EnemyEntity should rotate character art using the last meaningful movement direction.")
+	if not enemy_source.contains("velocity.length_squared() > 1.0"):
+		failures.append("EnemyEntity should redraw moving enemies so movement-facing rotation updates.")
+
+
+func _read_text(path: String) -> String:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return ""
+	return file.get_as_text()
 
 
 func _test_scripts_instantiate(failures: Array[String]) -> void:

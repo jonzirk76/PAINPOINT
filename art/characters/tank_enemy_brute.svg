@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>Tank Enemy Brute</title>
+  <path d="M23 31 L64 13 L105 31 L116 64 L105 97 L64 115 L23 97 L12 64 Z" fill="#0c0d12"/>
+  <path d="M29 36 L64 21 L99 36 L108 64 L99 92 L64 107 L29 92 L20 64 Z" fill="#5d6572"/>
+  <path d="M37 43 L64 31 L91 43 L98 64 L91 85 L64 97 L37 85 L30 64 Z" fill="#9aa3ad"/>
+  <path d="M31 36 L18 20 L39 28 Z" fill="#323844"/>
+  <path d="M97 36 L110 20 L89 28 Z" fill="#323844"/>
+  <path d="M31 92 L18 108 L39 100 Z" fill="#323844"/>
+  <path d="M97 92 L110 108 L89 100 Z" fill="#323844"/>
+  <path d="M40 53 L55 48 L50 72 L34 76 Z" fill="#303642"/>
+  <path d="M88 53 L73 48 L78 72 L94 76 Z" fill="#303642"/>
+  <rect x="52" y="38" width="24" height="52" rx="10" fill="#2b303b"/>
+  <rect x="57" y="44" width="14" height="40" rx="7" fill="#e04859"/>
+  <path d="M31 64 H19 M109 64 H97" fill="none" stroke="#e6eef2" stroke-width="6" stroke-linecap="round"/>
+  <path d="M37 43 L64 31 L91 43 M37 85 L64 97 L91 85" fill="none" stroke="#d7eef2" stroke-width="4" stroke-linecap="round" opacity="0.65"/>
+</svg>

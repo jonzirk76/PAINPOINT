@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>Basic Enemy Chaser</title>
+  <path d="M64 15 L75 34 L98 27 L92 51 L115 64 L92 77 L98 101 L75 94 L64 113 L53 94 L30 101 L36 77 L13 64 L36 51 L30 27 L53 34 Z" fill="#160b12"/>
+  <path d="M64 22 L73 39 L92 33 L87 53 L107 64 L87 75 L92 95 L73 89 L64 106 L55 89 L36 95 L41 75 L21 64 L41 53 L36 33 L55 39 Z" fill="#d83b42"/>
+  <path d="M39 54 C46 38 63 30 79 37 C93 43 99 58 94 73 C89 89 72 98 55 91 C41 85 34 70 39 54 Z" fill="#ff6b5e"/>
+  <path d="M45 48 C55 36 76 35 88 50 C79 46 66 46 54 51 C51 52 48 52 45 48 Z" fill="#ffc0a1" opacity="0.55"/>
+  <circle cx="54" cy="61" r="7" fill="#2b0808"/>
+  <circle cx="77" cy="61" r="7" fill="#2b0808"/>
+  <circle cx="55" cy="60" r="3" fill="#ffe15a"/>
+  <circle cx="78" cy="60" r="3" fill="#ffe15a"/>
+  <path d="M47 81 C58 89 73 89 84 80" fill="none" stroke="#4a0a0a" stroke-width="5" stroke-linecap="round"/>
+  <path d="M13 64 L35 54 M13 64 L35 74 M115 64 L93 54 M115 64 L93 74" fill="none" stroke="#ff9a66" stroke-width="4" stroke-linecap="round"/>
+</svg>

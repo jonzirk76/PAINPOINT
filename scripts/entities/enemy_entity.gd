@@ -6,6 +6,12 @@ signal health_depleted(enemy)
 signal death_animation_finished(enemy)
 signal shot_ready(enemy, origin: Vector2, direction: Vector2, shot_config: Dictionary)
 
+const BASIC_ENEMY_TEXTURE := preload("res://art/characters/basic_enemy_chaser.svg")
+const FAST_ENEMY_TEXTURE := preload("res://art/characters/fast_enemy_runner.svg")
+const TANK_ENEMY_TEXTURE := preload("res://art/characters/tank_enemy_brute.svg")
+const SHOOTER_ENEMY_TEXTURE := preload("res://art/characters/shooter_enemy_orbiter.svg")
+const BOSS_ENEMY_TEXTURE := preload("res://art/characters/boss_enemy_overlord.svg")
+
 @export var max_health: int = 3
 @export var speed: float = 85.0
 @export var contact_damage: int = 1
@@ -40,6 +46,8 @@ var _death_elapsed: float = 0.0
 var _death_duration: float = 0.34
 var _shot_cooldown_remaining: float = 0.0
 var _strafe_sign: float = 1.0
+var _visual_kind: String = "basic"
+var _visual_direction: Vector2 = Vector2.RIGHT
 
 
 func _init() -> void:
@@ -82,6 +90,7 @@ func initialize(profile) -> void:
 	projectile_radius = profile.projectile_radius
 	shot_projectile_count = profile.shot_projectile_count
 	shot_spread_degrees = profile.shot_spread_degrees
+	_visual_kind = _get_visual_kind(profile)
 	health = max_health
 	_shot_cooldown_remaining = shot_cooldown * 0.65
 
@@ -107,13 +116,14 @@ func _physics_process(delta: float) -> void:
 	var intent_velocity := _get_ranged_velocity(to_target) if behavior_kind == "shooter" or behavior_kind == "boss" else _get_chaser_velocity(to_target)
 	_try_emit_shot(to_target)
 	velocity = intent_velocity + _knockback_velocity + _crowd_separation_velocity
+	_update_visual_direction(velocity)
 	_knockback_velocity = _knockback_velocity.move_toward(Vector2.ZERO, 520.0 * delta)
 	_crowd_separation_velocity = _crowd_separation_velocity.move_toward(Vector2.ZERO, 900.0 * delta)
 	move_and_slide()
 	if (behavior_kind == "shooter" or behavior_kind == "boss") and get_slide_collision_count() > 0:
 		_strafe_sign *= -1.0
 	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
-	if behavior_kind == "shooter" or behavior_kind == "boss" or _hit_flash_remaining > 0.0 or _knockback_velocity.length_squared() > 1.0:
+	if velocity.length_squared() > 1.0 or behavior_kind == "shooter" or behavior_kind == "boss" or _hit_flash_remaining > 0.0 or _knockback_velocity.length_squared() > 1.0:
 		queue_redraw()
 
 
@@ -173,11 +183,10 @@ func _draw() -> void:
 	var health_ratio := 0.0
 	if max_health > 0:
 		health_ratio = float(health) / float(max_health)
-	var draw_color := body_color
+	var draw_color := Color.WHITE
 	if _hit_flash_remaining > 0.0:
 		draw_color = Color(1.0, 0.92, 0.86)
-	draw_circle(Vector2.ZERO, body_radius, draw_color)
-	draw_arc(Vector2.ZERO, body_radius + 2.0, 0.0, TAU, 24, Color(0.22, 0.05, 0.05), 2.0)
+	_draw_enemy_character_art(draw_color)
 	draw_line(Vector2(-body_radius, -body_radius - 8.0), Vector2(-body_radius + body_radius * 2.0 * health_ratio, -body_radius - 8.0), Color(0.4, 1.0, 0.35), 3.0)
 	if behavior_kind == "shooter" or behavior_kind == "boss":
 		var aim := (target_position - global_position).normalized()
@@ -185,11 +194,70 @@ func _draw() -> void:
 			aim = Vector2.RIGHT
 		if behavior_kind == "boss":
 			draw_arc(Vector2.ZERO, body_radius + 7.0, 0.0, TAU, 36, accent_color, 4.0)
-			draw_circle(-aim * body_radius * 0.22, body_radius * 0.25, Color(0.05, 0.04, 0.06))
-		draw_line(Vector2.ZERO, aim * (body_radius + 14.0), accent_color, 5.0)
-		draw_circle(aim * (body_radius + 14.0), 4.5, Color(0.06, 0.05, 0.08))
-	else:
-		draw_circle(Vector2.ZERO, body_radius * 0.34, accent_color)
+		draw_line(Vector2.ZERO, aim * (body_radius + 14.0), accent_color, 3.0)
+		draw_circle(aim * (body_radius + 14.0), 3.5, Color(0.06, 0.05, 0.08))
+	if _hit_flash_remaining > 0.0:
+		draw_circle(Vector2.ZERO, body_radius * 1.08, Color(1.0, 0.95, 0.82, 0.28))
+		draw_arc(Vector2.ZERO, body_radius + 4.0, 0.0, TAU, 28, Color(1.0, 1.0, 1.0, 0.8), 3.0)
+
+
+func _draw_enemy_character_art(tint: Color) -> void:
+	var texture := _get_visual_texture()
+	if texture == null:
+		return
+	var visual_radius: float = body_radius * _get_visual_scale()
+	var rotation: float = _get_visual_rotation()
+	draw_set_transform(Vector2.ZERO, rotation, Vector2.ONE)
+	draw_texture_rect(texture, Rect2(Vector2(-visual_radius, -visual_radius), Vector2(visual_radius * 2.0, visual_radius * 2.0)), false, tint)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+func _get_visual_texture() -> Texture2D:
+	match _visual_kind:
+		"fast":
+			return FAST_ENEMY_TEXTURE
+		"tank":
+			return TANK_ENEMY_TEXTURE
+		"shooter":
+			return SHOOTER_ENEMY_TEXTURE
+		"boss":
+			return BOSS_ENEMY_TEXTURE
+	return BASIC_ENEMY_TEXTURE
+
+
+func _get_visual_scale() -> float:
+	match _visual_kind:
+		"fast":
+			return 2.0
+		"tank":
+			return 2.05
+		"boss":
+			return 1.55
+	return 1.9
+
+
+func _get_visual_rotation() -> float:
+	if _visual_direction.length_squared() <= 0.001:
+		return 0.0
+	return _visual_direction.angle()
+
+
+func _update_visual_direction(movement: Vector2) -> void:
+	if movement.length_squared() <= 1.0:
+		return
+	_visual_direction = movement.normalized()
+
+
+func _get_visual_kind(profile) -> String:
+	if String(profile.behavior_kind) == "boss":
+		return "boss"
+	if String(profile.behavior_kind) == "shooter":
+		return "shooter"
+	if float(profile.knockback_multiplier) <= 0.0 or int(profile.max_health) >= 8 or float(profile.body_radius) >= 26.0:
+		return "tank"
+	if float(profile.speed) >= 120.0 or float(profile.body_radius) <= 14.0:
+		return "fast"
+	return "basic"
 
 
 func _apply_knockback(packet) -> void:

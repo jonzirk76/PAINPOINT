@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>Top Down Player Arms And Gun</title>
+  <g id="arms_and_gun">
+    <path d="M37 67 C31 69 27 75 27 82 C36 82 43 78 48 70 Z" fill="#f1b38f"/>
+    <path d="M81 68 C88 62 96 58 104 56 L108 66 C99 68 91 72 84 78 Z" fill="#f1b38f"/>
+    <path d="M101 52 L119 55 C122 56 124 58 124 61 L124 66 C124 68 122 70 119 70 L98 68 Z" fill="#17202d"/>
+    <path d="M105 57 L120 59 L120 65 L104 64 Z" fill="#35475e"/>
+    <rect x="93" y="63" width="11" height="19" rx="4" transform="rotate(-12 98.5 72.5)" fill="#101720"/>
+    <path d="M94 55 L103 54 L104 69 L95 70 Z" fill="#26364a"/>
+    <path d="M80 66 C87 61 95 57 103 55 L105 61 C96 64 89 68 83 74 Z" fill="#ffd1b3" opacity="0.55"/>
+    <path d="M101 52 L119 55 C122 56 124 58 124 61" fill="none" stroke="#61758c" stroke-width="2.2" stroke-linecap="round" opacity="0.85"/>
+  </g>
+</svg>
