@@ -290,8 +290,11 @@ func _try_place_connected(parent_id: String, direction: String, room_id: String,
 		return false
 	var parent_state: Dictionary = _rooms[parent_id]
 	var parent_piece = parent_state["piece"]
+	var parent_connections: Dictionary = parent_state["connections"]
 	var opposite := String(OPPOSITE_DIRECTIONS.get(direction, ""))
-	if opposite.is_empty() or not parent_piece.has_connector(direction) or not piece.has_connector(opposite):
+	if opposite.is_empty() or parent_connections.has(direction):
+		return false
+	if not parent_piece.has_connector(direction) or not piece.has_connector(opposite):
 		return false
 	var base_anchor := _get_adjacent_anchor(parent_state, piece, direction)
 	for offset in _get_solver_offsets(direction):

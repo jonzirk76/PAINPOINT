@@ -120,6 +120,13 @@ const ROOM_PIECE_PATHS := [
 	"res://resources/rooms/boss_chamber.tres"
 ]
 
+const DUNGEON_OPPOSITE_DIRECTIONS := {
+	"north": "south",
+	"south": "north",
+	"east": "west",
+	"west": "east"
+}
+
 
 func _init() -> void:
 	paused = false
@@ -1650,11 +1657,54 @@ func _get_path_to_room_kind(manager, target_kind: String) -> Array[String]:
 	return []
 
 
+func _validate_dungeon_layout_integrity(manager, failures: Array[String], label: String) -> void:
+	var rooms_by_id: Dictionary = {}
+	for room_info in manager.get_minimap_rooms():
+		rooms_by_id[String(room_info["id"])] = room_info
+	if not rooms_by_id.has("start"):
+		failures.append("Dungeon layout should always include a start room: %s" % label)
+		return
+	if _get_path_to_room_kind(manager, "boss").is_empty():
+		failures.append("Dungeon layout should always include a reachable boss room: %s" % label)
+	var visited := {"start": true}
+	var queue := ["start"]
+	while not queue.is_empty():
+		var room_id := String(queue.pop_front())
+		var room_info: Dictionary = rooms_by_id.get(room_id, {})
+		var connections: Dictionary = room_info.get("connections", {})
+		for next_room_id in connections.values():
+			var next_id := String(next_room_id)
+			if visited.has(next_id):
+				continue
+			visited[next_id] = true
+			queue.append(next_id)
+	if visited.size() != rooms_by_id.size():
+		failures.append("Dungeon layout should keep every room reachable from start: %s" % label)
+	for room_id in rooms_by_id.keys():
+		var room_info: Dictionary = rooms_by_id[room_id]
+		var connections: Dictionary = room_info.get("connections", {})
+		for direction_key in connections.keys():
+			var direction := String(direction_key)
+			var target_id := String(connections[direction_key])
+			var opposite := String(DUNGEON_OPPOSITE_DIRECTIONS.get(direction, ""))
+			if opposite.is_empty():
+				failures.append("Dungeon layout has an unknown connection direction %s: %s" % [direction, label])
+				continue
+			if not rooms_by_id.has(target_id):
+				failures.append("Dungeon layout connection points at a missing room %s -> %s: %s" % [room_id, target_id, label])
+				continue
+			var target_info: Dictionary = rooms_by_id[target_id]
+			var target_connections: Dictionary = target_info.get("connections", {})
+			if String(target_connections.get(opposite, "")) != String(room_id):
+				failures.append("Dungeon layout connection should be reciprocal %s.%s -> %s.%s: %s" % [room_id, direction, target_id, opposite, label])
+
+
 func _test_dungeon_layout_solver(failures: Array[String]) -> void:
 	var manager = load("res://scripts/managers/dungeon_manager.gd").new()
 	root.add_child(manager)
 	manager.reset_run()
 	manager.set_enabled(true)
+	_validate_dungeon_layout_integrity(manager, failures, "default floor")
 	if manager.get_room_count() < 8:
 		failures.append("DungeonManager should place the full prototype set of room pieces.")
 	if manager.get_revealed_room_count() != 1:
@@ -1679,6 +1729,13 @@ func _test_dungeon_layout_solver(failures: Array[String]) -> void:
 		failures.append("DungeonManager should connect the junction to the boss room.")
 	if not manager.is_current_boss_room():
 		failures.append("DungeonManager east branch should lead to the boss room.")
+	for seed in [116, 490, 887, 1115]:
+		manager.reset_run(1, seed)
+		_validate_dungeon_layout_integrity(manager, failures, "reported branch repro seed %d" % seed)
+	for floor in range(1, 6):
+		for seed in range(1, 61):
+			manager.reset_run(floor, seed)
+			_validate_dungeon_layout_integrity(manager, failures, "floor %d seed %d" % [floor, seed])
 	manager.free()
 
 
