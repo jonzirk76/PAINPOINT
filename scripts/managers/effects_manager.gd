@@ -31,7 +31,7 @@ func play_chain_lightning(from_position: Vector2, to_position: Vector2) -> void:
 		return
 	_trim_effects()
 	var effect = chain_lightning_scene.instantiate()
-	effect.process_mode = Node.PROCESS_MODE_ALWAYS
+	_configure_effect_process_mode(effect)
 	if _effect_layer != null:
 		_effect_layer.add_child(effect)
 	else:
@@ -41,12 +41,12 @@ func play_chain_lightning(from_position: Vector2, to_position: Vector2) -> void:
 	_effects.append(effect)
 
 
-func play_explosion(spawn_position: Vector2, radius: float, lifetime: float = -1.0) -> void:
+func play_explosion(spawn_position: Vector2, radius: float, lifetime: float = -1.0, ignore_pause: bool = false) -> void:
 	if not enabled:
 		return
 	_trim_effects()
 	var effect = explosion_scene.instantiate()
-	effect.process_mode = Node.PROCESS_MODE_ALWAYS
+	_configure_effect_process_mode(effect, ignore_pause)
 	if _effect_layer != null:
 		_effect_layer.add_child(effect)
 	else:
@@ -78,7 +78,7 @@ func play_parry_absorb(from_position: Vector2, to_position: Vector2, is_perfect:
 		return
 	_trim_effects()
 	var effect = parry_absorb_scene.instantiate()
-	effect.process_mode = Node.PROCESS_MODE_ALWAYS
+	_configure_effect_process_mode(effect)
 	if _effect_layer != null:
 		_effect_layer.add_child(effect)
 	else:
@@ -90,6 +90,10 @@ func play_parry_absorb(from_position: Vector2, to_position: Vector2, is_perfect:
 
 func _on_effect_expired(effect) -> void:
 	_effects.erase(effect)
+
+
+func _configure_effect_process_mode(effect: Node, ignore_pause: bool = false) -> void:
+	effect.process_mode = Node.PROCESS_MODE_ALWAYS if ignore_pause else Node.PROCESS_MODE_PAUSABLE
 
 
 func _trim_effects() -> void:

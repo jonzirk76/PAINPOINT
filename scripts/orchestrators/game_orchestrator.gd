@@ -97,6 +97,7 @@ const PERFECT_PARRY_SLOWMO_SECONDS := 0.16
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_configure_pause_process_modes()
 	_set_tree_paused(false)
 	_connect_manager_signals()
 	_initialize_managers()
@@ -112,12 +113,13 @@ func _process(delta: float) -> void:
 		_update_boss_clear_transition(delta)
 	_update_perfect_parry_slowmo()
 	var hud_feedback_changed := false
-	if _ammo_refill_flash_remaining > 0.0:
-		_ammo_refill_flash_remaining = max(_ammo_refill_flash_remaining - delta, 0.0)
-		hud_feedback_changed = true
-	if _ammo_refill_perfect_flash_remaining > 0.0:
-		_ammo_refill_perfect_flash_remaining = max(_ammo_refill_perfect_flash_remaining - delta, 0.0)
-		hud_feedback_changed = true
+	if _should_advance_gameplay_feedback():
+		if _ammo_refill_flash_remaining > 0.0:
+			_ammo_refill_flash_remaining = max(_ammo_refill_flash_remaining - delta, 0.0)
+			hud_feedback_changed = true
+		if _ammo_refill_perfect_flash_remaining > 0.0:
+			_ammo_refill_perfect_flash_remaining = max(_ammo_refill_perfect_flash_remaining - delta, 0.0)
+			hud_feedback_changed = true
 	if hud_feedback_changed:
 		_update_hud()
 	if _is_gameplay_running():
@@ -203,6 +205,14 @@ func _initialize_managers() -> void:
 		"door_layer": $World/DoorLayer
 	})
 	audio_manager.initialize({})
+
+
+func _configure_pause_process_modes() -> void:
+	$World.process_mode = Node.PROCESS_MODE_PAUSABLE
+	$Managers.process_mode = Node.PROCESS_MODE_PAUSABLE
+	$UI.process_mode = Node.PROCESS_MODE_ALWAYS
+	input_manager.process_mode = Node.PROCESS_MODE_ALWAYS
+	pause_panel.process_mode = Node.PROCESS_MODE_WHEN_PAUSED
 
 
 func _start_selected_level() -> void:
@@ -442,6 +452,10 @@ func _set_tree_paused(value: bool) -> void:
 	_tree_pause_requested = value
 	if is_inside_tree():
 		get_tree().paused = value
+
+
+func _should_advance_gameplay_feedback() -> bool:
+	return not _tree_pause_requested and (_is_gameplay_running() or _status == "DOWN")
 
 
 func _on_aim_fire_requested(direction: Vector2) -> void:
@@ -1363,7 +1377,7 @@ func _begin_boss_clear_transition(boss_position: Vector2, boss_radius: float, pe
 	_boss_clear_pending_status = pending_status
 	_boss_clear_delay_remaining = BOSS_CLEAR_DELAY_SECONDS
 	var explosion_radius: float = max(boss_radius * 5.6, 220.0)
-	effects_manager.play_explosion(boss_position, explosion_radius, BOSS_CLEAR_DELAY_SECONDS)
+	effects_manager.play_explosion(boss_position, explosion_radius, BOSS_CLEAR_DELAY_SECONDS, true)
 	_set_all_enabled(false)
 	_set_tree_paused(true)
 	if win_panel != null:

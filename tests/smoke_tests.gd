@@ -366,6 +366,18 @@ func _test_scene_loads(failures: Array[String]) -> void:
 					var input_manager_node: Node = instance.get_node("Managers/InputManager")
 					if input_manager_node.process_mode != Node.PROCESS_MODE_ALWAYS:
 						failures.append("InputManager should process while paused so pause controls can resume.")
+				if instance.has_node("World"):
+					var world_node: Node = instance.get_node("World")
+					if world_node.process_mode != Node.PROCESS_MODE_PAUSABLE:
+						failures.append("World gameplay nodes should be explicitly pausable under the always-processing orchestrator.")
+				if instance.has_node("Managers"):
+					var managers_node: Node = instance.get_node("Managers")
+					if managers_node.process_mode != Node.PROCESS_MODE_PAUSABLE:
+						failures.append("Gameplay managers should be explicitly pausable under the always-processing orchestrator.")
+				if instance.has_node("UI"):
+					var ui_node: Node = instance.get_node("UI")
+					if ui_node.process_mode != Node.PROCESS_MODE_ALWAYS:
+						failures.append("UI should stay processable while gameplay is paused.")
 				if instance.has_node("UI/PausePanel"):
 					var pause_panel: Control = instance.get_node("UI/PausePanel")
 					if pause_panel.process_mode != Node.PROCESS_MODE_WHEN_PAUSED:
@@ -639,6 +651,18 @@ func _test_pause_menu_flow(failures: Array[String]) -> void:
 		failures.append("Pause test should begin from running gameplay.")
 	if bool(main._tree_pause_requested):
 		failures.append("Starting gameplay should clear SceneTree.paused.")
+	main.projectile_manager.fire(Vector2.ZERO, Vector2.RIGHT, {})
+	var live_projectile = null
+	if main.get_node("World/ProjectileLayer").get_child_count() > 0:
+		live_projectile = main.get_node("World/ProjectileLayer").get_child(0)
+	else:
+		failures.append("Pause test should be able to spawn a live projectile.")
+	main.effects_manager.play_explosion(Vector2(40.0, 0.0), 80.0)
+	var normal_effect = null
+	if main.get_node("World/EffectLayer").get_child_count() > 0:
+		normal_effect = main.get_node("World/EffectLayer").get_child(0)
+	else:
+		failures.append("Pause test should be able to spawn a normal gameplay effect.")
 	main._on_pause_requested()
 	if main._status != "PAUSED" or not main.pause_panel.visible:
 		failures.append("Pause request should show the pause panel and enter PAUSED state.")
@@ -646,6 +670,15 @@ func _test_pause_menu_flow(failures: Array[String]) -> void:
 		failures.append("Pause request should set SceneTree.paused.")
 	if main.player_manager.enabled:
 		failures.append("Pause should disable gameplay managers.")
+	if live_projectile != null and is_instance_valid(live_projectile) and _get_effective_process_mode(live_projectile) != Node.PROCESS_MODE_PAUSABLE:
+		failures.append("Live projectiles should inherit a pausable process mode from the gameplay world.")
+	if normal_effect != null and is_instance_valid(normal_effect) and _get_effective_process_mode(normal_effect) != Node.PROCESS_MODE_PAUSABLE:
+		failures.append("Normal gameplay effects should use a pausable process mode.")
+	var refill_remaining_before_pause_process := 0.5
+	main._ammo_refill_flash_remaining = refill_remaining_before_pause_process
+	main._process(0.25)
+	if main._ammo_refill_flash_remaining < refill_remaining_before_pause_process:
+		failures.append("Gameplay HUD feedback timers should not tick down during pause menu processing.")
 	if main.pause_stats_label.text.find("Attributes") < 0:
 		failures.append("Pause menu should show run stats and attribute adjustments.")
 	main._on_menu_confirm_requested()
@@ -663,6 +696,8 @@ func _test_pause_menu_flow(failures: Array[String]) -> void:
 		failures.append("Pause request from PAUSED should resume gameplay.")
 	if bool(main._tree_pause_requested):
 		failures.append("Resuming from pause should clear SceneTree.paused.")
+	if live_projectile != null and is_instance_valid(live_projectile) and _get_effective_process_mode(live_projectile) != Node.PROCESS_MODE_PAUSABLE:
+		failures.append("Live projectiles should remain pausable after resuming from pause.")
 	main._on_pause_requested()
 	main._on_menu_confirm_requested()
 	main._on_menu_confirm_requested()
@@ -672,6 +707,15 @@ func _test_pause_menu_flow(failures: Array[String]) -> void:
 		failures.append("Returning to level select from pause should clear SceneTree.paused.")
 	paused = false
 	main.free()
+
+
+func _get_effective_process_mode(node: Node) -> int:
+	var current: Node = node
+	while current != null:
+		if current.process_mode != Node.PROCESS_MODE_INHERIT:
+			return current.process_mode
+		current = current.get_parent()
+	return Node.PROCESS_MODE_PAUSABLE
 
 
 func _test_upgrade_modifiers_and_expiry(failures: Array[String]) -> void:
@@ -848,8 +892,18 @@ func _test_parry_absorb_visuals_and_ammo_flash(failures: Array[String]) -> void:
 	for child in effect_layer.get_children():
 		if bool(child.get("is_perfect")):
 			perfect_visual_found = true
+		if child.process_mode != Node.PROCESS_MODE_PAUSABLE:
+			failures.append("Normal parry absorb effects should pause with gameplay.")
 	if not perfect_visual_found:
 		failures.append("Perfect parried bullets should create a distinct shine-capable absorb effect.")
+	effects_manager.play_explosion(Vector2(18.0, 0.0), 72.0)
+	effects_manager.play_explosion(Vector2(36.0, 0.0), 92.0, 0.85, true)
+	var normal_explosion = effect_layer.get_child(effect_layer.get_child_count() - 2)
+	var cinematic_explosion = effect_layer.get_child(effect_layer.get_child_count() - 1)
+	if normal_explosion.process_mode != Node.PROCESS_MODE_PAUSABLE:
+		failures.append("Normal explosion effects should pause with gameplay.")
+	if cinematic_explosion.process_mode != Node.PROCESS_MODE_ALWAYS:
+		failures.append("Boss-clear cinematic effects should be able to process while the tree is paused.")
 	effects_manager.free()
 	effect_layer.free()
 
