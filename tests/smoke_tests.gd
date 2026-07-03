@@ -250,6 +250,8 @@ func _test_character_art_applied_to_entities(failures: Array[String]) -> void:
 		failures.append("PlayerEntity should draw animated oval feet separately from the upper-body art.")
 	if not player_source.contains("PLAYER_ARMS_GUN_TEXTURE") or not player_source.contains("aim.angle()"):
 		failures.append("PlayerEntity should rotate the separate arms/gun sprite using the normalized aim direction.")
+	if not player_source.contains("weapon_scale.y = -1.0") or not player_source.contains("aim.x <"):
+		failures.append("PlayerEntity should mirror the arms/gun sprite on left aim while preserving normalized shot direction.")
 	var enemy_source := _read_text("res://scripts/entities/enemy_entity.gd")
 	for path in [
 		"res://art/characters/basic_enemy_chaser.svg",
