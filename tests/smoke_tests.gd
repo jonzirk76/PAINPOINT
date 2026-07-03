@@ -9,6 +9,7 @@ const ENTITY_SCRIPT_PATHS := [
 	"res://scripts/entities/chain_lightning_effect.gd",
 	"res://scripts/entities/explosion_effect.gd",
 	"res://scripts/entities/parry_absorb_effect.gd",
+	"res://scripts/entities/projectile_impact_effect.gd",
 	"res://scripts/entities/door_entity.gd"
 ]
 
@@ -30,6 +31,7 @@ const SCRIPT_PATHS := [
 	"res://scripts/entities/chain_lightning_effect.gd",
 	"res://scripts/entities/explosion_effect.gd",
 	"res://scripts/entities/parry_absorb_effect.gd",
+	"res://scripts/entities/projectile_impact_effect.gd",
 	"res://scripts/entities/door_entity.gd",
 	"res://scripts/managers/input_manager.gd",
 	"res://scripts/managers/player_manager.gd",
@@ -144,6 +146,7 @@ func _init() -> void:
 	_test_low_ammo_warning(failures)
 	_test_parry_absorbs_hostile_projectiles_for_ammo(failures)
 	_test_parry_absorb_visuals_and_ammo_flash(failures)
+	_test_projectile_impact_visuals(failures)
 	_test_audio_assets_and_pitch_variation(failures)
 	_test_reward_driven_pickup_drops(failures)
 	_test_health_pickup_and_player_healing(failures)
@@ -309,6 +312,7 @@ func _test_scene_loads(failures: Array[String]) -> void:
 		"res://scenes/entities/chain_lightning_effect.tscn",
 		"res://scenes/entities/explosion_effect.tscn",
 		"res://scenes/entities/parry_absorb_effect.tscn",
+		"res://scenes/entities/projectile_impact_effect.tscn",
 		"res://scenes/entities/door_entity.tscn"
 	]
 	for path in scene_paths:
@@ -901,6 +905,30 @@ func _test_parry_absorb_visuals_and_ammo_flash(failures: Array[String]) -> void:
 			failures.append("Perfect parry ammo counter squares should visibly jump higher during refill feedback.")
 	main._stop_perfect_parry_slowmo()
 	main.free()
+
+
+func _test_projectile_impact_visuals(failures: Array[String]) -> void:
+	var effect_layer := Node2D.new()
+	var effects_manager = load("res://scripts/managers/effects_manager.gd").new()
+	root.add_child(effect_layer)
+	root.add_child(effects_manager)
+	effects_manager.initialize({
+		"effect_layer": effect_layer
+	})
+	effects_manager.set_enabled(true)
+	effects_manager.play_projectile_impact(Vector2(24.0, 8.0), Vector2.RIGHT, 7.0, false)
+	effects_manager.play_projectile_impact(Vector2(42.0, 8.0), Vector2.LEFT, 9.0, true)
+	if effect_layer.get_child_count() != 2:
+		failures.append("EffectsManager should create projectile impact effects for normal and blocked hits.")
+	else:
+		var blocked_effect = effect_layer.get_child(1)
+		if not bool(blocked_effect.get("blocked")):
+			failures.append("Blocked projectile impacts should use the shield-block visual variant.")
+	var orchestrator_source := _read_text("res://scripts/orchestrators/game_orchestrator.gd")
+	if not orchestrator_source.contains("play_projectile_impact") or not orchestrator_source.contains("_target_has_active_projectile_shield"):
+		failures.append("Projectile hit routing should play impact animations and mark shield-blocked hits.")
+	effects_manager.free()
+	effect_layer.free()
 
 
 func _test_audio_assets_and_pitch_variation(failures: Array[String]) -> void:
