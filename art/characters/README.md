@@ -24,4 +24,4 @@ Each SVG uses a transparent background and a `128x128` viewBox so it can be impo
 
 `player_upper_body_gun.svg` is kept as a combined reference layer.
 
-The player polish is based on the Velora top-down/model-sheet concepts in `art/concept_art/`, with the runtime SVGs favoring chibi readability over full illustration detail.
+The player polish is based on the Velora top-down/model-sheet concepts in `art/concept_art/`, with the runtime SVGs favoring chibi readability over full illustration detail. The active weapon layer keeps one cyber pistol aimed while the off hand carries a matching lowered pistol for dual-wield consistency.

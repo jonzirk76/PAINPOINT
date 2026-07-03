@@ -3,6 +3,13 @@
   <g id="arms_and_gun" transform="matrix(-1 0 0 1 128 0)">
     <path d="M39 70 C31 72 26 79 26 87 C37 87 46 80 50 70 Z" fill="#0b1a2b"/>
     <path d="M41 68 C33 70 29 76 30 82 C39 81 46 76 50 68 Z" fill="#1266d8"/>
+    <path d="M18 78 L36 74 C39 74 42 76 42 79 L41 85 L23 91 C20 92 17 90 17 86 Z" fill="#0b1018"/>
+    <path d="M22 80 L37 77 L37 81 L22 86 Z" fill="#202b39"/>
+    <path d="M24 81 L35 79 L35 81.5 L24 85 Z" fill="#24d5ff"/>
+    <rect x="34" y="82" width="8" height="14" rx="3" transform="rotate(-31 38 89)" fill="#070b11"/>
+    <circle cx="37" cy="79" r="2.4" fill="#0d1522"/>
+    <circle cx="37" cy="79" r="1.2" fill="#21c8f6"/>
+    <path d="M18 78 L36 74 C39 74 42 76 42 79" fill="none" stroke="#798aa0" stroke-width="1.8" stroke-linecap="round" opacity="0.68"/>
     <path d="M78 66 C86 59 96 55 107 53 L111 65 C100 67 91 72 82 80 Z" fill="#0b1a2b"/>
     <path d="M80 65 C87 60 96 57 105 55 L108 62 C98 65 90 69 84 75 Z" fill="#156fe8"/>
     <path d="M100 50 L121 53 C124 54 126 57 126 60 L126 68 C126 71 124 73 121 74 L98 71 Z" fill="#0b1018"/>
