@@ -6,6 +6,7 @@ signal health_depleted(entity)
 
 const PLAYER_BODY_TEXTURE := preload("res://art/characters/player_body.svg")
 const PLAYER_ARMS_GUN_TEXTURE := preload("res://art/characters/player_arms_gun.svg")
+const PLAYER_ARMS_GUN_LEFT_TEXTURE := preload("res://art/characters/player_arms_gun_left.svg")
 
 @export var speed: float = 260.0
 @export var max_health: int = 8
@@ -274,11 +275,13 @@ func _draw_player_character_art() -> void:
 	var aim := aim_direction.normalized()
 	if aim.length_squared() <= 0.001:
 		aim = Vector2.RIGHT
-	var weapon_scale := Vector2.ONE
+	var weapon_texture := PLAYER_ARMS_GUN_TEXTURE
+	var weapon_rotation := aim.angle()
 	if aim.x < -0.001:
-		weapon_scale.y = -1.0
+		weapon_texture = PLAYER_ARMS_GUN_LEFT_TEXTURE
+		weapon_rotation = (-aim).angle()
 	_draw_centered_texture(PLAYER_BODY_TEXTURE, visual_radius, 0.0, tint)
-	_draw_centered_texture(PLAYER_ARMS_GUN_TEXTURE, visual_radius, aim.angle(), tint, weapon_scale)
+	_draw_centered_texture(weapon_texture, visual_radius, weapon_rotation, tint)
 
 
 func _draw_player_walk_feet() -> void:
@@ -300,10 +303,10 @@ func _draw_player_walk_feet() -> void:
 	_draw_oval(right_center - foot_direction * body_radius * 0.08, foot_direction.angle() - PI * 0.5, right_scale * 0.55, Color(0.22, 0.5, 1.0, 0.72))
 
 
-func _draw_centered_texture(texture: Texture2D, visual_radius: float, rotation: float, tint: Color = Color.WHITE, transform_scale: Vector2 = Vector2.ONE) -> void:
+func _draw_centered_texture(texture: Texture2D, visual_radius: float, rotation: float, tint: Color = Color.WHITE) -> void:
 	if texture == null:
 		return
-	draw_set_transform(Vector2.ZERO, rotation, transform_scale)
+	draw_set_transform(Vector2.ZERO, rotation, Vector2.ONE)
 	draw_texture_rect(texture, Rect2(Vector2(-visual_radius, -visual_radius), Vector2(visual_radius * 2.0, visual_radius * 2.0)), false, tint)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 

@@ -97,6 +97,7 @@ const CHARACTER_SVG_PATHS := [
 	"res://art/characters/player_character.svg",
 	"res://art/characters/player_body.svg",
 	"res://art/characters/player_arms_gun.svg",
+	"res://art/characters/player_arms_gun_left.svg",
 	"res://art/characters/player_upper_body_gun.svg",
 	"res://art/characters/basic_enemy_chaser.svg",
 	"res://art/characters/fast_enemy_runner.svg",
@@ -235,7 +236,7 @@ func _test_character_svg_assets(failures: Array[String]) -> void:
 		if path.ends_with("player_character.svg") or path.ends_with("player_body.svg") or path.ends_with("player_upper_body_gun.svg"):
 			if not source.contains("id=\"forehead_bang\""):
 				failures.append("Player SVG should include a larger forehead bang shape: %s" % path)
-		if path.ends_with("player_arms_gun.svg"):
+		if path.contains("player_arms_gun"):
 			if not source.contains("id=\"arms_and_gun\""):
 				failures.append("Player arms/gun SVG should expose an arms_and_gun group.")
 
@@ -250,8 +251,8 @@ func _test_character_art_applied_to_entities(failures: Array[String]) -> void:
 		failures.append("PlayerEntity should draw animated oval feet separately from the upper-body art.")
 	if not player_source.contains("PLAYER_ARMS_GUN_TEXTURE") or not player_source.contains("aim.angle()"):
 		failures.append("PlayerEntity should rotate the separate arms/gun sprite using the normalized aim direction.")
-	if not player_source.contains("weapon_scale.y = -1.0") or not player_source.contains("aim.x <"):
-		failures.append("PlayerEntity should mirror the arms/gun sprite on left aim while preserving normalized shot direction.")
+	if not player_source.contains("PLAYER_ARMS_GUN_LEFT_TEXTURE") or not player_source.contains("(-aim).angle()"):
+		failures.append("PlayerEntity should use folded left-facing weapon art so left aim points with the shot direction.")
 	var enemy_source := _read_text("res://scripts/entities/enemy_entity.gd")
 	for path in [
 		"res://art/characters/basic_enemy_chaser.svg",
