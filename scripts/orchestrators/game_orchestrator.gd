@@ -456,16 +456,34 @@ func _on_player_shoot_requested(origin: Vector2, direction: Vector2) -> void:
 
 func _on_projectile_hit(projectile, target: Node, packet) -> void:
 	audio_manager.play_bullet_impact()
-	combat_manager.resolve_projectile_hit(projectile, target, packet)
+	if target != null and target.is_in_group("player"):
+		combat_manager.resolve_projectile_hit(projectile, target, packet)
+		return
+	if _apply_damage_to_target(target, packet):
+		_request_projectile_damage_side_effects(target, packet)
 
 
-func _on_damage_resolved(target: Node, packet) -> void:
+func _on_damage_resolved(target: Node, packet) -> bool:
+	return _apply_damage_to_target(target, packet)
+
+
+func _apply_damage_to_target(target: Node, packet) -> bool:
+	if target == null or packet == null or not is_instance_valid(target):
+		return false
+	if target.is_in_group("enemies"):
+		return bool(enemy_manager.apply_damage(target, packet))
+	elif target.is_in_group("spawners"):
+		return bool(spawner_manager.apply_damage(target, packet))
+	return false
+
+
+func _request_projectile_damage_side_effects(target: Node, packet) -> void:
 	if target == null or packet == null or not is_instance_valid(target):
 		return
-	if target.is_in_group("enemies"):
-		enemy_manager.apply_damage(target, packet)
-	elif target.is_in_group("spawners"):
-		spawner_manager.apply_damage(target, packet)
+	if packet.explosion_radius > 0.0 and packet.explosion_damage_multiplier > 0.0:
+		_on_explosion_requested(target.global_position, packet)
+	if packet.chain_count > 0 and packet.chain_radius > 0.0:
+		_on_chain_requested(target, packet)
 
 
 func _on_chain_requested(origin_target: Node, packet) -> void:

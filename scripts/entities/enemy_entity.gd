@@ -35,6 +35,7 @@ const BOSS_ENEMY_TEXTURE := preload("res://art/characters/boss_enemy_overlord.sv
 @export var projectile_radius: float = 7.0
 @export var shot_projectile_count: int = 1
 @export var shot_spread_degrees: float = 0.0
+@export var projectile_shield_radius_bonus: float = 20.0
 
 var health: int = max_health
 var target_position: Vector2 = Vector2.ZERO
@@ -48,6 +49,8 @@ var _shot_cooldown_remaining: float = 0.0
 var _strafe_sign: float = 1.0
 var _visual_kind: String = "basic"
 var _visual_direction: Vector2 = Vector2.RIGHT
+var _projectile_shield_remaining: float = 0.0
+var _projectile_shield_block_flash_remaining: float = 0.0
 
 
 func _init() -> void:
@@ -96,6 +99,7 @@ func initialize(profile) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	_update_projectile_shield(delta)
 	if _hit_flash_remaining > 0.0:
 		_hit_flash_remaining = max(_hit_flash_remaining - delta, 0.0)
 	if _shot_cooldown_remaining > 0.0:
@@ -123,7 +127,7 @@ func _physics_process(delta: float) -> void:
 	if (behavior_kind == "shooter" or behavior_kind == "boss") and get_slide_collision_count() > 0:
 		_strafe_sign *= -1.0
 	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
-	if velocity.length_squared() > 1.0 or behavior_kind == "shooter" or behavior_kind == "boss" or _hit_flash_remaining > 0.0 or _knockback_velocity.length_squared() > 1.0:
+	if velocity.length_squared() > 1.0 or behavior_kind == "shooter" or behavior_kind == "boss" or _hit_flash_remaining > 0.0 or _knockback_velocity.length_squared() > 1.0 or is_projectile_shield_active() or _projectile_shield_block_flash_remaining > 0.0:
 		queue_redraw()
 
 
@@ -144,9 +148,11 @@ func set_arena_definition(bounds: Rect2, shape: int, walls: Array = []) -> void:
 	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
 
 
-func take_damage(packet) -> void:
+func take_damage(packet) -> bool:
 	if packet == null or health <= 0 or _is_dying:
-		return
+		return false
+	if blocks_projectile_damage(packet):
+		return false
 	_apply_knockback(packet)
 	_hit_flash_remaining = 0.12
 	var old_health := health
@@ -156,6 +162,28 @@ func take_damage(packet) -> void:
 	if health == 0:
 		health_depleted.emit(self)
 		_play_death_animation()
+	return true
+
+
+func activate_projectile_shield(duration: float) -> void:
+	if duration <= 0.0 or health <= 0 or _is_dying:
+		return
+	_projectile_shield_remaining = max(_projectile_shield_remaining, duration)
+	queue_redraw()
+
+
+func is_projectile_shield_active() -> bool:
+	return _projectile_shield_remaining > 0.0 and health > 0 and not _is_dying
+
+
+func blocks_projectile_damage(packet) -> bool:
+	if packet == null or not is_projectile_shield_active():
+		return false
+	if String(packet.projectile_kind) == "hostile":
+		return false
+	_projectile_shield_block_flash_remaining = 0.2
+	queue_redraw()
+	return true
 
 
 func apply_pushback(source_position: Vector2, force: float) -> void:
@@ -187,6 +215,8 @@ func _draw() -> void:
 	if _hit_flash_remaining > 0.0:
 		draw_color = Color(1.0, 0.92, 0.86)
 	_draw_enemy_character_art(draw_color)
+	if is_projectile_shield_active() or _projectile_shield_block_flash_remaining > 0.0:
+		_draw_projectile_shield()
 	draw_line(Vector2(-body_radius, -body_radius - 8.0), Vector2(-body_radius + body_radius * 2.0 * health_ratio, -body_radius - 8.0), Color(0.4, 1.0, 0.35), 3.0)
 	if behavior_kind == "shooter" or behavior_kind == "boss":
 		var aim := (target_position - global_position).normalized()
@@ -246,6 +276,16 @@ func _update_visual_direction(movement: Vector2) -> void:
 	if movement.length_squared() <= 1.0:
 		return
 	_visual_direction = movement.normalized()
+
+
+func _draw_projectile_shield() -> void:
+	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.018)
+	var block_ratio: float = clamp(_projectile_shield_block_flash_remaining / 0.2, 0.0, 1.0)
+	var radius: float = body_radius + projectile_shield_radius_bonus + pulse * 3.0 + block_ratio * 6.0
+	draw_circle(Vector2.ZERO, radius, Color(0.42, 0.84, 1.0, 0.12 + block_ratio * 0.16))
+	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, Color(0.64, 1.0, 1.0, 0.72 + block_ratio * 0.25), 5.0 + block_ratio * 2.0)
+	draw_arc(Vector2.ZERO, radius * 0.78, -PI * 0.18, TAU - PI * 0.18, 52, Color(1.0, 1.0, 0.82, 0.45 + block_ratio * 0.36), 3.2)
+	draw_arc(Vector2.ZERO, radius * 1.12, PI * 0.2, PI * 1.8, 52, Color(0.85, 0.7, 1.0, 0.38 + block_ratio * 0.28), 2.6)
 
 
 func _get_visual_kind(profile) -> String:
@@ -323,6 +363,16 @@ func _try_emit_shot(to_target: Vector2) -> void:
 	}
 	shot_ready.emit(self, shot_origin, shot_direction, shot_config)
 	_shot_cooldown_remaining = shot_cooldown
+
+
+func _update_projectile_shield(delta: float) -> void:
+	var had_visual := _projectile_shield_remaining > 0.0 or _projectile_shield_block_flash_remaining > 0.0
+	if _projectile_shield_remaining > 0.0:
+		_projectile_shield_remaining = max(_projectile_shield_remaining - delta, 0.0)
+	if _projectile_shield_block_flash_remaining > 0.0:
+		_projectile_shield_block_flash_remaining = max(_projectile_shield_block_flash_remaining - delta, 0.0)
+	if had_visual or _projectile_shield_remaining > 0.0 or _projectile_shield_block_flash_remaining > 0.0:
+		queue_redraw()
 
 
 func _play_death_animation() -> void:

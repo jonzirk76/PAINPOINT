@@ -157,6 +157,7 @@ func _init() -> void:
 	_test_water_projectile_hits_each_enemy_once(failures)
 	_test_damageable_spawner(failures)
 	_test_projectile_hits_spawner(failures)
+	_test_general_and_boss_projectile_shields(failures)
 	_test_spawner_pressure_damage(failures)
 	_test_typed_spawner_spawn_profile(failures)
 	_test_hostile_shot_signals(failures)
@@ -1228,6 +1229,48 @@ func _test_projectile_hits_spawner(failures: Array[String]) -> void:
 		projectile.free()
 	if is_instance_valid(spawner):
 		spawner.free()
+
+
+func _test_general_and_boss_projectile_shields(failures: Array[String]) -> void:
+	var packet = load("res://scripts/resources/damage_packet.gd").new()
+	packet.damage = 4
+	packet.projectile_kind = "normal"
+
+	var spawner = load("res://scenes/entities/enemy_spawner_entity.tscn").instantiate()
+	spawner.initialize(10, 3.0, 32.0)
+	var general_shield_after_spawn: float = spawner.projectile_shield_after_spawn_seconds
+	spawner._timer = 0.42
+	spawner._process(0.05)
+	if not spawner.is_projectile_shield_active():
+		failures.append("Generals should raise a projectile shield shortly before a spawn wave.")
+	if bool(spawner.take_damage(packet)) or spawner.health != 10:
+		failures.append("General projectile shield should block player projectile damage.")
+	spawner.active = false
+	spawner._process(1.2)
+	if not bool(spawner.take_damage(packet)) or spawner.health != 6:
+		failures.append("Generals should take projectile damage once their short shield expires.")
+	spawner.free()
+
+	var enemy_layer := Node2D.new()
+	var manager = load("res://scripts/managers/enemy_manager.gd").new()
+	root.add_child(enemy_layer)
+	root.add_child(manager)
+	manager.initialize({
+		"enemy_layer": enemy_layer
+	})
+	manager.set_enabled(true)
+	var boss = manager.spawn_enemy(load("res://resources/enemies/first_boss_enemy.tres"), Vector2.ZERO)
+	manager._physics_process(0.1)
+	if boss == null or not is_instance_valid(boss) or not boss.is_projectile_shield_active():
+		failures.append("Boss should raise a projectile shield around add replenishment.")
+	elif boss._projectile_shield_remaining <= general_shield_after_spawn:
+		failures.append("Boss projectile shield should last longer than a general shield.")
+	if boss != null and is_instance_valid(boss):
+		var boss_health: int = boss.health
+		if bool(manager.apply_damage(boss, packet)) or boss.health != boss_health:
+			failures.append("Boss projectile shield should block player projectile damage.")
+	manager.free()
+	enemy_layer.free()
 
 
 func _test_spawner_pressure_damage(failures: Array[String]) -> void:

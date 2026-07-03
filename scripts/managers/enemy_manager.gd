@@ -11,6 +11,8 @@ signal hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: 
 @export var boss_add_profile: Resource = preload("res://resources/enemies/shooter_enemy.tres")
 @export var boss_add_target_count: int = 3
 @export var boss_add_replenish_interval: float = 4.2
+@export var boss_projectile_shield_lead_seconds: float = 1.25
+@export var boss_projectile_shield_after_spawn_seconds: float = 1.15
 @export var crowd_separation_force: float = 115.0
 @export var crowd_separation_padding: float = 10.0
 
@@ -99,15 +101,15 @@ func spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary = {})
 	return enemy
 
 
-func apply_damage(target: Node, packet) -> void:
+func apply_damage(target: Node, packet) -> bool:
 	if target == null or packet == null or not is_instance_valid(target):
-		return
+		return false
 	if not target.is_in_group("enemies") or not target.has_method("take_damage"):
-		return
+		return false
 	var enemy = target
 	if not _enemies.has(enemy):
-		return
-	enemy.take_damage(packet)
+		return false
+	return bool(enemy.take_damage(packet))
 
 
 func apply_parry_pushback(origin: Vector2, radius: float, force: float) -> int:
@@ -221,6 +223,8 @@ func _update_boss_adds(delta: float) -> void:
 		_boss_add_timer = min(_boss_add_timer, boss_add_replenish_interval)
 		return
 	_boss_add_timer = max(_boss_add_timer - delta, 0.0)
+	if _boss_add_timer <= boss_projectile_shield_lead_seconds and boss.has_method("activate_projectile_shield"):
+		boss.activate_projectile_shield(max(_boss_add_timer, 0.0) + boss_projectile_shield_after_spawn_seconds)
 	if _boss_add_timer > 0.0:
 		return
 	var missing_count: int = boss_add_target_count - current_adds
