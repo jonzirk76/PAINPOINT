@@ -2,13 +2,13 @@
 
 importer="wav"
 type="AudioStreamWAV"
-uid="uid://dywdwqerd1y06"
-path="res://.godot/imported/parry_ready.wav-eae8e0912c3cf42e6e595569ca5322f3.sample"
+uid="uid://4h8ah3txc518"
+path="res://.godot/imported/game_over.wav-93bb809a2bb5c7d8aee9c599f7f43ae9.sample"
 
 [deps]
 
-source_file="res://audio/parry_ready.wav"
-dest_files=["res://.godot/imported/parry_ready.wav-eae8e0912c3cf42e6e595569ca5322f3.sample"]
+source_file="res://audio/game_over.wav"
+dest_files=["res://.godot/imported/game_over.wav-93bb809a2bb5c7d8aee9c599f7f43ae9.sample"]
 
 [params]
 

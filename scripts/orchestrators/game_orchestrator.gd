@@ -681,6 +681,7 @@ func _on_player_defeated(_player) -> void:
 	_stop_perfect_parry_slowmo()
 	_status = "DOWN"
 	_set_all_enabled(false)
+	audio_manager.play_game_over()
 	_update_hud()
 
 

@@ -84,6 +84,7 @@ const SFX_PATHS := [
 	"res://audio/bullet_impact.wav",
 	"res://audio/enemy_bullet_shot.wav",
 	"res://audio/floor_start.wav",
+	"res://audio/game_over.wav",
 	"res://audio/item_pick_up.wav",
 	"res://audio/parry.wav",
 	"res://audio/parry_ready.wav",
@@ -852,6 +853,16 @@ func _test_audio_assets_and_pitch_variation(failures: Array[String]) -> void:
 	manager.set_enabled(false)
 	if manager._active_players.size() != 0:
 		failures.append("AudioManager should clear active SFX players when disabled.")
+	manager.play_game_over()
+	if manager._active_players.size() != 1:
+		failures.append("Game-over SFX should be allowed to play after gameplay audio is disabled.")
+	else:
+		var game_over_player: AudioStreamPlayer = manager._active_players[0]
+		if game_over_player.stream == null:
+			failures.append("Game-over SFX should assign a stream before playback.")
+		if game_over_player.pitch_scale < 0.97 or game_over_player.pitch_scale > 1.03:
+			failures.append("Game-over pitch variation is outside its expected range.")
+	manager.reset_run()
 	manager.free()
 
 

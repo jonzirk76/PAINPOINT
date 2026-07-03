@@ -10,6 +10,7 @@ const PERFECT_PARRY_FOLLOW_UP := preload("res://audio/perfect_parry_follow_up.wa
 const ITEM_PICK_UP := preload("res://audio/item_pick_up.wav")
 const FLOOR_START := preload("res://audio/floor_start.wav")
 const ROOM_ENTRY := preload("res://audio/room_entry.wav")
+const GAME_OVER := preload("res://audio/game_over.wav")
 
 @export var max_active_players: int = 24
 
@@ -75,8 +76,12 @@ func play_room_entry() -> void:
 	_play(ROOM_ENTRY, 0.96, 1.05, -5.0)
 
 
-func _play(stream: AudioStream, pitch_min: float, pitch_max: float, volume_db: float) -> void:
-	if not enabled or stream == null:
+func play_game_over() -> void:
+	_play(GAME_OVER, 0.97, 1.03, -3.0, true)
+
+
+func _play(stream: AudioStream, pitch_min: float, pitch_max: float, volume_db: float, force: bool = false) -> void:
+	if (not enabled and not force) or stream == null:
 		return
 	_trim_players()
 	var player := AudioStreamPlayer.new()
