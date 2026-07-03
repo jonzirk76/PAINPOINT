@@ -21,6 +21,7 @@ const LEVELS := [
 @onready var effects_manager = $Managers/EffectsManager
 @onready var dungeon_manager = $Managers/DungeonManager
 @onready var room_manager = $Managers/RoomManager
+@onready var audio_manager = $Managers/AudioManager
 @onready var arena_view = $World/Arena
 @onready var gameplay_camera: Camera2D = $Camera2D
 @onready var hud_background: ColorRect = $UI/HUDBackground
@@ -201,6 +202,7 @@ func _initialize_managers() -> void:
 	room_manager.initialize({
 		"door_layer": $World/DoorLayer
 	})
+	audio_manager.initialize({})
 
 
 func _start_selected_level() -> void:
@@ -259,6 +261,7 @@ func _start_level(level_definition) -> void:
 	input_manager.reset_run()
 	player_manager.reset_run()
 	_set_all_enabled(true)
+	audio_manager.play_floor_start()
 	_status = "RUNNING"
 	_on_upgrade_changed(upgrade_manager.get_modifiers(), upgrade_manager.get_active_effects())
 	_update_hud()
@@ -305,6 +308,7 @@ func _start_dungeon_run() -> void:
 	input_manager.reset_run()
 	_status = "DUNGEON"
 	_load_dungeon_current_room("", true)
+	audio_manager.play_floor_start()
 	_on_upgrade_changed(upgrade_manager.get_modifiers(), upgrade_manager.get_active_effects())
 	_update_hud()
 
@@ -350,6 +354,7 @@ func _start_main_loop_run() -> void:
 	input_manager.reset_run()
 	_status = "DUNGEON"
 	_load_dungeon_current_room("", true)
+	audio_manager.play_floor_start()
 	_on_upgrade_changed(upgrade_manager.get_modifiers(), upgrade_manager.get_active_effects())
 	_update_hud()
 
@@ -372,6 +377,7 @@ func _advance_main_loop_floor() -> void:
 	input_manager.reset_run()
 	_status = "DUNGEON"
 	_load_dungeon_current_room("", false)
+	audio_manager.play_floor_start()
 	_update_hud()
 
 
@@ -427,6 +433,7 @@ func _set_all_enabled(value: bool) -> void:
 	effects_manager.set_enabled(value)
 	dungeon_manager.set_enabled(value and _is_dungeon_run)
 	room_manager.set_enabled(value and _is_dungeon_run)
+	audio_manager.set_enabled(value)
 
 
 func _set_tree_paused(value: bool) -> void:
@@ -442,11 +449,13 @@ func _on_aim_fire_requested(direction: Vector2) -> void:
 
 
 func _on_player_shoot_requested(origin: Vector2, direction: Vector2) -> void:
+	audio_manager.play_player_shot()
 	projectile_manager.fire(origin, direction, _latest_modifiers)
 	upgrade_manager.consume_shot()
 
 
 func _on_projectile_hit(projectile, target: Node, packet) -> void:
+	audio_manager.play_bullet_impact()
 	combat_manager.resolve_projectile_hit(projectile, target, packet)
 
 
@@ -508,6 +517,7 @@ func _on_spawn_requested(spawn_position: Vector2, profile) -> void:
 
 
 func _on_hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: Dictionary) -> void:
+	audio_manager.play_enemy_shot()
 	projectile_manager.fire_hostile(origin, direction, shot_config)
 
 
@@ -556,14 +566,18 @@ func _on_input_parry_requested() -> void:
 
 
 func _on_player_parry_cooldown_changed(remaining: float, duration: float) -> void:
+	var was_on_cooldown := _last_parry_cooldown_remaining > 0.0
 	_last_parry_cooldown_remaining = remaining
 	_last_parry_cooldown_duration = duration
+	if was_on_cooldown and remaining <= 0.0:
+		audio_manager.play_parry_ready()
 	_update_hud()
 
 
 func _on_player_parry_requested(origin: Vector2, effect_radius: float, perfect_radius: float, enemy_knockback: float) -> void:
 	if not _is_gameplay_running():
 		return
+	audio_manager.play_parry()
 	var absorbed: Dictionary = projectile_manager.absorb_hostile_projectiles(origin, effect_radius, perfect_radius)
 	var absorbed_projectiles: Array = absorbed.get("absorbed_projectiles", [])
 	var ammo_awarded := int(absorbed.get("ammo_awarded", 0))
@@ -578,6 +592,7 @@ func _on_player_parry_requested(origin: Vector2, effect_radius: float, perfect_r
 			_ammo_refill_perfect_flash_remaining = _ammo_refill_perfect_flash_duration
 		_update_hud()
 	if was_perfect:
+		audio_manager.play_perfect_parry()
 		player_manager.play_perfect_parry_response(effect_radius, perfect_radius)
 		_start_perfect_parry_slowmo()
 	if not absorbed_projectiles.is_empty():
@@ -708,6 +723,7 @@ func _on_pickup_count_changed(_count: int) -> void:
 func _on_pickup_collected(pickup_resource) -> void:
 	if pickup_resource == null:
 		return
+	audio_manager.play_pickup()
 	_run_pickups_collected += 1
 	if pickup_resource.has_method("get_pickup_kind") and pickup_resource.get_pickup_kind() == "heal":
 		_run_heals += 1
@@ -730,6 +746,7 @@ func _on_room_door_entered(direction: String) -> void:
 		return
 	if dungeon_manager.enter_direction(direction):
 		_load_dungeon_current_room(direction, false)
+		audio_manager.play_room_entry()
 
 
 func _on_pause_requested() -> void:

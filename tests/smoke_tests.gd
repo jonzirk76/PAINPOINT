@@ -40,6 +40,7 @@ const SCRIPT_PATHS := [
 	"res://scripts/managers/upgrade_manager.gd",
 	"res://scripts/managers/combat_manager.gd",
 	"res://scripts/managers/effects_manager.gd",
+	"res://scripts/managers/audio_manager.gd",
 	"res://scripts/managers/dungeon_manager.gd",
 	"res://scripts/managers/room_manager.gd",
 	"res://scripts/ui/dungeon_minimap.gd",
@@ -79,6 +80,18 @@ const SPAWNER_PROFILE_PATHS := [
 	"res://resources/spawners/shooter_spawner.tres"
 ]
 
+const SFX_PATHS := [
+	"res://audio/bullet_impact.wav",
+	"res://audio/enemy_bullet_shot.wav",
+	"res://audio/floor_start.wav",
+	"res://audio/item_pick_up.wav",
+	"res://audio/parry.wav",
+	"res://audio/parry_ready.wav",
+	"res://audio/perfect_parry_follow_up.wav",
+	"res://audio/player_bullet_shot.wav",
+	"res://audio/room_entry.wav"
+]
+
 const ROOM_PIECE_PATHS := [
 	"res://resources/rooms/start_square.tres",
 	"res://resources/rooms/combat_wide.tres",
@@ -115,6 +128,7 @@ func _init() -> void:
 	_test_low_ammo_warning(failures)
 	_test_parry_absorbs_hostile_projectiles_for_ammo(failures)
 	_test_parry_absorb_visuals_and_ammo_flash(failures)
+	_test_audio_assets_and_pitch_variation(failures)
 	_test_reward_driven_pickup_drops(failures)
 	_test_health_pickup_and_player_healing(failures)
 	_test_projectile_knockback_packet(failures)
@@ -244,6 +258,7 @@ func _test_scene_loads(failures: Array[String]) -> void:
 					"World/EffectLayer",
 					"Managers/InputManager",
 					"Managers/EffectsManager",
+					"Managers/AudioManager",
 					"Managers/DungeonManager",
 					"Managers/RoomManager"
 				]
@@ -800,6 +815,44 @@ func _test_parry_absorb_visuals_and_ammo_flash(failures: Array[String]) -> void:
 			failures.append("Perfect parry ammo counter squares should visibly jump higher during refill feedback.")
 	main._stop_perfect_parry_slowmo()
 	main.free()
+
+
+func _test_audio_assets_and_pitch_variation(failures: Array[String]) -> void:
+	for path in SFX_PATHS:
+		if not FileAccess.file_exists(path):
+			failures.append("Sound effect should live in the shared audio folder: %s" % path)
+			continue
+		if load(path) == null:
+			failures.append("Sound effect failed to load: %s" % path)
+	var manager = load("res://scripts/managers/audio_manager.gd").new()
+	root.add_child(manager)
+	manager.set_enabled(true)
+	manager._rng.seed = 12345
+	manager.play_player_shot()
+	manager.play_player_shot()
+	manager.play_parry_ready()
+	manager.play_perfect_parry()
+	if manager._active_players.size() != 4:
+		failures.append("AudioManager should create short-lived AudioStreamPlayers for overlapping SFX.")
+	else:
+		var first_player: AudioStreamPlayer = manager._active_players[0]
+		var second_player: AudioStreamPlayer = manager._active_players[1]
+		var ready_player: AudioStreamPlayer = manager._active_players[2]
+		var perfect_player: AudioStreamPlayer = manager._active_players[3]
+		if first_player.stream == null or perfect_player.stream == null:
+			failures.append("AudioManager should assign streams before playback.")
+		if first_player.pitch_scale == second_player.pitch_scale:
+			failures.append("Repeated SFX should receive pitch variation from AudioStreamPlayer controls.")
+		if first_player.pitch_scale < 0.88 or first_player.pitch_scale > 1.12:
+			failures.append("Player shot pitch variation is outside its expected range.")
+		if ready_player.pitch_scale < 0.96 or ready_player.pitch_scale > 1.08:
+			failures.append("Parry-ready pitch variation is outside its expected range.")
+		if perfect_player.pitch_scale < 0.96 or perfect_player.pitch_scale > 1.04:
+			failures.append("Perfect parry follow-up pitch variation is outside its expected range.")
+	manager.set_enabled(false)
+	if manager._active_players.size() != 0:
+		failures.append("AudioManager should clear active SFX players when disabled.")
+	manager.free()
 
 
 func _test_reward_driven_pickup_drops(failures: Array[String]) -> void:
@@ -1769,6 +1822,7 @@ func _prime_main_for_direct_test_calls(main) -> void:
 	main.effects_manager = main.get_node("Managers/EffectsManager")
 	main.dungeon_manager = main.get_node("Managers/DungeonManager")
 	main.room_manager = main.get_node("Managers/RoomManager")
+	main.audio_manager = main.get_node("Managers/AudioManager")
 	main.arena_view = main.get_node("World/Arena")
 	main.gameplay_camera = main.get_node("Camera2D")
 	main.hud_background = main.get_node("UI/HUDBackground")
