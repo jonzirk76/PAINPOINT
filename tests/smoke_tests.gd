@@ -100,6 +100,8 @@ const CHARACTER_SVG_PATHS := [
 	"res://art/characters/player_body.svg",
 	"res://art/characters/player_arms_gun.svg",
 	"res://art/characters/player_arms_gun_left.svg",
+	"res://art/characters/player_resting_pistol.svg",
+	"res://art/characters/player_resting_pistol_left.svg",
 	"res://art/characters/player_upper_body_gun.svg",
 	"res://art/characters/basic_enemy_chaser.svg",
 	"res://art/characters/fast_enemy_runner.svg",
@@ -250,6 +252,9 @@ func _test_character_svg_assets(failures: Array[String]) -> void:
 		if path.contains("player_arms_gun"):
 			if not source.contains("id=\"arms_and_gun\""):
 				failures.append("Player arms/gun SVG should expose an arms_and_gun group.")
+		if path.contains("player_resting_pistol"):
+			if not source.contains("id=\"resting_pistol\""):
+				failures.append("Player resting pistol SVG should expose a resting_pistol group.")
 
 
 func _test_character_art_applied_to_entities(failures: Array[String]) -> void:
@@ -260,12 +265,16 @@ func _test_character_art_applied_to_entities(failures: Array[String]) -> void:
 		failures.append("PlayerEntity should draw the separate arms/gun SVG asset.")
 	if not player_source.contains("_draw_player_walk_feet"):
 		failures.append("PlayerEntity should draw animated oval feet separately from the upper-body art.")
-	if not player_source.contains("foot_anchor := Vector2.DOWN") or not player_source.contains("body_radius * 0.78"):
-		failures.append("PlayerEntity should anchor walking feet lower on the upright body.")
+	if not player_source.contains("foot_anchor := Vector2.DOWN") or not player_source.contains("body_radius * 1.18"):
+		failures.append("PlayerEntity should anchor walking feet low enough to show beneath the upright body.")
 	if not player_source.contains("PLAYER_ARMS_GUN_TEXTURE") or not player_source.contains("aim.angle()"):
 		failures.append("PlayerEntity should rotate the separate arms/gun sprite using the normalized aim direction.")
 	if not player_source.contains("PLAYER_ARMS_GUN_LEFT_TEXTURE") or not player_source.contains("(-aim).angle()"):
 		failures.append("PlayerEntity should use folded left-facing weapon art so left aim points with the shot direction.")
+	if not player_source.contains("PLAYER_RESTING_PISTOL_TEXTURE") or not player_source.contains("PLAYER_RESTING_PISTOL_LEFT_TEXTURE"):
+		failures.append("PlayerEntity should draw the lowered off-hand pistol as its own sprite layer.")
+	if not player_source.contains("resting_rotation: float = clamp(aim.y * 0.18"):
+		failures.append("PlayerEntity should only slightly rotate the resting pistol instead of matching the active gun rotation.")
 	if not player_source.contains("body_radius + 13.0") or player_source.contains("sparkle_center"):
 		failures.append("PlayerEntity should use a circular barrier effect, not a pistol glint, when parry is ready.")
 	var enemy_source := _read_text("res://scripts/entities/enemy_entity.gd")
