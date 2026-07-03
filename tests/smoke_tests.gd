@@ -233,6 +233,8 @@ func _test_character_art_applied_to_entities(failures: Array[String]) -> void:
 		failures.append("PlayerEntity should draw the upper-body/gun SVG asset.")
 	if not player_source.contains("_draw_player_walk_feet"):
 		failures.append("PlayerEntity should draw animated oval feet separately from the upper-body art.")
+	if not player_source.contains("visual_scale.y = -1.0") or not player_source.contains("aim.x <"):
+		failures.append("PlayerEntity should flip the upper-body sprite when aiming left so the character stays upright.")
 	var enemy_source := _read_text("res://scripts/entities/enemy_entity.gd")
 	for path in [
 		"res://art/characters/basic_enemy_chaser.svg",

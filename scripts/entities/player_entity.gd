@@ -270,7 +270,13 @@ func _draw_player_character_art() -> void:
 	if _hit_flash_remaining > 0.0:
 		tint = Color(1.0, 0.96, 0.74)
 	var visual_radius: float = body_radius * 2.35
-	_draw_centered_texture(PLAYER_UPPER_TEXTURE, visual_radius, aim_direction.angle(), tint)
+	var aim := aim_direction.normalized()
+	if aim.length_squared() <= 0.001:
+		aim = Vector2.RIGHT
+	var visual_scale := Vector2.ONE
+	if aim.x < -0.001:
+		visual_scale.y = -1.0
+	_draw_centered_texture(PLAYER_UPPER_TEXTURE, visual_radius, aim.angle(), tint, visual_scale)
 
 
 func _draw_player_walk_feet() -> void:
@@ -292,10 +298,10 @@ func _draw_player_walk_feet() -> void:
 	_draw_oval(right_center - foot_direction * body_radius * 0.08, foot_direction.angle() - PI * 0.5, right_scale * 0.55, Color(0.22, 0.5, 1.0, 0.72))
 
 
-func _draw_centered_texture(texture: Texture2D, visual_radius: float, rotation: float, tint: Color = Color.WHITE) -> void:
+func _draw_centered_texture(texture: Texture2D, visual_radius: float, rotation: float, tint: Color = Color.WHITE, transform_scale: Vector2 = Vector2.ONE) -> void:
 	if texture == null:
 		return
-	draw_set_transform(Vector2.ZERO, rotation, Vector2.ONE)
+	draw_set_transform(Vector2.ZERO, rotation, transform_scale)
 	draw_texture_rect(texture, Rect2(Vector2(-visual_radius, -visual_radius), Vector2(visual_radius * 2.0, visual_radius * 2.0)), false, tint)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
