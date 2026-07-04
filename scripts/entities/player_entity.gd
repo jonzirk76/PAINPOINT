@@ -5,8 +5,12 @@ signal health_changed(old_value: int, new_value: int)
 signal health_depleted(entity)
 
 const PLAYER_BODY_TEXTURE := preload("res://art/characters/player_body.svg")
+const PLAYER_BODY_BACK_TEXTURE := preload("res://art/characters/player_body_back.svg")
+const PLAYER_BODY_SIDE_TEXTURE := preload("res://art/characters/player_body_side.svg")
 const PLAYER_ARMS_GUN_TEXTURE := preload("res://art/characters/player_arms_gun.svg")
 const PLAYER_ARMS_GUN_LEFT_TEXTURE := preload("res://art/characters/player_arms_gun_left.svg")
+const PLAYER_RESTING_PISTOL_TEXTURE := preload("res://art/characters/player_resting_pistol.svg")
+const PLAYER_RESTING_PISTOL_LEFT_TEXTURE := preload("res://art/characters/player_resting_pistol_left.svg")
 
 @export var speed: float = 260.0
 @export var max_health: int = 8
@@ -290,13 +294,34 @@ func _draw_player_character_art() -> void:
 	var aim := aim_direction.normalized()
 	if aim.length_squared() <= 0.001:
 		aim = Vector2.RIGHT
-	var weapon_texture := PLAYER_ARMS_GUN_TEXTURE
+	var weapon_texture: Texture2D = PLAYER_ARMS_GUN_TEXTURE
+	var resting_texture: Texture2D = PLAYER_RESTING_PISTOL_TEXTURE
+	var body_texture: Texture2D = PLAYER_BODY_TEXTURE
+	var body_scale := Vector2.ONE
+	var is_side_facing: bool = abs(aim.x) >= abs(aim.y)
+	var is_back_facing: bool = not is_side_facing and aim.y < 0.0
 	var weapon_rotation := aim.angle()
+	var resting_rotation: float = clamp(aim.y * 0.18, -0.18, 0.18)
+	if move_vector.length_squared() > 0.01:
+		resting_rotation += sin(_walk_cycle) * 0.035
+	if is_side_facing:
+		body_texture = PLAYER_BODY_SIDE_TEXTURE
+		body_scale = Vector2(-1.0, 1.0) if aim.x < 0.0 else Vector2.ONE
+	elif is_back_facing:
+		body_texture = PLAYER_BODY_BACK_TEXTURE
 	if aim.x < -0.001:
 		weapon_texture = PLAYER_ARMS_GUN_LEFT_TEXTURE
+		resting_texture = PLAYER_RESTING_PISTOL_LEFT_TEXTURE
 		weapon_rotation = (-aim).angle()
-	_draw_centered_texture(PLAYER_BODY_TEXTURE, visual_radius, 0.0, tint)
-	_draw_centered_texture(weapon_texture, visual_radius, weapon_rotation, tint)
+		resting_rotation = -resting_rotation
+	if is_back_facing:
+		_draw_centered_texture(resting_texture, visual_radius, resting_rotation, tint)
+		_draw_centered_texture(weapon_texture, visual_radius, weapon_rotation, tint)
+		_draw_centered_texture(body_texture, visual_radius, 0.0, tint, body_scale)
+	else:
+		_draw_centered_texture(body_texture, visual_radius, 0.0, tint, body_scale)
+		_draw_centered_texture(resting_texture, visual_radius, resting_rotation, tint)
+		_draw_centered_texture(weapon_texture, visual_radius, weapon_rotation, tint)
 
 
 func _draw_player_walk_feet() -> void:
@@ -304,24 +329,28 @@ func _draw_player_walk_feet() -> void:
 	var stride_direction := move_vector.normalized() if is_walking else Vector2.RIGHT
 	if stride_direction.length_squared() <= 0.001:
 		stride_direction = Vector2.RIGHT
-	var foot_anchor := Vector2.DOWN * body_radius * 0.78
+	var foot_anchor := Vector2.DOWN * body_radius * 1.18
 	var side := Vector2.RIGHT
 	var stride: float = sin(_walk_cycle) * body_radius * 0.26 if is_walking else 0.0
 	var lift: float = abs(sin(_walk_cycle)) * 0.22 if is_walking else 0.0
 	var left_center: Vector2 = foot_anchor - side * body_radius * 0.42 + stride_direction * stride
 	var right_center: Vector2 = foot_anchor + side * body_radius * 0.42 - stride_direction * stride
-	var left_scale := Vector2(body_radius * 0.38, body_radius * (0.64 + lift))
-	var right_scale := Vector2(body_radius * 0.38, body_radius * (0.64 + (0.22 - lift if is_walking else 0.0)))
-	_draw_oval(left_center, 0.0, left_scale, Color(0.08, 0.18, 0.44, 1.0))
-	_draw_oval(right_center, 0.0, right_scale, Color(0.1, 0.25, 0.62, 1.0))
-	_draw_oval(left_center - Vector2.DOWN * body_radius * 0.08, 0.0, left_scale * 0.55, Color(0.22, 0.5, 1.0, 0.72))
-	_draw_oval(right_center - Vector2.DOWN * body_radius * 0.08, 0.0, right_scale * 0.55, Color(0.22, 0.5, 1.0, 0.72))
+	var left_scale := Vector2(body_radius * 0.34, body_radius * (0.7 + lift))
+	var right_scale := Vector2(body_radius * 0.34, body_radius * (0.7 + (0.22 - lift if is_walking else 0.0)))
+	var boot_lift := Vector2.DOWN * body_radius * 0.04
+	var upper_lift := Vector2.DOWN * body_radius * 0.1
+	_draw_oval(left_center + boot_lift, 0.0, left_scale, Color(0.03, 0.07, 0.13, 1.0))
+	_draw_oval(right_center + boot_lift, 0.0, right_scale, Color(0.03, 0.07, 0.13, 1.0))
+	_draw_oval(left_center - upper_lift, 0.0, left_scale * Vector2(0.62, 0.58), Color(0.06, 0.3, 0.74, 0.88))
+	_draw_oval(right_center - upper_lift, 0.0, right_scale * Vector2(0.62, 0.58), Color(0.07, 0.38, 0.86, 0.88))
+	_draw_oval(left_center - Vector2.DOWN * body_radius * 0.18, 0.0, left_scale * Vector2(0.3, 0.22), Color(0.13, 0.82, 1.0, 0.7))
+	_draw_oval(right_center - Vector2.DOWN * body_radius * 0.18, 0.0, right_scale * Vector2(0.3, 0.22), Color(0.13, 0.82, 1.0, 0.7))
 
 
-func _draw_centered_texture(texture: Texture2D, visual_radius: float, rotation: float, tint: Color = Color.WHITE) -> void:
+func _draw_centered_texture(texture: Texture2D, visual_radius: float, rotation: float, tint: Color = Color.WHITE, scale: Vector2 = Vector2.ONE) -> void:
 	if texture == null:
 		return
-	draw_set_transform(Vector2.ZERO, rotation, Vector2.ONE)
+	draw_set_transform(Vector2.ZERO, rotation, scale)
 	draw_texture_rect(texture, Rect2(Vector2(-visual_radius, -visual_radius), Vector2(visual_radius * 2.0, visual_radius * 2.0)), false, tint)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 

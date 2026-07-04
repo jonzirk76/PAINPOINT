@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>Top Down Velora Player Body Side</title>
+  <g id="body_side_outfit">
+    <path d="M32 59 C29 42 38 24 55 17 C70 10 89 15 98 29 C107 44 106 63 96 78 C88 93 68 102 49 96 C37 91 31 76 32 59 Z" fill="#1a0b31"/>
+    <path d="M31 60 C22 67 20 82 28 94 C39 88 47 74 46 58 Z" fill="#5d22ac"/>
+    <path d="M43 54 C39 33 52 18 71 17 C88 18 100 32 100 51 C99 69 86 85 67 88 C50 87 41 75 43 54 Z" fill="#2a0d4d"/>
+    <path d="M47 55 C49 38 59 28 72 28 C87 29 95 40 94 55 C92 72 79 83 64 82 C52 80 45 69 47 55 Z" fill="#6b2cc2"/>
+    <path d="M83 37 C91 40 96 48 96 57 C96 68 89 77 78 82 C68 86 54 82 48 72 C56 76 67 75 76 70 C86 63 89 50 83 37 Z" fill="#3c126c" opacity="0.85"/>
+    <path d="M58 66 C60 55 69 49 82 50 C91 55 95 65 93 78 L87 94 C76 101 58 99 49 90 C50 80 53 72 58 66 Z" fill="#0f48b7"/>
+    <path d="M70 56 C74 51 82 50 89 54 C93 59 94 66 92 73 C86 68 77 66 68 68 C65 64 65 60 70 56 Z" fill="#111827"/>
+    <path d="M58 76 L90 77" fill="none" stroke="#07111f" stroke-width="5" stroke-linecap="round"/>
+    <path d="M56 85 C66 91 79 91 88 85" fill="none" stroke="#21c8f6" stroke-width="3.4" stroke-linecap="round" opacity="0.85"/>
+    <path d="M55 58 L47 84" fill="none" stroke="#0b1727" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="78" cy="45" r="15" fill="#f0b58f"/>
+    <path d="M64 44 C67 30 83 25 96 36 C88 35 82 37 76 43 C71 48 66 48 64 44 Z" fill="#381064"/>
+    <path id="forehead_bang" d="M61 49 C64 31 82 23 98 36 C88 37 82 41 77 48 C72 54 65 55 61 49 Z" fill="#a84cff"/>
+    <path d="M65 43 C71 28 87 24 98 36" fill="none" stroke="#d39cff" stroke-width="3.1" stroke-linecap="round" opacity="0.82"/>
+    <ellipse cx="84" cy="47" rx="3" ry="3.7" fill="#27122f"/>
+    <circle cx="85" cy="46" r="1.1" fill="#8ff4ff"/>
+    <path d="M80 40 C84 38 88 39 91 42" fill="none" stroke="#2b103d" stroke-width="2.1" stroke-linecap="round"/>
+    <path d="M63 94 L72 101 L80 96 L88 99" fill="none" stroke="#09111f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="73" cy="77" r="3.1" fill="#7cecff"/>
+  </g>
+</svg>
