@@ -13,7 +13,7 @@ signal hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: 
 @export var default_spawner_health: int = 18
 @export var default_spawn_interval: float = 2.8
 @export var default_spawner_radius: float = 32.0
-@export var initial_enemies_per_spawner: int = 1
+@export var initial_spawn_batch_multiplier: int = 2
 @export var pressure_damage_distance: float = 165.0
 @export var pressure_damage_bonus: int = 1
 
@@ -29,6 +29,7 @@ var _arena_shape: int = 0
 var _wall_rects: Array[Rect2] = []
 var _player_provider: Callable
 var _initial_spawns_pending: bool = false
+var _initial_spawn_delay_remaining: float = 0.0
 
 
 func initialize(context: Dictionary) -> void:
@@ -45,6 +46,7 @@ func reset_run(level_definition = null) -> void:
 	for index in range(placements.size()):
 		_spawn_spawner(placements[index], index)
 	_initial_spawns_pending = not _spawners.is_empty()
+	_initial_spawn_delay_remaining = 0.0
 	spawner_count_changed.emit(_spawners.size())
 
 
@@ -54,6 +56,7 @@ func clear_spawners() -> void:
 			spawner.queue_free()
 	_spawners.clear()
 	_initial_spawns_pending = false
+	_initial_spawn_delay_remaining = 0.0
 	spawner_count_changed.emit(0)
 
 
@@ -63,8 +66,7 @@ func set_enabled(value: bool) -> void:
 		if is_instance_valid(spawner):
 			spawner.set_enabled(value)
 	if enabled and _initial_spawns_pending:
-		_initial_spawns_pending = false
-		_emit_initial_spawn_requests()
+		_begin_initial_spawn_sequence()
 
 
 func set_enemy_count(count: int) -> void:
@@ -82,11 +84,17 @@ func set_arena_definition(level_definition) -> void:
 			spawner.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	var player_position := _get_player_position()
 	for spawner in _spawners:
 		if is_instance_valid(spawner):
 			spawner.set_target_position(player_position)
+	if not enabled or not _initial_spawns_pending:
+		return
+	_initial_spawn_delay_remaining = max(_initial_spawn_delay_remaining - delta, 0.0)
+	if _initial_spawn_delay_remaining <= 0.0:
+		_initial_spawns_pending = false
+		_emit_initial_spawn_requests()
 
 
 func _spawn_spawner(placement, index: int) -> void:
@@ -129,8 +137,27 @@ func _on_spawner_spawn_ready(_spawner, spawn_position: Vector2) -> void:
 		projected_enemy_count += 1
 
 
+func _begin_initial_spawn_sequence() -> void:
+	if initial_spawn_batch_multiplier <= 0:
+		_initial_spawns_pending = false
+		_initial_spawn_delay_remaining = 0.0
+		return
+	_initial_spawn_delay_remaining = _get_initial_spawn_shield_delay()
+	for spawner in _spawners:
+		if not is_instance_valid(spawner):
+			continue
+		var shield_after_spawn: float = float(spawner.projectile_shield_after_spawn_seconds)
+		if spawner.has_method("activate_projectile_shield"):
+			spawner.activate_projectile_shield(_initial_spawn_delay_remaining + shield_after_spawn)
+		if spawner.has_method("delay_next_spawn_until"):
+			spawner.delay_next_spawn_until(_initial_spawn_delay_remaining + float(spawner.spawn_interval))
+	if _initial_spawn_delay_remaining <= 0.0:
+		_initial_spawns_pending = false
+		_emit_initial_spawn_requests()
+
+
 func _emit_initial_spawn_requests() -> void:
-	if initial_enemies_per_spawner <= 0:
+	if initial_spawn_batch_multiplier <= 0:
 		return
 	var projected_enemy_count := _current_enemy_count
 	for spawner_index in range(_spawners.size()):
@@ -138,7 +165,7 @@ func _emit_initial_spawn_requests() -> void:
 		if not is_instance_valid(spawner):
 			continue
 		var profile = spawner.enemy_profile if spawner.enemy_profile != null else default_enemy_profile
-		var spawn_count := _get_spawner_spawn_batch_count(spawner)
+		var spawn_count := _get_initial_spawn_batch_count(spawner)
 		for spawn_index in range(spawn_count):
 			if projected_enemy_count >= max_active_enemies:
 				return
@@ -244,7 +271,19 @@ func _get_spawner_radius() -> float:
 func _get_spawner_spawn_batch_count(spawner) -> int:
 	if spawner != null and is_instance_valid(spawner):
 		return max(int(spawner.spawn_batch_count), 1)
-	return max(initial_enemies_per_spawner, 1)
+	return 1
+
+
+func _get_initial_spawn_batch_count(spawner) -> int:
+	return _get_spawner_spawn_batch_count(spawner) * max(initial_spawn_batch_multiplier, 1)
+
+
+func _get_initial_spawn_shield_delay() -> float:
+	var delay := 0.0
+	for spawner in _spawners:
+		if is_instance_valid(spawner):
+			delay = max(delay, float(spawner.projectile_shield_lead_seconds))
+	return delay
 
 
 func _get_initial_spawn_position(spawner, spawner_index: int, spawn_index: int, spawn_count: int) -> Vector2:

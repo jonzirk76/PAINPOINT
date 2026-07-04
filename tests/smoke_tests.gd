@@ -1521,11 +1521,19 @@ func _test_typed_spawner_spawn_profile(failures: Array[String]) -> void:
 		failures.append("SpawnerManager did not create typed spawners from level placements.")
 	else:
 		var spawner = manager._spawners[0]
+		if not requested_profiles.is_empty():
+			failures.append("SpawnerManager should not emit opening enemies before its startup shield window.")
+		for created_spawner in manager._spawners:
+			if not created_spawner.is_projectile_shield_active():
+				failures.append("SpawnerManager should start each spawner in projectile shield state before the opening wave.")
 		var expected_initial_requests := 0
 		for created_spawner in manager._spawners:
-			expected_initial_requests += int(created_spawner.spawn_batch_count)
+			expected_initial_requests += int(created_spawner.spawn_batch_count) * manager.initial_spawn_batch_multiplier
+			if created_spawner._timer < manager._get_initial_spawn_shield_delay() + float(created_spawner.spawn_interval):
+				failures.append("SpawnerManager should delay normal spawn timing until after the doubled opening wave.")
+		manager._process(manager._get_initial_spawn_shield_delay() + 0.05)
 		if requested_profiles.size() < expected_initial_requests:
-			failures.append("SpawnerManager should request opening enemies from each spawner when enabled.")
+			failures.append("SpawnerManager should request a doubled opening enemy batch after the startup shield window.")
 		var previous_request_count := requested_profiles.size()
 		manager._on_spawner_spawn_ready(spawner, spawner.global_position)
 		var pulse_count := requested_profiles.size() - previous_request_count
@@ -2249,9 +2257,13 @@ func _test_orchestrator_dungeon_start_and_boss(failures: Array[String]) -> void:
 				boss_found = true
 		if not boss_found:
 			failures.append("Boss room should spawn the first boss enemy.")
-		var expected_boss_room_pressure: int = 1 + main.spawner_manager.get_spawner_count() * main.spawner_manager.initial_enemies_per_spawner
+		main.spawner_manager._process(main.spawner_manager._get_initial_spawn_shield_delay() + 0.05)
+		var expected_opening_wave := 0
+		for created_spawner in main.spawner_manager._spawners:
+			expected_opening_wave += main.spawner_manager._get_initial_spawn_batch_count(created_spawner)
+		var expected_boss_room_pressure: int = 1 + expected_opening_wave
 		if main.enemy_manager.get_enemy_count() < expected_boss_room_pressure:
-			failures.append("Boss room should spawn boss plus opening-wave enemies.")
+			failures.append("Boss room should spawn boss plus doubled opening-wave enemies after the spawner shield startup.")
 	if main.spawner_manager.get_spawner_count() < 4:
 		failures.append("Boss room should spawn supporting spawners.")
 	if main.spawner_manager.max_active_enemies <= main.enemy_manager.get_enemy_count():

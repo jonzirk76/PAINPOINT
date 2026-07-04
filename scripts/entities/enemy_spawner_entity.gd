@@ -106,6 +106,10 @@ func set_enabled(value: bool) -> void:
 		velocity = Vector2.ZERO
 
 
+func delay_next_spawn_until(delay_seconds: float) -> void:
+	_timer = max(_timer, max(delay_seconds, 0.0))
+
+
 func initialize(spawner_health: int, interval: float, radius: float) -> void:
 	max_health = spawner_health
 	health = max_health
