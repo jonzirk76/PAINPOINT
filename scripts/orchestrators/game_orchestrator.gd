@@ -514,7 +514,7 @@ func _on_projectile_expired(_projectile, expire_info: Dictionary) -> void:
 	var impact_direction: Vector2 = expire_info.get("direction", Vector2.RIGHT)
 	var impact_radius: float = float(expire_info.get("radius", 7.0))
 	var projectile_kind := String(expire_info.get("kind", ""))
-	if reason == "wall" and projectile_kind != "rocket":
+	if (reason == "wall" or reason == "bounds") and projectile_kind != "rocket":
 		audio_manager.play_bullet_wall_hit()
 	effects_manager.play_projectile_impact(impact_position, impact_direction, impact_radius, false)
 	if projectile_kind == "rocket":

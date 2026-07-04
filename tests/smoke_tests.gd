@@ -1056,8 +1056,8 @@ func _test_projectile_impact_visuals(failures: Array[String]) -> void:
 	var orchestrator_source := _read_text("res://scripts/orchestrators/game_orchestrator.gd")
 	if not orchestrator_source.contains("play_projectile_impact") or not orchestrator_source.contains("_target_has_active_projectile_shield"):
 		failures.append("Projectile hit routing should play impact animations and mark shield-blocked hits.")
-	if not orchestrator_source.contains("projectile_expired") or not orchestrator_source.contains("reason == \"wall\""):
-		failures.append("Projectile expiry routing should play impact frames for wall hits and dissipating bullets.")
+	if not orchestrator_source.contains("projectile_expired") or not orchestrator_source.contains("reason == \"wall\"") or not orchestrator_source.contains("reason == \"bounds\""):
+		failures.append("Projectile expiry routing should play impact frames for wall, boundary, and dissipating bullets.")
 	effects_manager.free()
 	effect_layer.free()
 
@@ -1098,13 +1098,13 @@ func _test_audio_assets_and_pitch_variation(failures: Array[String]) -> void:
 			failures.append("Parry-ready pitch variation is outside its expected range.")
 		if perfect_player.pitch_scale < 0.96 or perfect_player.pitch_scale > 1.04:
 			failures.append("Perfect parry follow-up pitch variation is outside its expected range.")
-		if wall_player.pitch_scale < 0.72 or wall_player.pitch_scale > 0.88:
+		if wall_player.pitch_scale < 0.4 or wall_player.pitch_scale > 0.6:
 			failures.append("Wall-hit pitch variation is outside its expected range.")
 		if rocket_player.pitch_scale < 0.92 or rocket_player.pitch_scale > 1.06:
 			failures.append("Rocket explosion pitch variation is outside its expected range.")
 	var orchestrator_source := _read_text("res://scripts/orchestrators/game_orchestrator.gd")
-	if not orchestrator_source.contains("play_bullet_wall_hit") or not orchestrator_source.contains("reason == \"wall\""):
-		failures.append("Projectile wall expiry should route to the dedicated wall-hit SFX.")
+	if not orchestrator_source.contains("play_bullet_wall_hit") or not orchestrator_source.contains("reason == \"wall\"") or not orchestrator_source.contains("reason == \"bounds\""):
+		failures.append("Projectile wall and room-boundary expiry should route to the dedicated wall-hit SFX.")
 	if not orchestrator_source.contains("play_rocket_explosion") or not orchestrator_source.contains("_detonate_hostile_rocket"):
 		failures.append("Hostile rocket detonation should route to the rocket explosion SFX.")
 	manager.set_enabled(false)
