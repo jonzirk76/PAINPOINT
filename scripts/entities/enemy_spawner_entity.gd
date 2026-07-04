@@ -24,6 +24,13 @@ signal shot_ready(spawner, origin: Vector2, direction: Vector2, shot_config: Dic
 @export var projectile_radius: float = 7.0
 @export var shot_projectile_count: int = 1
 @export var shot_spread_degrees: float = 0.0
+@export var special_attack_kind: String = ""
+@export var special_cooldown: float = 5.8
+@export var special_telegraph_seconds: float = 0.58
+@export var special_minigun_duration: float = 0.55
+@export var special_minigun_shot_interval: float = 0.08
+@export var special_minigun_sweep_degrees: float = 58.0
+@export var special_rocket_recoil: float = 145.0
 @export var move_speed: float = 18.0
 @export var preferred_distance: float = 340.0
 @export var distance_band: float = 85.0
@@ -46,6 +53,15 @@ var _strafe_sign: float = 1.0
 var _collision_shape: CollisionShape2D = null
 var _projectile_shield_remaining: float = 0.0
 var _projectile_shield_block_flash_remaining: float = 0.0
+var _special_timer: float = 0.0
+var _special_telegraph_remaining: float = 0.0
+var _special_telegraph_duration: float = 0.58
+var _active_special_kind: String = ""
+var _minigun_remaining: float = 0.0
+var _minigun_elapsed: float = 0.0
+var _minigun_next_shot_remaining: float = 0.0
+var _minigun_base_direction: Vector2 = Vector2.RIGHT
+var _recoil_velocity: Vector2 = Vector2.ZERO
 
 
 func _init() -> void:
@@ -81,22 +97,30 @@ func _process(delta: float) -> void:
 		spawn_ready.emit(self, global_position)
 		queue_redraw()
 	if shoots_projectiles:
-		_shot_timer -= delta
-		if _shot_timer <= 0.0:
-			_shot_timer = shot_cooldown
-			_try_emit_shot()
+		var special_active: bool = _update_special_attack(delta)
+		if not special_active:
+			_shot_timer -= delta
+			if _shot_timer <= 0.0:
+				_shot_timer = shot_cooldown
+				_try_emit_shot()
 
 
 func _physics_process(_delta: float) -> void:
 	if _is_destroyed or not active:
 		velocity = Vector2.ZERO
 		return
-	velocity = _get_general_velocity()
+	var intent_velocity: Vector2 = _get_general_velocity()
+	if _special_telegraph_remaining > 0.0:
+		intent_velocity *= 0.45
+	if _minigun_remaining > 0.0:
+		intent_velocity = Vector2.ZERO
+	velocity = intent_velocity + _recoil_velocity
 	move_and_slide()
 	if get_slide_collision_count() > 0:
 		_strafe_sign *= -1.0
 	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
-	if velocity.length_squared() > 1.0:
+	_recoil_velocity = _recoil_velocity.move_toward(Vector2.ZERO, 360.0 * _delta)
+	if velocity.length_squared() > 1.0 or _special_telegraph_remaining > 0.0 or _minigun_remaining > 0.0:
 		queue_redraw()
 
 
@@ -140,11 +164,22 @@ func initialize_from_profile(profile) -> void:
 	projectile_radius = profile.projectile_radius
 	shot_projectile_count = profile.shot_projectile_count
 	shot_spread_degrees = profile.shot_spread_degrees
+	special_attack_kind = profile.special_attack_kind
+	special_cooldown = profile.special_cooldown
+	special_telegraph_seconds = profile.special_telegraph_seconds
+	special_minigun_duration = profile.special_minigun_duration
+	special_minigun_shot_interval = profile.special_minigun_shot_interval
+	special_minigun_sweep_degrees = profile.special_minigun_sweep_degrees
+	special_rocket_recoil = profile.special_rocket_recoil
 	move_speed = profile.move_speed
 	preferred_distance = profile.preferred_distance
 	distance_band = profile.distance_band
 	strafe_speed = profile.strafe_speed
 	_shot_timer = shot_cooldown * 0.5
+	_special_timer = special_cooldown * 0.62
+	_special_telegraph_remaining = 0.0
+	_minigun_remaining = 0.0
+	_recoil_velocity = Vector2.ZERO
 
 
 func set_target_position(position: Vector2) -> void:
@@ -226,6 +261,10 @@ func _draw() -> void:
 	_draw_type_details(draw_core_color)
 	if is_projectile_shield_active() or _projectile_shield_block_flash_remaining > 0.0:
 		_draw_projectile_shield()
+	if _special_telegraph_remaining > 0.0:
+		_draw_special_telegraph()
+	if _minigun_remaining > 0.0:
+		_draw_minigun_sweep()
 	draw_arc(Vector2.ZERO, body_radius * 0.38, 0.0, TAU * health_ratio, 28, accent_color, 4.0)
 	var damage_level := 1.0 - health_ratio
 	if damage_level > 0.22:
@@ -290,6 +329,54 @@ func _draw_projectile_shield() -> void:
 	draw_arc(Vector2.ZERO, radius * 0.82, PI * 0.12, PI * 1.88, 36, Color(1.0, 1.0, 0.78, 0.36 + block_ratio * 0.34), 2.0)
 
 
+func _draw_special_telegraph() -> void:
+	var progress: float = 1.0 - clamp(_special_telegraph_remaining / max(_special_telegraph_duration, 0.001), 0.0, 1.0)
+	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.045)
+	var aim: Vector2 = (target_position - global_position).normalized()
+	if aim.length_squared() <= 0.001:
+		aim = Vector2.RIGHT
+	var telegraph_color: Color = _get_special_telegraph_color()
+	var radius: float = body_radius + 10.0 + progress * 14.0 + pulse * 3.0
+	draw_circle(Vector2.ZERO, radius, Color(telegraph_color.r, telegraph_color.g, telegraph_color.b, 0.08 + pulse * 0.07))
+	draw_arc(Vector2.ZERO, radius, -PI * 0.5, -PI * 0.5 + TAU * progress, 46, telegraph_color, 4.0)
+	match _active_special_kind:
+		"spread":
+			for index in range(3):
+				var offset: float = deg_to_rad(30.0) * (float(index) - 1.0)
+				draw_line(Vector2.ZERO, aim.rotated(offset) * (body_radius + 62.0), Color(1.0, 0.96, 0.58, 0.68), 3.0)
+		"rocket":
+			draw_line(Vector2.ZERO, aim * (body_radius + 76.0), Color(1.0, 0.42, 0.18, 0.84), 5.0)
+			draw_arc(aim * (body_radius + 64.0), 12.0 + pulse * 5.0, 0.0, TAU, 24, Color(1.0, 0.78, 0.22, 0.76), 3.0)
+		"minigun":
+			var sweep_direction: Vector2 = aim.rotated(sin(progress * PI * 4.0) * 0.46)
+			var side: Vector2 = sweep_direction.orthogonal()
+			draw_line(side * -body_radius * 0.82, sweep_direction * (body_radius + 72.0), Color(1.0, 0.96, 0.58, 0.72), 4.0)
+			draw_line(side * body_radius * 0.82, sweep_direction * (body_radius + 62.0), Color(0.54, 1.0, 1.0, 0.42), 3.0)
+		_:
+			draw_line(Vector2.ZERO, aim * (body_radius + 58.0), Color(1.0, 0.98, 0.64, 0.7), 4.0)
+
+
+func _draw_minigun_sweep() -> void:
+	var direction: Vector2 = _get_minigun_direction()
+	var side: Vector2 = direction.orthogonal()
+	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.075)
+	draw_line(side * -body_radius * 0.75, direction * (body_radius + 82.0), Color(1.0, 0.96, 0.42, 0.68 + pulse * 0.18), 4.0)
+	draw_line(side * body_radius * 0.75, direction * (body_radius + 68.0), Color(0.45, 1.0, 1.0, 0.4 + pulse * 0.12), 3.0)
+	draw_circle(direction * (body_radius + 30.0), 4.0 + pulse * 1.8, Color(1.0, 0.82, 0.16, 0.72))
+
+
+func _get_special_telegraph_color() -> Color:
+	match _active_special_kind:
+		"rocket":
+			return Color(1.0, 0.32, 0.12, 0.86)
+		"minigun":
+			return Color(1.0, 0.92, 0.28, 0.78)
+		"spread":
+			return Color(0.74, 1.0, 0.34, 0.8)
+		_:
+			return Color(0.58, 1.0, 1.0, 0.76)
+
+
 func _try_emit_shot() -> void:
 	var to_target := target_position - global_position
 	if to_target.length_squared() <= 4.0:
@@ -309,6 +396,158 @@ func _try_emit_shot() -> void:
 		"spread_angle_degrees": shot_spread_degrees
 	}
 	shot_ready.emit(self, shot_origin, shot_direction, shot_config)
+
+
+func _update_special_attack(delta: float) -> bool:
+	if special_attack_kind.is_empty():
+		return false
+	if _minigun_remaining > 0.0:
+		_update_minigun(delta)
+		return true
+	if _special_telegraph_remaining > 0.0:
+		_special_telegraph_remaining = max(_special_telegraph_remaining - delta, 0.0)
+		if _special_telegraph_remaining <= 0.0:
+			if _active_special_kind == "minigun":
+				_start_minigun()
+			else:
+				_emit_special_shot()
+				_finish_special_attack()
+		queue_redraw()
+		return true
+	_special_timer = max(_special_timer - delta, 0.0)
+	var to_target: Vector2 = target_position - global_position
+	if _special_timer > 0.0 or to_target.length_squared() <= 4.0:
+		return false
+	if _wall_blocks_segment(global_position, target_position):
+		return false
+	_active_special_kind = special_attack_kind
+	_special_telegraph_duration = max(special_telegraph_seconds, 0.1)
+	_special_telegraph_remaining = _special_telegraph_duration
+	queue_redraw()
+	return true
+
+
+func _emit_special_shot() -> void:
+	var to_target: Vector2 = target_position - global_position
+	if to_target.length_squared() <= 4.0:
+		return
+	var shot_direction: Vector2 = to_target.normalized()
+	var shot_config: Dictionary = _get_special_shot_config(_active_special_kind)
+	var radius: float = float(shot_config.get("radius", projectile_radius))
+	var shot_origin: Vector2 = global_position + shot_direction * (body_radius + radius + 6.0)
+	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
+		shot_origin = global_position
+	if _active_special_kind == "rocket":
+		var target_position_at_launch: Vector2 = target_position
+		var target_direction: Vector2 = target_position_at_launch - shot_origin
+		if target_direction.length_squared() > 4.0:
+			shot_direction = target_direction.normalized()
+		var rocket_speed: float = max(float(shot_config.get("speed", projectile_speed)), 1.0)
+		shot_config["target_position"] = target_position_at_launch
+		shot_config["lifetime"] = max(shot_origin.distance_to(target_position_at_launch) / rocket_speed, 0.08)
+		shot_config["exact_lifetime"] = true
+		_recoil_velocity += -shot_direction * max(special_rocket_recoil, 0.0)
+	shot_ready.emit(self, shot_origin, shot_direction, shot_config)
+
+
+func _start_minigun() -> void:
+	var to_target: Vector2 = target_position - global_position
+	if to_target.length_squared() <= 4.0:
+		_finish_special_attack()
+		return
+	_minigun_base_direction = to_target.normalized()
+	_minigun_elapsed = 0.0
+	_minigun_remaining = max(special_minigun_duration, 0.12)
+	_minigun_next_shot_remaining = max(special_minigun_shot_interval, 0.025)
+	_emit_minigun_shot()
+
+
+func _update_minigun(delta: float) -> void:
+	var duration: float = max(special_minigun_duration, 0.12)
+	_minigun_elapsed = min(_minigun_elapsed + delta, duration)
+	_minigun_remaining = max(duration - _minigun_elapsed, 0.0)
+	_minigun_next_shot_remaining -= delta
+	var interval: float = max(special_minigun_shot_interval, 0.025)
+	var emitted_count := 0
+	while _minigun_remaining > 0.0 and _minigun_next_shot_remaining <= 0.0 and emitted_count < 8:
+		_emit_minigun_shot()
+		_minigun_next_shot_remaining += interval
+		emitted_count += 1
+	if _minigun_remaining <= 0.0:
+		_finish_special_attack()
+	queue_redraw()
+
+
+func _emit_minigun_shot() -> void:
+	var shot_direction: Vector2 = _get_minigun_direction()
+	var shot_config: Dictionary = _get_special_shot_config("minigun")
+	var radius: float = float(shot_config.get("radius", projectile_radius))
+	var shot_origin: Vector2 = global_position + shot_direction * (body_radius + radius + 6.0)
+	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
+		shot_origin = global_position
+	shot_ready.emit(self, shot_origin, shot_direction, shot_config)
+
+
+func _get_minigun_direction() -> Vector2:
+	var duration: float = max(special_minigun_duration, 0.12)
+	var progress: float = clamp(_minigun_elapsed / duration, 0.0, 1.0)
+	var half_sweep: float = deg_to_rad(special_minigun_sweep_degrees) * 0.5
+	return _minigun_base_direction.rotated(lerp(-half_sweep, half_sweep, progress)).normalized()
+
+
+func _finish_special_attack() -> void:
+	_minigun_remaining = 0.0
+	_minigun_elapsed = 0.0
+	_minigun_next_shot_remaining = 0.0
+	_special_timer = special_cooldown
+
+
+func _get_special_shot_config(kind: String) -> Dictionary:
+	match kind:
+		"rocket":
+			return {
+				"speed": max(projectile_speed * 3.2, 560.0),
+				"damage": max(projectile_damage + 1, 2),
+				"radius": max(projectile_radius * 0.9, 11.0),
+				"kind": "rocket",
+				"projectile_count": 1,
+				"spread_angle_degrees": 0.0,
+				"knockback": 420.0,
+				"explosion_radius": 58.0,
+				"explosion_damage_multiplier": 1.0
+			}
+		"minigun":
+			return {
+				"speed": projectile_speed * 1.36,
+				"damage": projectile_damage,
+				"radius": max(projectile_radius * 0.72, 4.8),
+				"kind": "hostile_minigun",
+				"projectile_count": 1,
+				"spread_angle_degrees": 0.0,
+				"lifetime": 1.35,
+				"knockback": 0.0
+			}
+		"spread":
+			return {
+				"speed": max(projectile_speed * 1.14, projectile_speed + 32.0),
+				"damage": projectile_damage,
+				"radius": projectile_radius,
+				"kind": "hostile",
+				"projectile_count": 3,
+				"spread_angle_degrees": 34.0,
+				"knockback": 0.0
+			}
+		_:
+			return {
+				"speed": projectile_speed * 1.32,
+				"damage": projectile_damage,
+				"radius": projectile_radius,
+				"kind": "hostile",
+				"projectile_count": max(shot_projectile_count, 1),
+				"spread_angle_degrees": shot_spread_degrees,
+				"lifetime": 1.45,
+				"knockback": 0.0
+			}
 
 
 func _update_projectile_shield(delta: float) -> void:

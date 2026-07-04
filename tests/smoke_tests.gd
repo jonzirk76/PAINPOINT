@@ -181,6 +181,7 @@ func _init() -> void:
 	_test_spawner_pressure_damage(failures)
 	_test_typed_spawner_spawn_profile(failures)
 	_test_hostile_shot_signals(failures)
+	_test_spawner_special_attacks(failures)
 	_test_hostile_shots_respect_walls(failures)
 	_test_shooter_shot_tracks_target(failures)
 	_test_hostile_projectile_damage_path(failures)
@@ -549,8 +550,14 @@ func _test_enemy_and_spawner_profiles(failures: Array[String]) -> void:
 		failures.append("Fast spawner should fire a smaller, faster projectile.")
 	if tank_spawner.projectile_speed >= basic_spawner.projectile_speed or tank_spawner.projectile_radius <= basic_spawner.projectile_radius:
 		failures.append("Tank spawner should fire a larger, slower projectile.")
-	if shooter_spawner.shot_projectile_count < 3 or shooter_spawner.shot_spread_degrees <= 0.0:
-		failures.append("Shooter spawner should fire a sweeping three-shot pulse.")
+	if String(basic_spawner.special_attack_kind) != "spread":
+		failures.append("Basic spawner should teach the boss-style three-shot spread special.")
+	if String(fast_spawner.special_attack_kind) != "rapid" or fast_spawner.shot_cooldown >= basic_spawner.shot_cooldown:
+		failures.append("Fast spawner should teach quick hostile shots before later boss specials.")
+	if String(tank_spawner.special_attack_kind) != "rocket":
+		failures.append("Tank spawner should teach the boss-style rocket special.")
+	if String(shooter_spawner.special_attack_kind) != "minigun" or shooter_spawner.shot_projectile_count != 1:
+		failures.append("Shooter spawner should save its pressure spike for the minigun special.")
 	if basic_spawner.spawn_interval < 3.6 or basic_spawner.spawn_interval > 4.1:
 		failures.append("Basic spawner interval should be softened around its two-enemy pulse.")
 	if fast_spawner.spawn_interval < 2.4 or fast_spawner.spawn_interval > 2.9:
@@ -1606,6 +1613,86 @@ func _test_hostile_shot_signals(failures: Array[String]) -> void:
 	if moving_spawner._get_general_velocity().x <= 0.0:
 		failures.append("Spawner generals should slowly move toward tactical range.")
 	moving_spawner.free()
+
+
+func _test_spawner_special_attacks(failures: Array[String]) -> void:
+	var fast_profile = load("res://resources/spawners/fast_spawner.tres")
+	var basic_profile = load("res://resources/spawners/basic_spawner.tres")
+	var tank_profile = load("res://resources/spawners/tank_spawner.tres")
+	var shooter_profile = load("res://resources/spawners/shooter_spawner.tres")
+	if String(fast_profile.special_attack_kind) != "rapid" or float(fast_profile.shot_cooldown) >= float(basic_profile.shot_cooldown):
+		failures.append("Fast spawners should keep the quick-shot lesson before later boss patterns.")
+	if String(basic_profile.special_attack_kind) != "spread":
+		failures.append("Basic spawners should telegraph a three-shot spread special.")
+	if String(tank_profile.special_attack_kind) != "rocket":
+		failures.append("Tank spawners should telegraph a rocket special.")
+	if String(shooter_profile.special_attack_kind) != "minigun":
+		failures.append("Shooter spawners should telegraph a minigun special.")
+
+	var basic_spawner = load("res://scenes/entities/enemy_spawner_entity.tscn").instantiate()
+	var basic_shots: Array[Dictionary] = []
+	basic_spawner.initialize_from_profile(basic_profile)
+	basic_spawner.global_position = Vector2.ZERO
+	basic_spawner.set_target_position(Vector2.RIGHT * 340.0)
+	basic_spawner.shot_ready.connect(func(_spawner, _origin, _direction, shot_config) -> void:
+		basic_shots.append(shot_config)
+	)
+	root.add_child(basic_spawner)
+	basic_spawner._special_timer = 0.0
+	if not basic_spawner._update_special_attack(0.05) or basic_spawner._special_telegraph_remaining <= 0.0:
+		failures.append("Spawner specials should begin with a visible windup telegraph.")
+	basic_spawner._update_special_attack(basic_spawner.special_telegraph_seconds + 0.05)
+	var spread_config: Dictionary = basic_shots[basic_shots.size() - 1] if not basic_shots.is_empty() else {}
+	if int(spread_config.get("projectile_count", 0)) != 3 or float(spread_config.get("spread_angle_degrees", 0.0)) <= 0.0:
+		failures.append("Basic spawner special should emit a three-shot spread.")
+	basic_spawner.free()
+
+	var tank_spawner = load("res://scenes/entities/enemy_spawner_entity.tscn").instantiate()
+	var rocket_shots: Array[Dictionary] = []
+	var rocket_directions: Array[Vector2] = []
+	tank_spawner.initialize_from_profile(tank_profile)
+	tank_spawner.global_position = Vector2.ZERO
+	tank_spawner.set_target_position(Vector2.RIGHT * 420.0)
+	tank_spawner.shot_ready.connect(func(_spawner, _origin, direction, shot_config) -> void:
+		rocket_directions.append(direction)
+		rocket_shots.append(shot_config)
+	)
+	root.add_child(tank_spawner)
+	tank_spawner._special_timer = 0.0
+	tank_spawner._update_special_attack(0.05)
+	tank_spawner._update_special_attack(tank_spawner.special_telegraph_seconds + 0.05)
+	var rocket_config: Dictionary = rocket_shots[rocket_shots.size() - 1] if not rocket_shots.is_empty() else {}
+	var rocket_direction: Vector2 = rocket_directions[rocket_directions.size() - 1] if not rocket_directions.is_empty() else Vector2.ZERO
+	if String(rocket_config.get("kind", "")) != "rocket" or not bool(rocket_config.get("exact_lifetime", false)) or not rocket_config.has("target_position"):
+		failures.append("Tank spawner special should fire a targeted rocket.")
+	elif tank_spawner._recoil_velocity.length_squared() <= 0.001 or tank_spawner._recoil_velocity.dot(rocket_direction) >= 0.0:
+		failures.append("Tank spawner rocket launch should push the spawner backward.")
+	tank_spawner.free()
+
+	var shooter_spawner = load("res://scenes/entities/enemy_spawner_entity.tscn").instantiate()
+	var minigun_shots: Array[Dictionary] = []
+	var minigun_directions: Array[Vector2] = []
+	shooter_spawner.initialize_from_profile(shooter_profile)
+	shooter_spawner.global_position = Vector2.ZERO
+	shooter_spawner.set_target_position(Vector2.RIGHT * 360.0)
+	shooter_spawner.shot_ready.connect(func(_spawner, _origin, direction, shot_config) -> void:
+		minigun_directions.append(direction)
+		minigun_shots.append(shot_config)
+	)
+	root.add_child(shooter_spawner)
+	shooter_spawner._special_timer = 0.0
+	shooter_spawner._update_special_attack(0.05)
+	shooter_spawner._update_special_attack(shooter_spawner.special_telegraph_seconds + 0.05)
+	var first_minigun_direction: Vector2 = minigun_directions[minigun_directions.size() - 1] if not minigun_directions.is_empty() else Vector2.ZERO
+	var first_minigun_config: Dictionary = minigun_shots[minigun_shots.size() - 1] if not minigun_shots.is_empty() else {}
+	var minigun_count: int = minigun_shots.size()
+	shooter_spawner._update_special_attack(shooter_spawner.special_minigun_shot_interval + 0.02)
+	var second_minigun_direction: Vector2 = minigun_directions[minigun_directions.size() - 1] if not minigun_directions.is_empty() else Vector2.ZERO
+	if String(first_minigun_config.get("kind", "")) != "hostile_minigun" or minigun_shots.size() <= minigun_count:
+		failures.append("Shooter spawner special should emit rapid minigun shots.")
+	elif second_minigun_direction.distance_to(first_minigun_direction) <= 0.001:
+		failures.append("Shooter spawner minigun should sweep between individual shots.")
+	shooter_spawner.free()
 
 
 func _test_hostile_shots_respect_walls(failures: Array[String]) -> void:
