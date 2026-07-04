@@ -5,8 +5,10 @@ class_name ArenaView
 @export var grid_size: float = 60.0
 @export var arena_shape: int = 0
 @export var wall_rects: Array[Rect2] = []
+@export var void_rects: Array[Rect2] = []
 
 var _wall_bodies: Array[StaticBody2D] = []
+var _void_bodies: Array[StaticBody2D] = []
 
 
 func configure(level_definition) -> void:
@@ -15,7 +17,8 @@ func configure(level_definition) -> void:
 	arena_bounds = level_definition.arena_bounds
 	arena_shape = int(level_definition.arena_shape)
 	wall_rects = level_definition.wall_rects
-	_rebuild_wall_bodies()
+	void_rects = level_definition.void_rects
+	_rebuild_blocker_bodies()
 	queue_redraw()
 
 
@@ -23,6 +26,7 @@ func _draw() -> void:
 	var polygon := _get_arena_polygon()
 	draw_colored_polygon(polygon, Color(0.07, 0.08, 0.09))
 	_draw_clipped_grid(polygon)
+	_draw_voids()
 	_draw_walls()
 	draw_polyline(_closed_points(polygon), Color(0.52, 0.58, 0.62), 4.0, true)
 
@@ -107,13 +111,19 @@ func _closed_points(points: PackedVector2Array) -> PackedVector2Array:
 	return closed
 
 
-func _rebuild_wall_bodies() -> void:
+func _rebuild_blocker_bodies() -> void:
 	for wall_body in _wall_bodies:
 		if is_instance_valid(wall_body):
 			wall_body.collision_layer = 0
 			wall_body.collision_mask = 0
 			wall_body.queue_free()
 	_wall_bodies.clear()
+	for void_body in _void_bodies:
+		if is_instance_valid(void_body):
+			void_body.collision_layer = 0
+			void_body.collision_mask = 0
+			void_body.queue_free()
+	_void_bodies.clear()
 	for index in range(wall_rects.size()):
 		var rect := wall_rects[index]
 		var body := StaticBody2D.new()
@@ -130,9 +140,31 @@ func _rebuild_wall_bodies() -> void:
 		body.add_child(collision_shape)
 		add_child(body)
 		_wall_bodies.append(body)
+	for index in range(void_rects.size()):
+		var rect := void_rects[index]
+		var body := StaticBody2D.new()
+		body.name = "ArenaVoid%d" % index
+		body.collision_layer = 64
+		body.collision_mask = 0
+		body.add_to_group("arena_voids")
+		body.position = rect.get_center()
+		var shape := RectangleShape2D.new()
+		shape.size = rect.size
+		var collision_shape := CollisionShape2D.new()
+		collision_shape.name = "CollisionShape2D"
+		collision_shape.shape = shape
+		body.add_child(collision_shape)
+		add_child(body)
+		_void_bodies.append(body)
 
 
 func _draw_walls() -> void:
 	for rect in wall_rects:
 		draw_rect(rect, Color(0.11, 0.12, 0.14), true)
 		draw_rect(rect, Color(0.65, 0.72, 0.76), false, 3.0)
+
+
+func _draw_voids() -> void:
+	for rect in void_rects:
+		draw_rect(rect, Color(0.02, 0.03, 0.045), true)
+		draw_rect(rect, Color(0.17, 0.24, 0.34), false, 2.0)

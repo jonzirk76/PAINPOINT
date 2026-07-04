@@ -57,6 +57,7 @@ const SCRIPT_PATHS := [
 	"res://scripts/resources/spawner_profile.gd",
 	"res://scripts/resources/spawner_placement.gd",
 	"res://scripts/resources/room_piece_definition.gd",
+	"res://scripts/resources/room_interior_generator.gd",
 	"res://scripts/resources/health_pickup.gd"
 ]
 
@@ -190,6 +191,10 @@ func _init() -> void:
 	_test_hostile_rocket_detonation_damage(failures)
 	_test_spawner_explosion_effect(failures)
 	_test_room_piece_resources(failures)
+	_test_room_interior_generator_determinism_and_budget(failures)
+	_test_room_interior_generator_validation(failures)
+	_test_dungeon_room_interiors_persist(failures)
+	_test_void_blockers_are_movement_only(failures)
 	_test_dungeon_floor_recipe(failures)
 	_test_dungeon_run_seed(failures)
 	_test_dungeon_layout_solver(failures)
@@ -2034,6 +2039,251 @@ func _test_room_piece_resources(failures: Array[String]) -> void:
 				failures.append("Boss room max active enemies should allow boss plus spawned enemies.")
 	if combat_piece_count < 7:
 		failures.append("Dungeon solver should have at least seven combat room pieces to vary floor shapes.")
+
+
+func _test_room_interior_generator_determinism_and_budget(failures: Array[String]) -> void:
+	var generator = load("res://scripts/resources/room_interior_generator.gd").new()
+	var combat_piece = load("res://resources/rooms/combat_wide.tres")
+	var challenge_piece = load("res://resources/rooms/challenge_zigzag.tres")
+	var connections := {"west": "start", "east": "boss"}
+	var first = generator.generate(combat_piece, "path_1", 3, 424242, connections)
+	var repeated = generator.generate(combat_piece, "path_1", 3, 424242, connections)
+	if _get_level_generation_signature(first) != _get_level_generation_signature(repeated):
+		failures.append("RoomInteriorGenerator should be deterministic for seed/floor/room id.")
+	var different_seed = generator.generate(combat_piece, "path_1", 3, 424243, connections)
+	var different_floor = generator.generate(combat_piece, "path_1", 4, 424242, connections)
+	var first_signature := _get_level_generation_signature(first)
+	if first_signature == _get_level_generation_signature(different_seed):
+		failures.append("RoomInteriorGenerator should vary generated interiors across run seeds.")
+	if first_signature == _get_level_generation_signature(different_floor):
+		failures.append("RoomInteriorGenerator should vary generated interiors across floors.")
+
+	var floor_one = generator.generate(combat_piece, "floor_one", 1, 1111, connections)
+	if floor_one.get_spawner_count() < 4 or floor_one.get_spawner_count() > 6:
+		failures.append("Generated combat rooms should respect the v1 spawner count bounds.")
+	if int(floor_one.max_active_enemies) != clamp(24 + 1 * 4 + floor_one.get_spawner_count() * 2, 30, 52):
+		failures.append("Generated combat rooms should compute floor-scaled max active enemies.")
+	if _level_uses_spawner_profile(floor_one, "fast_spawner.tres") or _level_uses_spawner_profile(floor_one, "shooter_spawner.tres") or _level_uses_spawner_profile(floor_one, "tank_spawner.tres"):
+		failures.append("Floor-one generated rooms should only use basic spawner profiles.")
+
+	var floor_two = generator.generate(combat_piece, "floor_two", 2, 2222, connections)
+	if _level_uses_spawner_profile(floor_two, "shooter_spawner.tres") or _level_uses_spawner_profile(floor_two, "tank_spawner.tres"):
+		failures.append("Floor-two generated rooms should not use shooter or tank spawners yet.")
+	var floor_three = generator.generate(combat_piece, "floor_three", 3, 3333, connections)
+	if _level_uses_spawner_profile(floor_three, "tank_spawner.tres"):
+		failures.append("Floor-three generated rooms should not use tank spawners yet.")
+
+	var challenge = generator.generate(challenge_piece, "challenge_1", 5, 5555, {"north": "start", "west": "path_1"})
+	if challenge.get_spawner_count() < 5 or challenge.get_spawner_count() > 7:
+		failures.append("Generated challenge rooms should respect the v1 spawner count bounds.")
+	if int(challenge.max_active_enemies) != clamp(24 + 5 * 4 + challenge.get_spawner_count() * 2, 30, 52):
+		failures.append("Generated challenge rooms should compute floor-scaled max active enemies.")
+
+
+func _test_room_interior_generator_validation(failures: Array[String]) -> void:
+	var generator = load("res://scripts/resources/room_interior_generator.gd").new()
+	var piece = load("res://resources/rooms/combat_wide.tres")
+	var connections := {"west": "start", "east": "boss"}
+	var valid_level = generator.generate(piece, "path_valid", 2, 1212, connections)
+	var valid_result: Dictionary = generator.validate_level(valid_level, connections, "combat")
+	if not bool(valid_result.get("ok", false)):
+		failures.append("Generated combat room failed its own validation: %s" % String(valid_result.get("reason", "")))
+
+	var blocked_spawn = generator.generate(piece, "path_blocked_spawn", 2, 1212, connections)
+	blocked_spawn.wall_rects.append(Rect2(blocked_spawn.arena_bounds.get_center() - Vector2(90.0, 90.0), Vector2(180.0, 180.0)))
+	if bool(generator.validate_level(blocked_spawn, connections, "combat").get("ok", false)):
+		failures.append("Room validation should reject a blocked player spawn.")
+
+	var blocked_exit = generator.generate(piece, "path_blocked_exit", 2, 1212, connections)
+	var bounds: Rect2 = blocked_exit.arena_bounds
+	blocked_exit.wall_rects.append(Rect2(Vector2(bounds.position.x + bounds.size.x - 210.0, bounds.get_center().y - 150.0), Vector2(210.0, 300.0)))
+	if bool(generator.validate_level(blocked_exit, connections, "combat").get("ok", false)):
+		failures.append("Room validation should reject a blocked connected exit approach.")
+
+	var blocked_spawner = generator.generate(piece, "path_blocked_spawner", 2, 1212, connections)
+	if blocked_spawner.spawner_placements.is_empty():
+		failures.append("Generated validation test room had no spawners.")
+	else:
+		var spawner_position: Vector2 = blocked_spawner.spawner_placements[0].position
+		blocked_spawner.void_rects.append(Rect2(spawner_position - Vector2(90.0, 90.0), Vector2(180.0, 180.0)))
+		if bool(generator.validate_level(blocked_spawner, connections, "combat").get("ok", false)):
+			failures.append("Room validation should reject spawners inside movement-only voids.")
+
+	var too_closed = generator.generate(piece, "path_too_closed", 2, 1212, connections)
+	var too_closed_walls: Array[Rect2] = [too_closed.arena_bounds.grow(-80.0)]
+	var no_voids: Array[Rect2] = []
+	too_closed.wall_rects = too_closed_walls
+	too_closed.void_rects = no_voids
+	if bool(generator.validate_level(too_closed, connections, "combat").get("ok", false)):
+		failures.append("Room validation should reject rooms without enough navigable open area.")
+
+	var fallback = piece.create_level_definition()
+	fallback.id = "fallback_test"
+	fallback.display_name = "Fallback Test"
+	fallback.difficulty_label = "Floor 1 Combat"
+	fallback.use_default_spawners = false
+	var fallback_walls: Array[Rect2] = []
+	var fallback_voids: Array[Rect2] = []
+	var fallback_spawners: Array[Resource] = []
+	fallback.wall_rects = fallback_walls
+	fallback.void_rects = fallback_voids
+	fallback.spawner_placements = fallback_spawners
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 909090
+	generator._apply_fallback_interior(fallback, "combat", 1, rng)
+	var fallback_result: Dictionary = generator.validate_level(fallback, connections, "combat")
+	if not bool(fallback_result.get("ok", false)):
+		failures.append("Room generator fallback template should validate: %s" % String(fallback_result.get("reason", "")))
+
+
+func _test_dungeon_room_interiors_persist(failures: Array[String]) -> void:
+	var manager = load("res://scripts/managers/dungeon_manager.gd").new()
+	root.add_child(manager)
+	manager.reset_run(2, 7777)
+	manager.set_enabled(true)
+	if not manager.enter_direction("east"):
+		failures.append("Dungeon persistence test could not enter the first combat room.")
+		manager.free()
+		return
+	var first_level = manager.get_current_level_definition()
+	var first_signature := _get_level_generation_signature(first_level)
+	var room_state: Dictionary = manager.get_current_room_state()
+	if not room_state.has("level_definition") or room_state["level_definition"] != first_level:
+		failures.append("DungeonManager should store generated room interiors in room state.")
+	if first_level.get_spawner_count() < 4:
+		failures.append("Generated dungeon combat room should carry budgeted spawners.")
+	if first_level.wall_rects.is_empty():
+		failures.append("Generated dungeon combat room should carry procedural cover walls.")
+	if _get_level_generation_signature(manager.get_current_level_definition()) != first_signature:
+		failures.append("DungeonManager should return the cached generated interior on repeated reads.")
+
+	manager.mark_current_room_cleared()
+	if manager.enter_direction("west"):
+		if not manager.enter_direction("east"):
+			failures.append("DungeonManager should preserve a generated combat room after revisiting it.")
+		elif _get_level_generation_signature(manager.get_current_level_definition()) != first_signature:
+			failures.append("Revisited generated dungeon room should keep the same interior.")
+	else:
+		failures.append("Dungeon persistence test could not return to the start room.")
+
+	var repeated_manager = load("res://scripts/managers/dungeon_manager.gd").new()
+	root.add_child(repeated_manager)
+	repeated_manager.reset_run(2, 7777)
+	repeated_manager.set_enabled(true)
+	repeated_manager.enter_direction("east")
+	if _get_level_generation_signature(repeated_manager.get_current_level_definition()) != first_signature:
+		failures.append("DungeonManager should regenerate the same room interior from the same floor seed.")
+	var changed_manager = load("res://scripts/managers/dungeon_manager.gd").new()
+	root.add_child(changed_manager)
+	changed_manager.reset_run(2, 8888)
+	changed_manager.set_enabled(true)
+	changed_manager.enter_direction("east")
+	if _get_level_generation_signature(changed_manager.get_current_level_definition()) == first_signature:
+		failures.append("DungeonManager should vary generated room interiors for different run seeds.")
+	manager.free()
+	repeated_manager.free()
+	changed_manager.free()
+
+
+func _test_void_blockers_are_movement_only(failures: Array[String]) -> void:
+	var level = load("res://scripts/resources/level_definition.gd").new()
+	var wall_rects: Array[Rect2] = [Rect2(-120.0, -30.0, 240.0, 60.0)]
+	var void_rects: Array[Rect2] = [Rect2(-30.0, 120.0, 60.0, 120.0)]
+	level.wall_rects = wall_rects
+	level.void_rects = void_rects
+	var arena = load("res://scripts/arena/arena_view.gd").new()
+	root.add_child(arena)
+	arena.configure(level)
+	var wall_count := 0
+	var void_count := 0
+	for child in arena.get_children():
+		if child.is_in_group("arena_walls"):
+			wall_count += 1
+			if (int(child.collision_layer) & 32) == 0:
+				failures.append("Arena wall body should use the wall collision layer.")
+		if child.is_in_group("arena_voids"):
+			void_count += 1
+			if (int(child.collision_layer) & 64) == 0:
+				failures.append("Arena void body should use the movement-only void collision layer.")
+			if child.is_in_group("arena_walls"):
+				failures.append("Arena void body should not be treated as a projectile-blocking wall.")
+	if wall_count != 1 or void_count != 1:
+		failures.append("ArenaView should create separate bodies for wall and void blockers.")
+
+	var player = load("res://scenes/entities/player_entity.tscn").instantiate()
+	var enemy = load("res://scenes/entities/enemy_entity.tscn").instantiate()
+	var spawner = load("res://scenes/entities/enemy_spawner_entity.tscn").instantiate()
+	if (int(player.collision_mask) & 64) == 0:
+		failures.append("Player movement should collide with generated void blockers.")
+	if (int(enemy.collision_mask) & 64) == 0:
+		failures.append("Enemy movement should collide with generated void blockers.")
+	if (int(spawner.collision_mask) & 64) == 0:
+		failures.append("Spawner movement should collide with generated void blockers.")
+	var projectile = load("res://scenes/entities/projectile_entity.tscn").instantiate()
+	projectile.set_projectile_team("player")
+	if (int(projectile.collision_mask) & 64) != 0:
+		failures.append("Player projectiles should ignore movement-only void blockers.")
+	if (int(projectile.collision_mask) & 32) == 0:
+		failures.append("Player projectiles should still collide with arena walls.")
+	projectile.set_projectile_team("hostile")
+	if (int(projectile.collision_mask) & 64) != 0:
+		failures.append("Hostile projectiles should ignore movement-only void blockers.")
+	if (int(projectile.collision_mask) & 32) == 0:
+		failures.append("Hostile projectiles should still collide with arena walls.")
+	var path_enemy = load("res://scenes/entities/enemy_entity.tscn").instantiate()
+	path_enemy.set_arena_definition(level.arena_bounds, int(level.arena_shape), [], level.void_rects)
+	if not path_enemy._path_blocks_segment(Vector2(-120.0, 180.0), Vector2(120.0, 180.0), 4.0):
+		failures.append("Enemy pathing should treat voids as movement blockers.")
+	if path_enemy._wall_blocks_segment(Vector2(-120.0, 180.0), Vector2(120.0, 180.0)):
+		failures.append("Enemy shooter line-of-sight should ignore movement-only void blockers.")
+	player.free()
+	enemy.free()
+	spawner.free()
+	projectile.free()
+	path_enemy.free()
+	arena.free()
+
+
+func _get_level_generation_signature(level) -> String:
+	if level == null:
+		return "<null>"
+	var wall_parts: Array[String] = []
+	for rect in level.wall_rects:
+		wall_parts.append(_rect_signature(rect))
+	var void_parts: Array[String] = []
+	for rect in level.void_rects:
+		void_parts.append(_rect_signature(rect))
+	var spawner_parts: Array[String] = []
+	for placement in level.spawner_placements:
+		var profile_path := "<none>"
+		if placement != null and placement.profile != null:
+			profile_path = String(placement.profile.resource_path)
+		var position := Vector2.ZERO
+		if placement != null:
+			position = placement.position
+		spawner_parts.append("%s@%d,%d" % [profile_path.get_file(), int(round(position.x)), int(round(position.y))])
+	return "%s|%s|%s|%d" % [
+		";".join(wall_parts),
+		";".join(void_parts),
+		";".join(spawner_parts),
+		int(level.max_active_enemies)
+	]
+
+
+func _rect_signature(rect: Rect2) -> String:
+	return "%d,%d,%d,%d" % [
+		int(round(rect.position.x)),
+		int(round(rect.position.y)),
+		int(round(rect.size.x)),
+		int(round(rect.size.y))
+	]
+
+
+func _level_uses_spawner_profile(level, file_name: String) -> bool:
+	for placement in level.spawner_placements:
+		if placement != null and placement.profile != null and String(placement.profile.resource_path).ends_with(file_name):
+			return true
+	return false
 
 
 func _test_dungeon_floor_recipe(failures: Array[String]) -> void:

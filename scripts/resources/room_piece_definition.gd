@@ -27,6 +27,8 @@ func create_level_definition():
 	level.arena_bounds = arena_bounds
 	level.spawner_placements = spawner_placements.duplicate()
 	level.wall_rects = wall_rects.duplicate()
+	var empty_voids: Array[Rect2] = []
+	level.void_rects = empty_voids
 	level.max_active_enemies = max_active_enemies
 	level.boss_profile = boss_profile
 	level.boss_spawn_position = boss_spawn_position

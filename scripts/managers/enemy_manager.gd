@@ -25,6 +25,7 @@ var _contact_timers: Dictionary = {}
 var _arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 var _arena_shape: int = 0
 var _wall_rects: Array[Rect2] = []
+var _void_rects: Array[Rect2] = []
 var _boss_add_timer: float = 0.0
 
 
@@ -54,9 +55,10 @@ func set_arena_definition(level_definition) -> void:
 	_arena_bounds = level_definition.arena_bounds
 	_arena_shape = int(level_definition.arena_shape)
 	_wall_rects = level_definition.wall_rects
+	_void_rects = level_definition.void_rects
 	for enemy in _enemies:
 		if is_instance_valid(enemy):
-			enemy.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects)
+			enemy.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects)
 
 
 func _physics_process(delta: float) -> void:
@@ -89,7 +91,7 @@ func spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary = {})
 	var selected_profile = profile if profile != null else default_enemy_profile
 	enemy.initialize(selected_profile)
 	enemy.global_position = ArenaGeometry.constrain_point(spawn_position, _arena_bounds, _arena_shape)
-	enemy.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects)
+	enemy.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects)
 	if bool(spawn_flags.get("boss_add", false)):
 		enemy.set_meta("boss_add", true)
 	if _enemy_layer != null:

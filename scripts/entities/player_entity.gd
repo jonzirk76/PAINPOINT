@@ -68,7 +68,7 @@ func _ready() -> void:
 
 func _configure_collision_identity() -> void:
 	collision_layer = 1
-	collision_mask = 34
+	collision_mask = 98
 	add_to_group("player")
 
 

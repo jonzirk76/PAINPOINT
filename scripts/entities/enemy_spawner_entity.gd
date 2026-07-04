@@ -41,6 +41,7 @@ signal shot_ready(spawner, origin: Vector2, direction: Vector2, shot_config: Dic
 @export var arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 @export var arena_shape: int = 0
 @export var wall_rects: Array[Rect2] = []
+@export var void_rects: Array[Rect2] = []
 
 var health: int = max_health
 var enemy_profile: Resource = null
@@ -78,7 +79,7 @@ func _ready() -> void:
 
 func _configure_collision_identity() -> void:
 	collision_layer = 16
-	collision_mask = 32
+	collision_mask = 96
 	add_to_group("spawners")
 
 
@@ -187,13 +188,17 @@ func set_target_position(position: Vector2) -> void:
 	queue_redraw()
 
 
-func set_arena_definition(bounds: Rect2, shape: int, walls: Array = []) -> void:
+func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: Array = []) -> void:
 	arena_bounds = bounds
 	arena_shape = shape
 	wall_rects.clear()
 	for wall in walls:
 		if wall is Rect2:
 			wall_rects.append(wall)
+	void_rects.clear()
+	for void_rect in voids:
+		if void_rect is Rect2:
+			void_rects.append(void_rect)
 	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
 
 

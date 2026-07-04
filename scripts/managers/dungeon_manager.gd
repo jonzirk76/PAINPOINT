@@ -15,6 +15,7 @@ const CROSSROADS_PIECE := preload("res://resources/rooms/combat_crossroads.tres"
 const TREASURE_PIECE := preload("res://resources/rooms/treasure_nook.tres")
 const CHALLENGE_PIECE := preload("res://resources/rooms/challenge_zigzag.tres")
 const BOSS_PIECE := preload("res://resources/rooms/boss_chamber.tres")
+const ROOM_INTERIOR_GENERATOR_SCRIPT := preload("res://scripts/resources/room_interior_generator.gd")
 const SPAWNER_PLACEMENT_SCRIPT := preload("res://scripts/resources/spawner_placement.gd")
 const BASIC_SPAWNER := preload("res://resources/spawners/basic_spawner.tres")
 const FAST_SPAWNER := preload("res://resources/spawners/fast_spawner.tres")
@@ -48,6 +49,7 @@ var floor_generation_seed: int = 0
 var _rooms: Dictionary = {}
 var _room_order: Array[String] = []
 var _occupied_cells: Dictionary = {}
+var _interior_generator = ROOM_INTERIOR_GENERATOR_SCRIPT.new()
 
 
 func initialize(_context: Dictionary) -> void:
@@ -68,6 +70,8 @@ func get_current_level_definition():
 	var state := get_current_room_state()
 	if state.is_empty():
 		return null
+	if state.has("level_definition") and state["level_definition"] != null:
+		return state["level_definition"]
 	var piece = state["piece"]
 	var level = piece.create_level_definition()
 	level.id = String(state["id"])
@@ -211,6 +215,7 @@ func _generate_layout() -> void:
 	if not _try_place_connected("start", "south", "challenge_1", CHALLENGE_PIECE):
 		_try_place_required_branch("challenge_1", CHALLENGE_PIECE, path_room_ids, rng)
 	_fill_optional_branches(path_room_ids, rng)
+	_generate_room_interiors()
 	current_room_id = "start"
 	_reveal_room(current_room_id)
 	dungeon_generated.emit(_rooms.size())
@@ -337,6 +342,7 @@ func _place_room(room_id: String, piece, anchor: Vector2i, cleared_override: boo
 		"piece": piece,
 		"anchor": anchor,
 		"connections": {},
+		"level_definition": null,
 		"cleared": initially_cleared,
 		"revealed": false
 	}
@@ -408,6 +414,25 @@ func _reveal_room(room_id: String) -> void:
 	var state: Dictionary = _rooms[room_id]
 	state["revealed"] = true
 	_rooms[room_id] = state
+
+
+func _generate_room_interiors() -> void:
+	for room_id in _room_order:
+		var state: Dictionary = _rooms[room_id]
+		var piece = state["piece"]
+		var room_kind := String(piece.room_kind)
+		var connections: Dictionary = state["connections"]
+		var level = null
+		if room_kind == "combat" or room_kind == "challenge":
+			level = _interior_generator.generate(piece, String(room_id), floor_number, floor_generation_seed, connections)
+		else:
+			level = piece.create_level_definition()
+			level.id = String(room_id)
+			level.display_name = "%s - %s" % [piece.display_name, String(room_id).capitalize()]
+			level.difficulty_label = "Floor %d %s" % [floor_number, room_kind.capitalize()]
+			_apply_floor_scaling(level, room_kind)
+		state["level_definition"] = level
+		_rooms[room_id] = state
 
 
 func _apply_floor_scaling(level, room_kind: String) -> void:

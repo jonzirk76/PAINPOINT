@@ -29,6 +29,7 @@ var _level_definition = null
 var _arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 var _arena_shape: int = 0
 var _wall_rects: Array[Rect2] = []
+var _void_rects: Array[Rect2] = []
 var _player_provider: Callable
 var _initial_spawns_pending: bool = false
 var _initial_spawn_delay_remaining: float = 0.0
@@ -81,9 +82,10 @@ func set_arena_definition(level_definition) -> void:
 	_arena_bounds = level_definition.arena_bounds
 	_arena_shape = int(level_definition.arena_shape)
 	_wall_rects = level_definition.wall_rects
+	_void_rects = level_definition.void_rects
 	for spawner in _spawners:
 		if is_instance_valid(spawner) and spawner.has_method("set_arena_definition"):
-			spawner.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects)
+			spawner.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects)
 
 
 func _process(delta: float) -> void:
@@ -109,7 +111,7 @@ func _spawn_spawner(placement, index: int) -> void:
 		warmup = placement.warmup_seconds
 	var spawner = spawner_scene.instantiate()
 	spawner.global_position = ArenaGeometry.constrain_point(spawn_position, _arena_bounds, _arena_shape)
-	spawner.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects)
+	spawner.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects)
 	spawner.warmup_seconds = warmup
 	if profile != null and spawner.has_method("initialize_from_profile"):
 		spawner.initialize_from_profile(profile)
@@ -348,6 +350,9 @@ func _position_is_clear_of_walls(position: Vector2) -> bool:
 		return true
 	for wall_rect in _level_definition.wall_rects:
 		if wall_rect.grow(24.0).has_point(position):
+			return false
+	for void_rect in _level_definition.void_rects:
+		if void_rect.grow(24.0).has_point(position):
 			return false
 	return true
 

@@ -18,6 +18,7 @@ enum ArenaShape {
 @export var spawner_positions: Array[Vector2] = []
 @export var spawner_placements: Array[Resource] = []
 @export var wall_rects: Array[Rect2] = []
+@export var void_rects: Array[Rect2] = []
 @export var max_active_enemies: int = 12
 @export var spawner_health: int = 16
 @export var spawner_radius: float = 32.0

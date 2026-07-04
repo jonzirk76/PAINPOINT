@@ -23,6 +23,7 @@ const BOSS_ENEMY_TEXTURE := preload("res://art/characters/boss_enemy_overlord.sv
 @export var arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 @export var arena_shape: int = 0
 @export var wall_rects: Array[Rect2] = []
+@export var void_rects: Array[Rect2] = []
 @export var behavior_kind: String = "chaser"
 @export var body_color: Color = Color(1.0, 0.27, 0.22)
 @export var accent_color: Color = Color(1.0, 0.72, 0.18)
@@ -82,7 +83,7 @@ func _ready() -> void:
 
 func _configure_collision_identity() -> void:
 	collision_layer = 2
-	collision_mask = 33
+	collision_mask = 97
 	add_to_group("enemies")
 
 
@@ -170,13 +171,17 @@ func set_target_position(position: Vector2) -> void:
 		queue_redraw()
 
 
-func set_arena_definition(bounds: Rect2, shape: int, walls: Array = []) -> void:
+func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: Array = []) -> void:
 	arena_bounds = bounds
 	arena_shape = shape
 	wall_rects.clear()
 	for wall in walls:
 		if wall is Rect2:
 			wall_rects.append(wall)
+	void_rects.clear()
+	for void_rect in voids:
+		if void_rect is Rect2:
+			void_rects.append(void_rect)
 	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
 
 
@@ -715,31 +720,38 @@ func _get_path_steering_target(final_target: Vector2) -> Vector2:
 func _get_blocking_wall_rect(from_position: Vector2, to_position: Vector2, margin: float) -> Rect2:
 	var best_rect := Rect2()
 	var best_distance := INF
-	for wall_rect in wall_rects:
-		var expanded_wall := wall_rect.grow(margin)
-		if not _segment_intersects_rect(from_position, to_position, expanded_wall):
+	for blocker_rect in _get_path_blocker_rects():
+		var expanded_blocker := blocker_rect.grow(margin)
+		if not _segment_intersects_rect(from_position, to_position, expanded_blocker):
 			continue
-		var distance := from_position.distance_squared_to(expanded_wall.get_center())
+		var distance := from_position.distance_squared_to(expanded_blocker.get_center())
 		if distance < best_distance:
 			best_distance = distance
-			best_rect = wall_rect
+			best_rect = blocker_rect
 	return best_rect
 
 
 func _path_blocks_segment(from_position: Vector2, to_position: Vector2, margin: float) -> bool:
 	if from_position.distance_squared_to(to_position) <= 0.001:
 		return false
-	for wall_rect in wall_rects:
-		if _segment_intersects_rect(from_position, to_position, wall_rect.grow(margin)):
+	for blocker_rect in _get_path_blocker_rects():
+		if _segment_intersects_rect(from_position, to_position, blocker_rect.grow(margin)):
 			return true
 	return false
 
 
 func _point_inside_wall(point: Vector2, margin: float) -> bool:
-	for wall_rect in wall_rects:
-		if wall_rect.grow(margin).has_point(point):
+	for blocker_rect in _get_path_blocker_rects():
+		if blocker_rect.grow(margin).has_point(point):
 			return true
 	return false
+
+
+func _get_path_blocker_rects() -> Array[Rect2]:
+	var blockers: Array[Rect2] = []
+	blockers.append_array(wall_rects)
+	blockers.append_array(void_rects)
+	return blockers
 
 
 func _segment_intersects_rect(from_position: Vector2, to_position: Vector2, rect: Rect2) -> bool:

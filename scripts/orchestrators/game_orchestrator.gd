@@ -1586,6 +1586,9 @@ func _position_is_clear_of_room_walls(position: Vector2, level_definition) -> bo
 	for wall_rect in level_definition.wall_rects:
 		if wall_rect.grow(34.0).has_point(position):
 			return false
+	for void_rect in level_definition.void_rects:
+		if void_rect.grow(34.0).has_point(position):
+			return false
 	return true
 
 
