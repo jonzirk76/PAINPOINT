@@ -9,6 +9,14 @@ signal projectile_expired(projectile, expire_info: Dictionary)
 @export var base_damage: int = 1
 @export var base_knockback: float = 95.0
 @export var max_active_projectiles: int = 220
+@export var super_projectile_speed_min: float = 520.0
+@export var super_projectile_speed_max: float = 740.0
+@export var super_projectile_damage_min: int = 4
+@export var super_projectile_damage_max: int = 14
+@export var super_projectile_knockback_min: float = 185.0
+@export var super_projectile_knockback_max: float = 560.0
+@export var super_projectile_explosion_radius: float = 122.0
+@export var super_projectile_explosion_damage_multiplier: float = 0.68
 
 const DAMAGE_PACKET_SCRIPT := preload("res://scripts/resources/damage_packet.gd")
 
@@ -76,6 +84,26 @@ func fire(origin: Vector2, direction: Vector2, modifiers: Dictionary) -> void:
 		projectile.hit_detected.connect(_on_projectile_hit)
 		projectile.expired.connect(_on_projectile_expired)
 		_projectiles.append(projectile)
+
+
+func fire_super_shot(origin: Vector2, direction: Vector2, charge_ratio: float) -> void:
+	if not enabled or direction.length_squared() <= 0.001 or _projectiles.size() >= max_active_projectiles:
+		return
+	var shot_direction := direction.normalized()
+	var normalized_charge: float = clamp(charge_ratio, 0.08, 1.0)
+	var packet = _create_super_damage_packet(origin, shot_direction, normalized_charge)
+	var projectile = projectile_scene.instantiate()
+	projectile.lifetime_seconds = 1.55
+	if _projectile_layer != null:
+		_projectile_layer.add_child(projectile)
+	else:
+		add_child(projectile)
+	projectile.set_arena_definition(_arena_bounds, _arena_shape)
+	projectile.set_projectile_team("player")
+	projectile.initialize(origin, shot_direction, packet, lerp(super_projectile_speed_min, super_projectile_speed_max, normalized_charge))
+	projectile.hit_detected.connect(_on_projectile_hit)
+	projectile.expired.connect(_on_projectile_expired)
+	_projectiles.append(projectile)
 
 
 func fire_hostile(origin: Vector2, direction: Vector2, shot_config: Dictionary) -> void:
@@ -173,6 +201,32 @@ func _create_damage_packet(modifiers: Dictionary, origin: Vector2, direction: Ve
 	packet.knockback = base_knockback
 	packet.source_position = origin
 	packet.knockback_direction = direction.normalized()
+	return packet
+
+
+func _create_super_damage_packet(origin: Vector2, direction: Vector2, charge_ratio: float):
+	var ratio: float = clamp(charge_ratio, 0.08, 1.0)
+	var power_curve: float = pow(ratio, 1.12)
+	var packet = DAMAGE_PACKET_SCRIPT.new()
+	packet.damage = max(roundi(lerp(float(super_projectile_damage_min), float(super_projectile_damage_max), power_curve)), 1)
+	packet.pierce_count = 999
+	packet.chain_count = 0
+	packet.chain_radius = 0.0
+	packet.explosion_radius = super_projectile_explosion_radius if ratio >= 0.995 else 0.0
+	packet.explosion_damage_multiplier = super_projectile_explosion_damage_multiplier if ratio >= 0.995 else 0.0
+	packet.projectile_size_multiplier = lerp(1.65, 4.25, ratio)
+	packet.projectile_growth_per_second = 0.0
+	packet.projectile_max_size_multiplier = packet.projectile_size_multiplier
+	packet.projectile_kind = "super"
+	packet.knockback = lerp(super_projectile_knockback_min, super_projectile_knockback_max, power_curve)
+	packet.source_position = origin
+	packet.knockback_direction = direction.normalized()
+	packet.impact_on_strong_targets = true
+	packet.pierces_projectile_shields = true
+	packet.shield_damage_multiplier = 0.55
+	packet.shield_knockback_multiplier = 0.42
+	packet.super_charge_ratio = ratio
+	packet.super_full_charge = ratio >= 0.995
 	return packet
 
 

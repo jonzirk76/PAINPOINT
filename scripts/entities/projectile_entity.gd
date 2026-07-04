@@ -109,10 +109,24 @@ func _handle_target_hit(body: Node, hit_position: Vector2 = Vector2.INF) -> void
 	if damage_packet != null:
 		damage_packet.hit_targets = hit_targets.duplicate()
 	hit_detected.emit(self, body)
-	if pierce_remaining <= 0:
+	if _should_force_impact_on_target(body) or pierce_remaining <= 0:
 		expire("hit", resolved_hit_position)
 	else:
 		pierce_remaining -= 1
+
+
+func _should_force_impact_on_target(body: Node) -> bool:
+	if damage_packet == null or not bool(damage_packet.impact_on_strong_targets):
+		return false
+	if body == null or not is_instance_valid(body):
+		return false
+	if body.has_method("is_projectile_shield_active") and bool(body.is_projectile_shield_active()):
+		return true
+	if body.is_in_group("spawners"):
+		return true
+	if body.has_method("is_super_shot_impact_target"):
+		return bool(body.is_super_shot_impact_target())
+	return false
 
 
 func _check_swept_hit(previous_position: Vector2, next_position: Vector2) -> void:
@@ -180,6 +194,9 @@ func _draw() -> void:
 				"water":
 					fill_color = Color(0.18, 0.62, 1.0)
 					streak_color = Color(0.75, 0.95, 1.0)
+				"super":
+					fill_color = Color(1.0, 0.86, 0.18)
+					streak_color = Color(0.28, 1.0, 1.0)
 	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.022 + _age * 18.0)
 	var glow_color := Color(fill_color.r, fill_color.g, fill_color.b, 0.2 + pulse * 0.32)
 	var glow_points := _build_lemon_points(body_radius * (1.95 + pulse * 0.25), body_radius * (1.05 + pulse * 0.12))
@@ -191,6 +208,8 @@ func _draw() -> void:
 	draw_polyline(outline_points, Color(0.08, 0.07, 0.03, 0.85), 2.0, true)
 	draw_line(Vector2(-body_radius * 0.75, -body_radius * 0.18), Vector2(body_radius * 0.72, -body_radius * 0.18), Color(1.0, 1.0, 1.0, 0.45 + pulse * 0.35), 2.0)
 	draw_line(Vector2(-body_radius * 0.35, body_radius * 0.26), Vector2(body_radius * 0.52, body_radius * 0.16), streak_color, 2.0)
+	if damage_packet != null and String(damage_packet.projectile_kind) == "super" and bool(damage_packet.super_full_charge):
+		draw_arc(Vector2.ZERO, body_radius * (1.92 + pulse * 0.35), 0.0, TAU, 32, Color(1.0, 1.0, 1.0, 0.54 + pulse * 0.28), 3.0)
 
 
 func _add_collision() -> void:

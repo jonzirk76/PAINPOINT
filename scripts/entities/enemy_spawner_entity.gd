@@ -202,8 +202,12 @@ func take_damage(packet) -> bool:
 		return false
 	if blocks_projectile_damage(packet):
 		return false
+	var damage_amount: int = max(int(packet.damage), 0)
+	if _should_reduce_shield_pierce_damage(packet):
+		damage_amount = max(roundi(float(damage_amount) * clamp(float(packet.shield_damage_multiplier), 0.05, 1.0)), 1)
+		_projectile_shield_block_flash_remaining = 0.22
 	var old_health := health
-	health = max(health - max(packet.damage, 0), 0)
+	health = max(health - damage_amount, 0)
 	_hit_flash_remaining = 0.18
 	health_changed.emit(self, old_health, health)
 	queue_redraw()
@@ -234,9 +238,17 @@ func blocks_projectile_damage(packet) -> bool:
 		return false
 	if String(packet.projectile_kind) == "hostile":
 		return false
+	if bool(packet.pierces_projectile_shields):
+		return false
 	_projectile_shield_block_flash_remaining = 0.18
 	queue_redraw()
 	return true
+
+
+func _should_reduce_shield_pierce_damage(packet) -> bool:
+	if packet == null or not is_projectile_shield_active():
+		return false
+	return bool(packet.pierces_projectile_shields) and String(packet.projectile_kind) != "hostile"
 
 
 func _draw() -> void:

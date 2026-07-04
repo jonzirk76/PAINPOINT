@@ -168,6 +168,7 @@ func _init() -> void:
 	_test_reward_driven_pickup_drops(failures)
 	_test_health_pickup_and_player_healing(failures)
 	_test_projectile_knockback_packet(failures)
+	_test_charged_super_shot(failures)
 	_test_projectile_reset_clears_visible_projectiles(failures)
 	_test_parry_pushes_enemies_without_damage(failures)
 	_test_tank_ignores_knockback(failures)
@@ -1241,6 +1242,82 @@ func _test_projectile_knockback_packet(failures: Array[String]) -> void:
 		failures.append("Player entity should accept rocket-style pushback.")
 	player.free()
 	manager.free()
+
+
+func _test_charged_super_shot(failures: Array[String]) -> void:
+	var player_layer := Node2D.new()
+	var player_manager = load("res://scripts/managers/player_manager.gd").new()
+	root.add_child(player_layer)
+	root.add_child(player_manager)
+	player_manager.initialize({
+		"player_layer": player_layer
+	})
+	player_manager.reset_run()
+	player_manager.set_enabled(true)
+	player_manager.add_super_meter(player_manager.super_meter_max)
+	if not player_manager.is_super_ready():
+		failures.append("Super meter should become ready when filled.")
+	player_manager.request_super_charge_start()
+	player_manager._process(player_manager.super_charge_seconds * 0.5)
+	if player_manager.get_super_charge_ratio() <= 0.35:
+		failures.append("Super charge should build while the input is held.")
+	if player_manager.player == null or player_manager.player.speed >= player_manager.player._base_speed:
+		failures.append("Charging the super shot should slightly slow player movement.")
+	var emitted_shots: Array[Dictionary] = []
+	player_manager.super_shot_requested.connect(func(_origin, direction, charge_ratio) -> void:
+		emitted_shots.append({
+			"direction": direction,
+			"charge_ratio": charge_ratio
+		})
+	)
+	player_manager.request_super_charge_release(Vector2.RIGHT)
+	if emitted_shots.is_empty():
+		failures.append("Releasing the super input should fire a charged shot.")
+	else:
+		var shot_info: Dictionary = emitted_shots[0]
+		if float(shot_info.get("charge_ratio", 0.0)) <= 0.35:
+			failures.append("Released super shot should preserve its partial charge ratio.")
+		if Vector2(shot_info.get("direction", Vector2.ZERO)).distance_to(Vector2.RIGHT) > 0.001:
+			failures.append("Released super shot should fire in the final aim direction.")
+	if player_manager.get_super_meter() > 0.0:
+		failures.append("Super meter should be spent when the charged shot fires.")
+	player_manager.free()
+	player_layer.free()
+
+	var projectile_manager = load("res://scripts/managers/projectile_manager.gd").new()
+	var partial_packet = projectile_manager._create_super_damage_packet(Vector2.ZERO, Vector2.RIGHT, 0.45)
+	var full_packet = projectile_manager._create_super_damage_packet(Vector2.ZERO, Vector2.RIGHT, 1.0)
+	if partial_packet.projectile_kind != "super" or not partial_packet.pierces_projectile_shields or not partial_packet.impact_on_strong_targets:
+		failures.append("Super shot packets should carry kind, shield-pierce, and strong-impact metadata.")
+	if partial_packet.explosion_radius > 0.0:
+		failures.append("Partial super shots should not get the full-charge impact explosion.")
+	if full_packet.explosion_radius < 100.0 or full_packet.explosion_damage_multiplier <= 0.0 or not full_packet.super_full_charge:
+		failures.append("Fully charged super shots should explode on impact.")
+	var projectile = load("res://scenes/entities/projectile_entity.tscn").instantiate()
+	projectile.damage_packet = full_packet
+	var basic_enemy = load("res://scenes/entities/enemy_entity.tscn").instantiate()
+	basic_enemy.initialize(load("res://resources/enemies/basic_enemy.tres"))
+	var tank_enemy = load("res://scenes/entities/enemy_entity.tscn").instantiate()
+	tank_enemy.initialize(load("res://resources/enemies/tank_enemy.tres"))
+	if projectile._should_force_impact_on_target(basic_enemy):
+		failures.append("Super shots should pierce typical enemies.")
+	if not projectile._should_force_impact_on_target(tank_enemy):
+		failures.append("Super shots should impact tank/general-scale enemies.")
+	var boss_enemy = load("res://scenes/entities/enemy_entity.tscn").instantiate()
+	boss_enemy.initialize(load("res://resources/enemies/first_boss_enemy.tres"))
+	boss_enemy.activate_projectile_shield(1.0)
+	var boss_health_before: int = boss_enemy.health
+	if boss_enemy.blocks_projectile_damage(full_packet):
+		failures.append("Super shots should pierce active projectile shields instead of being fully blocked.")
+	boss_enemy.take_damage(full_packet)
+	var shielded_damage: int = boss_health_before - boss_enemy.health
+	if shielded_damage <= 0 or shielded_damage >= full_packet.damage:
+		failures.append("Shield-piercing super shots should land reduced damage through shields.")
+	projectile.free()
+	basic_enemy.free()
+	tank_enemy.free()
+	boss_enemy.free()
+	projectile_manager.free()
 
 
 func _test_projectile_reset_clears_visible_projectiles(failures: Array[String]) -> void:
