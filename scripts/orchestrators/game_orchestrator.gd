@@ -61,6 +61,10 @@ var _last_invulnerability_remaining: float = 0.0
 var _last_invulnerability_duration: float = 0.0
 var _last_parry_cooldown_remaining: float = 0.0
 var _last_parry_cooldown_duration: float = 0.0
+var _last_super_meter: float = 0.0
+var _last_super_meter_max: float = 100.0
+var _last_super_is_charging: bool = false
+var _last_super_charge_ratio: float = 0.0
 var _status: String = "RUNNING"
 var _latest_modifiers: Dictionary = {}
 var _attribute_modifiers: Dictionary = {}
@@ -89,6 +93,10 @@ var _ammo_refill_flash_remaining: float = 0.0
 var _ammo_refill_flash_duration: float = 0.48
 var _ammo_refill_perfect_flash_remaining: float = 0.0
 var _ammo_refill_perfect_flash_duration: float = 0.58
+var _super_meter_flash_remaining: float = 0.0
+var _super_meter_flash_duration: float = 0.42
+var _super_meter_ready_flash_remaining: float = 0.0
+var _super_meter_ready_flash_duration: float = 0.62
 var _perfect_parry_slowmo_until_msec: int = 0
 var _perfect_parry_slowmo_restore_scale: float = 1.0
 
@@ -123,6 +131,12 @@ func _process(delta: float) -> void:
 		if _ammo_refill_perfect_flash_remaining > 0.0:
 			_ammo_refill_perfect_flash_remaining = max(_ammo_refill_perfect_flash_remaining - delta, 0.0)
 			hud_feedback_changed = true
+		if _super_meter_flash_remaining > 0.0:
+			_super_meter_flash_remaining = max(_super_meter_flash_remaining - delta, 0.0)
+			hud_feedback_changed = true
+		if _super_meter_ready_flash_remaining > 0.0:
+			_super_meter_ready_flash_remaining = max(_super_meter_ready_flash_remaining - delta, 0.0)
+			hud_feedback_changed = true
 	if hud_feedback_changed:
 		_update_hud()
 	if _is_gameplay_running():
@@ -140,6 +154,8 @@ func _connect_manager_signals() -> void:
 	_connect_once(input_manager, &"menu_back_requested", _on_menu_back_requested)
 	_connect_once(input_manager, &"parry_requested", _on_input_parry_requested)
 	_connect_once(input_manager, &"pause_requested", _on_pause_requested)
+	_connect_once(input_manager, &"super_charge_pressed", _on_input_super_charge_pressed)
+	_connect_once(input_manager, &"super_charge_released", _on_input_super_charge_released)
 
 	_connect_once(player_manager, &"player_health_changed", _on_player_health_changed)
 	_connect_once(player_manager, &"player_invulnerability_changed", _on_player_invulnerability_changed)
@@ -147,6 +163,8 @@ func _connect_manager_signals() -> void:
 	_connect_once(player_manager, &"player_defeated", _on_player_defeated)
 	_connect_once(player_manager, &"shoot_requested", _on_player_shoot_requested)
 	_connect_once(player_manager, &"parry_requested", _on_player_parry_requested)
+	_connect_once(player_manager, &"super_meter_changed", _on_player_super_meter_changed)
+	_connect_once(player_manager, &"super_shot_requested", _on_player_super_shot_requested)
 
 	_connect_once(projectile_manager, &"projectile_hit", _on_projectile_hit)
 	_connect_once(projectile_manager, &"projectile_expired", _on_projectile_expired)
@@ -244,8 +262,14 @@ func _start_level(level_definition) -> void:
 	_last_invulnerability_duration = 0.0
 	_last_parry_cooldown_remaining = 0.0
 	_last_parry_cooldown_duration = 0.0
+	_last_super_meter = 0.0
+	_last_super_meter_max = player_manager.get_super_meter_max()
+	_last_super_is_charging = false
+	_last_super_charge_ratio = 0.0
 	_ammo_refill_flash_remaining = 0.0
 	_ammo_refill_perfect_flash_remaining = 0.0
+	_super_meter_flash_remaining = 0.0
+	_super_meter_ready_flash_remaining = 0.0
 	_stop_perfect_parry_slowmo()
 	_clear_floor_exit_portal()
 	_attribute_modifiers = {}
@@ -300,8 +324,14 @@ func _start_dungeon_run() -> void:
 	_last_invulnerability_duration = 0.0
 	_last_parry_cooldown_remaining = 0.0
 	_last_parry_cooldown_duration = 0.0
+	_last_super_meter = 0.0
+	_last_super_meter_max = player_manager.get_super_meter_max()
+	_last_super_is_charging = false
+	_last_super_charge_ratio = 0.0
 	_ammo_refill_flash_remaining = 0.0
 	_ammo_refill_perfect_flash_remaining = 0.0
+	_super_meter_flash_remaining = 0.0
+	_super_meter_ready_flash_remaining = 0.0
 	_stop_perfect_parry_slowmo()
 	_clear_floor_exit_portal()
 	_attribute_modifiers = {}
@@ -347,8 +377,14 @@ func _start_main_loop_run() -> void:
 	_last_invulnerability_duration = 0.0
 	_last_parry_cooldown_remaining = 0.0
 	_last_parry_cooldown_duration = 0.0
+	_last_super_meter = 0.0
+	_last_super_meter_max = player_manager.get_super_meter_max()
+	_last_super_is_charging = false
+	_last_super_charge_ratio = 0.0
 	_ammo_refill_flash_remaining = 0.0
 	_ammo_refill_perfect_flash_remaining = 0.0
+	_super_meter_flash_remaining = 0.0
+	_super_meter_ready_flash_remaining = 0.0
 	_stop_perfect_parry_slowmo()
 	_clear_floor_exit_portal()
 	_attribute_modifiers = {}
@@ -411,6 +447,12 @@ func _enter_level_select() -> void:
 	_paused_previous_status = ""
 	_ammo_refill_flash_remaining = 0.0
 	_ammo_refill_perfect_flash_remaining = 0.0
+	_super_meter_flash_remaining = 0.0
+	_super_meter_ready_flash_remaining = 0.0
+	_last_super_meter = 0.0
+	_last_super_meter_max = player_manager.get_super_meter_max()
+	_last_super_is_charging = false
+	_last_super_charge_ratio = 0.0
 	_stop_perfect_parry_slowmo()
 	_clear_floor_exit_portal()
 	_set_all_enabled(false)
@@ -474,10 +516,27 @@ func _on_aim_fire_requested(direction: Vector2) -> void:
 	player_manager.request_fire(direction)
 
 
+func _on_input_super_charge_pressed() -> void:
+	if not _is_gameplay_running():
+		return
+	player_manager.request_super_charge_start()
+
+
+func _on_input_super_charge_released(direction: Vector2) -> void:
+	if not _is_gameplay_running():
+		return
+	player_manager.request_super_charge_release(direction)
+
+
 func _on_player_shoot_requested(origin: Vector2, direction: Vector2) -> void:
 	audio_manager.play_player_shot()
 	projectile_manager.fire(origin, direction, _latest_modifiers)
 	upgrade_manager.consume_shot()
+
+
+func _on_player_super_shot_requested(origin: Vector2, direction: Vector2, charge_ratio: float) -> void:
+	audio_manager.play_player_shot()
+	projectile_manager.fire_super_shot(origin, direction, charge_ratio)
 
 
 func _on_projectile_hit(projectile, target: Node, packet) -> void:
@@ -519,6 +578,10 @@ func _on_projectile_expired(_projectile, expire_info: Dictionary) -> void:
 	effects_manager.play_projectile_impact(impact_position, impact_direction, impact_radius, false)
 	if projectile_kind == "rocket":
 		_detonate_hostile_rocket(impact_position, impact_radius, expire_info.get("damage_packet", null), false)
+	elif projectile_kind == "super":
+		var packet = expire_info.get("damage_packet", null)
+		if packet != null and packet.explosion_radius > 0.0 and packet.explosion_damage_multiplier > 0.0:
+			_on_explosion_requested(impact_position, packet)
 
 
 func _apply_player_projectile_hit_effects(packet, impact_position: Vector2, impact_radius: float = 7.0) -> void:
@@ -619,6 +682,8 @@ func _on_chain_requested(origin_target: Node, packet) -> void:
 func _on_explosion_requested(origin: Vector2, packet) -> void:
 	if packet == null or packet.explosion_radius <= 0.0:
 		return
+	if String(packet.projectile_kind) == "super":
+		audio_manager.play_rocket_explosion()
 	effects_manager.play_explosion(origin, packet.explosion_radius)
 	var explosion_packet = packet.copy_for_explosion()
 	explosion_packet.source_position = origin
@@ -649,6 +714,7 @@ func _on_hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config
 
 func _on_enemy_defeated(_enemy, score_value: int) -> void:
 	_score += score_value
+	player_manager.add_super_meter(player_manager.super_meter_enemy_kill_gain)
 	if _enemy != null and is_instance_valid(_enemy):
 		if _enemy.behavior_kind == "boss":
 			_run_boss_kills += 1
@@ -700,6 +766,21 @@ func _on_player_parry_cooldown_changed(remaining: float, duration: float) -> voi
 	_update_hud()
 
 
+func _on_player_super_meter_changed(current: float, maximum: float, is_charging: bool, charge_ratio: float) -> void:
+	var previous_meter := _last_super_meter
+	var previous_ready := _last_super_meter_max > 0.0 and _last_super_meter >= _last_super_meter_max
+	_last_super_meter = clamp(current, 0.0, max(maximum, 1.0))
+	_last_super_meter_max = max(maximum, 1.0)
+	_last_super_is_charging = is_charging
+	_last_super_charge_ratio = clamp(charge_ratio, 0.0, 1.0)
+	if _last_super_meter > previous_meter:
+		_super_meter_flash_remaining = _super_meter_flash_duration
+	var is_ready := _last_super_meter >= _last_super_meter_max
+	if is_ready and not previous_ready:
+		_super_meter_ready_flash_remaining = _super_meter_ready_flash_duration
+	_update_hud()
+
+
 func _on_player_parry_requested(origin: Vector2, effect_radius: float, perfect_radius: float, enemy_knockback: float) -> void:
 	if not _is_gameplay_running():
 		return
@@ -707,9 +788,14 @@ func _on_player_parry_requested(origin: Vector2, effect_radius: float, perfect_r
 	var absorbed: Dictionary = projectile_manager.absorb_hostile_projectiles(origin, effect_radius, perfect_radius)
 	var absorbed_projectiles: Array = absorbed.get("absorbed_projectiles", [])
 	var ammo_awarded := int(absorbed.get("ammo_awarded", 0))
+	var absorbed_count := int(absorbed.get("absorbed_count", 0))
 	var perfect_count := int(absorbed.get("perfect_count", 0))
 	var was_perfect := perfect_count > 0
 	var ammo_added := 0
+	if absorbed_count > 0:
+		var regular_count: int = max(absorbed_count - perfect_count, 0)
+		var meter_gain: float = float(regular_count) * player_manager.super_meter_parried_bullet_gain + float(perfect_count) * player_manager.super_meter_perfect_bullet_gain
+		player_manager.add_super_meter(meter_gain)
 	if ammo_awarded > 0:
 		ammo_added = upgrade_manager.add_ammo_to_active_upgrades(ammo_awarded)
 	if ammo_added > 0:
@@ -918,7 +1004,7 @@ func _update_hud() -> void:
 		_update_pause_panel()
 		return
 	var active_effects: Array = upgrade_manager.get_active_effects()
-	var footer: String = "Aim-change fire  |  Q/R-Shoulder parry"
+	var footer: String = "Aim-change fire  |  Q/R-Shoulder parry  |  Hold E/R-Trigger super"
 	if _status == "DOWN":
 		footer = "DOWN. Press R or Start/A on controller to restart."
 	elif _status == "BOSS_CLEARING":
@@ -993,8 +1079,7 @@ func _update_ammo_counter_panel(active_effects: Array) -> void:
 	for state in active_effects:
 		if int(state.get("max_ammo", 0)) > 0:
 			ammo_states.append(state)
-	if ammo_states.is_empty():
-		return
+	var row_index := 0
 	for index in range(min(ammo_states.size(), 5)):
 		var state: Dictionary = ammo_states[index]
 		var effect = state["effect"]
@@ -1010,10 +1095,13 @@ func _update_ammo_counter_panel(active_effects: Array) -> void:
 			max(int(state.get("max_ammo", 1)), 1),
 			_get_ammo_counter_color(effect),
 			_get_ammo_counter_icon(effect),
-			index,
+			row_index,
 			refill_flash_ratio,
 			perfect_flash_ratio
 		)
+		row_index += 1
+	if _should_show_super_counter():
+		_add_super_counter_square(row_index)
 
 
 func _update_ammo_warning(active_effects: Array) -> void:
@@ -1119,6 +1207,93 @@ func _add_ammo_counter_square(display_name: String, ammo: int, max_ammo: int, fi
 	row.tooltip_text = "%s  %d/%d" % [display_name, ammo, max_ammo]
 
 
+func _should_show_super_counter() -> bool:
+	return _status != "LEVEL_SELECT" and _last_super_meter_max > 0.0 and _last_max_health > 0
+
+
+func _add_super_counter_square(index: int) -> void:
+	var ratio: float = clamp(_last_super_meter / max(_last_super_meter_max, 1.0), 0.0, 1.0)
+	var charge_ratio: float = _last_super_charge_ratio if _last_super_is_charging else 0.0
+	var meter_flash_ratio: float = 0.0
+	if _super_meter_flash_duration > 0.0:
+		meter_flash_ratio = clamp(_super_meter_flash_remaining / _super_meter_flash_duration, 0.0, 1.0)
+	var ready_flash_ratio: float = 0.0
+	if _super_meter_ready_flash_duration > 0.0:
+		ready_flash_ratio = clamp(_super_meter_ready_flash_remaining / _super_meter_ready_flash_duration, 0.0, 1.0)
+	var row := Control.new()
+	row.name = "SuperCounter"
+	row.size = Vector2(56.0, 56.0)
+	row.pivot_offset = Vector2(28.0, 28.0)
+	var jump_wave: float = max(sin((1.0 - max(meter_flash_ratio, ready_flash_ratio)) * PI), 0.0)
+	row.position = Vector2(0.0, float(index) * 62.0 - jump_wave * (8.0 * meter_flash_ratio + 16.0 * ready_flash_ratio))
+	row.scale = Vector2.ONE * (1.0 + meter_flash_ratio * 0.1 + ready_flash_ratio * 0.18 + charge_ratio * 0.08)
+	ammo_counter_panel.add_child(row)
+
+	var back := ColorRect.new()
+	back.name = "Back"
+	back.position = Vector2.ZERO
+	back.size = Vector2(56.0, 56.0)
+	back.color = Color(0.045, 0.05, 0.06, 0.94)
+	if ratio >= 1.0:
+		back.color = back.color.lerp(Color(0.18, 0.14, 0.035, 0.98), 0.7)
+	if ready_flash_ratio > 0.0:
+		back.color = back.color.lerp(Color(1.0, 1.0, 1.0, 0.98), ready_flash_ratio * 0.58)
+	row.add_child(back)
+
+	var fill_ratio: float = max(ratio, charge_ratio)
+	var fill := ColorRect.new()
+	fill.name = "Fill"
+	fill.position = Vector2(4.0, 52.0 - 48.0 * fill_ratio)
+	fill.size = Vector2(48.0, 48.0 * fill_ratio)
+	fill.color = Color(1.0, 0.82, 0.2, 0.62 + meter_flash_ratio * 0.2 + ready_flash_ratio * 0.22)
+	if _last_super_is_charging:
+		fill.color = fill.color.lerp(Color(0.35, 1.0, 1.0, 0.86), charge_ratio * 0.55)
+	row.add_child(fill)
+
+	if meter_flash_ratio > 0.0 or ready_flash_ratio > 0.0 or _last_super_is_charging:
+		var flash := ColorRect.new()
+		flash.name = "SuperFlash"
+		flash.position = Vector2.ZERO
+		flash.size = Vector2(56.0, 56.0)
+		flash.color = Color(1.0, 1.0, 0.72, 0.22 * meter_flash_ratio + 0.42 * ready_flash_ratio + 0.18 * charge_ratio)
+		row.add_child(flash)
+
+	var icon := Label.new()
+	icon.name = "Icon"
+	icon.position = Vector2(4.0, 5.0)
+	icon.size = Vector2(48.0, 26.0)
+	icon.text = "SU"
+	icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	icon.add_theme_font_size_override("font_size", 17 + roundi(ready_flash_ratio * 3.0 + charge_ratio * 2.0))
+	if ratio >= 1.0 or _last_super_is_charging:
+		icon.add_theme_color_override("font_color", Color(1.0, 1.0, 0.72, 1.0))
+	row.add_child(icon)
+
+	var count := Label.new()
+	count.name = "Count"
+	count.position = Vector2(2.0, 32.0)
+	count.size = Vector2(52.0, 20.0)
+	if _last_super_is_charging:
+		count.text = "%d" % roundi(charge_ratio * 100.0)
+	else:
+		count.text = "%d" % roundi(ratio * 100.0)
+	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	count.add_theme_font_size_override("font_size", 12 + roundi(ready_flash_ratio * 2.0 + charge_ratio * 2.0))
+	if ratio >= 1.0 or _last_super_is_charging:
+		count.add_theme_color_override("font_color", Color(1.0, 0.96, 0.68, 1.0))
+	row.add_child(count)
+
+	if ratio >= 1.0 and not _last_super_is_charging:
+		var ready_edge := ColorRect.new()
+		ready_edge.name = "ReadyEdge"
+		ready_edge.position = Vector2.ZERO
+		ready_edge.size = Vector2(56.0, 4.0)
+		ready_edge.color = Color(0.42, 1.0, 1.0, 0.95)
+		row.add_child(ready_edge)
+
+	row.tooltip_text = "Super Shot  %d/%d" % [roundi(_last_super_meter), roundi(_last_super_meter_max)]
+
+
 func _get_ammo_counter_color(effect) -> Color:
 	match String(effect.id):
 		"spread_shot":
@@ -1199,7 +1374,10 @@ func _get_pause_stats_text() -> String:
 			])
 	var ammo_text: String = "None" if ammo_lines.is_empty() else ", ".join(ammo_lines)
 	var parry_text: String = "READY" if _last_parry_cooldown_remaining <= 0.0 else "%.1fs" % _last_parry_cooldown_remaining
-	return "Score: %d\nHealth: %d / %d\nEnemies: %d  Spawners: %d  Pickups: %d\nParry: %s\n\n%s\n\nAmmo: %s" % [
+	var super_text: String = "READY" if _last_super_meter >= _last_super_meter_max else "%d%%" % roundi((_last_super_meter / max(_last_super_meter_max, 1.0)) * 100.0)
+	if _last_super_is_charging:
+		super_text = "Charging %d%%" % roundi(_last_super_charge_ratio * 100.0)
+	return "Score: %d\nHealth: %d / %d\nEnemies: %d  Spawners: %d  Pickups: %d\nParry: %s  Super: %s\n\n%s\n\nAmmo: %s" % [
 		_score,
 		_last_health,
 		max(_last_max_health, 1),
@@ -1207,6 +1385,7 @@ func _get_pause_stats_text() -> String:
 		spawner_manager.get_spawner_count(),
 		item_manager.get_pickup_count(),
 		parry_text,
+		super_text,
 		_get_attribute_text(),
 		ammo_text
 	]

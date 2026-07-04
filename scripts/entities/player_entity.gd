@@ -35,6 +35,11 @@ var _perfect_parry_flash_duration: float = 0.36
 var _parry_ready_flash_remaining: float = 0.0
 var _parry_ready_flash_duration: float = 0.42
 var _parry_ready: bool = false
+var _super_charge_active: bool = false
+var _super_charge_ratio: float = 0.0
+var _super_ready: bool = false
+var _super_ready_flash_remaining: float = 0.0
+var _super_ready_flash_duration: float = 0.52
 var _parry_effect_radius: float = 154.0
 var _parry_perfect_radius: float = 42.0
 var _ammo_warning_active: bool = false
@@ -84,9 +89,11 @@ func _process(delta: float) -> void:
 		_perfect_parry_flash_remaining = max(_perfect_parry_flash_remaining - delta, 0.0)
 	if _parry_ready_flash_remaining > 0.0:
 		_parry_ready_flash_remaining = max(_parry_ready_flash_remaining - delta, 0.0)
+	if _super_ready_flash_remaining > 0.0:
+		_super_ready_flash_remaining = max(_super_ready_flash_remaining - delta, 0.0)
 	if _is_dead:
 		_death_elapsed = min(_death_elapsed + delta, _death_duration)
-	if is_walking or was_shooting or _shoot_pose_remaining > 0.0 or _ammo_warning_active or _parry_ready or _parry_ready_flash_remaining > 0.0 or _parry_pulse_remaining > 0.0 or _perfect_parry_flash_remaining > 0.0 or _hit_flash_remaining > 0.0 or _heal_flash_remaining > 0.0 or _is_dead:
+	if is_walking or was_shooting or _shoot_pose_remaining > 0.0 or _ammo_warning_active or _parry_ready or _super_ready or _super_charge_active or _super_ready_flash_remaining > 0.0 or _parry_ready_flash_remaining > 0.0 or _parry_pulse_remaining > 0.0 or _perfect_parry_flash_remaining > 0.0 or _hit_flash_remaining > 0.0 or _heal_flash_remaining > 0.0 or _is_dead:
 		queue_redraw()
 
 
@@ -215,6 +222,27 @@ func play_perfect_parry_response(effect_radius: float, perfect_radius: float) ->
 	queue_redraw()
 
 
+func set_super_ready_state(is_ready: bool) -> void:
+	_super_ready = is_ready and not _is_dead
+	queue_redraw()
+
+
+func play_super_ready_response() -> void:
+	if _is_dead:
+		return
+	_super_ready = true
+	_super_ready_flash_remaining = _super_ready_flash_duration
+	queue_redraw()
+
+
+func set_super_charge_state(is_active: bool, ratio: float) -> void:
+	_super_charge_active = is_active and not _is_dead
+	_super_charge_ratio = clamp(ratio, 0.0, 1.0) if _super_charge_active else 0.0
+	if _super_charge_active:
+		_super_ready = false
+	queue_redraw()
+
+
 func set_parry_ready_state(is_ready: bool) -> void:
 	_parry_ready = is_ready and not _is_dead
 	queue_redraw()
@@ -252,6 +280,9 @@ func play_death_animation() -> void:
 	_knockback_velocity = Vector2.ZERO
 	invulnerable_remaining = 0.0
 	_parry_ready = false
+	_super_ready = false
+	_super_charge_active = false
+	_super_charge_ratio = 0.0
 	_ammo_warning_active = false
 	_shoot_pose_remaining = 0.0
 	modulate.a = 1.0
@@ -272,6 +303,10 @@ func reset_health() -> void:
 	_perfect_parry_flash_remaining = 0.0
 	_parry_ready_flash_remaining = 0.0
 	_parry_ready = false
+	_super_ready = false
+	_super_charge_active = false
+	_super_charge_ratio = 0.0
+	_super_ready_flash_remaining = 0.0
 	_ammo_warning_active = false
 	_shoot_pose_remaining = 0.0
 	_configure_collision_identity()
@@ -295,12 +330,18 @@ func _draw() -> void:
 		draw_arc(Vector2.ZERO, body_radius + 10.0, -PI / 2.0, -PI / 2.0 + TAU * ratio, 32, Color(0.45, 1.0, 1.0), 3.0)
 	if _parry_ready:
 		_draw_parry_ready_idle()
+	if _super_ready:
+		_draw_super_ready_idle()
 	if _parry_ready_flash_remaining > 0.0:
 		_draw_parry_ready_flash()
+	if _super_ready_flash_remaining > 0.0:
+		_draw_super_ready_flash()
 	if _parry_pulse_remaining > 0.0:
 		_draw_parry_pulse()
 	if _perfect_parry_flash_remaining > 0.0:
 		_draw_perfect_parry_flash()
+	if _super_charge_active:
+		_draw_super_charge()
 	if _ammo_warning_active:
 		_draw_ammo_warning()
 
@@ -353,7 +394,7 @@ func _draw_player_character_art() -> void:
 
 
 func _is_shoot_pose_active() -> bool:
-	return _shoot_pose_remaining > 0.0
+	return _shoot_pose_remaining > 0.0 or _super_charge_active
 
 
 func _get_visual_facing_direction() -> Vector2:
@@ -472,6 +513,47 @@ func _draw_parry_ready_flash() -> void:
 	for index in range(8):
 		var direction := Vector2.RIGHT.rotated(TAU * float(index) / 8.0 - progress * 0.4)
 		draw_line(direction * outer_radius, direction * (body_radius + 7.0), Color(0.75, 1.0, 1.0, alpha * 0.75), 2.0)
+
+
+func _draw_super_ready_idle() -> void:
+	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.01)
+	var alpha: float = 0.26 + pulse * 0.3
+	draw_arc(Vector2.ZERO, body_radius + 24.0, -PI * 0.1, TAU - PI * 0.1, 42, Color(1.0, 0.86, 0.24, alpha), 2.8)
+	draw_arc(Vector2.ZERO, body_radius + 29.0, PI * 0.32, PI * 1.65, 34, Color(0.34, 1.0, 1.0, alpha * 0.8), 2.2)
+
+
+func _draw_super_ready_flash() -> void:
+	var remaining_ratio: float = clamp(_super_ready_flash_remaining / _super_ready_flash_duration, 0.0, 1.0)
+	var progress: float = 1.0 - remaining_ratio
+	var alpha: float = remaining_ratio
+	var radius: float = lerp(body_radius + 62.0, body_radius + 25.0, progress)
+	draw_circle(Vector2.ZERO, radius, Color(1.0, 0.86, 0.22, alpha * 0.12))
+	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 52, Color(1.0, 0.95, 0.42, alpha), 5.0)
+	draw_arc(Vector2.ZERO, radius * 0.72, -PI * 0.2, TAU - PI * 0.2, 44, Color(0.45, 1.0, 1.0, alpha * 0.9), 3.5)
+	for index in range(10):
+		var direction := Vector2.RIGHT.rotated(TAU * float(index) / 10.0 + progress * 0.7)
+		draw_line(direction * (body_radius + 12.0), direction * (radius + 16.0), Color(1.0, 1.0, 0.82, alpha * 0.72), 2.2)
+
+
+func _draw_super_charge() -> void:
+	var aim := aim_direction.normalized()
+	if aim.length_squared() <= 0.001:
+		aim = Vector2.RIGHT
+	var ratio: float = clamp(_super_charge_ratio, 0.0, 1.0)
+	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.026)
+	var muzzle: Vector2 = aim * (body_radius + 15.0 + ratio * 8.0)
+	var side := aim.orthogonal()
+	var orb_radius: float = lerp(8.0, 31.0, ratio) + pulse * lerp(1.5, 4.0, ratio)
+	var hot_color := Color(1.0, lerp(0.68, 0.95, ratio), 0.22, 0.82)
+	var cool_color := Color(0.28, 1.0, 1.0, 0.55 + ratio * 0.28)
+	draw_line(side * -body_radius * 0.88, muzzle - aim * orb_radius * 0.7, Color(1.0, 0.95, 0.58, 0.45 + ratio * 0.28), 3.0 + ratio * 2.0)
+	draw_line(side * body_radius * 0.88, muzzle - aim * orb_radius * 0.7, Color(0.42, 1.0, 1.0, 0.35 + ratio * 0.25), 2.5 + ratio * 1.8)
+	draw_circle(muzzle, orb_radius * 1.55, Color(1.0, 0.78, 0.18, 0.12 + ratio * 0.14))
+	draw_circle(muzzle, orb_radius, hot_color)
+	draw_arc(muzzle, orb_radius + 5.0, -PI / 2.0, -PI / 2.0 + TAU * ratio, 44, cool_color, 4.0 + ratio * 2.0)
+	draw_arc(Vector2.ZERO, body_radius + 18.0 + ratio * 7.0, -PI / 2.0, -PI / 2.0 + TAU * ratio, 40, Color(1.0, 0.9, 0.3, 0.42 + ratio * 0.38), 3.0)
+	if ratio >= 0.98:
+		draw_arc(muzzle, orb_radius + 11.0 + pulse * 5.0, 0.0, TAU, 48, Color(1.0, 1.0, 1.0, 0.78), 3.5)
 
 
 func _draw_ammo_warning() -> void:

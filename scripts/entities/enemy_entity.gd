@@ -185,10 +185,14 @@ func take_damage(packet) -> bool:
 		return false
 	if blocks_projectile_damage(packet):
 		return false
+	var damage_amount: int = max(int(packet.damage), 0)
+	if _should_reduce_shield_pierce_damage(packet):
+		damage_amount = max(roundi(float(damage_amount) * clamp(float(packet.shield_damage_multiplier), 0.05, 1.0)), 1)
+		_projectile_shield_block_flash_remaining = 0.24
 	_apply_knockback(packet)
 	_hit_flash_remaining = 0.12
 	var old_health := health
-	health = max(health - max(packet.damage, 0), 0)
+	health = max(health - damage_amount, 0)
 	health_changed.emit(self, old_health, health)
 	queue_redraw()
 	if health == 0:
@@ -213,9 +217,15 @@ func blocks_projectile_damage(packet) -> bool:
 		return false
 	if String(packet.projectile_kind) == "hostile":
 		return false
+	if bool(packet.pierces_projectile_shields):
+		return false
 	_projectile_shield_block_flash_remaining = 0.2
 	queue_redraw()
 	return true
+
+
+func is_super_shot_impact_target() -> bool:
+	return behavior_kind == "boss" or max_health >= 8 or body_radius >= 27.0 or knockback_multiplier <= 0.05
 
 
 func apply_pushback(source_position: Vector2, force: float) -> void:
@@ -416,6 +426,8 @@ func _get_visual_kind(profile) -> String:
 
 func _apply_knockback(packet) -> void:
 	var effective_knockback: float = packet.knockback * max(knockback_multiplier, 0.0)
+	if _should_reduce_shield_pierce_damage(packet):
+		effective_knockback *= clamp(float(packet.shield_knockback_multiplier), 0.0, 1.0)
 	if effective_knockback <= 0.0:
 		return
 	var push_direction: Vector2 = packet.knockback_direction
@@ -425,6 +437,12 @@ func _apply_knockback(packet) -> void:
 		return
 	_knockback_velocity += push_direction.normalized() * effective_knockback
 	_knockback_velocity = _knockback_velocity.limit_length(260.0)
+
+
+func _should_reduce_shield_pierce_damage(packet) -> bool:
+	if packet == null or not is_projectile_shield_active():
+		return false
+	return bool(packet.pierces_projectile_shields) and String(packet.projectile_kind) != "hostile"
 
 
 func _update_boss_special(delta: float, to_target: Vector2) -> bool:

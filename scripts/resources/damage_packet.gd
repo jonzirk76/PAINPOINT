@@ -11,6 +11,12 @@ class_name DamagePacket
 @export var projectile_size_multiplier: float = 1.0
 @export var projectile_growth_per_second: float = 0.0
 @export var projectile_max_size_multiplier: float = 1.0
+@export var impact_on_strong_targets: bool = false
+@export var pierces_projectile_shields: bool = false
+@export var shield_damage_multiplier: float = 0.55
+@export var shield_knockback_multiplier: float = 0.45
+@export var super_charge_ratio: float = 0.0
+@export var super_full_charge: bool = false
 
 var source: Node = null
 var source_position: Vector2 = Vector2.ZERO
@@ -31,6 +37,12 @@ func copy_for_chain():
 	packet.projectile_size_multiplier = projectile_size_multiplier
 	packet.projectile_growth_per_second = projectile_growth_per_second
 	packet.projectile_max_size_multiplier = projectile_max_size_multiplier
+	packet.impact_on_strong_targets = false
+	packet.pierces_projectile_shields = pierces_projectile_shields
+	packet.shield_damage_multiplier = shield_damage_multiplier
+	packet.shield_knockback_multiplier = shield_knockback_multiplier
+	packet.super_charge_ratio = super_charge_ratio
+	packet.super_full_charge = super_full_charge
 	packet.source = source
 	packet.source_position = source_position
 	packet.knockback_direction = knockback_direction
@@ -48,9 +60,18 @@ func copy_for_explosion():
 	packet.explosion_radius = 0.0
 	packet.explosion_damage_multiplier = 0.0
 	packet.knockback = knockback * 1.4
+	packet.projectile_size_multiplier = projectile_size_multiplier
+	packet.projectile_growth_per_second = 0.0
+	packet.projectile_max_size_multiplier = projectile_max_size_multiplier
+	packet.impact_on_strong_targets = false
+	packet.pierces_projectile_shields = pierces_projectile_shields
+	packet.shield_damage_multiplier = shield_damage_multiplier
+	packet.shield_knockback_multiplier = shield_knockback_multiplier
+	packet.super_charge_ratio = super_charge_ratio
+	packet.super_full_charge = super_full_charge
 	packet.source = source
 	packet.source_position = source_position
-	packet.projectile_kind = "fire"
+	packet.projectile_kind = projectile_kind if projectile_kind == "super" else "fire"
 	packet.hit_targets = hit_targets.duplicate()
 	return packet
 
@@ -67,6 +88,12 @@ func copy_with_damage_bonus(bonus: int):
 	packet.projectile_size_multiplier = projectile_size_multiplier
 	packet.projectile_growth_per_second = projectile_growth_per_second
 	packet.projectile_max_size_multiplier = projectile_max_size_multiplier
+	packet.impact_on_strong_targets = impact_on_strong_targets
+	packet.pierces_projectile_shields = pierces_projectile_shields
+	packet.shield_damage_multiplier = shield_damage_multiplier
+	packet.shield_knockback_multiplier = shield_knockback_multiplier
+	packet.super_charge_ratio = super_charge_ratio
+	packet.super_full_charge = super_full_charge
 	packet.source = source
 	packet.source_position = source_position
 	packet.knockback_direction = knockback_direction
