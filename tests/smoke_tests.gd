@@ -2087,6 +2087,23 @@ func _test_room_interior_generator_determinism_and_budget(failures: Array[String
 		failures.append("Generated challenge rooms should respect the v1 spawner count bounds.")
 	if int(challenge.max_active_enemies) != clamp(24 + 5 * 4 + challenge.get_spawner_count() * 2, 30, 52):
 		failures.append("Generated challenge rooms should compute floor-scaled max active enemies.")
+	var complex_room_count := 0
+	var saw_wall_chain := false
+	var saw_void_mass := false
+	for seed in range(2400, 2420):
+		var sampled_room = generator.generate(combat_piece, "complex_%d" % seed, 2, seed, connections)
+		if sampled_room.wall_rects.size() + sampled_room.void_rects.size() >= 12:
+			complex_room_count += 1
+		if _has_contiguous_blocker_group(sampled_room.wall_rects, 4):
+			saw_wall_chain = true
+		if _has_contiguous_blocker_group(sampled_room.void_rects, 4):
+			saw_void_mass = true
+	if complex_room_count < 8:
+		failures.append("Generated rooms should usually spend enough blocker budget to create richer interiors.")
+	if not saw_wall_chain:
+		failures.append("Generated wall blockers should be able to form snaking/massed chains.")
+	if not saw_void_mass:
+		failures.append("Generated void blockers should be able to form massed or snaking shapes.")
 
 
 func _test_room_interior_generator_validation(failures: Array[String]) -> void:
@@ -2308,6 +2325,38 @@ func _collect_level_spawner_profile_files(level, seen_profiles: Dictionary) -> v
 		if placement == null or placement.profile == null:
 			continue
 		seen_profiles[String(placement.profile.resource_path).get_file()] = true
+
+
+func _has_contiguous_blocker_group(rects: Array[Rect2], min_count: int) -> bool:
+	var visited: Dictionary = {}
+	for index in range(rects.size()):
+		if visited.has(index):
+			continue
+		var group_size := 0
+		var queue: Array[int] = [index]
+		visited[index] = true
+		while not queue.is_empty():
+			var current_index: int = queue.pop_front()
+			group_size += 1
+			for next_index in range(rects.size()):
+				if visited.has(next_index):
+					continue
+				if not _blocker_rects_touch(rects[current_index], rects[next_index]):
+					continue
+				visited[next_index] = true
+				queue.append(next_index)
+		if group_size >= min_count:
+			return true
+	return false
+
+
+func _blocker_rects_touch(first: Rect2, second: Rect2) -> bool:
+	var center_delta := first.get_center() - second.get_center()
+	if abs(abs(center_delta.x) - 60.0) <= 1.0 and abs(center_delta.y) <= 1.0:
+		return true
+	if abs(abs(center_delta.y) - 60.0) <= 1.0 and abs(center_delta.x) <= 1.0:
+		return true
+	return false
 
 
 func _test_dungeon_floor_recipe(failures: Array[String]) -> void:
