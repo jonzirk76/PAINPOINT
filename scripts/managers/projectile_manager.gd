@@ -182,8 +182,8 @@ func _create_hostile_damage_packet(shot_config: Dictionary, origin: Vector2, dir
 	packet.pierce_count = 0
 	packet.chain_count = 0
 	packet.chain_radius = 0.0
-	packet.explosion_radius = 0.0
-	packet.explosion_damage_multiplier = 0.0
+	packet.explosion_radius = float(shot_config.get("explosion_radius", 0.0))
+	packet.explosion_damage_multiplier = float(shot_config.get("explosion_damage_multiplier", 0.0))
 	packet.projectile_size_multiplier = 1.0
 	packet.projectile_growth_per_second = 0.0
 	packet.projectile_max_size_multiplier = 1.0
@@ -215,7 +215,8 @@ func _get_projectile_expire_info(projectile) -> Dictionary:
 		"direction": projectile.last_expire_direction,
 		"radius": float(projectile.last_expire_radius),
 		"team": String(projectile.projectile_team),
-		"kind": String(packet.projectile_kind) if packet != null else "normal"
+		"kind": String(packet.projectile_kind) if packet != null else "normal",
+		"damage_packet": packet
 	}
 
 

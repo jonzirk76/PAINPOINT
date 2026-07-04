@@ -105,7 +105,10 @@ func request_fire(direction: Vector2) -> void:
 		return
 	if direction.length_squared() <= 0.001 or _fire_cooldown_remaining > 0.0:
 		return
-	player.set_aim_direction(direction)
+	if player.has_method("play_shoot_pose"):
+		player.play_shoot_pose(direction)
+	else:
+		player.set_aim_direction(direction)
 	_fire_cooldown_remaining = base_fire_cooldown * _fire_cooldown_multiplier
 	shoot_requested.emit(player.get_fire_origin(), direction.normalized())
 

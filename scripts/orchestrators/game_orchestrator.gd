@@ -494,7 +494,7 @@ func _on_projectile_hit(projectile, target: Node, packet) -> void:
 		impact_position = target.global_position
 	if target != null and target.is_in_group("player"):
 		effects_manager.play_projectile_impact(impact_position, impact_direction, impact_radius, false)
-		_apply_player_projectile_hit_effects(packet, impact_position)
+		_apply_player_projectile_hit_effects(packet, impact_position, impact_radius)
 		combat_manager.resolve_projectile_hit(projectile, target, packet)
 		return
 	var damage_landed := _apply_damage_to_target(target, packet)
@@ -515,16 +515,50 @@ func _on_projectile_expired(_projectile, expire_info: Dictionary) -> void:
 		audio_manager.play_bullet_impact()
 	effects_manager.play_projectile_impact(impact_position, impact_direction, impact_radius, false)
 	if String(expire_info.get("kind", "")) == "rocket":
-		effects_manager.play_explosion(impact_position, max(impact_radius * 5.2, 58.0))
+		_detonate_hostile_rocket(impact_position, impact_radius, expire_info.get("damage_packet", null), false)
 
 
-func _apply_player_projectile_hit_effects(packet, impact_position: Vector2) -> void:
+func _apply_player_projectile_hit_effects(packet, impact_position: Vector2, impact_radius: float = 7.0) -> void:
 	if packet == null:
 		return
 	if String(packet.projectile_kind) == "rocket":
-		effects_manager.play_explosion(impact_position, max(float(packet.knockback) * 0.11, 58.0))
+		_detonate_hostile_rocket(impact_position, impact_radius, packet, true)
+		return
 	if float(packet.knockback) > 0.0:
 		player_manager.apply_pushback(packet.knockback_direction, float(packet.knockback))
+
+
+func _detonate_hostile_rocket(origin: Vector2, projectile_radius: float, packet, skip_player_damage: bool) -> void:
+	var explosion_radius: float = max(projectile_radius * 5.2, 58.0)
+	if packet != null and float(packet.explosion_radius) > 0.0:
+		explosion_radius = max(explosion_radius, float(packet.explosion_radius))
+	effects_manager.play_explosion(origin, explosion_radius)
+	if packet == null:
+		return
+	var player = _get_player_ref()
+	if player != null and is_instance_valid(player):
+		var player_radius: float = float(player.body_radius)
+		var player_effect_radius := explosion_radius + player_radius
+		if player.global_position.distance_squared_to(origin) <= player_effect_radius * player_effect_radius:
+			var push_direction: Vector2 = player.global_position - origin
+			if push_direction.length_squared() <= 0.001:
+				push_direction = packet.knockback_direction
+			if push_direction.length_squared() <= 0.001:
+				push_direction = Vector2.RIGHT
+			if float(packet.knockback) > 0.0:
+				player_manager.apply_pushback(push_direction.normalized(), float(packet.knockback))
+			if not skip_player_damage:
+				player_manager.apply_damage(max(int(packet.damage), 1))
+	var explosion_packet = packet.copy_with_damage_bonus(0)
+	explosion_packet.projectile_kind = "hostile"
+	explosion_packet.source_position = origin
+	explosion_packet.knockback = max(float(packet.knockback) * 0.65, 120.0)
+	var excluded: Array[Node] = []
+	var candidates = enemy_manager.get_nearby_enemies(origin, explosion_radius, excluded)
+	candidates.append_array(spawner_manager.get_nearby_spawners(origin, explosion_radius, excluded))
+	for target in candidates:
+		explosion_packet.knockback_direction = (target.global_position - origin).normalized()
+		_on_damage_resolved(target, explosion_packet)
 
 
 func _on_damage_resolved(target: Node, packet) -> bool:
@@ -1321,6 +1355,8 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool) -> 
 	_set_all_enabled(true)
 	if not room_is_cleared and level_definition.boss_profile != null:
 		enemy_manager.spawn_enemy(level_definition.boss_profile, level_definition.boss_spawn_position)
+		if _is_main_loop_run and dungeon_manager.is_current_boss_room():
+			_show_boss_exit_portal_preview(level_definition)
 	room_manager.set_doors_unlocked(room_is_cleared)
 	_is_loading_room = false
 	_update_camera()
@@ -1447,32 +1483,79 @@ func _activate_boss_exit_portal(boss_position: Vector2, boss_radius: float) -> v
 		return
 	var explosion_radius: float = max(boss_radius * 4.4, 180.0)
 	effects_manager.play_explosion(boss_position, explosion_radius, 0.72)
+	if _floor_exit_portal != null and is_instance_valid(_floor_exit_portal):
+		if _floor_exit_portal.has_method("set_active"):
+			_floor_exit_portal.set_active(true)
+	else:
+		var portal = FLOOR_EXIT_PORTAL_SCENE.instantiate()
+		var portal_layer: Node = $World/DoorLayer
+		if portal_layer != null:
+			portal_layer.add_child(portal)
+		else:
+			add_child(portal)
+		var portal_position := _get_boss_exit_portal_position(boss_position)
+		if portal.has_method("initialize"):
+			portal.initialize(portal_position, max(boss_radius * 1.05, 48.0), true)
+		_connect_once(portal, &"entered", _on_floor_exit_portal_entered)
+		_floor_exit_portal = portal
+	_update_minimap()
+
+
+func _show_boss_exit_portal_preview(level_definition) -> void:
+	if level_definition == null:
+		return
+	if _floor_exit_portal != null and is_instance_valid(_floor_exit_portal):
+		return
 	var portal = FLOOR_EXIT_PORTAL_SCENE.instantiate()
 	var portal_layer: Node = $World/DoorLayer
 	if portal_layer != null:
 		portal_layer.add_child(portal)
 	else:
 		add_child(portal)
-	var portal_position := _get_boss_exit_portal_position(boss_position)
+	var portal_radius := 48.0
+	if level_definition.boss_profile != null:
+		portal_radius = max(float(level_definition.boss_profile.body_radius) * 1.05, 48.0)
 	if portal.has_method("initialize"):
-		portal.initialize(portal_position, max(boss_radius * 1.05, 48.0))
+		portal.initialize(_get_boss_exit_portal_position(level_definition.boss_spawn_position), portal_radius, false)
 	_connect_once(portal, &"entered", _on_floor_exit_portal_entered)
 	_floor_exit_portal = portal
-	_update_minimap()
 
 
 func _get_boss_exit_portal_position(boss_position: Vector2) -> Vector2:
 	if _current_level == null:
 		return boss_position
 	var bounds: Rect2 = _current_level.arena_bounds
-	var preferred := bounds.get_center()
-	if preferred.distance_squared_to(boss_position) < 110.0 * 110.0:
-		preferred = boss_position + Vector2(-180.0, 0.0)
-	return _find_safe_room_position(preferred, _current_level)
+	var center := bounds.get_center()
+	var candidates := [
+		center + Vector2(-260.0, 0.0),
+		center + Vector2(260.0, 0.0),
+		center + Vector2(0.0, -220.0),
+		center + Vector2(0.0, 220.0),
+		center + Vector2(-360.0, -240.0),
+		center + Vector2(360.0, -240.0),
+		center + Vector2(-360.0, 240.0),
+		center + Vector2(360.0, 240.0),
+		boss_position + Vector2(-320.0, 0.0),
+		boss_position + Vector2(320.0, 0.0),
+		boss_position + Vector2(0.0, -260.0),
+		boss_position + Vector2(0.0, 260.0)
+	]
+	for radius in [220.0, 320.0, 440.0]:
+		for index in range(12):
+			candidates.append(center + Vector2.RIGHT.rotated(TAU * float(index) / 12.0) * radius)
+	for candidate in candidates:
+		var safe_candidate := ArenaGeometry.constrain_point(candidate, bounds, int(_current_level.arena_shape))
+		if safe_candidate.distance_squared_to(boss_position) < 140.0 * 140.0:
+			continue
+		if not ArenaGeometry.contains_point(safe_candidate, bounds, int(_current_level.arena_shape)):
+			continue
+		if _position_is_clear_of_room_walls(safe_candidate, _current_level):
+			return safe_candidate
+	return _find_safe_room_position(boss_position + Vector2(-320.0, 0.0), _current_level)
 
 
 func _on_floor_exit_portal_entered(portal) -> void:
-	if portal != _floor_exit_portal or not _is_main_loop_run or _status != "DUNGEON":
+	if portal != _floor_exit_portal or not _floor_exit_portal_active() or not _is_main_loop_run or _status != "DUNGEON":
 		return
 	_clear_floor_exit_portal()
 	_complete_main_loop_floor()
@@ -1480,7 +1563,11 @@ func _on_floor_exit_portal_entered(portal) -> void:
 
 
 func _floor_exit_portal_active() -> bool:
-	return _floor_exit_portal != null and is_instance_valid(_floor_exit_portal)
+	if _floor_exit_portal == null or not is_instance_valid(_floor_exit_portal):
+		return false
+	if _floor_exit_portal.has_method("is_active"):
+		return bool(_floor_exit_portal.is_active())
+	return true
 
 
 func _clear_floor_exit_portal() -> void:

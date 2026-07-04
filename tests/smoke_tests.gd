@@ -144,6 +144,7 @@ func _init() -> void:
 	_test_presentation_settings(failures)
 	_test_character_svg_assets(failures)
 	_test_character_art_applied_to_entities(failures)
+	_test_player_shoot_pose_relaxes_to_movement(failures)
 	_test_scripts_instantiate(failures)
 	_test_enemy_and_spawner_profiles(failures)
 	_test_level_resources(failures)
@@ -182,6 +183,7 @@ func _init() -> void:
 	_test_shooter_shot_tracks_target(failures)
 	_test_hostile_projectile_damage_path(failures)
 	_test_hostile_projectile_range_matches_player(failures)
+	_test_hostile_rocket_detonation_damage(failures)
 	_test_spawner_explosion_effect(failures)
 	_test_room_piece_resources(failures)
 	_test_dungeon_floor_recipe(failures)
@@ -192,6 +194,7 @@ func _init() -> void:
 	_test_boss_add_replenishment(failures)
 	_test_boss_test_level_select(failures)
 	_test_orchestrator_dungeon_start_and_boss(failures)
+	_test_boss_exit_portal_preview_and_safe_position(failures)
 	_test_orchestrator_main_loop_floor_progression(failures)
 
 	if failures.is_empty():
@@ -283,18 +286,20 @@ func _test_character_art_applied_to_entities(failures: Array[String]) -> void:
 		failures.append("PlayerEntity should draw animated oval feet separately from the upper-body art.")
 	if not player_source.contains("foot_anchor := Vector2.DOWN") or not player_source.contains("body_radius * 1.18"):
 		failures.append("PlayerEntity should anchor walking feet low enough to show beneath the upright body.")
-	if not player_source.contains("PLAYER_ARMS_GUN_TEXTURE") or not player_source.contains("aim.angle()"):
+	if not player_source.contains("PLAYER_ARMS_GUN_TEXTURE") or not player_source.contains("weapon_aim.angle()"):
 		failures.append("PlayerEntity should rotate the separate arms/gun sprite using the normalized aim direction.")
-	if not player_source.contains("PLAYER_ARMS_GUN_LEFT_TEXTURE") or not player_source.contains("(-aim).angle()"):
+	if not player_source.contains("PLAYER_ARMS_GUN_LEFT_TEXTURE") or not player_source.contains("(-weapon_aim).angle()"):
 		failures.append("PlayerEntity should use folded left-facing weapon art so left aim points with the shot direction.")
 	if not player_source.contains("PLAYER_RESTING_PISTOL_TEXTURE") or not player_source.contains("PLAYER_RESTING_PISTOL_LEFT_TEXTURE"):
 		failures.append("PlayerEntity should draw the lowered off-hand pistol as its own sprite layer.")
-	if not player_source.contains("resting_rotation: float = clamp(aim.y * 0.18"):
+	if not player_source.contains("resting_rotation: float = clamp(facing.y * 0.18"):
 		failures.append("PlayerEntity should only slightly rotate the resting pistol instead of matching the active gun rotation.")
-	if not player_source.contains("is_side_facing: bool = abs(aim.x) >= abs(aim.y)") or not player_source.contains("is_back_facing: bool = not is_side_facing and aim.y < 0.0"):
+	if not player_source.contains("is_side_facing: bool = abs(facing.x) >= abs(facing.y)") or not player_source.contains("is_back_facing: bool = not is_side_facing and facing.y < 0.0"):
 		failures.append("PlayerEntity should split body facing into 90-degree cardinal aim sectors.")
-	if not player_source.contains("body_scale = Vector2(-1.0, 1.0) if aim.x < 0.0 else Vector2.ONE"):
+	if not player_source.contains("body_scale = Vector2(-1.0, 1.0) if facing.x < 0.0 else Vector2.ONE"):
 		failures.append("PlayerEntity should mirror the side-facing body for left aim.")
+	if not player_source.contains("play_shoot_pose") or not player_source.contains("_get_visual_facing_direction"):
+		failures.append("PlayerEntity should hold a brief shooting pose, then return visual facing to movement.")
 	if not player_source.contains("if is_back_facing:") or not player_source.contains("_draw_centered_texture(weapon_texture, visual_radius, weapon_rotation, tint)") or not player_source.contains("_draw_centered_texture(body_texture, visual_radius, 0.0, tint, body_scale)"):
 		failures.append("PlayerEntity should draw the gun behind the back-facing body when aiming upward.")
 	if not player_source.contains("body_radius + 13.0") or player_source.contains("sparkle_center"):
@@ -313,6 +318,20 @@ func _test_character_art_applied_to_entities(failures: Array[String]) -> void:
 		failures.append("EnemyEntity should rotate character art using the last meaningful movement direction.")
 	if not enemy_source.contains("velocity.length_squared() > 1.0"):
 		failures.append("EnemyEntity should redraw moving enemies so movement-facing rotation updates.")
+
+
+func _test_player_shoot_pose_relaxes_to_movement(failures: Array[String]) -> void:
+	var player = load("res://scenes/entities/player_entity.tscn").instantiate()
+	player.set_move_vector(Vector2.DOWN)
+	player.play_shoot_pose(Vector2.UP)
+	if player._get_visual_facing_direction().distance_to(Vector2.UP) > 0.001:
+		failures.append("Player shooting pose should temporarily face the shot direction.")
+	player._process(player.shoot_pose_hold_seconds + 0.05)
+	if player._is_shoot_pose_active():
+		failures.append("Player shooting pose should expire after its short hold window.")
+	if player._get_visual_facing_direction().distance_to(Vector2.DOWN) > 0.001:
+		failures.append("Player visual facing should return to movement after shooting pose expires.")
+	player.free()
 
 
 func _read_text(path: String) -> String:
@@ -1170,10 +1189,14 @@ func _test_projectile_knockback_packet(failures: Array[String]) -> void:
 	var rocket_packet = manager._create_hostile_damage_packet({
 		"kind": "rocket",
 		"damage": 2,
-		"knockback": 540.0
+		"knockback": 540.0,
+		"explosion_radius": 96.0,
+		"explosion_damage_multiplier": 1.0
 	}, Vector2.ZERO, Vector2.LEFT)
 	if rocket_packet.projectile_kind != "rocket" or rocket_packet.knockback < 500.0:
 		failures.append("Hostile rocket packets should carry rocket kind and player knockback.")
+	if rocket_packet.explosion_radius < 90.0 or rocket_packet.explosion_damage_multiplier <= 0.0:
+		failures.append("Hostile rocket packets should carry explosion damage metadata.")
 	var player = load("res://scenes/entities/player_entity.tscn").instantiate()
 	player.apply_pushback(Vector2.LEFT, rocket_packet.knockback)
 	if player._knockback_velocity.length_squared() <= 0.001:
@@ -1667,7 +1690,9 @@ func _test_hostile_projectile_range_matches_player(failures: Array[String]) -> v
 		"radius": 11.5,
 		"kind": "rocket",
 		"lifetime": 0.2,
-		"exact_lifetime": true
+		"exact_lifetime": true,
+		"explosion_radius": 96.0,
+		"explosion_damage_multiplier": 1.0
 	})
 	if manager._projectiles.is_empty():
 		failures.append("ProjectileManager did not create exact-lifetime rocket projectile.")
@@ -1675,8 +1700,48 @@ func _test_hostile_projectile_range_matches_player(failures: Array[String]) -> v
 		var rocket = manager._projectiles[0]
 		if abs(rocket.lifetime_seconds - 0.2) > 0.001:
 			failures.append("Targeted rockets should keep their exact detonation lifetime.")
+		var expire_info: Dictionary = manager._get_projectile_expire_info(rocket)
+		var packet = expire_info.get("damage_packet", null)
+		if packet == null or float(packet.explosion_radius) < 90.0:
+			failures.append("Rocket expiry info should retain its damage packet for detonation.")
 	manager.free()
 	layer.free()
+
+
+func _test_hostile_rocket_detonation_damage(failures: Array[String]) -> void:
+	var scene = load("res://scenes/main.tscn")
+	if scene == null:
+		failures.append("Main scene failed to load for rocket detonation test.")
+		return
+	var main = scene.instantiate()
+	root.add_child(main)
+	if main.dungeon_manager == null:
+		_prime_main_for_direct_test_calls(main)
+		main._connect_manager_signals()
+		main._initialize_managers()
+		main._enter_level_select()
+	main._selected_level_index = 0
+	main._start_selected_level()
+	main.enemy_manager.reset_run()
+	main.spawner_manager.clear_spawners()
+	main.enemy_manager.set_enabled(true)
+	var enemy_profile = load("res://resources/enemies/basic_enemy.tres")
+	var enemy = main.enemy_manager.spawn_enemy(enemy_profile, Vector2(64.0, 0.0))
+	if enemy == null:
+		failures.append("Rocket detonation test could not spawn an enemy.")
+	else:
+		var health_before: int = enemy.health
+		var packet = load("res://scripts/resources/damage_packet.gd").new()
+		packet.damage = 1
+		packet.projectile_kind = "rocket"
+		packet.explosion_radius = 120.0
+		packet.explosion_damage_multiplier = 1.0
+		packet.knockback = 120.0
+		packet.knockback_direction = Vector2.RIGHT
+		main._detonate_hostile_rocket(Vector2.ZERO, 11.5, packet, false)
+		if enemy.health >= health_before:
+			failures.append("Hostile rocket detonation should damage nearby enemies.")
+	main.free()
 
 
 func _test_spawner_explosion_effect(failures: Array[String]) -> void:
@@ -2160,6 +2225,43 @@ func _test_orchestrator_dungeon_start_and_boss(failures: Array[String]) -> void:
 		failures.append("Boss room spawner budget should allow spawned adds while the boss is alive.")
 	if main.dungeon_manager.get_revealed_room_count() < 4:
 		failures.append("Dungeon minimap reveal state should advance along the traversed boss route.")
+	main.free()
+
+
+func _test_boss_exit_portal_preview_and_safe_position(failures: Array[String]) -> void:
+	var scene = load("res://scenes/main.tscn")
+	if scene == null:
+		failures.append("Main scene failed to load for boss portal placement test.")
+		return
+	var main = scene.instantiate()
+	root.add_child(main)
+	if main.dungeon_manager == null:
+		_prime_main_for_direct_test_calls(main)
+		main._connect_manager_signals()
+		main._initialize_managers()
+		main._enter_level_select()
+	var room_piece = load("res://resources/rooms/boss_chamber.tres")
+	if room_piece == null:
+		failures.append("Boss chamber room piece failed to load for portal placement test.")
+		main.free()
+		return
+	var level = room_piece.create_level_definition()
+	main._current_level = level
+	main._is_main_loop_run = true
+	main._show_boss_exit_portal_preview(level)
+	if main._floor_exit_portal == null or not is_instance_valid(main._floor_exit_portal):
+		failures.append("Main loop boss room should show an inactive floor exit portal preview.")
+	else:
+		var portal_position: Vector2 = main._floor_exit_portal.global_position
+		if main._floor_exit_portal_active():
+			failures.append("Boss exit portal preview should be inactive while the boss fight is active.")
+		if not ArenaGeometry.contains_point(portal_position, level.arena_bounds, int(level.arena_shape)):
+			failures.append("Boss exit portal preview should spawn inside the room bounds.")
+		if not main._position_is_clear_of_room_walls(portal_position, level):
+			failures.append("Boss exit portal preview should not spawn inside impassable boss-room walls.")
+		main._activate_boss_exit_portal(level.boss_spawn_position, float(level.boss_profile.body_radius))
+		if not main._floor_exit_portal_active():
+			failures.append("Boss death should activate the existing floor exit portal preview.")
 	main.free()
 
 

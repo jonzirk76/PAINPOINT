@@ -17,6 +17,7 @@ const PLAYER_RESTING_PISTOL_LEFT_TEXTURE := preload("res://art/characters/player
 @export var body_radius: float = 17.0
 @export var arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 @export var arena_shape: int = 0
+@export var shoot_pose_hold_seconds: float = 0.42
 
 var health: int = max_health
 var move_vector: Vector2 = Vector2.ZERO
@@ -44,6 +45,8 @@ var _death_elapsed: float = 0.0
 var _death_duration: float = 0.75
 var _is_dead: bool = false
 var _walk_cycle: float = 0.0
+var _shoot_pose_remaining: float = 0.0
+var _last_move_facing_direction: Vector2 = Vector2.RIGHT
 
 
 func _init() -> void:
@@ -68,6 +71,9 @@ func _process(delta: float) -> void:
 	var is_walking := move_vector.length_squared() > 0.01 and not _is_dead
 	if is_walking:
 		_walk_cycle += delta * 12.0
+	var was_shooting := _shoot_pose_remaining > 0.0
+	if _shoot_pose_remaining > 0.0:
+		_shoot_pose_remaining = max(_shoot_pose_remaining - delta, 0.0)
 	if _hit_flash_remaining > 0.0:
 		_hit_flash_remaining = max(_hit_flash_remaining - delta, 0.0)
 	if _heal_flash_remaining > 0.0:
@@ -80,7 +86,7 @@ func _process(delta: float) -> void:
 		_parry_ready_flash_remaining = max(_parry_ready_flash_remaining - delta, 0.0)
 	if _is_dead:
 		_death_elapsed = min(_death_elapsed + delta, _death_duration)
-	if is_walking or _ammo_warning_active or _parry_ready or _parry_ready_flash_remaining > 0.0 or _parry_pulse_remaining > 0.0 or _perfect_parry_flash_remaining > 0.0 or _hit_flash_remaining > 0.0 or _heal_flash_remaining > 0.0 or _is_dead:
+	if is_walking or was_shooting or _shoot_pose_remaining > 0.0 or _ammo_warning_active or _parry_ready or _parry_ready_flash_remaining > 0.0 or _parry_pulse_remaining > 0.0 or _perfect_parry_flash_remaining > 0.0 or _hit_flash_remaining > 0.0 or _heal_flash_remaining > 0.0 or _is_dead:
 		queue_redraw()
 
 
@@ -96,6 +102,10 @@ func _physics_process(delta: float) -> void:
 
 func set_move_vector(vector: Vector2) -> void:
 	move_vector = vector.limit_length(1.0)
+	if move_vector.length_squared() > 0.01:
+		_last_move_facing_direction = move_vector.normalized()
+		if _shoot_pose_remaining <= 0.0:
+			queue_redraw()
 
 
 func stop_movement() -> void:
@@ -107,6 +117,14 @@ func set_aim_direction(direction: Vector2) -> void:
 	if direction.length_squared() <= 0.001:
 		return
 	aim_direction = direction.normalized()
+	queue_redraw()
+
+
+func play_shoot_pose(direction: Vector2) -> void:
+	if _is_dead or direction.length_squared() <= 0.001:
+		return
+	aim_direction = direction.normalized()
+	_shoot_pose_remaining = max(shoot_pose_hold_seconds, 0.0)
 	queue_redraw()
 
 
@@ -235,6 +253,7 @@ func play_death_animation() -> void:
 	invulnerable_remaining = 0.0
 	_parry_ready = false
 	_ammo_warning_active = false
+	_shoot_pose_remaining = 0.0
 	modulate.a = 1.0
 	collision_layer = 0
 	collision_mask = 0
@@ -254,6 +273,7 @@ func reset_health() -> void:
 	_parry_ready_flash_remaining = 0.0
 	_parry_ready = false
 	_ammo_warning_active = false
+	_shoot_pose_remaining = 0.0
 	_configure_collision_identity()
 	set_invulnerability_state(0.0, 0.0)
 	health_changed.emit(old_health, health)
@@ -291,37 +311,55 @@ func _draw_player_character_art() -> void:
 	if _hit_flash_remaining > 0.0:
 		tint = Color(1.0, 0.96, 0.74)
 	var visual_radius: float = body_radius * 2.35
-	var aim := aim_direction.normalized()
-	if aim.length_squared() <= 0.001:
-		aim = Vector2.RIGHT
+	var facing := _get_visual_facing_direction()
+	var weapon_aim := aim_direction.normalized()
+	if weapon_aim.length_squared() <= 0.001:
+		weapon_aim = facing
 	var weapon_texture: Texture2D = PLAYER_ARMS_GUN_TEXTURE
 	var resting_texture: Texture2D = PLAYER_RESTING_PISTOL_TEXTURE
 	var body_texture: Texture2D = PLAYER_BODY_TEXTURE
 	var body_scale := Vector2.ONE
-	var is_side_facing: bool = abs(aim.x) >= abs(aim.y)
-	var is_back_facing: bool = not is_side_facing and aim.y < 0.0
-	var weapon_rotation := aim.angle()
-	var resting_rotation: float = clamp(aim.y * 0.18, -0.18, 0.18)
+	var is_side_facing: bool = abs(facing.x) >= abs(facing.y)
+	var is_back_facing: bool = not is_side_facing and facing.y < 0.0
+	var weapon_rotation := weapon_aim.angle()
+	var resting_rotation: float = clamp(facing.y * 0.18, -0.18, 0.18)
 	if move_vector.length_squared() > 0.01:
 		resting_rotation += sin(_walk_cycle) * 0.035
 	if is_side_facing:
 		body_texture = PLAYER_BODY_SIDE_TEXTURE
-		body_scale = Vector2(-1.0, 1.0) if aim.x < 0.0 else Vector2.ONE
+		body_scale = Vector2(-1.0, 1.0) if facing.x < 0.0 else Vector2.ONE
 	elif is_back_facing:
 		body_texture = PLAYER_BODY_BACK_TEXTURE
-	if aim.x < -0.001:
-		weapon_texture = PLAYER_ARMS_GUN_LEFT_TEXTURE
+	if facing.x < -0.001:
 		resting_texture = PLAYER_RESTING_PISTOL_LEFT_TEXTURE
-		weapon_rotation = (-aim).angle()
 		resting_rotation = -resting_rotation
+	if weapon_aim.x < -0.001:
+		weapon_texture = PLAYER_ARMS_GUN_LEFT_TEXTURE
+		weapon_rotation = (-weapon_aim).angle()
 	if is_back_facing:
 		_draw_centered_texture(resting_texture, visual_radius, resting_rotation, tint)
-		_draw_centered_texture(weapon_texture, visual_radius, weapon_rotation, tint)
+		if _is_shoot_pose_active():
+			_draw_centered_texture(weapon_texture, visual_radius, weapon_rotation, tint)
 		_draw_centered_texture(body_texture, visual_radius, 0.0, tint, body_scale)
 	else:
 		_draw_centered_texture(body_texture, visual_radius, 0.0, tint, body_scale)
 		_draw_centered_texture(resting_texture, visual_radius, resting_rotation, tint)
-		_draw_centered_texture(weapon_texture, visual_radius, weapon_rotation, tint)
+		if _is_shoot_pose_active():
+			_draw_centered_texture(weapon_texture, visual_radius, weapon_rotation, tint)
+
+
+func _is_shoot_pose_active() -> bool:
+	return _shoot_pose_remaining > 0.0
+
+
+func _get_visual_facing_direction() -> Vector2:
+	if _is_shoot_pose_active() and aim_direction.length_squared() > 0.001:
+		return aim_direction.normalized()
+	if move_vector.length_squared() > 0.01:
+		return move_vector.normalized()
+	if _last_move_facing_direction.length_squared() > 0.001:
+		return _last_move_facing_direction.normalized()
+	return Vector2.RIGHT
 
 
 func _draw_player_walk_feet() -> void:
