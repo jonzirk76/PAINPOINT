@@ -294,8 +294,10 @@ func _test_character_art_applied_to_entities(failures: Array[String]) -> void:
 		failures.append("PlayerEntity should use folded left-facing weapon art so left aim points with the shot direction.")
 	if not player_source.contains("PLAYER_RESTING_PISTOL_TEXTURE") or not player_source.contains("PLAYER_RESTING_PISTOL_LEFT_TEXTURE"):
 		failures.append("PlayerEntity should draw the lowered off-hand pistol as its own sprite layer.")
-	if not player_source.contains("resting_rotation: float = clamp(facing.y * 0.18"):
+	if not player_source.contains("_get_side_resting_pistol_rotation"):
 		failures.append("PlayerEntity should only slightly rotate the resting pistol instead of matching the active gun rotation.")
+	if not player_source.contains("_draw_vertical_resting_pistols"):
+		failures.append("PlayerEntity should draw mirrored resting pistols while front/back facing and not shooting.")
 	if not player_source.contains("is_side_facing: bool = abs(facing.x) >= abs(facing.y)") or not player_source.contains("is_back_facing: bool = not is_side_facing and facing.y < 0.0"):
 		failures.append("PlayerEntity should split body facing into 90-degree cardinal aim sectors.")
 	if not player_source.contains("body_scale = Vector2(-1.0, 1.0) if facing.x < 0.0 else Vector2.ONE"):
@@ -324,6 +326,8 @@ func _test_character_art_applied_to_entities(failures: Array[String]) -> void:
 
 func _test_player_shoot_pose_relaxes_to_movement(failures: Array[String]) -> void:
 	var player = load("res://scenes/entities/player_entity.tscn").instantiate()
+	if player._get_visual_facing_direction().distance_to(Vector2.DOWN) > 0.001:
+		failures.append("Player should face the camera/front by default at floor start.")
 	player.set_move_vector(Vector2.DOWN)
 	player.play_shoot_pose(Vector2.UP)
 	if player._get_visual_facing_direction().distance_to(Vector2.UP) > 0.001:

@@ -46,7 +46,7 @@ var _death_duration: float = 0.75
 var _is_dead: bool = false
 var _walk_cycle: float = 0.0
 var _shoot_pose_remaining: float = 0.0
-var _last_move_facing_direction: Vector2 = Vector2.RIGHT
+var _last_move_facing_direction: Vector2 = Vector2.DOWN
 
 
 func _init() -> void:
@@ -321,10 +321,9 @@ func _draw_player_character_art() -> void:
 	var body_scale := Vector2.ONE
 	var is_side_facing: bool = abs(facing.x) >= abs(facing.y)
 	var is_back_facing: bool = not is_side_facing and facing.y < 0.0
+	var is_shooting := _is_shoot_pose_active()
 	var weapon_rotation := weapon_aim.angle()
-	var resting_rotation: float = clamp(facing.y * 0.18, -0.18, 0.18)
-	if move_vector.length_squared() > 0.01:
-		resting_rotation += sin(_walk_cycle) * 0.035
+	var resting_rotation := _get_side_resting_pistol_rotation(facing)
 	if is_side_facing:
 		body_texture = PLAYER_BODY_SIDE_TEXTURE
 		body_scale = Vector2(-1.0, 1.0) if facing.x < 0.0 else Vector2.ONE
@@ -337,14 +336,19 @@ func _draw_player_character_art() -> void:
 		weapon_texture = PLAYER_ARMS_GUN_LEFT_TEXTURE
 		weapon_rotation = (-weapon_aim).angle()
 	if is_back_facing:
-		_draw_centered_texture(resting_texture, visual_radius, resting_rotation, tint)
-		if _is_shoot_pose_active():
+		if is_shooting:
+			_draw_centered_texture(resting_texture, visual_radius, resting_rotation, tint)
 			_draw_centered_texture(weapon_texture, visual_radius, weapon_rotation, tint)
+		else:
+			_draw_vertical_resting_pistols(visual_radius, facing, tint)
 		_draw_centered_texture(body_texture, visual_radius, 0.0, tint, body_scale)
 	else:
 		_draw_centered_texture(body_texture, visual_radius, 0.0, tint, body_scale)
-		_draw_centered_texture(resting_texture, visual_radius, resting_rotation, tint)
-		if _is_shoot_pose_active():
+		if is_shooting or is_side_facing:
+			_draw_centered_texture(resting_texture, visual_radius, resting_rotation, tint)
+		else:
+			_draw_vertical_resting_pistols(visual_radius, facing, tint)
+		if is_shooting:
 			_draw_centered_texture(weapon_texture, visual_radius, weapon_rotation, tint)
 
 
@@ -359,7 +363,23 @@ func _get_visual_facing_direction() -> Vector2:
 		return move_vector.normalized()
 	if _last_move_facing_direction.length_squared() > 0.001:
 		return _last_move_facing_direction.normalized()
-	return Vector2.RIGHT
+	return Vector2.DOWN
+
+
+func _get_side_resting_pistol_rotation(facing: Vector2) -> float:
+	var is_walking := move_vector.length_squared() > 0.01
+	var base_tilt: float = clamp(facing.y * (0.16 if is_walking else 0.08), -0.16, 0.16)
+	if is_walking:
+		base_tilt += sin(_walk_cycle) * 0.028
+	return base_tilt
+
+
+func _draw_vertical_resting_pistols(visual_radius: float, facing: Vector2, tint: Color) -> void:
+	var is_walking := move_vector.length_squared() > 0.01
+	var forward_tilt: float = clamp(facing.y * 0.08, -0.08, 0.08)
+	var walk_swing: float = sin(_walk_cycle) * 0.052 if is_walking else 0.018
+	_draw_centered_texture(PLAYER_RESTING_PISTOL_TEXTURE, visual_radius, forward_tilt + walk_swing, tint)
+	_draw_centered_texture(PLAYER_RESTING_PISTOL_LEFT_TEXTURE, visual_radius, -forward_tilt - walk_swing, tint)
 
 
 func _draw_player_walk_feet() -> void:
