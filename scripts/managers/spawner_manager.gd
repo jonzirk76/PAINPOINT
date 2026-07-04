@@ -14,6 +14,8 @@ signal hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: 
 @export var default_spawn_interval: float = 2.8
 @export var default_spawner_radius: float = 32.0
 @export var initial_spawn_batch_multiplier: int = 2
+@export var spawn_player_bias_fan_degrees: float = 112.0
+@export var initial_spawn_player_bias_fan_degrees: float = 136.0
 @export var pressure_damage_distance: float = 165.0
 @export var pressure_damage_bonus: int = 1
 
@@ -287,27 +289,58 @@ func _get_initial_spawn_shield_delay() -> float:
 
 
 func _get_initial_spawn_position(spawner, spawner_index: int, spawn_index: int, spawn_count: int) -> Vector2:
-	var count: int = max(spawn_count, 1)
 	var distance: float = max(float(spawner.body_radius) + 46.0, 64.0)
-	for attempt in range(10):
-		var angle: float = (TAU * float(spawn_index) / float(count)) + float(spawner_index) * 0.73 + float(attempt) * 0.51
-		var candidate := ArenaGeometry.constrain_point(spawner.global_position + Vector2.RIGHT.rotated(angle) * distance, _arena_bounds, _arena_shape)
-		if _position_is_clear_of_walls(candidate):
-			return candidate
-	return spawner.global_position
+	var phase: float = float(spawner_index) * 0.09
+	return _get_biased_spawn_position(spawner, spawn_index, spawn_count, distance, deg_to_rad(initial_spawn_player_bias_fan_degrees), phase)
 
 
 func _get_spawn_position_around_spawner(spawner, spawn_index: int, spawn_count: int) -> Vector2:
 	if spawner == null or not is_instance_valid(spawner):
 		return Vector2.ZERO
-	var count: int = max(spawn_count, 1)
 	var distance: float = max(float(spawner.body_radius) + 36.0, 54.0)
-	for attempt in range(10):
-		var angle: float = (TAU * float(spawn_index) / float(count)) + float(attempt) * 0.47
-		var candidate := ArenaGeometry.constrain_point(spawner.global_position + Vector2.RIGHT.rotated(angle) * distance, _arena_bounds, _arena_shape)
+	return _get_biased_spawn_position(spawner, spawn_index, spawn_count, distance, deg_to_rad(spawn_player_bias_fan_degrees))
+
+
+func _get_biased_spawn_position(spawner, spawn_index: int, spawn_count: int, base_distance: float, fan_radians: float, phase: float = 0.0) -> Vector2:
+	if spawner == null or not is_instance_valid(spawner):
+		return Vector2.ZERO
+	var bias_direction: Vector2 = _get_spawn_bias_direction(spawner)
+	var count: int = max(spawn_count, 1)
+	var fan_offset: float = _get_spawn_fan_offset(spawn_index, count, fan_radians) + phase
+	var radial_stagger: float = _get_spawn_radial_stagger(spawn_index, count)
+	for attempt in range(14):
+		var side_step: float = 0.0
+		if attempt > 0:
+			var sign: float = -1.0 if attempt % 2 == 1 else 1.0
+			side_step = sign * floor(float(attempt + 1) * 0.5) * 0.24
+		var distance: float = max(base_distance + radial_stagger + floor(float(attempt) / 4.0) * 18.0, float(spawner.body_radius) + 28.0)
+		var angle: float = bias_direction.angle() + fan_offset + side_step
+		var candidate: Vector2 = ArenaGeometry.constrain_point(spawner.global_position + Vector2.RIGHT.rotated(angle) * distance, _arena_bounds, _arena_shape)
 		if _position_is_clear_of_walls(candidate):
 			return candidate
 	return spawner.global_position
+
+
+func _get_spawn_bias_direction(spawner) -> Vector2:
+	if spawner == null or not is_instance_valid(spawner):
+		return Vector2.RIGHT
+	var to_player: Vector2 = _get_player_position() - spawner.global_position
+	if to_player.length_squared() <= 0.001:
+		return Vector2.RIGHT
+	return to_player.normalized()
+
+
+func _get_spawn_fan_offset(spawn_index: int, spawn_count: int, fan_radians: float) -> float:
+	if spawn_count <= 1:
+		return 0.0
+	var ratio: float = clamp(float(spawn_index) / float(max(spawn_count - 1, 1)), 0.0, 1.0)
+	return lerp(-fan_radians * 0.5, fan_radians * 0.5, ratio)
+
+
+func _get_spawn_radial_stagger(spawn_index: int, spawn_count: int) -> float:
+	if spawn_count <= 2:
+		return 0.0
+	return (float(spawn_index % 3) - 1.0) * 10.0
 
 
 func _position_is_clear_of_walls(position: Vector2) -> bool:

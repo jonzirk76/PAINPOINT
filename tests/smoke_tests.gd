@@ -1510,11 +1510,17 @@ func _test_typed_spawner_spawn_profile(failures: Array[String]) -> void:
 	var manager = load("res://scripts/managers/spawner_manager.gd").new()
 	var level = load("res://resources/levels/level_01_square.tres")
 	var requested_profiles := []
+	var requested_positions: Array[Vector2] = []
+	var player_target := Vector2.ZERO
 	root.add_child(manager)
-	manager.spawn_requested.connect(func(_position, profile) -> void:
+	manager.spawn_requested.connect(func(position, profile) -> void:
+		requested_positions.append(position)
 		requested_profiles.append(profile)
 	)
-	manager.initialize({})
+	manager.initialize({
+		"player_position_provider": func() -> Vector2:
+			return player_target
+	})
 	manager.reset_run(level)
 	manager.set_enabled(true)
 	if manager._spawners.is_empty():
@@ -1534,6 +1540,22 @@ func _test_typed_spawner_spawn_profile(failures: Array[String]) -> void:
 		manager._process(manager._get_initial_spawn_shield_delay() + 0.05)
 		if requested_profiles.size() < expected_initial_requests:
 			failures.append("SpawnerManager should request a doubled opening enemy batch after the startup shield window.")
+		var biased_spawn_count := 0
+		var checked_spawn_count := 0
+		for created_spawner in manager._spawners:
+			var to_player: Vector2 = (player_target - created_spawner.global_position).normalized()
+			var spawn_count: int = int(manager._get_initial_spawn_batch_count(created_spawner))
+			for spawn_index in range(spawn_count):
+				var spawn_position: Vector2 = manager._get_initial_spawn_position(created_spawner, 0, spawn_index, spawn_count)
+				checked_spawn_count += 1
+				if (spawn_position - created_spawner.global_position).dot(to_player) > 0.0:
+					biased_spawn_count += 1
+			var normal_position: Vector2 = manager._get_spawn_position_around_spawner(created_spawner, 0, int(created_spawner.spawn_batch_count))
+			checked_spawn_count += 1
+			if (normal_position - created_spawner.global_position).dot(to_player) > 0.0:
+				biased_spawn_count += 1
+		if checked_spawn_count <= 0 or biased_spawn_count < checked_spawn_count:
+			failures.append("SpawnerManager should fan spawn positions toward the player instead of evenly around the spawner.")
 		var previous_request_count := requested_profiles.size()
 		manager._on_spawner_spawn_ready(spawner, spawner.global_position)
 		var pulse_count := requested_profiles.size() - previous_request_count
@@ -1541,6 +1563,8 @@ func _test_typed_spawner_spawn_profile(failures: Array[String]) -> void:
 			failures.append("SpawnerManager should emit one spawn request per spawner batch count.")
 		if requested_profiles.is_empty() or requested_profiles[0] != spawner.enemy_profile:
 			failures.append("Typed spawner did not request its configured enemy profile.")
+		if requested_positions.is_empty():
+			failures.append("SpawnerManager should emit concrete spawn positions for requested enemies.")
 	manager.free()
 
 
