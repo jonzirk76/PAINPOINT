@@ -139,6 +139,13 @@ const DUNGEON_OPPOSITE_DIRECTIONS := {
 	"west": "east"
 }
 
+const DUNGEON_DIRECTION_OFFSETS := {
+	"north": Vector2i(0, -1),
+	"south": Vector2i(0, 1),
+	"east": Vector2i(1, 0),
+	"west": Vector2i(-1, 0)
+}
+
 
 func _init() -> void:
 	paused = false
@@ -2510,6 +2517,49 @@ func _validate_dungeon_layout_integrity(manager, failures: Array[String], label:
 			var target_connections: Dictionary = target_info.get("connections", {})
 			if String(target_connections.get(opposite, "")) != String(room_id):
 				failures.append("Dungeon layout connection should be reciprocal %s.%s -> %s.%s: %s" % [room_id, direction, target_id, opposite, label])
+	_validate_dungeon_physical_door_adjacency(rooms_by_id, failures, label)
+
+
+func _validate_dungeon_physical_door_adjacency(rooms_by_id: Dictionary, failures: Array[String], label: String) -> void:
+	var occupied: Dictionary = {}
+	for room_id in rooms_by_id.keys():
+		var room_info: Dictionary = rooms_by_id[room_id]
+		var anchor: Vector2i = room_info["anchor"]
+		for local_cell in room_info["footprint_cells"]:
+			var world_cell: Vector2i = anchor + local_cell
+			occupied[_cell_key_for_test(world_cell)] = String(room_id)
+	var contact_counts: Dictionary = {}
+	for room_id in rooms_by_id.keys():
+		var room_info: Dictionary = rooms_by_id[room_id]
+		var anchor: Vector2i = room_info["anchor"]
+		var connections: Dictionary = room_info.get("connections", {})
+		for local_cell in room_info["footprint_cells"]:
+			var world_cell: Vector2i = anchor + local_cell
+			for direction_key in DUNGEON_DIRECTION_OFFSETS.keys():
+				var direction := String(direction_key)
+				var neighbor_cell: Vector2i = world_cell + DUNGEON_DIRECTION_OFFSETS[direction]
+				var neighbor_id := String(occupied.get(_cell_key_for_test(neighbor_cell), ""))
+				if neighbor_id.is_empty() or neighbor_id == String(room_id):
+					continue
+				var expected_neighbor := String(connections.get(direction, ""))
+				if expected_neighbor != neighbor_id:
+					failures.append("Dungeon layout has an unintended physical doorway %s.%s touching %s: %s" % [room_id, direction, neighbor_id, label])
+					continue
+				var key := "%s|%s" % [room_id, direction]
+				contact_counts[key] = int(contact_counts.get(key, 0)) + 1
+				if int(contact_counts[key]) > 1:
+					failures.append("Dungeon layout should expose only one physical doorway for %s.%s: %s" % [room_id, direction, label])
+	for room_id in rooms_by_id.keys():
+		var room_info: Dictionary = rooms_by_id[room_id]
+		var connections: Dictionary = room_info.get("connections", {})
+		for direction_key in connections.keys():
+			var key := "%s|%s" % [room_id, String(direction_key)]
+			if int(contact_counts.get(key, 0)) != 1:
+				failures.append("Dungeon layout logical doorway should have exactly one physical edge %s: %s" % [key, label])
+
+
+func _cell_key_for_test(cell: Vector2i) -> String:
+	return "%d,%d" % [cell.x, cell.y]
 
 
 func _test_dungeon_layout_solver(failures: Array[String]) -> void:

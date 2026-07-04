@@ -29,6 +29,13 @@ const OPPOSITE_DIRECTIONS := {
 	"west": "east"
 }
 
+const DIRECTION_OFFSETS := {
+	"north": Vector2i(0, -1),
+	"south": Vector2i(0, 1),
+	"east": Vector2i(1, 0),
+	"west": Vector2i(-1, 0)
+}
+
 const COMBAT_PIECES := [
 	WIDE_PIECE,
 	TALL_PIECE,
@@ -304,7 +311,7 @@ func _try_place_connected(parent_id: String, direction: String, room_id: String,
 	var base_anchor := _get_adjacent_anchor(parent_state, piece, direction)
 	for offset in _get_solver_offsets(direction):
 		var candidate_anchor := base_anchor + offset
-		if _can_place(piece, candidate_anchor):
+		if _can_place_connected(piece, candidate_anchor, parent_id, direction):
 			_place_room(room_id, piece, candidate_anchor)
 			_connect_rooms(parent_id, direction, room_id)
 			return true
@@ -402,6 +409,31 @@ func _can_place(piece, anchor: Vector2i) -> bool:
 		if _occupied_cells.has(_cell_key(world_cell)):
 			return false
 	return true
+
+
+func _can_place_connected(piece, anchor: Vector2i, parent_id: String, parent_to_child_direction: String) -> bool:
+	if not _can_place(piece, anchor):
+		return false
+	var expected_child_to_parent_direction := String(OPPOSITE_DIRECTIONS.get(parent_to_child_direction, ""))
+	if expected_child_to_parent_direction.is_empty():
+		return false
+	var parent_contact_count := 0
+	for local_cell in piece.footprint_cells:
+		var world_cell: Vector2i = anchor + local_cell
+		for direction_key in DIRECTION_OFFSETS.keys():
+			var direction := String(direction_key)
+			var neighbor_cell: Vector2i = world_cell + DIRECTION_OFFSETS[direction]
+			var neighbor_id := String(_occupied_cells.get(_cell_key(neighbor_cell), ""))
+			if neighbor_id.is_empty():
+				continue
+			if neighbor_id != parent_id:
+				return false
+			if direction != expected_child_to_parent_direction:
+				return false
+			parent_contact_count += 1
+			if parent_contact_count > 1:
+				return false
+	return parent_contact_count == 1
 
 
 func _cell_key(cell: Vector2i) -> String:

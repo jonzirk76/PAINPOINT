@@ -125,7 +125,7 @@ func _build_obstacles(level, connections: Dictionary, archetype: int, rng: Rando
 	var voids: Array[Rect2] = []
 	var grid_size := _get_obstacle_grid_size(level.arena_bounds)
 	var total_cells: int = max(grid_size.x * grid_size.y, 1)
-	var total_budget: int = clamp(int(round(float(total_cells) * 0.045)) + 5 + int(floor_number / 2), 12, 34)
+	var total_budget: int = clamp(int(round(float(total_cells) * 0.055)) + 6 + int(floor_number / 2), 13, 40)
 	if room_kind == "challenge":
 		total_budget += 4
 	match archetype:
@@ -139,42 +139,53 @@ func _build_obstacles(level, connections: Dictionary, archetype: int, rng: Rando
 			total_budget += 4
 		_:
 			total_budget += 2
-	total_budget = clamp(total_budget, 10, 38)
+	total_budget = clamp(total_budget, 11, 46)
 	var wall_budget: int = clamp(int(round(float(total_budget) * rng.randf_range(0.55, 0.68))), 6, total_budget - 4)
 	var void_budget: int = max(total_budget - wall_budget, 3)
-	if archetype == 3 or rng.randf() < 0.7:
-		var boundary_budget: int = min(wall_budget, rng.randi_range(3, max(4, int(wall_budget * 0.45))))
-		wall_budget -= _try_add_obstacle_shape(walls, level, connections, walls, voids, grid_size, boundary_budget, true, false, rng)
+	if archetype == 3 or rng.randf() < 0.82:
+		var boundary_budget: int = min(wall_budget, rng.randi_range(4, max(5, int(wall_budget * 0.62))))
+		wall_budget -= _try_add_obstacle_shape(walls, level, connections, walls, voids, grid_size, boundary_budget, true, "mass", rng)
 	var wall_attempts := 0
 	while wall_budget > 0 and wall_attempts < 24:
 		wall_attempts += 1
-		var near_boundary := rng.randf() < 0.24
-		var use_mass := near_boundary and rng.randf() < 0.62
+		var near_boundary := rng.randf() < 0.34
+		var shape_kind := "snake"
+		if near_boundary and rng.randf() < 0.58:
+			shape_kind = "mass"
+		elif rng.randf() < 0.24:
+			shape_kind = "seed"
 		var target_cells: int = min(wall_budget, rng.randi_range(3, 7))
-		var added := _try_add_obstacle_shape(walls, level, connections, walls, voids, grid_size, target_cells, near_boundary, not use_mass, rng)
+		var added := _try_add_obstacle_shape(walls, level, connections, walls, voids, grid_size, target_cells, near_boundary, shape_kind, rng)
 		if added <= 0:
 			continue
 		wall_budget -= added
 	var void_attempts := 0
 	while void_budget > 0 and void_attempts < 22:
 		void_attempts += 1
-		var near_boundary := rng.randf() < 0.28
-		var use_snake := near_boundary or (not walls.is_empty() and rng.randf() < 0.22)
+		var near_boundary := rng.randf() < 0.34
+		var shape_kind := "seed"
+		if near_boundary or (not walls.is_empty() and rng.randf() < 0.22):
+			shape_kind = "snake"
+		elif rng.randf() < 0.36:
+			shape_kind = "mass"
 		var target_cells: int = min(void_budget, rng.randi_range(3, 8))
-		var added := _try_add_obstacle_shape(voids, level, connections, walls, voids, grid_size, target_cells, near_boundary, use_snake, rng)
+		var added := _try_add_obstacle_shape(voids, level, connections, walls, voids, grid_size, target_cells, near_boundary, shape_kind, rng)
 		if added <= 0:
 			continue
 		void_budget -= added
 	return {"walls": walls, "voids": voids}
 
 
-func _try_add_obstacle_shape(target: Array[Rect2], level, connections: Dictionary, walls: Array[Rect2], voids: Array[Rect2], grid_size: Vector2i, target_cells: int, near_boundary: bool, use_snake: bool, rng: RandomNumberGenerator) -> int:
+func _try_add_obstacle_shape(target: Array[Rect2], level, connections: Dictionary, walls: Array[Rect2], voids: Array[Rect2], grid_size: Vector2i, target_cells: int, near_boundary: bool, shape_kind: String, rng: RandomNumberGenerator) -> int:
 	for attempt in range(14):
 		var cells: Array[Vector2i] = []
-		if use_snake:
-			cells = _build_snake_obstacle_cells(level, connections, walls, voids, grid_size, target_cells, near_boundary, rng)
-		else:
-			cells = _build_mass_obstacle_cells(level, connections, walls, voids, grid_size, target_cells, near_boundary, rng)
+		match shape_kind:
+			"snake":
+				cells = _build_snake_obstacle_cells(level, connections, walls, voids, grid_size, target_cells, near_boundary, rng)
+			"seed":
+				cells = _build_seed_obstacle_cells(level, connections, walls, voids, grid_size, target_cells, near_boundary, rng)
+			_:
+				cells = _build_mass_obstacle_cells(level, connections, walls, voids, grid_size, target_cells, near_boundary, rng)
 		if cells.is_empty():
 			continue
 		for cell in cells:
@@ -206,6 +217,44 @@ func _build_snake_obstacle_cells(level, connections: Dictionary, walls: Array[Re
 		if not moved:
 			current = _pick_obstacle_start_cell(grid_size, near_boundary, rng)
 			direction = _random_cardinal_direction(rng)
+	return cells
+
+
+func _build_seed_obstacle_cells(level, connections: Dictionary, walls: Array[Rect2], voids: Array[Rect2], grid_size: Vector2i, target_cells: int, near_boundary: bool, rng: RandomNumberGenerator) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	var used: Dictionary = {}
+	var entrance := _pick_obstacle_start_cell(grid_size, near_boundary, rng)
+	var outward := _get_seed_outward_direction(entrance, grid_size, rng)
+	used[_cell_key(entrance)] = true
+	var frontier: Array[Vector2i] = [entrance + outward]
+	for step in range(max(target_cells * 16, 28)):
+		if frontier.is_empty():
+			if cells.is_empty():
+				entrance = _pick_obstacle_start_cell(grid_size, near_boundary, rng)
+				outward = _get_seed_outward_direction(entrance, grid_size, rng)
+				used.clear()
+				used[_cell_key(entrance)] = true
+				frontier.append(entrance + outward)
+				continue
+			var anchor: Vector2i = cells[rng.randi_range(0, cells.size() - 1)]
+			frontier.append(anchor + _random_cardinal_direction(rng))
+		var candidate_index := rng.randi_range(0, frontier.size() - 1)
+		var candidate: Vector2i = frontier[candidate_index]
+		frontier.remove_at(candidate_index)
+		if used.has(_cell_key(candidate)):
+			continue
+		if not _cell_can_join_obstacle(candidate, level, connections, walls, voids, used, grid_size):
+			used[_cell_key(candidate)] = true
+			continue
+		cells.append(candidate)
+		used[_cell_key(candidate)] = true
+		if cells.size() >= target_cells:
+			return cells
+		for next_direction in _get_seed_expansion_directions(outward, rng):
+			var next_cell := candidate + next_direction
+			if used.has(_cell_key(next_cell)):
+				continue
+			frontier.append(next_cell)
 	return cells
 
 
@@ -293,6 +342,38 @@ func _random_cardinal_direction(rng: RandomNumberGenerator) -> Vector2i:
 	return directions[rng.randi_range(0, directions.size() - 1)]
 
 
+func _get_seed_outward_direction(entrance: Vector2i, grid_size: Vector2i, rng: RandomNumberGenerator) -> Vector2i:
+	var distances := {
+		Vector2i(0, 1): entrance.y,
+		Vector2i(0, -1): grid_size.y - 1 - entrance.y,
+		Vector2i(1, 0): entrance.x,
+		Vector2i(-1, 0): grid_size.x - 1 - entrance.x
+	}
+	var best_direction := _random_cardinal_direction(rng)
+	var best_distance := 9999
+	for direction in distances.keys():
+		var distance: int = int(distances[direction])
+		if distance < best_distance:
+			best_distance = distance
+			best_direction = direction
+	return best_direction
+
+
+func _get_seed_expansion_directions(outward: Vector2i, rng: RandomNumberGenerator) -> Array[Vector2i]:
+	var left := Vector2i(-outward.y, outward.x)
+	var right := Vector2i(outward.y, -outward.x)
+	var backward := -outward
+	var directions: Array[Vector2i] = [outward, left, right, outward, left, right, backward]
+	if rng.randf() < 0.5:
+		var value := directions[1]
+		directions[1] = directions[2]
+		directions[2] = value
+	if rng.randf() < 0.25:
+		directions.append(left)
+		directions.append(right)
+	return directions
+
+
 func _get_snake_direction_order(direction: Vector2i, rng: RandomNumberGenerator) -> Array[Vector2i]:
 	var left := Vector2i(-direction.y, direction.x)
 	var right := Vector2i(direction.y, -direction.x)
@@ -306,21 +387,6 @@ func _get_snake_direction_order(direction: Vector2i, rng: RandomNumberGenerator)
 		directions[1] = directions[2]
 		directions[2] = value
 	return directions
-
-
-func _try_add_block(target: Array[Rect2], rect: Rect2, level, connections: Dictionary, walls: Array[Rect2], voids: Array[Rect2]) -> bool:
-	if not _rect_fits_arena(rect, level):
-		return false
-	if _rect_hits_reserved_zone(rect, level, connections):
-		return false
-	var blockers: Array[Rect2] = []
-	blockers.append_array(walls)
-	blockers.append_array(voids)
-	for blocker in blockers:
-		if blocker.grow(18.0).intersects(rect):
-			return false
-	target.append(rect)
-	return true
 
 
 func _rect_at(center: Vector2, cells: Vector2) -> Rect2:
