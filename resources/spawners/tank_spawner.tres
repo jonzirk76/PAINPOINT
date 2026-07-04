@@ -6,8 +6,8 @@
 [resource]
 script = ExtResource("1")
 enemy_profile = ExtResource("2")
-max_health = 68
-spawn_interval = 4.35
+max_health = 51
+spawn_interval = 4.85
 spawn_batch_count = 1
 body_radius = 44.0
 score_value = 130

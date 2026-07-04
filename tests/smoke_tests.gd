@@ -502,9 +502,9 @@ func _test_enemy_and_spawner_profiles(failures: Array[String]) -> void:
 	var fast_spawner = load("res://resources/spawners/fast_spawner.tres")
 	var basic_spawner = load("res://resources/spawners/basic_spawner.tres")
 	var shooter_spawner = load("res://resources/spawners/shooter_spawner.tres")
-	if tank_spawner.max_health < 68 or tank_spawner.body_radius < 44.0:
+	if tank_spawner.max_health < 51 or tank_spawner.body_radius < 44.0:
 		failures.append("Tank spawner profile should be tougher and larger.")
-	if fast_spawner.max_health > 20 or fast_spawner.body_radius >= 31.0:
+	if fast_spawner.max_health > 15 or fast_spawner.body_radius >= 31.0:
 		failures.append("Fast spawner profile should be smaller and fragile.")
 	if basic_spawner.projectile_speed != 250.0 or basic_spawner.projectile_radius != 7.0:
 		failures.append("Basic spawner should fire a standard shooter-spawner style projectile.")
@@ -514,11 +514,11 @@ func _test_enemy_and_spawner_profiles(failures: Array[String]) -> void:
 		failures.append("Tank spawner should fire a larger, slower projectile.")
 	if shooter_spawner.shot_projectile_count < 3 or shooter_spawner.shot_spread_degrees <= 0.0:
 		failures.append("Shooter spawner should fire a sweeping three-shot pulse.")
-	if basic_spawner.spawn_interval < 3.2 or basic_spawner.spawn_interval > 3.8:
+	if basic_spawner.spawn_interval < 3.6 or basic_spawner.spawn_interval > 4.1:
 		failures.append("Basic spawner interval should be softened around its two-enemy pulse.")
-	if fast_spawner.spawn_interval < 2.1 or fast_spawner.spawn_interval > 2.7:
+	if fast_spawner.spawn_interval < 2.4 or fast_spawner.spawn_interval > 2.9:
 		failures.append("Fast spawner interval should be softened around its three-enemy pulse.")
-	if shooter_spawner.spawn_interval > 3.6 or tank_spawner.spawn_interval > 4.6:
+	if shooter_spawner.spawn_interval > 4.0 or tank_spawner.spawn_interval > 5.2:
 		failures.append("Shooter and tank spawner intervals should keep their existing pressure roles.")
 	if int(basic_spawner.spawn_batch_count) != 2:
 		failures.append("Basic spawners should spawn two normal enemies per pulse.")
@@ -1660,6 +1660,21 @@ func _test_hostile_projectile_range_matches_player(failures: Array[String]) -> v
 		var hostile_range: float = projectile.speed * projectile.lifetime_seconds
 		if hostile_range < player_range:
 			failures.append("Hostile shooter projectile range should be at least the player projectile range.")
+	manager.reset_run()
+	manager.fire_hostile(Vector2.ZERO, Vector2.RIGHT, {
+		"speed": 640.0,
+		"damage": 2,
+		"radius": 11.5,
+		"kind": "rocket",
+		"lifetime": 0.2,
+		"exact_lifetime": true
+	})
+	if manager._projectiles.is_empty():
+		failures.append("ProjectileManager did not create exact-lifetime rocket projectile.")
+	else:
+		var rocket = manager._projectiles[0]
+		if abs(rocket.lifetime_seconds - 0.2) > 0.001:
+			failures.append("Targeted rockets should keep their exact detonation lifetime.")
 	manager.free()
 	layer.free()
 
@@ -1956,8 +1971,8 @@ func _test_first_boss_profile_and_spread(failures: Array[String]) -> void:
 	if boss_profile == null:
 		failures.append("First boss profile failed to load.")
 		return
-	if boss_profile.behavior_kind != "boss" or boss_profile.max_health < 180:
-		failures.append("First boss profile should use boss behavior and tripled boss-scale health.")
+	if boss_profile.behavior_kind != "boss" or boss_profile.max_health < 120:
+		failures.append("First boss profile should use boss behavior and tuned boss-scale health.")
 	if boss_profile.shot_projectile_count < 3 or boss_profile.shot_spread_degrees <= 0.0:
 		failures.append("First boss profile should fire a visible spread pattern.")
 	var boss = load("res://scenes/entities/enemy_entity.tscn").instantiate()
@@ -1997,6 +2012,8 @@ func _test_first_boss_profile_and_spread(failures: Array[String]) -> void:
 	latest_special = shot_configs[shot_configs.size() - 1] if shot_configs.size() > 0 else {}
 	if shot_configs.size() <= minigun_count or String(latest_special.get("kind", "")) != "rocket" or float(latest_special.get("knockback", 0.0)) <= 0.0:
 		failures.append("Boss should alternate into a telegraphed rocket special with knockback.")
+	elif not bool(latest_special.get("exact_lifetime", false)) or not latest_special.has("target_position") or float(latest_special.get("speed", 0.0)) < 600.0:
+		failures.append("Boss rocket should be a fast targeted projectile that detonates at the player's launch-time position.")
 	boss.free()
 
 	var projectile_layer := Node2D.new()

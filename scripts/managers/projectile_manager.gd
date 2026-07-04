@@ -142,7 +142,10 @@ func _spawn_hostile_projectile(origin: Vector2, direction: Vector2, shot_config:
 	projectile.body_radius = float(shot_config.get("radius", 7.0))
 	var player_projectile_range: float = base_projectile_speed * projectile.lifetime_seconds
 	var requested_lifetime: float = float(shot_config.get("lifetime", 0.0))
-	projectile.lifetime_seconds = max(requested_lifetime, player_projectile_range / shot_speed)
+	if bool(shot_config.get("exact_lifetime", false)):
+		projectile.lifetime_seconds = max(requested_lifetime, 0.05)
+	else:
+		projectile.lifetime_seconds = max(requested_lifetime, player_projectile_range / shot_speed)
 	if _projectile_layer != null:
 		_projectile_layer.add_child(projectile)
 	else:

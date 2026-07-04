@@ -465,6 +465,15 @@ func _emit_boss_special(to_target: Vector2) -> void:
 	var shot_origin := global_position + shot_direction * (body_radius + radius + 6.0)
 	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
 		shot_origin = global_position
+	if _boss_special_kind == "rocket":
+		var target_position_at_launch := global_position + to_target
+		var target_direction := target_position_at_launch - shot_origin
+		if target_direction.length_squared() > 4.0:
+			shot_direction = target_direction.normalized()
+		var rocket_speed: float = max(float(shot_config.get("speed", projectile_speed)), 1.0)
+		shot_config["target_position"] = target_position_at_launch
+		shot_config["lifetime"] = max(shot_origin.distance_to(target_position_at_launch) / rocket_speed, 0.08)
+		shot_config["exact_lifetime"] = true
 	shot_ready.emit(self, shot_origin, shot_direction, shot_config)
 
 
@@ -522,13 +531,12 @@ func _finish_boss_special() -> void:
 func _get_boss_special_shot_config(special_kind: String) -> Dictionary:
 	if special_kind == "rocket":
 		return {
-			"speed": projectile_speed * 0.92,
+			"speed": max(projectile_speed * 2.5, 640.0),
 			"damage": max(projectile_damage + 1, 2),
 			"radius": max(projectile_radius * 1.65, 11.5),
 			"kind": "rocket",
 			"projectile_count": 1,
 			"spread_angle_degrees": 0.0,
-			"lifetime": 2.35,
 			"knockback": 540.0
 		}
 	return {
