@@ -2063,15 +2063,24 @@ func _test_room_interior_generator_determinism_and_budget(failures: Array[String
 		failures.append("Generated combat rooms should respect the v1 spawner count bounds.")
 	if int(floor_one.max_active_enemies) != clamp(24 + 1 * 4 + floor_one.get_spawner_count() * 2, 30, 52):
 		failures.append("Generated combat rooms should compute floor-scaled max active enemies.")
-	if _level_uses_spawner_profile(floor_one, "fast_spawner.tres") or _level_uses_spawner_profile(floor_one, "shooter_spawner.tres") or _level_uses_spawner_profile(floor_one, "tank_spawner.tres"):
-		failures.append("Floor-one generated rooms should only use basic spawner profiles.")
-
-	var floor_two = generator.generate(combat_piece, "floor_two", 2, 2222, connections)
-	if _level_uses_spawner_profile(floor_two, "shooter_spawner.tres") or _level_uses_spawner_profile(floor_two, "tank_spawner.tres"):
-		failures.append("Floor-two generated rooms should not use shooter or tank spawners yet.")
-	var floor_three = generator.generate(combat_piece, "floor_three", 3, 3333, connections)
-	if _level_uses_spawner_profile(floor_three, "tank_spawner.tres"):
-		failures.append("Floor-three generated rooms should not use tank spawners yet.")
+	if not _generated_room_has_non_basic_spawner(floor_one):
+		failures.append("Floor-one generated combat rooms should not collapse into only basic generals.")
+	var tier_one_options: Array[Dictionary] = generator._get_spawner_options(1)
+	var basic_cost := _get_spawner_option_cost_by_file(tier_one_options, "basic_spawner.tres")
+	var fast_cost := _get_spawner_option_cost_by_file(tier_one_options, "fast_spawner.tres")
+	var shooter_cost := _get_spawner_option_cost_by_file(tier_one_options, "shooter_spawner.tres")
+	var tank_cost := _get_spawner_option_cost_by_file(tier_one_options, "tank_spawner.tres")
+	if basic_cost <= 0 or fast_cost <= 0 or shooter_cost <= 0 or tank_cost <= 0:
+		failures.append("Tier-one generated rooms should have all current general profiles available.")
+	if basic_cost > shooter_cost or fast_cost > shooter_cost or shooter_cost > tank_cost:
+		failures.append("Spawner budget values should keep basic/fast cheaper than shooter/tank generals.")
+	var seen_floor_one_profiles: Dictionary = {}
+	for seed in range(1100, 1140):
+		var sampled_level = generator.generate(combat_piece, "floor_one_%d" % seed, 1, seed, connections)
+		_collect_level_spawner_profile_files(sampled_level, seen_floor_one_profiles)
+	for file_name in ["basic_spawner.tres", "fast_spawner.tres", "shooter_spawner.tres", "tank_spawner.tres"]:
+		if not seen_floor_one_profiles.has(file_name):
+			failures.append("Floor-one generated rooms should be able to roll %s." % file_name)
 
 	var challenge = generator.generate(challenge_piece, "challenge_1", 5, 5555, {"north": "start", "west": "path_1"})
 	if challenge.get_spawner_count() < 5 or challenge.get_spawner_count() > 7:
@@ -2279,11 +2288,26 @@ func _rect_signature(rect: Rect2) -> String:
 	]
 
 
-func _level_uses_spawner_profile(level, file_name: String) -> bool:
+func _generated_room_has_non_basic_spawner(level) -> bool:
 	for placement in level.spawner_placements:
-		if placement != null and placement.profile != null and String(placement.profile.resource_path).ends_with(file_name):
+		if placement != null and placement.profile != null and not String(placement.profile.resource_path).ends_with("basic_spawner.tres"):
 			return true
 	return false
+
+
+func _get_spawner_option_cost_by_file(options: Array[Dictionary], file_name: String) -> int:
+	for option in options:
+		var profile = option.get("profile", null)
+		if profile != null and String(profile.resource_path).ends_with(file_name):
+			return int(option.get("cost", 0))
+	return 0
+
+
+func _collect_level_spawner_profile_files(level, seen_profiles: Dictionary) -> void:
+	for placement in level.spawner_placements:
+		if placement == null or placement.profile == null:
+			continue
+		seen_profiles[String(placement.profile.resource_path).get_file()] = true
 
 
 func _test_dungeon_floor_recipe(failures: Array[String]) -> void:

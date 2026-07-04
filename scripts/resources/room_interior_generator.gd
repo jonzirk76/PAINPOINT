@@ -229,19 +229,18 @@ func _build_spawner_profile_budget(room_kind: String, floor_number: int, rng: Ra
 	var max_count := 7 if room_kind == "challenge" else 6
 	var profiles: Array[Resource] = []
 	var options := _get_spawner_options(floor_number)
-	while profiles.size() < min_count and budget >= 3:
-		var option: Dictionary = options[(profiles.size() + rng.randi_range(0, options.size() - 1)) % options.size()]
-		if int(option["cost"]) > budget:
-			option = options[options.size() - 1]
+	var minimum_cost := _get_min_spawner_cost(options)
+	while profiles.size() < min_count and budget >= minimum_cost:
+		var remaining_required_slots: int = min_count - profiles.size() - 1
+		var max_affordable_cost: int = budget - remaining_required_slots * minimum_cost
+		var option: Dictionary = _choose_weighted_spawner_option(options, max_affordable_cost, rng)
+		if option.is_empty():
+			break
 		profiles.append(option["profile"])
 		budget -= int(option["cost"])
+	budget = _ensure_profile_variety(profiles, budget, options, rng)
 	while profiles.size() < max_count:
-		var selected: Dictionary = {}
-		for attempt in range(options.size()):
-			var option: Dictionary = options[(rng.randi_range(0, options.size() - 1) + attempt) % options.size()]
-			if int(option["cost"]) <= budget:
-				selected = option
-				break
+		var selected: Dictionary = _choose_weighted_spawner_option(options, budget, rng)
 		if selected.is_empty():
 			break
 		profiles.append(selected["profile"])
@@ -251,14 +250,79 @@ func _build_spawner_profile_budget(room_kind: String, floor_number: int, rng: Ra
 
 func _get_spawner_options(floor_number: int) -> Array[Dictionary]:
 	var options: Array[Dictionary] = []
-	if floor_number >= 4:
-		options.append({"profile": TANK_SPAWNER, "cost": 7})
-	if floor_number >= 3:
-		options.append({"profile": SHOOTER_SPAWNER, "cost": 5})
-	if floor_number >= 2:
-		options.append({"profile": FAST_SPAWNER, "cost": 4})
-	options.append({"profile": BASIC_SPAWNER, "cost": 3})
+	var floor_pressure_bonus: int = max(floor_number - 1, 0)
+	options.append({"profile": BASIC_SPAWNER, "cost": 3, "weight": 6})
+	options.append({"profile": FAST_SPAWNER, "cost": 3, "weight": 5})
+	options.append({"profile": SHOOTER_SPAWNER, "cost": 4, "weight": 3 + int(floor_pressure_bonus / 2)})
+	options.append({"profile": TANK_SPAWNER, "cost": 5, "weight": 2 + int(floor_pressure_bonus / 3)})
 	return options
+
+
+func _choose_weighted_spawner_option(options: Array[Dictionary], budget: int, rng: RandomNumberGenerator) -> Dictionary:
+	var affordable: Array[Dictionary] = []
+	var total_weight := 0
+	for option in options:
+		if int(option.get("cost", 999)) > budget:
+			continue
+		affordable.append(option)
+		total_weight += max(int(option.get("weight", 1)), 1)
+	if affordable.is_empty():
+		return {}
+	var roll := rng.randi_range(1, total_weight)
+	for option in affordable:
+		roll -= max(int(option.get("weight", 1)), 1)
+		if roll <= 0:
+			return option
+	return affordable[affordable.size() - 1]
+
+
+func _get_min_spawner_cost(options: Array[Dictionary]) -> int:
+	var minimum_cost := 999
+	for option in options:
+		minimum_cost = min(minimum_cost, int(option.get("cost", 999)))
+	return minimum_cost
+
+
+func _ensure_profile_variety(profiles: Array[Resource], remaining_budget: int, options: Array[Dictionary], rng: RandomNumberGenerator) -> int:
+	if profiles.is_empty() or not _profiles_are_all_basic(profiles):
+		return remaining_budget
+	var basic_cost := _get_spawner_option_cost(options, BASIC_SPAWNER)
+	var replacement_options: Array[Dictionary] = []
+	var total_weight := 0
+	for option in options:
+		if option.get("profile", null) == BASIC_SPAWNER:
+			continue
+		var cost_delta: int = int(option.get("cost", basic_cost)) - basic_cost
+		if cost_delta > remaining_budget:
+			continue
+		replacement_options.append(option)
+		total_weight += max(int(option.get("weight", 1)), 1)
+	if replacement_options.is_empty():
+		return remaining_budget
+	var roll := rng.randi_range(1, total_weight)
+	var selected: Dictionary = replacement_options[replacement_options.size() - 1]
+	for option in replacement_options:
+		roll -= max(int(option.get("weight", 1)), 1)
+		if roll <= 0:
+			selected = option
+			break
+	var replace_index := rng.randi_range(0, profiles.size() - 1)
+	profiles[replace_index] = selected["profile"]
+	return remaining_budget - (int(selected["cost"]) - basic_cost)
+
+
+func _profiles_are_all_basic(profiles: Array[Resource]) -> bool:
+	for profile in profiles:
+		if profile != BASIC_SPAWNER:
+			return false
+	return true
+
+
+func _get_spawner_option_cost(options: Array[Dictionary], profile: Resource) -> int:
+	for option in options:
+		if option.get("profile", null) == profile:
+			return int(option.get("cost", 999))
+	return 999
 
 
 func _build_spawner_candidate_points(bounds: Rect2, rng: RandomNumberGenerator) -> Array[Vector2]:
