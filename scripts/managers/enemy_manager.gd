@@ -97,7 +97,7 @@ func spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary = {})
 	else:
 		add_child(enemy)
 	if bool(spawn_flags.get("birth", false)) and enemy.has_method("play_birth_animation"):
-		enemy.play_birth_animation(float(spawn_flags.get("birth_duration", 0.55)))
+		enemy.play_birth_animation(float(spawn_flags.get("birth_duration", 0.36)))
 	enemy.health_depleted.connect(_on_enemy_health_depleted)
 	enemy.shot_ready.connect(_on_enemy_shot_ready)
 	_enemies.append(enemy)

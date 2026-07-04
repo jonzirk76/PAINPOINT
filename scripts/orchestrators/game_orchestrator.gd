@@ -7,7 +7,8 @@ const LEVELS := [
 	preload("res://resources/levels/level_03_hexagon.tres"),
 	preload("res://resources/levels/level_04_cross.tres"),
 	preload("res://resources/levels/level_05_circle.tres"),
-	preload("res://resources/levels/level_06_maze.tres")
+	preload("res://resources/levels/level_06_maze.tres"),
+	preload("res://resources/levels/boss_test_chamber.tres")
 ]
 const FLOOR_EXIT_PORTAL_SCENE := preload("res://scenes/entities/floor_exit_portal_entity.tscn")
 
@@ -275,6 +276,8 @@ func _start_level(level_definition) -> void:
 	input_manager.reset_run()
 	player_manager.reset_run()
 	_set_all_enabled(true)
+	if level_definition.boss_profile != null:
+		enemy_manager.spawn_enemy(level_definition.boss_profile, level_definition.boss_spawn_position)
 	audio_manager.play_floor_start()
 	_status = "RUNNING"
 	_on_upgrade_changed(upgrade_manager.get_modifiers(), upgrade_manager.get_active_effects())

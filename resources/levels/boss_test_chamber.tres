@@ -1,0 +1,18 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/level_definition.gd" id="1"]
+[ext_resource type="Resource" path="res://resources/enemies/first_boss_enemy.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+id = "boss_test_chamber"
+display_name = "Boss Test Chamber"
+difficulty_label = "Boss Test"
+arena_shape = 2
+arena_bounds = Rect2(-820, -520, 1640, 1040)
+use_default_spawners = false
+wall_rects = Array[Rect2]([Rect2(-130, -80, 260, 160)])
+spawner_placements = Array[Resource]([])
+max_active_enemies = 18
+boss_profile = ExtResource("2")
+boss_spawn_position = Vector2(260, 0)

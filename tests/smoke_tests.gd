@@ -66,7 +66,8 @@ const LEVEL_PATHS := [
 	"res://resources/levels/level_03_hexagon.tres",
 	"res://resources/levels/level_04_cross.tres",
 	"res://resources/levels/level_05_circle.tres",
-	"res://resources/levels/level_06_maze.tres"
+	"res://resources/levels/level_06_maze.tres",
+	"res://resources/levels/boss_test_chamber.tres"
 ]
 
 const ENEMY_PROFILE_PATHS := [
@@ -189,6 +190,7 @@ func _init() -> void:
 	_test_room_manager_doors(failures)
 	_test_first_boss_profile_and_spread(failures)
 	_test_boss_add_replenishment(failures)
+	_test_boss_test_level_select(failures)
 	_test_orchestrator_dungeon_start_and_boss(failures)
 	_test_orchestrator_main_loop_floor_progression(failures)
 
@@ -433,16 +435,22 @@ func _test_scene_loads(failures: Array[String]) -> void:
 
 
 func _test_level_resources(failures: Array[String]) -> void:
-	if LEVEL_PATHS.size() != 6:
-		failures.append("Expected six level resources after adding circle and maze test levels.")
+	if LEVEL_PATHS.size() != 7:
+		failures.append("Expected seven level resources after adding the boss test chamber.")
 	for path in LEVEL_PATHS:
 		var level = load(path)
 		if level == null:
 			failures.append("Level resource failed to load: %s" % path)
 			continue
 		var spawner_count: int = level.get_spawner_count()
-		if spawner_count <= 0:
+		if spawner_count <= 0 and level.boss_profile == null:
 			failures.append("Level has no spawners: %s" % path)
+		if level.boss_profile != null:
+			if not ArenaGeometry.contains_point(level.boss_spawn_position, level.arena_bounds, int(level.arena_shape)):
+				failures.append("Level boss spawn position is outside the playable arena shape: %s" % path)
+			for wall_rect in level.wall_rects:
+				if wall_rect.has_point(level.boss_spawn_position):
+					failures.append("Level boss spawn position is inside an arena wall: %s" % path)
 		for placement in level.spawner_placements:
 			if placement == null or placement.profile == null:
 				failures.append("Level has a typed spawner placement without a profile: %s" % path)
@@ -2014,11 +2022,16 @@ func _test_boss_add_replenishment(failures: Array[String]) -> void:
 	if manager._get_boss_add_count() != 3:
 		failures.append("Boss should summon three shooter adds when it has none.")
 	var birth_adds := 0
+	var faded_birth_adds := 0
 	for enemy in manager._enemies:
 		if is_instance_valid(enemy) and bool(enemy.get_meta("boss_add", false)) and enemy.has_method("is_birth_animation_active") and bool(enemy.is_birth_animation_active()):
 			birth_adds += 1
+			if enemy.has_method("_get_birth_fade_alpha") and float(enemy._get_birth_fade_alpha()) < 1.0:
+				faded_birth_adds += 1
 	if birth_adds != 3:
 		failures.append("Boss-summoned adds should arrive with a teleport birth animation.")
+	if faded_birth_adds != 3:
+		failures.append("Teleporting adds should fade into existence during the birth animation.")
 	var removed_add = null
 	for enemy in manager._enemies:
 		if is_instance_valid(enemy) and bool(enemy.get_meta("boss_add", false)):
@@ -2034,6 +2047,35 @@ func _test_boss_add_replenishment(failures: Array[String]) -> void:
 	enemy_layer.free()
 
 
+func _test_boss_test_level_select(failures: Array[String]) -> void:
+	var scene = load("res://scenes/main.tscn")
+	if scene == null:
+		failures.append("Main scene failed to load for boss test level-select test.")
+		return
+	var main = scene.instantiate()
+	root.add_child(main)
+	if main.dungeon_manager == null:
+		_prime_main_for_direct_test_calls(main)
+		main._connect_manager_signals()
+		main._initialize_managers()
+		main._enter_level_select()
+	if not main.level_list_label.text.contains("Boss Test Chamber"):
+		failures.append("Level select should include the standalone boss test chamber.")
+	main._selected_level_index = main.LEVELS.size() - 1
+	main._start_selected_level()
+	if main._status != "RUNNING" or main._is_dungeon_run:
+		failures.append("Boss test chamber should start as a normal level-select arena.")
+	if main.spawner_manager.get_spawner_count() != 0:
+		failures.append("Boss test chamber should not spawn supporting generals.")
+	var boss_found := false
+	for enemy in main.enemy_manager._enemies:
+		if is_instance_valid(enemy) and enemy.behavior_kind == "boss":
+			boss_found = true
+	if not boss_found:
+		failures.append("Boss test chamber should spawn the first boss enemy.")
+	main.free()
+
+
 func _test_orchestrator_dungeon_start_and_boss(failures: Array[String]) -> void:
 	var scene = load("res://scenes/main.tscn")
 	if scene == null:
@@ -2046,7 +2088,7 @@ func _test_orchestrator_dungeon_start_and_boss(failures: Array[String]) -> void:
 		main._connect_manager_signals()
 		main._initialize_managers()
 		main._enter_level_select()
-	main._selected_level_index = 6
+	main._selected_level_index = main.LEVELS.size()
 	main._start_selected_level()
 	if main._status != "DUNGEON":
 		failures.append("GameOrchestrator did not enter dungeon mode from the level-select dungeon option.")
@@ -2104,7 +2146,7 @@ func _test_orchestrator_main_loop_floor_progression(failures: Array[String]) -> 
 		main._connect_manager_signals()
 		main._initialize_managers()
 		main._enter_level_select()
-	main._selected_level_index = 7
+	main._selected_level_index = main.LEVELS.size() + 1
 	main._start_selected_level()
 	if not main._is_main_loop_run or main._status != "DUNGEON":
 		failures.append("Main Game Loop Test should enter dungeon main-loop mode.")

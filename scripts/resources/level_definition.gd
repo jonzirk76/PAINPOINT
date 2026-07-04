@@ -14,6 +14,7 @@ enum ArenaShape {
 @export var difficulty_label: String = "Easy"
 @export var arena_shape: ArenaShape = ArenaShape.RECTANGLE
 @export var arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
+@export var use_default_spawners: bool = true
 @export var spawner_positions: Array[Vector2] = []
 @export var spawner_placements: Array[Resource] = []
 @export var wall_rects: Array[Rect2] = []
@@ -26,6 +27,8 @@ enum ArenaShape {
 
 
 func get_summary() -> String:
+	if boss_profile != null and get_spawner_count() == 0:
+		return "%s - boss only" % difficulty_label
 	return "%s - %s spawners" % [difficulty_label, get_spawner_count()]
 
 

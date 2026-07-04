@@ -54,7 +54,7 @@ var _visual_direction: Vector2 = Vector2.RIGHT
 var _projectile_shield_remaining: float = 0.0
 var _projectile_shield_block_flash_remaining: float = 0.0
 var _birth_remaining: float = 0.0
-var _birth_duration: float = 0.55
+var _birth_duration: float = 0.36
 var _boss_special_timer: float = 0.0
 var _boss_special_telegraph_remaining: float = 0.0
 var _boss_special_telegraph_duration: float = 0.72
@@ -227,7 +227,7 @@ func apply_crowd_separation(push_vector: Vector2) -> void:
 	_crowd_separation_velocity = _crowd_separation_velocity.limit_length(150.0)
 
 
-func play_birth_animation(duration: float = 0.55) -> void:
+func play_birth_animation(duration: float = 0.36) -> void:
 	if health <= 0 or _is_dying:
 		return
 	_birth_duration = max(duration, 0.08)
@@ -241,6 +241,13 @@ func is_birth_animation_active() -> bool:
 	return _birth_remaining > 0.0 and health > 0 and not _is_dying
 
 
+func _get_birth_fade_alpha() -> float:
+	if not is_birth_animation_active():
+		return 1.0
+	var progress: float = 1.0 - clamp(_birth_remaining / max(_birth_duration, 0.001), 0.0, 1.0)
+	return clamp(0.08 + pow(progress, 0.45) * 0.92, 0.08, 1.0)
+
+
 func _draw() -> void:
 	if _is_dying:
 		_draw_death_animation()
@@ -250,23 +257,25 @@ func _draw() -> void:
 	var health_ratio := 0.0
 	if max_health > 0:
 		health_ratio = float(health) / float(max_health)
-	var draw_color := Color.WHITE
+	var birth_alpha := _get_birth_fade_alpha()
+	var draw_color := Color(1.0, 1.0, 1.0, birth_alpha)
 	if _hit_flash_remaining > 0.0:
-		draw_color = Color(1.0, 0.92, 0.86)
+		draw_color = Color(1.0, 0.92, 0.86, birth_alpha)
 	_draw_enemy_character_art(draw_color)
 	if is_projectile_shield_active() or _projectile_shield_block_flash_remaining > 0.0:
 		_draw_projectile_shield()
 	if _boss_special_telegraph_remaining > 0.0:
 		_draw_boss_special_telegraph()
-	draw_line(Vector2(-body_radius, -body_radius - 8.0), Vector2(-body_radius + body_radius * 2.0 * health_ratio, -body_radius - 8.0), Color(0.4, 1.0, 0.35), 3.0)
+	draw_line(Vector2(-body_radius, -body_radius - 8.0), Vector2(-body_radius + body_radius * 2.0 * health_ratio, -body_radius - 8.0), Color(0.4, 1.0, 0.35, birth_alpha), 3.0)
 	if behavior_kind == "shooter" or behavior_kind == "boss":
 		var aim := (target_position - global_position).normalized()
 		if aim.length_squared() <= 0.001:
 			aim = Vector2.RIGHT
+		var aim_color := Color(accent_color.r, accent_color.g, accent_color.b, birth_alpha)
 		if behavior_kind == "boss":
-			draw_arc(Vector2.ZERO, body_radius + 7.0, 0.0, TAU, 36, accent_color, 4.0)
-		draw_line(Vector2.ZERO, aim * (body_radius + 14.0), accent_color, 3.0)
-		draw_circle(aim * (body_radius + 14.0), 3.5, Color(0.06, 0.05, 0.08))
+			draw_arc(Vector2.ZERO, body_radius + 7.0, 0.0, TAU, 36, aim_color, 4.0)
+		draw_line(Vector2.ZERO, aim * (body_radius + 14.0), aim_color, 3.0)
+		draw_circle(aim * (body_radius + 14.0), 3.5, Color(0.06, 0.05, 0.08, birth_alpha))
 	if _hit_flash_remaining > 0.0:
 		draw_circle(Vector2.ZERO, body_radius * 1.08, Color(1.0, 0.95, 0.82, 0.28))
 		draw_arc(Vector2.ZERO, body_radius + 4.0, 0.0, TAU, 28, Color(1.0, 1.0, 1.0, 0.8), 3.0)

@@ -207,6 +207,8 @@ func _get_spawner_placements() -> Array:
 func _get_spawner_positions() -> Array[Vector2]:
 	if _level_definition != null and not _level_definition.spawner_positions.is_empty():
 		return _level_definition.spawner_positions
+	if _level_definition != null and not bool(_level_definition.get("use_default_spawners")):
+		return []
 	return [
 		Vector2(-520.0, -260.0),
 		Vector2(520.0, -260.0),
