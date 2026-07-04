@@ -55,7 +55,7 @@ func play_bullet_impact() -> void:
 
 
 func play_bullet_wall_hit() -> void:
-	_play(BULLET_HITS_WALL, 0.88, 1.12, -8.0)
+	_play(BULLET_HITS_WALL, 0.72, 0.88, -13.0)
 
 
 func play_rocket_explosion() -> void:

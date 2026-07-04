@@ -1098,7 +1098,7 @@ func _test_audio_assets_and_pitch_variation(failures: Array[String]) -> void:
 			failures.append("Parry-ready pitch variation is outside its expected range.")
 		if perfect_player.pitch_scale < 0.96 or perfect_player.pitch_scale > 1.04:
 			failures.append("Perfect parry follow-up pitch variation is outside its expected range.")
-		if wall_player.pitch_scale < 0.88 or wall_player.pitch_scale > 1.12:
+		if wall_player.pitch_scale < 0.72 or wall_player.pitch_scale > 0.88:
 			failures.append("Wall-hit pitch variation is outside its expected range.")
 		if rocket_player.pitch_scale < 0.92 or rocket_player.pitch_scale > 1.06:
 			failures.append("Rocket explosion pitch variation is outside its expected range.")
