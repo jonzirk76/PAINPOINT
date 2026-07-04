@@ -481,7 +481,9 @@ func _on_player_shoot_requested(origin: Vector2, direction: Vector2) -> void:
 
 
 func _on_projectile_hit(projectile, target: Node, packet) -> void:
-	audio_manager.play_bullet_impact()
+	var projectile_kind := String(packet.projectile_kind) if packet != null else "normal"
+	if projectile_kind != "rocket":
+		audio_manager.play_bullet_impact()
 	var impact_position := Vector2.ZERO
 	var impact_direction := Vector2.RIGHT
 	var impact_radius := 7.0
@@ -511,10 +513,11 @@ func _on_projectile_expired(_projectile, expire_info: Dictionary) -> void:
 	var impact_position: Vector2 = expire_info.get("position", Vector2.ZERO)
 	var impact_direction: Vector2 = expire_info.get("direction", Vector2.RIGHT)
 	var impact_radius: float = float(expire_info.get("radius", 7.0))
-	if reason == "wall":
-		audio_manager.play_bullet_impact()
+	var projectile_kind := String(expire_info.get("kind", ""))
+	if reason == "wall" and projectile_kind != "rocket":
+		audio_manager.play_bullet_wall_hit()
 	effects_manager.play_projectile_impact(impact_position, impact_direction, impact_radius, false)
-	if String(expire_info.get("kind", "")) == "rocket":
+	if projectile_kind == "rocket":
 		_detonate_hostile_rocket(impact_position, impact_radius, expire_info.get("damage_packet", null), false)
 
 
@@ -532,6 +535,7 @@ func _detonate_hostile_rocket(origin: Vector2, projectile_radius: float, packet,
 	var explosion_radius: float = max(projectile_radius * 5.2, 58.0)
 	if packet != null and float(packet.explosion_radius) > 0.0:
 		explosion_radius = max(explosion_radius, float(packet.explosion_radius))
+	audio_manager.play_rocket_explosion()
 	effects_manager.play_explosion(origin, explosion_radius)
 	if packet == null:
 		return

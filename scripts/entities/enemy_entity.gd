@@ -538,7 +538,7 @@ func _get_boss_special_shot_config(special_kind: String) -> Dictionary:
 			"projectile_count": 1,
 			"spread_angle_degrees": 0.0,
 			"knockback": 540.0,
-			"explosion_radius": 96.0,
+			"explosion_radius": 72.0,
 			"explosion_damage_multiplier": 1.0
 		}
 	return {

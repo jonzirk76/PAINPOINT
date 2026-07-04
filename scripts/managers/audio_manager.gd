@@ -4,6 +4,8 @@ class_name AudioManager
 const PLAYER_BULLET_SHOT := preload("res://audio/player_bullet_shot.wav")
 const ENEMY_BULLET_SHOT := preload("res://audio/enemy_bullet_shot.wav")
 const BULLET_IMPACT := preload("res://audio/bullet_impact.wav")
+const BULLET_HITS_WALL := preload("res://audio/bullet_hits_wall.wav")
+const ROCKET_EXPLOSION := preload("res://audio/rocket_explosion.wav")
 const PARRY := preload("res://audio/parry.wav")
 const PARRY_READY := preload("res://audio/parry_ready.wav")
 const PERFECT_PARRY_FOLLOW_UP := preload("res://audio/perfect_parry_follow_up.wav")
@@ -50,6 +52,14 @@ func play_enemy_shot() -> void:
 
 func play_bullet_impact() -> void:
 	_play(BULLET_IMPACT, 0.88, 1.12, -7.0)
+
+
+func play_bullet_wall_hit() -> void:
+	_play(BULLET_HITS_WALL, 0.88, 1.12, -8.0)
+
+
+func play_rocket_explosion() -> void:
+	_play(ROCKET_EXPLOSION, 0.92, 1.06, -4.0)
 
 
 func play_parry() -> void:

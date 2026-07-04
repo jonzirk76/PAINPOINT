@@ -86,6 +86,7 @@ const SPAWNER_PROFILE_PATHS := [
 ]
 
 const SFX_PATHS := [
+	"res://audio/bullet_hits_wall.wav",
 	"res://audio/bullet_impact.wav",
 	"res://audio/enemy_bullet_shot.wav",
 	"res://audio/floor_start.wav",
@@ -95,6 +96,7 @@ const SFX_PATHS := [
 	"res://audio/parry_ready.wav",
 	"res://audio/perfect_parry_follow_up.wav",
 	"res://audio/player_bullet_shot.wav",
+	"res://audio/rocket_explosion.wav",
 	"res://audio/room_entry.wav"
 ]
 
@@ -1069,13 +1071,17 @@ func _test_audio_assets_and_pitch_variation(failures: Array[String]) -> void:
 	manager.play_player_shot()
 	manager.play_parry_ready()
 	manager.play_perfect_parry()
-	if manager._active_players.size() != 4:
+	manager.play_bullet_wall_hit()
+	manager.play_rocket_explosion()
+	if manager._active_players.size() != 6:
 		failures.append("AudioManager should create short-lived AudioStreamPlayers for overlapping SFX.")
 	else:
 		var first_player: AudioStreamPlayer = manager._active_players[0]
 		var second_player: AudioStreamPlayer = manager._active_players[1]
 		var ready_player: AudioStreamPlayer = manager._active_players[2]
 		var perfect_player: AudioStreamPlayer = manager._active_players[3]
+		var wall_player: AudioStreamPlayer = manager._active_players[4]
+		var rocket_player: AudioStreamPlayer = manager._active_players[5]
 		if first_player.stream == null or perfect_player.stream == null:
 			failures.append("AudioManager should assign streams before playback.")
 		if first_player.pitch_scale == second_player.pitch_scale:
@@ -1086,6 +1092,15 @@ func _test_audio_assets_and_pitch_variation(failures: Array[String]) -> void:
 			failures.append("Parry-ready pitch variation is outside its expected range.")
 		if perfect_player.pitch_scale < 0.96 or perfect_player.pitch_scale > 1.04:
 			failures.append("Perfect parry follow-up pitch variation is outside its expected range.")
+		if wall_player.pitch_scale < 0.88 or wall_player.pitch_scale > 1.12:
+			failures.append("Wall-hit pitch variation is outside its expected range.")
+		if rocket_player.pitch_scale < 0.92 or rocket_player.pitch_scale > 1.06:
+			failures.append("Rocket explosion pitch variation is outside its expected range.")
+	var orchestrator_source := _read_text("res://scripts/orchestrators/game_orchestrator.gd")
+	if not orchestrator_source.contains("play_bullet_wall_hit") or not orchestrator_source.contains("reason == \"wall\""):
+		failures.append("Projectile wall expiry should route to the dedicated wall-hit SFX.")
+	if not orchestrator_source.contains("play_rocket_explosion") or not orchestrator_source.contains("_detonate_hostile_rocket"):
+		failures.append("Hostile rocket detonation should route to the rocket explosion SFX.")
 	manager.set_enabled(false)
 	if manager._active_players.size() != 0:
 		failures.append("AudioManager should clear active SFX players when disabled.")
@@ -1190,12 +1205,12 @@ func _test_projectile_knockback_packet(failures: Array[String]) -> void:
 		"kind": "rocket",
 		"damage": 2,
 		"knockback": 540.0,
-		"explosion_radius": 96.0,
+		"explosion_radius": 72.0,
 		"explosion_damage_multiplier": 1.0
 	}, Vector2.ZERO, Vector2.LEFT)
 	if rocket_packet.projectile_kind != "rocket" or rocket_packet.knockback < 500.0:
 		failures.append("Hostile rocket packets should carry rocket kind and player knockback.")
-	if rocket_packet.explosion_radius < 90.0 or rocket_packet.explosion_damage_multiplier <= 0.0:
+	if rocket_packet.explosion_radius < 68.0 or rocket_packet.explosion_radius > 80.0 or rocket_packet.explosion_damage_multiplier <= 0.0:
 		failures.append("Hostile rocket packets should carry explosion damage metadata.")
 	var player = load("res://scenes/entities/player_entity.tscn").instantiate()
 	player.apply_pushback(Vector2.LEFT, rocket_packet.knockback)
@@ -1691,7 +1706,7 @@ func _test_hostile_projectile_range_matches_player(failures: Array[String]) -> v
 		"kind": "rocket",
 		"lifetime": 0.2,
 		"exact_lifetime": true,
-		"explosion_radius": 96.0,
+		"explosion_radius": 72.0,
 		"explosion_damage_multiplier": 1.0
 	})
 	if manager._projectiles.is_empty():
@@ -1702,7 +1717,7 @@ func _test_hostile_projectile_range_matches_player(failures: Array[String]) -> v
 			failures.append("Targeted rockets should keep their exact detonation lifetime.")
 		var expire_info: Dictionary = manager._get_projectile_expire_info(rocket)
 		var packet = expire_info.get("damage_packet", null)
-		if packet == null or float(packet.explosion_radius) < 90.0:
+		if packet == null or float(packet.explosion_radius) < 68.0 or float(packet.explosion_radius) > 80.0:
 			failures.append("Rocket expiry info should retain its damage packet for detonation.")
 	manager.free()
 	layer.free()
@@ -2079,6 +2094,8 @@ func _test_first_boss_profile_and_spread(failures: Array[String]) -> void:
 		failures.append("Boss should alternate into a telegraphed rocket special with knockback.")
 	elif not bool(latest_special.get("exact_lifetime", false)) or not latest_special.has("target_position") or float(latest_special.get("speed", 0.0)) < 600.0:
 		failures.append("Boss rocket should be a fast targeted projectile that detonates at the player's launch-time position.")
+	elif float(latest_special.get("explosion_radius", 0.0)) < 68.0 or float(latest_special.get("explosion_radius", 0.0)) > 80.0:
+		failures.append("Boss rocket AOE should stay small enough to reward continuous movement.")
 	boss.free()
 
 	var projectile_layer := Node2D.new()
