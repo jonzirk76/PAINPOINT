@@ -298,6 +298,8 @@ func _test_character_art_applied_to_entities(failures: Array[String]) -> void:
 		failures.append("PlayerEntity should only slightly rotate the resting pistol instead of matching the active gun rotation.")
 	if not player_source.contains("_draw_vertical_resting_pistols"):
 		failures.append("PlayerEntity should draw mirrored resting pistols while front/back facing and not shooting.")
+	if not player_source.contains("-forward_tilt + walk_swing") or player_source.contains("-forward_tilt - walk_swing"):
+		failures.append("Mirrored vertical resting pistols should visibly alternate their walking swing.")
 	if not player_source.contains("is_side_facing: bool = abs(facing.x) >= abs(facing.y)") or not player_source.contains("is_back_facing: bool = not is_side_facing and facing.y < 0.0"):
 		failures.append("PlayerEntity should split body facing into 90-degree cardinal aim sectors.")
 	if not player_source.contains("body_scale = Vector2(-1.0, 1.0) if facing.x < 0.0 else Vector2.ONE"):

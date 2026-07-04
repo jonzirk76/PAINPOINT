@@ -379,7 +379,7 @@ func _draw_vertical_resting_pistols(visual_radius: float, facing: Vector2, tint:
 	var forward_tilt: float = clamp(facing.y * 0.08, -0.08, 0.08)
 	var walk_swing: float = sin(_walk_cycle) * 0.052 if is_walking else 0.018
 	_draw_centered_texture(PLAYER_RESTING_PISTOL_TEXTURE, visual_radius, forward_tilt + walk_swing, tint)
-	_draw_centered_texture(PLAYER_RESTING_PISTOL_LEFT_TEXTURE, visual_radius, -forward_tilt - walk_swing, tint)
+	_draw_centered_texture(PLAYER_RESTING_PISTOL_LEFT_TEXTURE, visual_radius, -forward_tilt + walk_swing, tint)
 
 
 func _draw_player_walk_feet() -> void:
