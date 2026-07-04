@@ -421,6 +421,16 @@ func _test_scene_loads(failures: Array[String]) -> void:
 				for node_path in required_nodes:
 					if not instance.has_node(node_path):
 						failures.append("Main scene missing HUD node: %s" % node_path)
+				if instance.has_node("UI/WinPanel") and instance.has_node("UI/WinPanel/WinScoreLabel") and instance.has_node("UI/WinPanel/WinPromptLabel"):
+					var win_panel: Control = instance.get_node("UI/WinPanel")
+					var win_score: Label = instance.get_node("UI/WinPanel/WinScoreLabel")
+					var win_prompt: Label = instance.get_node("UI/WinPanel/WinPromptLabel")
+					if win_panel.size.y < 450.0:
+						failures.append("Mission results panel should be tall enough for a full run tally.")
+					if win_score.size.y < 240.0:
+						failures.append("Mission results score/tally label should reserve enough vertical space.")
+					if win_prompt.position.y < win_score.position.y + win_score.size.y + 20.0:
+						failures.append("Mission results prompt should sit below the score/tally block without overlap.")
 				if instance.has_node("UI/HUDLabel"):
 					var hud_label: Label = instance.get_node("UI/HUDLabel")
 					if hud_label.anchor_top < 0.95:
