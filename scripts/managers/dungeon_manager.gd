@@ -36,6 +36,8 @@ const DIRECTION_OFFSETS := {
 	"west": Vector2i(-1, 0)
 }
 
+const CARDINAL_DIRECTIONS := ["north", "east", "south", "west"]
+
 const COMBAT_PIECES := [
 	WIDE_PIECE,
 	TALL_PIECE,
@@ -45,8 +47,6 @@ const COMBAT_PIECES := [
 	HOURGLASS_PIECE,
 	CROSSROADS_PIECE
 ]
-
-const BRANCH_DIRECTIONS := ["north", "south", "west"]
 
 var enabled: bool = false
 var current_room_id: String = ""
@@ -219,7 +219,7 @@ func _generate_layout() -> void:
 	_place_room("start", START_PIECE, Vector2i.ZERO, true)
 	var path_room_ids := _build_boss_path(rng)
 	_try_place_required_branch("treasure_1", TREASURE_PIECE, path_room_ids, rng)
-	if not _try_place_connected("start", "south", "challenge_1", CHALLENGE_PIECE):
+	if not _try_place_connected_any_direction("start", "challenge_1", CHALLENGE_PIECE, rng):
 		_try_place_required_branch("challenge_1", CHALLENGE_PIECE, path_room_ids, rng)
 	_fill_optional_branches(path_room_ids, rng)
 	_generate_room_interiors()
@@ -239,21 +239,22 @@ func _compute_floor_generation_seed() -> int:
 func _build_boss_path(rng: RandomNumberGenerator) -> Array[String]:
 	var path_room_ids: Array[String] = ["start"]
 	var current_id := "start"
+	var path_direction := _shuffled_cardinal_directions(rng)[0]
 	var path_room_count: int = clamp(2 + int((floor_number - 1) / 2), 2, 5)
 	for index in range(path_room_count):
 		var room_id := "path_%d" % (index + 1)
 		var piece = _choose_combat_piece(rng, index)
-		if not _try_place_connected(current_id, "east", room_id, piece):
+		if not _try_place_connected_from_candidates(current_id, _get_path_candidate_directions(path_direction, rng), room_id, piece):
 			piece = WIDE_PIECE
-			if not _try_place_connected(current_id, "east", room_id, piece):
+			if not _try_place_connected_from_candidates(current_id, _get_path_candidate_directions(path_direction, rng), room_id, piece):
 				break
 		path_room_ids.append(room_id)
 		current_id = room_id
-	if not _try_place_connected(current_id, "east", "boss", BOSS_PIECE):
+	if not _try_place_connected(current_id, path_direction, "boss", BOSS_PIECE):
 		for room_id in path_room_ids.duplicate():
 			if room_id == "start":
 				continue
-			if _try_place_connected(room_id, "east", "boss", BOSS_PIECE):
+			if _try_place_connected(room_id, path_direction, "boss", BOSS_PIECE):
 				break
 	return path_room_ids
 
@@ -261,7 +262,7 @@ func _build_boss_path(rng: RandomNumberGenerator) -> Array[String]:
 func _try_place_required_branch(room_id: String, piece, parent_ids: Array[String], rng: RandomNumberGenerator) -> bool:
 	for attempt in range(18):
 		var parent_id := parent_ids[rng.randi_range(0, parent_ids.size() - 1)]
-		var directions := _shuffled_directions(rng)
+		var directions := _shuffled_cardinal_directions(rng)
 		for direction in directions:
 			if _try_place_connected(parent_id, direction, room_id, piece):
 				return true
@@ -280,7 +281,7 @@ func _fill_optional_branches(path_room_ids: Array[String], rng: RandomNumberGene
 		var parent_id := parent_ids[rng.randi_range(0, parent_ids.size() - 1)]
 		var piece = _choose_branch_piece(rng, branch_index)
 		var room_id := "branch_%d" % branch_index
-		for direction in _shuffled_directions(rng):
+		for direction in _shuffled_cardinal_directions(rng):
 			if _try_place_connected(parent_id, direction, room_id, piece):
 				branch_index += 1
 				break
@@ -306,7 +307,7 @@ func _try_place_connected(parent_id: String, direction: String, room_id: String,
 	var opposite := String(OPPOSITE_DIRECTIONS.get(direction, ""))
 	if opposite.is_empty() or parent_connections.has(direction):
 		return false
-	if not parent_piece.has_connector(direction) or not piece.has_connector(opposite):
+	if not _piece_allows_connector(parent_piece, direction) or not _piece_allows_connector(piece, opposite):
 		return false
 	var base_anchor := _get_adjacent_anchor(parent_state, piece, direction)
 	for offset in _get_solver_offsets(direction):
@@ -316,6 +317,23 @@ func _try_place_connected(parent_id: String, direction: String, room_id: String,
 			_connect_rooms(parent_id, direction, room_id)
 			return true
 	return false
+
+
+func _try_place_connected_any_direction(parent_id: String, room_id: String, piece, rng: RandomNumberGenerator) -> bool:
+	return _try_place_connected_from_candidates(parent_id, _shuffled_cardinal_directions(rng), room_id, piece)
+
+
+func _try_place_connected_from_candidates(parent_id: String, directions: Array[String], room_id: String, piece) -> bool:
+	for direction in directions:
+		if _try_place_connected(parent_id, direction, room_id, piece):
+			return true
+	return false
+
+
+func _piece_allows_connector(piece, direction: String) -> bool:
+	if piece.has_connector(direction):
+		return true
+	return String(piece.room_kind) == "boss" and DIRECTION_OFFSETS.has(direction)
 
 
 func _choose_combat_piece(rng: RandomNumberGenerator, path_index: int):
@@ -330,15 +348,28 @@ func _choose_branch_piece(rng: RandomNumberGenerator, branch_index: int):
 	return COMBAT_PIECES[index]
 
 
-func _shuffled_directions(rng: RandomNumberGenerator) -> Array[String]:
+func _shuffled_cardinal_directions(rng: RandomNumberGenerator) -> Array[String]:
 	var directions: Array[String] = []
-	for direction in BRANCH_DIRECTIONS:
+	for direction in CARDINAL_DIRECTIONS:
 		directions.append(String(direction))
 	for index in range(directions.size() - 1, 0, -1):
 		var swap_index := rng.randi_range(0, index)
 		var value := directions[index]
 		directions[index] = directions[swap_index]
 		directions[swap_index] = value
+	return directions
+
+
+func _get_path_candidate_directions(primary_direction: String, rng: RandomNumberGenerator) -> Array[String]:
+	var directions: Array[String] = [primary_direction]
+	var shuffled := _shuffled_cardinal_directions(rng)
+	var reverse_direction := String(OPPOSITE_DIRECTIONS.get(primary_direction, ""))
+	for direction in shuffled:
+		if direction == primary_direction or direction == reverse_direction:
+			continue
+		directions.append(direction)
+	if not reverse_direction.is_empty():
+		directions.append(reverse_direction)
 	return directions
 
 
@@ -455,7 +486,7 @@ func _generate_room_interiors() -> void:
 		var room_kind := String(piece.room_kind)
 		var connections: Dictionary = state["connections"]
 		var level = null
-		if room_kind == "combat" or room_kind == "challenge":
+		if room_kind == "combat" or room_kind == "challenge" or room_kind == "boss":
 			level = _interior_generator.generate(piece, String(room_id), floor_number, floor_generation_seed, connections)
 		else:
 			level = piece.create_level_definition()

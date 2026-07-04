@@ -2040,10 +2040,12 @@ func _test_room_piece_resources(failures: Array[String]) -> void:
 		if piece.room_kind == "challenge" and level.get_spawner_count() < 5:
 			failures.append("Challenge room piece should carry at least five spawners: %s" % path)
 		if piece.room_kind == "boss":
-			if level.get_spawner_count() < 4:
-				failures.append("Boss room should include supporting spawners.")
+			if level.get_spawner_count() != 0:
+				failures.append("Boss room shell should not include interior spawner structures.")
+			if level.boss_profile == null:
+				failures.append("Boss room shell should carry a boss profile.")
 			if level.max_active_enemies <= 1:
-				failures.append("Boss room max active enemies should allow boss plus spawned enemies.")
+				failures.append("Boss room max active enemies should allow the boss encounter.")
 	if combat_piece_count < 7:
 		failures.append("Dungeon solver should have at least seven combat room pieces to vary floor shapes.")
 
@@ -2052,6 +2054,7 @@ func _test_room_interior_generator_determinism_and_budget(failures: Array[String
 	var generator = load("res://scripts/resources/room_interior_generator.gd").new()
 	var combat_piece = load("res://resources/rooms/combat_wide.tres")
 	var challenge_piece = load("res://resources/rooms/challenge_zigzag.tres")
+	var boss_piece = load("res://resources/rooms/boss_chamber.tres")
 	var connections := {"west": "start", "east": "boss"}
 	var first = generator.generate(combat_piece, "path_1", 3, 424242, connections)
 	var repeated = generator.generate(combat_piece, "path_1", 3, 424242, connections)
@@ -2094,6 +2097,21 @@ func _test_room_interior_generator_determinism_and_budget(failures: Array[String
 		failures.append("Generated challenge rooms should respect the v1 spawner count bounds.")
 	if int(challenge.max_active_enemies) != clamp(24 + 5 * 4 + challenge.get_spawner_count() * 2, 30, 52):
 		failures.append("Generated challenge rooms should compute floor-scaled max active enemies.")
+	var boss = generator.generate(boss_piece, "boss", 4, 5555, {"west": "path_3"})
+	var repeated_boss = generator.generate(boss_piece, "boss", 4, 5555, {"west": "path_3"})
+	if _get_level_generation_signature(boss) != _get_level_generation_signature(repeated_boss):
+		failures.append("Generated boss rooms should be deterministic for seed/floor/room id.")
+	if boss.get_spawner_count() != 0:
+		failures.append("Generated boss rooms should not carry interior spawner structures.")
+	if boss.boss_profile == null:
+		failures.append("Generated boss rooms should preserve the boss profile.")
+	if boss.wall_rects.size() + boss.void_rects.size() < 4:
+		failures.append("Generated boss rooms should include readable procedural arena blockers.")
+	if not _has_rotational_blocker_pair(boss.wall_rects, boss.arena_bounds.get_center()) and not _has_rotational_blocker_pair(boss.void_rects, boss.arena_bounds.get_center()):
+		failures.append("Generated boss rooms should bias toward symmetric blocker placement.")
+	var boss_result: Dictionary = generator.validate_level(boss, {"west": "path_3"}, "boss")
+	if not bool(boss_result.get("ok", false)):
+		failures.append("Generated boss room failed its own validation: %s" % String(boss_result.get("reason", "")))
 	var complex_room_count := 0
 	var saw_wall_chain := false
 	var saw_void_mass := false
@@ -2168,13 +2186,24 @@ func _test_room_interior_generator_validation(failures: Array[String]) -> void:
 	if not bool(fallback_result.get("ok", false)):
 		failures.append("Room generator fallback template should validate: %s" % String(fallback_result.get("reason", "")))
 
+	var boss_piece = load("res://resources/rooms/boss_chamber.tres")
+	var boss_connections := {"west": "path_3"}
+	var boss_level = generator.generate(boss_piece, "boss_valid", 3, 3434, boss_connections)
+	var boss_valid_result: Dictionary = generator.validate_level(boss_level, boss_connections, "boss")
+	if not bool(boss_valid_result.get("ok", false)):
+		failures.append("Generated boss validation room should validate: %s" % String(boss_valid_result.get("reason", "")))
+	boss_level.wall_rects.append(Rect2(boss_level.boss_spawn_position - Vector2(90.0, 90.0), Vector2(180.0, 180.0)))
+	if bool(generator.validate_level(boss_level, boss_connections, "boss").get("ok", false)):
+		failures.append("Room validation should reject blocked boss spawn positions.")
+
 
 func _test_dungeon_room_interiors_persist(failures: Array[String]) -> void:
 	var manager = load("res://scripts/managers/dungeon_manager.gd").new()
 	root.add_child(manager)
 	manager.reset_run(2, 7777)
 	manager.set_enabled(true)
-	if not manager.enter_direction("east"):
+	var first_path_direction := _get_connection_direction_between_rooms(manager, "start", "path_1")
+	if first_path_direction.is_empty() or not manager.enter_direction(first_path_direction):
 		failures.append("Dungeon persistence test could not enter the first combat room.")
 		manager.free()
 		return
@@ -2191,8 +2220,9 @@ func _test_dungeon_room_interiors_persist(failures: Array[String]) -> void:
 		failures.append("DungeonManager should return the cached generated interior on repeated reads.")
 
 	manager.mark_current_room_cleared()
-	if manager.enter_direction("west"):
-		if not manager.enter_direction("east"):
+	var return_direction := String(DUNGEON_OPPOSITE_DIRECTIONS.get(first_path_direction, ""))
+	if manager.enter_direction(return_direction):
+		if not manager.enter_direction(first_path_direction):
 			failures.append("DungeonManager should preserve a generated combat room after revisiting it.")
 		elif _get_level_generation_signature(manager.get_current_level_definition()) != first_signature:
 			failures.append("Revisited generated dungeon room should keep the same interior.")
@@ -2203,14 +2233,15 @@ func _test_dungeon_room_interiors_persist(failures: Array[String]) -> void:
 	root.add_child(repeated_manager)
 	repeated_manager.reset_run(2, 7777)
 	repeated_manager.set_enabled(true)
-	repeated_manager.enter_direction("east")
+	repeated_manager.enter_direction(first_path_direction)
 	if _get_level_generation_signature(repeated_manager.get_current_level_definition()) != first_signature:
 		failures.append("DungeonManager should regenerate the same room interior from the same floor seed.")
 	var changed_manager = load("res://scripts/managers/dungeon_manager.gd").new()
 	root.add_child(changed_manager)
 	changed_manager.reset_run(2, 8888)
 	changed_manager.set_enabled(true)
-	changed_manager.enter_direction("east")
+	var changed_path_direction := _get_connection_direction_between_rooms(changed_manager, "start", "path_1")
+	changed_manager.enter_direction(changed_path_direction)
 	if _get_level_generation_signature(changed_manager.get_current_level_definition()) == first_signature:
 		failures.append("DungeonManager should vary generated room interiors for different run seeds.")
 	manager.free()
@@ -2357,6 +2388,20 @@ func _has_contiguous_blocker_group(rects: Array[Rect2], min_count: int) -> bool:
 	return false
 
 
+func _has_rotational_blocker_pair(rects: Array[Rect2], center: Vector2) -> bool:
+	for first_index in range(rects.size()):
+		var first := rects[first_index]
+		var first_delta := first.get_center() - center
+		for second_index in range(first_index + 1, rects.size()):
+			var second := rects[second_index]
+			var second_delta := second.get_center() - center
+			if first.size.distance_squared_to(second.size) > 1.0:
+				continue
+			if (first_delta + second_delta).length_squared() <= 4.0:
+				return true
+	return false
+
+
 func _blocker_rects_touch(first: Rect2, second: Rect2) -> bool:
 	var center_delta := first.get_center() - second.get_center()
 	if abs(abs(center_delta.x) - 60.0) <= 1.0 and abs(center_delta.y) <= 1.0:
@@ -2400,6 +2445,15 @@ func _test_dungeon_floor_recipe(failures: Array[String]) -> void:
 		failures.append("Later dungeon floors should add extra typed spawners to combat rooms.")
 	if int(floor_five_level.max_active_enemies) <= int(floor_one_level.max_active_enemies):
 		failures.append("Later dungeon floors should increase room enemy budgets.")
+	var seen_start_path_directions: Dictionary = {}
+	for seed in range(1, 81):
+		manager.reset_run(1, seed)
+		var path_direction := _get_connection_direction_between_rooms(manager, "start", "path_1")
+		if not path_direction.is_empty():
+			seen_start_path_directions[path_direction] = true
+	for direction in DUNGEON_DIRECTION_OFFSETS.keys():
+		if not seen_start_path_directions.has(String(direction)):
+			failures.append("Entry room should be able to start the boss path toward %s." % String(direction))
 	manager.free()
 
 
@@ -2477,6 +2531,17 @@ func _get_path_to_room_kind(manager, target_kind: String) -> Array[String]:
 	return []
 
 
+func _get_connection_direction_between_rooms(manager, from_id: String, to_id: String) -> String:
+	if not manager._rooms.has(from_id):
+		return ""
+	var room_state: Dictionary = manager._rooms[from_id]
+	var connections: Dictionary = room_state.get("connections", {})
+	for direction_key in connections.keys():
+		if String(connections[direction_key]) == to_id:
+			return String(direction_key)
+	return ""
+
+
 func _validate_dungeon_layout_integrity(manager, failures: Array[String], label: String) -> void:
 	var rooms_by_id: Dictionary = {}
 	for room_info in manager.get_minimap_rooms():
@@ -2503,6 +2568,8 @@ func _validate_dungeon_layout_integrity(manager, failures: Array[String], label:
 	for room_id in rooms_by_id.keys():
 		var room_info: Dictionary = rooms_by_id[room_id]
 		var connections: Dictionary = room_info.get("connections", {})
+		if String(room_info.get("kind", "")) == "boss" and connections.size() != 1:
+			failures.append("Dungeon layout boss room should have exactly one entrance: %s" % label)
 		for direction_key in connections.keys():
 			var direction := String(direction_key)
 			var target_id := String(connections[direction_key])
@@ -2580,18 +2647,21 @@ func _test_dungeon_layout_solver(failures: Array[String]) -> void:
 		failures.append("DungeonManager placed overlapping room footprints.")
 	if manager.current_room_id != "start":
 		failures.append("DungeonManager should start in the start room.")
-	if not manager.enter_direction("east"):
-		failures.append("DungeonManager should allow leaving the cleared start room through the east connector.")
-	if manager.get_revealed_room_count() < 2:
-		failures.append("DungeonManager should reveal rooms as the player traverses them.")
-	manager.mark_current_room_cleared()
-	if not manager.enter_direction("east"):
-		failures.append("DungeonManager should connect the wide room to the junction.")
-	manager.mark_current_room_cleared()
-	if not manager.enter_direction("east"):
-		failures.append("DungeonManager should connect the junction to the boss room.")
-	if not manager.is_current_boss_room():
-		failures.append("DungeonManager east branch should lead to the boss room.")
+	var boss_path := _get_path_to_room_kind(manager, "boss")
+	if boss_path.size() < 2:
+		failures.append("DungeonManager should expose a traversable boss route.")
+	else:
+		for path_index in range(1, boss_path.size()):
+			var direction := _get_connection_direction_between_rooms(manager, boss_path[path_index - 1], boss_path[path_index])
+			if direction.is_empty() or not manager.enter_direction(direction):
+				failures.append("DungeonManager should allow traversing generated boss route edge %s -> %s." % [boss_path[path_index - 1], boss_path[path_index]])
+				break
+			if manager.get_revealed_room_count() < path_index + 1:
+				failures.append("DungeonManager should reveal rooms as the player traverses them.")
+			if path_index < boss_path.size() - 1:
+				manager.mark_current_room_cleared()
+		if not manager.is_current_boss_room():
+			failures.append("DungeonManager generated boss route should lead to the boss room.")
 	for seed in [116, 490, 887, 1115]:
 		manager.reset_run(1, seed)
 		_validate_dungeon_layout_integrity(manager, failures, "reported branch repro seed %d" % seed)
@@ -2797,18 +2867,19 @@ func _test_orchestrator_dungeon_start_and_boss(failures: Array[String]) -> void:
 	if not main.dungeon_minimap.visible:
 		failures.append("Dungeon minimap should be visible during dungeon runs.")
 
-	main.dungeon_manager.enter_direction("east")
-	main._load_dungeon_current_room("east", false)
-	main.spawner_manager.clear_spawners()
-	main.enemy_manager.reset_run()
-	main.dungeon_manager.mark_current_room_cleared()
-	main.dungeon_manager.enter_direction("east")
-	main._load_dungeon_current_room("east", false)
-	main.spawner_manager.clear_spawners()
-	main.enemy_manager.reset_run()
-	main.dungeon_manager.mark_current_room_cleared()
-	main.dungeon_manager.enter_direction("east")
-	main._load_dungeon_current_room("east", false)
+	var boss_path := _get_path_to_room_kind(main.dungeon_manager, "boss")
+	if boss_path.size() < 2:
+		failures.append("Dungeon orchestrator test could not find a generated boss route.")
+	for path_index in range(1, boss_path.size()):
+		var direction := _get_connection_direction_between_rooms(main.dungeon_manager, boss_path[path_index - 1], boss_path[path_index])
+		if direction.is_empty() or not main.dungeon_manager.enter_direction(direction):
+			failures.append("Dungeon orchestrator route could not enter %s from %s." % [boss_path[path_index], boss_path[path_index - 1]])
+			break
+		main._load_dungeon_current_room(direction, false)
+		if path_index < boss_path.size() - 1:
+			main.spawner_manager.clear_spawners()
+			main.enemy_manager.reset_run()
+			main.dungeon_manager.mark_current_room_cleared()
 	if not main.dungeon_manager.is_current_boss_room():
 		failures.append("Dungeon orchestrator route did not arrive at the boss room.")
 	else:
@@ -2818,18 +2889,9 @@ func _test_orchestrator_dungeon_start_and_boss(failures: Array[String]) -> void:
 				boss_found = true
 		if not boss_found:
 			failures.append("Boss room should spawn the first boss enemy.")
-		main.spawner_manager._process(main.spawner_manager._get_initial_spawn_shield_delay() + 0.05)
-		var expected_opening_wave := 0
-		for created_spawner in main.spawner_manager._spawners:
-			expected_opening_wave += main.spawner_manager._get_initial_spawn_batch_count(created_spawner)
-		var expected_boss_room_pressure: int = 1 + expected_opening_wave
-		if main.enemy_manager.get_enemy_count() < expected_boss_room_pressure:
-			failures.append("Boss room should spawn boss plus doubled opening-wave enemies after the spawner shield startup.")
-	if main.spawner_manager.get_spawner_count() < 4:
-		failures.append("Boss room should spawn supporting spawners.")
-	if main.spawner_manager.max_active_enemies <= main.enemy_manager.get_enemy_count():
-		failures.append("Boss room spawner budget should allow spawned adds while the boss is alive.")
-	if main.dungeon_manager.get_revealed_room_count() < 4:
+	if main.spawner_manager.get_spawner_count() != 0:
+		failures.append("Generated dungeon boss room should not spawn interior spawner structures.")
+	if main.dungeon_manager.get_revealed_room_count() < boss_path.size():
 		failures.append("Dungeon minimap reveal state should advance along the traversed boss route.")
 	main.free()
 
