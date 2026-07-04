@@ -126,10 +126,17 @@ func apply_parry_pushback(origin: Vector2, radius: float, force: float) -> int:
 		if enemy.global_position.distance_squared_to(origin) > max(radius_squared, effective_radius * effective_radius):
 			continue
 		if enemy.has_method("apply_pushback"):
-			enemy.apply_pushback(origin, force)
+			enemy.apply_pushback(origin, force * _get_parry_pushback_size_factor(enemy))
 			_contact_timers[enemy.get_instance_id()] = max(float(_contact_timers.get(enemy.get_instance_id(), 0.0)), 0.22)
 			pushed_count += 1
 	return pushed_count
+
+
+func _get_parry_pushback_size_factor(enemy) -> float:
+	if enemy == null or not is_instance_valid(enemy):
+		return 1.0
+	var body_size: float = max(float(enemy.body_radius), 1.0)
+	return clamp(22.0 / body_size, 0.28, 1.0)
 
 
 func get_nearby_enemies(origin: Vector2, radius: float, excluded: Array[Node]) -> Array:

@@ -1228,6 +1228,9 @@ func _test_parry_pushes_enemies_without_damage(failures: Array[String]) -> void:
 		failures.append("Parried close enemy should receive pushback velocity.")
 	if far_enemy._knockback_velocity.length_squared() > 0.001:
 		failures.append("Parry should not push enemies outside its effect range.")
+	var tank_enemy = manager.spawn_enemy(load("res://resources/enemies/tank_enemy.tres"), Vector2(60.0, 0.0))
+	if manager._get_parry_pushback_size_factor(tank_enemy) >= manager._get_parry_pushback_size_factor(close_enemy):
+		failures.append("Parry pushback should scale down for larger enemies.")
 	manager.free()
 	enemy_layer.free()
 
@@ -1959,9 +1962,11 @@ func _test_first_boss_profile_and_spread(failures: Array[String]) -> void:
 		failures.append("First boss profile should fire a visible spread pattern.")
 	var boss = load("res://scenes/entities/enemy_entity.tscn").instantiate()
 	var shot_configs: Array[Dictionary] = []
+	var shot_directions: Array[Vector2] = []
 	boss.initialize(boss_profile)
-	boss.shot_ready.connect(func(_enemy, _origin, _direction, shot_config) -> void:
+	boss.shot_ready.connect(func(_enemy, _origin, direction, shot_config) -> void:
 		shot_configs.append(shot_config)
+		shot_directions.append(direction)
 	)
 	boss._shot_cooldown_remaining = 0.0
 	boss._try_emit_shot(Vector2.RIGHT * 360.0)
@@ -1976,9 +1981,16 @@ func _test_first_boss_profile_and_spread(failures: Array[String]) -> void:
 		failures.append("Boss special attacks should enter a visible telegraph before firing.")
 	boss._update_boss_special(boss.boss_special_telegraph_seconds + 0.05, Vector2.RIGHT * 360.0)
 	var latest_special: Dictionary = shot_configs[shot_configs.size() - 1] if shot_configs.size() > 0 else {}
-	if shot_configs.size() <= normal_shot_count or String(latest_special.get("kind", "")) != "hostile_minigun":
-		failures.append("Boss should fire a telegraphed minigun-style special.")
+	if shot_configs.size() <= normal_shot_count or String(latest_special.get("kind", "")) != "hostile_minigun" or int(latest_special.get("projectile_count", 0)) != 1:
+		failures.append("Boss should start a telegraphed minigun stream with individual shots.")
+	var first_minigun_direction: Vector2 = shot_directions[shot_directions.size() - 1] if shot_directions.size() > 0 else Vector2.ZERO
 	var minigun_count := shot_configs.size()
+	boss._update_boss_special(boss.boss_minigun_shot_interval + 0.02, Vector2.RIGHT * 360.0)
+	var second_minigun_direction: Vector2 = shot_directions[shot_directions.size() - 1] if shot_directions.size() > 0 else Vector2.ZERO
+	if shot_configs.size() <= minigun_count or second_minigun_direction.distance_to(first_minigun_direction) <= 0.001:
+		failures.append("Boss minigun should emit rapid individual shots in a sweeping motion.")
+	boss._update_boss_special(boss.boss_minigun_duration + 0.1, Vector2.RIGHT * 360.0)
+	minigun_count = shot_configs.size()
 	boss._boss_special_timer = 0.0
 	boss._update_boss_special(0.05, Vector2.RIGHT * 360.0)
 	boss._update_boss_special(boss.boss_special_telegraph_seconds + 0.05, Vector2.RIGHT * 360.0)

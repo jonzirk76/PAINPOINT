@@ -38,6 +38,9 @@ const BOSS_ENEMY_TEXTURE := preload("res://art/characters/boss_enemy_overlord.sv
 @export var projectile_shield_radius_bonus: float = 20.0
 @export var boss_special_cooldown: float = 5.4
 @export var boss_special_telegraph_seconds: float = 0.72
+@export var boss_minigun_duration: float = 0.86
+@export var boss_minigun_shot_interval: float = 0.065
+@export var boss_minigun_sweep_degrees: float = 82.0
 
 var health: int = max_health
 var target_position: Vector2 = Vector2.ZERO
@@ -60,6 +63,10 @@ var _boss_special_telegraph_remaining: float = 0.0
 var _boss_special_telegraph_duration: float = 0.72
 var _boss_special_kind: String = ""
 var _boss_special_sequence_index: int = 0
+var _boss_minigun_remaining: float = 0.0
+var _boss_minigun_elapsed: float = 0.0
+var _boss_minigun_next_shot_remaining: float = 0.0
+var _boss_minigun_base_direction: Vector2 = Vector2.RIGHT
 
 
 func _init() -> void:
@@ -140,6 +147,8 @@ func _physics_process(delta: float) -> void:
 	var special_active := _update_boss_special(delta, to_target)
 	if not special_active:
 		_try_emit_shot(to_target)
+	elif _boss_minigun_remaining > 0.0:
+		intent_velocity = Vector2.ZERO
 	else:
 		intent_velocity *= 0.38
 	velocity = intent_velocity + _knockback_velocity + _crowd_separation_velocity
@@ -266,6 +275,8 @@ func _draw() -> void:
 		_draw_projectile_shield()
 	if _boss_special_telegraph_remaining > 0.0:
 		_draw_boss_special_telegraph()
+	if _boss_minigun_remaining > 0.0:
+		_draw_boss_minigun_sweep()
 	draw_line(Vector2(-body_radius, -body_radius - 8.0), Vector2(-body_radius + body_radius * 2.0 * health_ratio, -body_radius - 8.0), Color(0.4, 1.0, 0.35, birth_alpha), 3.0)
 	if behavior_kind == "shooter" or behavior_kind == "boss":
 		var aim := (target_position - global_position).normalized()
@@ -382,6 +393,15 @@ func _draw_boss_special_telegraph() -> void:
 		draw_arc(aim * (body_radius + 78.0), 15.0 + pulse * 6.0, 0.0, TAU, 28, Color(1.0, 0.8, 0.28, 0.78), 3.0)
 
 
+func _draw_boss_minigun_sweep() -> void:
+	var direction := _get_boss_minigun_direction()
+	var side := direction.orthogonal()
+	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.075)
+	draw_line(side * -body_radius * 0.9, direction * (body_radius + 96.0), Color(1.0, 0.96, 0.42, 0.72 + pulse * 0.18), 4.0)
+	draw_line(side * body_radius * 0.9, direction * (body_radius + 78.0), Color(0.45, 1.0, 1.0, 0.44 + pulse * 0.12), 3.0)
+	draw_circle(direction * (body_radius + 34.0), 5.0 + pulse * 2.0, Color(1.0, 0.82, 0.16, 0.74))
+
+
 func _get_visual_kind(profile) -> String:
 	if String(profile.behavior_kind) == "boss":
 		return "boss"
@@ -410,12 +430,17 @@ func _apply_knockback(packet) -> void:
 func _update_boss_special(delta: float, to_target: Vector2) -> bool:
 	if behavior_kind != "boss" or health <= 0 or _is_dying:
 		return false
+	if _boss_minigun_remaining > 0.0:
+		_update_boss_minigun(delta)
+		return true
 	if _boss_special_telegraph_remaining > 0.0:
 		_boss_special_telegraph_remaining = max(_boss_special_telegraph_remaining - delta, 0.0)
 		if _boss_special_telegraph_remaining <= 0.0:
-			_emit_boss_special(to_target)
-			_boss_special_timer = boss_special_cooldown
-			_boss_special_sequence_index += 1
+			if _boss_special_kind == "minigun":
+				_start_boss_minigun(to_target)
+			else:
+				_emit_boss_special(to_target)
+				_finish_boss_special()
 		queue_redraw()
 		return true
 	_boss_special_timer = max(_boss_special_timer - delta, 0.0)
@@ -443,6 +468,57 @@ func _emit_boss_special(to_target: Vector2) -> void:
 	shot_ready.emit(self, shot_origin, shot_direction, shot_config)
 
 
+func _start_boss_minigun(to_target: Vector2) -> void:
+	if to_target.length_squared() <= 4.0:
+		_finish_boss_special()
+		return
+	_boss_minigun_base_direction = to_target.normalized()
+	_boss_minigun_elapsed = 0.0
+	_boss_minigun_remaining = max(boss_minigun_duration, 0.12)
+	_boss_minigun_next_shot_remaining = max(boss_minigun_shot_interval, 0.025)
+	_emit_boss_minigun_shot()
+
+
+func _update_boss_minigun(delta: float) -> void:
+	_boss_minigun_elapsed = min(_boss_minigun_elapsed + delta, max(boss_minigun_duration, 0.12))
+	_boss_minigun_remaining = max(max(boss_minigun_duration, 0.12) - _boss_minigun_elapsed, 0.0)
+	_boss_minigun_next_shot_remaining -= delta
+	var interval: float = max(boss_minigun_shot_interval, 0.025)
+	var emitted_count := 0
+	while _boss_minigun_remaining > 0.0 and _boss_minigun_next_shot_remaining <= 0.0 and emitted_count < 8:
+		_emit_boss_minigun_shot()
+		_boss_minigun_next_shot_remaining += interval
+		emitted_count += 1
+	if _boss_minigun_remaining <= 0.0:
+		_finish_boss_special()
+	queue_redraw()
+
+
+func _emit_boss_minigun_shot() -> void:
+	var shot_direction := _get_boss_minigun_direction()
+	var shot_config := _get_boss_special_shot_config("minigun")
+	var radius: float = float(shot_config.get("radius", projectile_radius))
+	var shot_origin := global_position + shot_direction * (body_radius + radius + 6.0)
+	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
+		shot_origin = global_position
+	shot_ready.emit(self, shot_origin, shot_direction, shot_config)
+
+
+func _get_boss_minigun_direction() -> Vector2:
+	var duration: float = max(boss_minigun_duration, 0.12)
+	var progress: float = clamp(_boss_minigun_elapsed / duration, 0.0, 1.0)
+	var half_sweep := deg_to_rad(boss_minigun_sweep_degrees) * 0.5
+	return _boss_minigun_base_direction.rotated(lerp(-half_sweep, half_sweep, progress)).normalized()
+
+
+func _finish_boss_special() -> void:
+	_boss_minigun_remaining = 0.0
+	_boss_minigun_elapsed = 0.0
+	_boss_minigun_next_shot_remaining = 0.0
+	_boss_special_timer = boss_special_cooldown
+	_boss_special_sequence_index += 1
+
+
 func _get_boss_special_shot_config(special_kind: String) -> Dictionary:
 	if special_kind == "rocket":
 		return {
@@ -460,8 +536,8 @@ func _get_boss_special_shot_config(special_kind: String) -> Dictionary:
 		"damage": projectile_damage,
 		"radius": max(projectile_radius * 0.72, 4.8),
 		"kind": "hostile_minigun",
-		"projectile_count": 13,
-		"spread_angle_degrees": 74.0,
+		"projectile_count": 1,
+		"spread_angle_degrees": 0.0,
 		"lifetime": 1.55,
 		"knockback": 0.0
 	}
