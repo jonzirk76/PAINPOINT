@@ -132,6 +132,13 @@ func apply_damage(amount: int) -> void:
 		_sync_invulnerability_state()
 
 
+func apply_pushback(push_direction: Vector2, force: float) -> void:
+	if not enabled or not _has_player() or force <= 0.0:
+		return
+	if player.has_method("apply_pushback"):
+		player.apply_pushback(push_direction, force)
+
+
 func apply_healing(amount: int) -> void:
 	if not enabled or not _has_player() or amount <= 0:
 		return

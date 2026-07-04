@@ -2,7 +2,7 @@ extends Node
 class_name ProjectileManager
 
 signal projectile_hit(projectile, target: Node, damage_packet)
-signal projectile_expired(projectile)
+signal projectile_expired(projectile, expire_info: Dictionary)
 
 @export var projectile_scene: PackedScene = preload("res://scenes/entities/projectile_entity.tscn")
 @export var base_projectile_speed: float = 560.0
@@ -127,7 +127,7 @@ func absorb_hostile_projectiles(origin: Vector2, radius: float, perfect_radius: 
 			"perfect": is_perfect,
 			"radius": projectile_radius
 		})
-		projectile.expire()
+		projectile.expire("absorbed", projectile.global_position)
 	return {
 		"absorbed_count": absorbed_count,
 		"perfect_count": perfect_count,
@@ -185,7 +185,7 @@ func _create_hostile_damage_packet(shot_config: Dictionary, origin: Vector2, dir
 	packet.projectile_growth_per_second = 0.0
 	packet.projectile_max_size_multiplier = 1.0
 	packet.projectile_kind = String(shot_config.get("kind", "hostile"))
-	packet.knockback = 0.0
+	packet.knockback = max(float(shot_config.get("knockback", 0.0)), 0.0)
 	packet.source_position = origin
 	packet.knockback_direction = direction.normalized()
 	return packet
@@ -199,7 +199,21 @@ func _on_projectile_hit(projectile, target: Node) -> void:
 
 func _on_projectile_expired(projectile) -> void:
 	_projectiles.erase(projectile)
-	projectile_expired.emit(projectile)
+	projectile_expired.emit(projectile, _get_projectile_expire_info(projectile))
+
+
+func _get_projectile_expire_info(projectile) -> Dictionary:
+	if projectile == null or not is_instance_valid(projectile):
+		return {}
+	var packet = projectile.damage_packet
+	return {
+		"reason": String(projectile.last_expire_reason),
+		"position": projectile.last_expire_position,
+		"direction": projectile.last_expire_direction,
+		"radius": float(projectile.last_expire_radius),
+		"team": String(projectile.projectile_team),
+		"kind": String(packet.projectile_kind) if packet != null else "normal"
+	}
 
 
 func _discard_projectile(projectile) -> void:

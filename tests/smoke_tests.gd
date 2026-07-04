@@ -10,7 +10,8 @@ const ENTITY_SCRIPT_PATHS := [
 	"res://scripts/entities/explosion_effect.gd",
 	"res://scripts/entities/parry_absorb_effect.gd",
 	"res://scripts/entities/projectile_impact_effect.gd",
-	"res://scripts/entities/door_entity.gd"
+	"res://scripts/entities/door_entity.gd",
+	"res://scripts/entities/floor_exit_portal_entity.gd"
 ]
 
 const FORBIDDEN_ENTITY_SNIPPETS := [
@@ -33,6 +34,7 @@ const SCRIPT_PATHS := [
 	"res://scripts/entities/parry_absorb_effect.gd",
 	"res://scripts/entities/projectile_impact_effect.gd",
 	"res://scripts/entities/door_entity.gd",
+	"res://scripts/entities/floor_exit_portal_entity.gd",
 	"res://scripts/managers/input_manager.gd",
 	"res://scripts/managers/player_manager.gd",
 	"res://scripts/managers/projectile_manager.gd",
@@ -320,7 +322,8 @@ func _test_scene_loads(failures: Array[String]) -> void:
 		"res://scenes/entities/explosion_effect.tscn",
 		"res://scenes/entities/parry_absorb_effect.tscn",
 		"res://scenes/entities/projectile_impact_effect.tscn",
-		"res://scenes/entities/door_entity.tscn"
+		"res://scenes/entities/door_entity.tscn",
+		"res://scenes/entities/floor_exit_portal_entity.tscn"
 	]
 	for path in scene_paths:
 		var scene := load(path)
@@ -464,9 +467,9 @@ func _test_enemy_and_spawner_profiles(failures: Array[String]) -> void:
 	var fast_spawner = load("res://resources/spawners/fast_spawner.tres")
 	var basic_spawner = load("res://resources/spawners/basic_spawner.tres")
 	var shooter_spawner = load("res://resources/spawners/shooter_spawner.tres")
-	if tank_spawner.max_health < 34 or tank_spawner.body_radius < 44.0:
+	if tank_spawner.max_health < 68 or tank_spawner.body_radius < 44.0:
 		failures.append("Tank spawner profile should be tougher and larger.")
-	if fast_spawner.max_health > 10 or fast_spawner.body_radius >= 31.0:
+	if fast_spawner.max_health > 20 or fast_spawner.body_radius >= 31.0:
 		failures.append("Fast spawner profile should be smaller and fragile.")
 	if basic_spawner.projectile_speed != 250.0 or basic_spawner.projectile_radius != 7.0:
 		failures.append("Basic spawner should fire a standard shooter-spawner style projectile.")
@@ -991,6 +994,8 @@ func _test_projectile_impact_visuals(failures: Array[String]) -> void:
 	var orchestrator_source := _read_text("res://scripts/orchestrators/game_orchestrator.gd")
 	if not orchestrator_source.contains("play_projectile_impact") or not orchestrator_source.contains("_target_has_active_projectile_shield"):
 		failures.append("Projectile hit routing should play impact animations and mark shield-blocked hits.")
+	if not orchestrator_source.contains("projectile_expired") or not orchestrator_source.contains("reason == \"wall\""):
+		failures.append("Projectile expiry routing should play impact frames for wall hits and dissipating bullets.")
 	effects_manager.free()
 	effect_layer.free()
 
@@ -1127,6 +1132,18 @@ func _test_projectile_knockback_packet(failures: Array[String]) -> void:
 		failures.append("Projectile damage packet did not include knockback.")
 	if packet.knockback_direction.distance_to(Vector2.RIGHT) > 0.001:
 		failures.append("Projectile damage packet did not preserve knockback direction.")
+	var rocket_packet = manager._create_hostile_damage_packet({
+		"kind": "rocket",
+		"damage": 2,
+		"knockback": 540.0
+	}, Vector2.ZERO, Vector2.LEFT)
+	if rocket_packet.projectile_kind != "rocket" or rocket_packet.knockback < 500.0:
+		failures.append("Hostile rocket packets should carry rocket kind and player knockback.")
+	var player = load("res://scenes/entities/player_entity.tscn").instantiate()
+	player.apply_pushback(Vector2.LEFT, rocket_packet.knockback)
+	if player._knockback_velocity.length_squared() <= 0.001:
+		failures.append("Player entity should accept rocket-style pushback.")
+	player.free()
 	manager.free()
 
 
@@ -1901,8 +1918,8 @@ func _test_first_boss_profile_and_spread(failures: Array[String]) -> void:
 	if boss_profile == null:
 		failures.append("First boss profile failed to load.")
 		return
-	if boss_profile.behavior_kind != "boss" or boss_profile.max_health < 60:
-		failures.append("First boss profile should use boss behavior and boss-scale health.")
+	if boss_profile.behavior_kind != "boss" or boss_profile.max_health < 180:
+		failures.append("First boss profile should use boss behavior and tripled boss-scale health.")
 	if boss_profile.shot_projectile_count < 3 or boss_profile.shot_spread_degrees <= 0.0:
 		failures.append("First boss profile should fire a visible spread pattern.")
 	var boss = load("res://scenes/entities/enemy_entity.tscn").instantiate()
@@ -1917,6 +1934,22 @@ func _test_first_boss_profile_and_spread(failures: Array[String]) -> void:
 		failures.append("Boss enemy did not emit a hostile shot request.")
 	elif int(shot_configs[0].get("projectile_count", 1)) < 3:
 		failures.append("Boss hostile shot request did not include spread projectile count.")
+	var normal_shot_count := shot_configs.size()
+	boss._boss_special_timer = 0.0
+	boss._update_boss_special(0.05, Vector2.RIGHT * 360.0)
+	if boss._boss_special_telegraph_remaining <= 0.0:
+		failures.append("Boss special attacks should enter a visible telegraph before firing.")
+	boss._update_boss_special(boss.boss_special_telegraph_seconds + 0.05, Vector2.RIGHT * 360.0)
+	var latest_special: Dictionary = shot_configs[shot_configs.size() - 1] if shot_configs.size() > 0 else {}
+	if shot_configs.size() <= normal_shot_count or String(latest_special.get("kind", "")) != "hostile_minigun":
+		failures.append("Boss should fire a telegraphed minigun-style special.")
+	var minigun_count := shot_configs.size()
+	boss._boss_special_timer = 0.0
+	boss._update_boss_special(0.05, Vector2.RIGHT * 360.0)
+	boss._update_boss_special(boss.boss_special_telegraph_seconds + 0.05, Vector2.RIGHT * 360.0)
+	latest_special = shot_configs[shot_configs.size() - 1] if shot_configs.size() > 0 else {}
+	if shot_configs.size() <= minigun_count or String(latest_special.get("kind", "")) != "rocket" or float(latest_special.get("knockback", 0.0)) <= 0.0:
+		failures.append("Boss should alternate into a telegraphed rocket special with knockback.")
 	boss.free()
 
 	var projectile_layer := Node2D.new()
@@ -1953,6 +1986,12 @@ func _test_boss_add_replenishment(failures: Array[String]) -> void:
 	manager._physics_process(0.1)
 	if manager._get_boss_add_count() != 3:
 		failures.append("Boss should summon three shooter adds when it has none.")
+	var birth_adds := 0
+	for enemy in manager._enemies:
+		if is_instance_valid(enemy) and bool(enemy.get_meta("boss_add", false)) and enemy.has_method("is_birth_animation_active") and bool(enemy.is_birth_animation_active()):
+			birth_adds += 1
+	if birth_adds != 3:
+		failures.append("Boss-summoned adds should arrive with a teleport birth animation.")
 	var removed_add = null
 	for enemy in manager._enemies:
 		if is_instance_valid(enemy) and bool(enemy.get_meta("boss_add", false)):
@@ -2053,25 +2092,29 @@ func _test_orchestrator_main_loop_floor_progression(failures: Array[String]) -> 
 	var boss = load("res://scenes/entities/enemy_entity.tscn").instantiate()
 	boss.initialize(load("res://resources/enemies/first_boss_enemy.tres"))
 	main._on_enemy_defeated(boss, boss.score_value)
-	if main._status != "BOSS_CLEARING":
-		failures.append("Main loop boss kill should enter a short boss-clear explosion transition.")
+	if main._status != "DUNGEON":
+		failures.append("Main loop boss kill should keep gameplay active until the exit portal is entered.")
 	if main._score < 1000:
 		failures.append("Main loop boss kill should award a large floor-clear score bonus.")
 	if main._run_boss_kills != 1:
 		failures.append("Main loop should tally boss kills immediately.")
+	if not main._floor_exit_portal_active():
+		failures.append("Main loop boss kill should activate an exit portal instead of instantly clearing the floor.")
 	if main.win_panel.visible:
-		failures.append("Main loop should wait for the boss explosion before showing the next-floor panel.")
-	if not bool(main._tree_pause_requested):
-		failures.append("Main loop boss-clear transition should pause the SceneTree so enemies stop moving.")
-	if main.enemy_manager.enabled or main.spawner_manager.enabled or main.projectile_manager.enabled:
-		failures.append("Main loop boss-clear transition should disable gameplay managers while the explosion plays.")
-	main._process(main.BOSS_CLEAR_DELAY_SECONDS + 0.1)
+		failures.append("Main loop should wait for the portal entry before showing the next-floor panel.")
+	if bool(main._tree_pause_requested):
+		failures.append("Main loop boss exit portal should not pause the SceneTree before entry.")
+	if not main.enemy_manager.enabled or not main.spawner_manager.enabled or not main.projectile_manager.enabled:
+		failures.append("Main loop should keep gameplay managers enabled while the boss exit portal is open.")
+	main._on_floor_exit_portal_entered(main._floor_exit_portal)
 	if main._status != "FLOOR_CLEARED":
-		failures.append("Main loop boss clear should move to floor-cleared state after the explosion.")
+		failures.append("Main loop portal entry should move to floor-cleared state.")
 	if main._run_floors_cleared != 1:
-		failures.append("Main loop should tally cleared floors after the boss explosion resolves.")
+		failures.append("Main loop should tally cleared floors after portal entry.")
 	if not main.win_panel.visible:
-		failures.append("Main loop floor clear should show the next-floor panel after the boss explosion.")
+		failures.append("Main loop floor clear should show the mission results panel after portal entry.")
+	if main.win_title_label == null or main.win_title_label.text != "MISSION RESULTS":
+		failures.append("Main loop floor clear should present a mission results screen.")
 	main._on_menu_confirm_requested()
 	if main._main_loop_floor != 2 or main._status != "DUNGEON":
 		failures.append("Main loop confirm should advance to the next generated floor.")

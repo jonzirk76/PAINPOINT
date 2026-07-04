@@ -35,6 +35,7 @@ var _parry_perfect_radius: float = 42.0
 var _ammo_warning_active: bool = false
 var _ammo_warning_text: String = ""
 var _ammo_warning_ratio: float = 1.0
+var _knockback_velocity: Vector2 = Vector2.ZERO
 var _death_elapsed: float = 0.0
 var _death_duration: float = 0.75
 var _is_dead: bool = false
@@ -79,11 +80,12 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	if _is_dead:
 		velocity = Vector2.ZERO
 		return
-	velocity = move_vector * speed
+	velocity = move_vector * speed + _knockback_velocity
+	_knockback_velocity = _knockback_velocity.move_toward(Vector2.ZERO, 720.0 * delta)
 	move_and_slide()
 	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
 
@@ -161,6 +163,17 @@ func play_hit_response() -> void:
 	queue_redraw()
 
 
+func apply_pushback(push_direction: Vector2, force: float) -> void:
+	if _is_dead or force <= 0.0:
+		return
+	var direction := push_direction.normalized()
+	if direction.length_squared() <= 0.001:
+		direction = Vector2.RIGHT
+	_knockback_velocity += direction * force
+	_knockback_velocity = _knockback_velocity.limit_length(max(force, 360.0))
+	queue_redraw()
+
+
 func play_parry_response(effect_radius: float, perfect_radius: float) -> void:
 	if _is_dead:
 		return
@@ -214,6 +227,7 @@ func play_death_animation() -> void:
 	_is_dead = true
 	move_vector = Vector2.ZERO
 	velocity = Vector2.ZERO
+	_knockback_velocity = Vector2.ZERO
 	invulnerable_remaining = 0.0
 	_parry_ready = false
 	_ammo_warning_active = false
@@ -230,6 +244,7 @@ func reset_health() -> void:
 	_death_elapsed = 0.0
 	_hit_flash_remaining = 0.0
 	_heal_flash_remaining = 0.0
+	_knockback_velocity = Vector2.ZERO
 	_parry_pulse_remaining = 0.0
 	_perfect_parry_flash_remaining = 0.0
 	_parry_ready_flash_remaining = 0.0

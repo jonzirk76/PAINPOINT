@@ -9,6 +9,7 @@ const LEVELS := [
 	preload("res://resources/levels/level_05_circle.tres"),
 	preload("res://resources/levels/level_06_maze.tres")
 ]
+const FLOOR_EXIT_PORTAL_SCENE := preload("res://scenes/entities/floor_exit_portal_entity.tscn")
 
 @onready var input_manager = $Managers/InputManager
 @onready var player_manager = $Managers/PlayerManager
@@ -82,6 +83,7 @@ var _run_floors_cleared: int = 0
 var _tree_pause_requested: bool = false
 var _boss_clear_delay_remaining: float = 0.0
 var _boss_clear_pending_status: String = ""
+var _floor_exit_portal = null
 var _ammo_refill_flash_remaining: float = 0.0
 var _ammo_refill_flash_duration: float = 0.48
 var _ammo_refill_perfect_flash_remaining: float = 0.0
@@ -146,6 +148,7 @@ func _connect_manager_signals() -> void:
 	_connect_once(player_manager, &"parry_requested", _on_player_parry_requested)
 
 	_connect_once(projectile_manager, &"projectile_hit", _on_projectile_hit)
+	_connect_once(projectile_manager, &"projectile_expired", _on_projectile_expired)
 	_connect_once(combat_manager, &"damage_resolved", _on_damage_resolved)
 	_connect_once(combat_manager, &"player_damage_resolved", _on_player_damage_resolved)
 	_connect_once(combat_manager, &"chain_requested", _on_chain_requested)
@@ -243,6 +246,7 @@ func _start_level(level_definition) -> void:
 	_ammo_refill_flash_remaining = 0.0
 	_ammo_refill_perfect_flash_remaining = 0.0
 	_stop_perfect_parry_slowmo()
+	_clear_floor_exit_portal()
 	_attribute_modifiers = {}
 	_permanent_stats = []
 	if level_select_panel != null:
@@ -296,6 +300,7 @@ func _start_dungeon_run() -> void:
 	_ammo_refill_flash_remaining = 0.0
 	_ammo_refill_perfect_flash_remaining = 0.0
 	_stop_perfect_parry_slowmo()
+	_clear_floor_exit_portal()
 	_attribute_modifiers = {}
 	_permanent_stats = []
 	if level_select_panel != null:
@@ -342,6 +347,7 @@ func _start_main_loop_run() -> void:
 	_ammo_refill_flash_remaining = 0.0
 	_ammo_refill_perfect_flash_remaining = 0.0
 	_stop_perfect_parry_slowmo()
+	_clear_floor_exit_portal()
 	_attribute_modifiers = {}
 	_permanent_stats = []
 	if level_select_panel != null:
@@ -375,6 +381,7 @@ func _advance_main_loop_floor() -> void:
 	_set_tree_paused(false)
 	_main_loop_floor += 1
 	_status = "STARTING"
+	_clear_floor_exit_portal()
 	if win_panel != null:
 		win_panel.visible = false
 	dungeon_manager.reset_run(_main_loop_floor, _run_seed)
@@ -402,6 +409,7 @@ func _enter_level_select() -> void:
 	_ammo_refill_flash_remaining = 0.0
 	_ammo_refill_perfect_flash_remaining = 0.0
 	_stop_perfect_parry_slowmo()
+	_clear_floor_exit_portal()
 	_set_all_enabled(false)
 	_clear_gameplay()
 	_clear_minimap()
@@ -420,6 +428,7 @@ func _enter_level_select() -> void:
 
 
 func _clear_gameplay() -> void:
+	_clear_floor_exit_portal()
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
 	spawner_manager.clear_spawners()
@@ -482,6 +491,7 @@ func _on_projectile_hit(projectile, target: Node, packet) -> void:
 		impact_position = target.global_position
 	if target != null and target.is_in_group("player"):
 		effects_manager.play_projectile_impact(impact_position, impact_direction, impact_radius, false)
+		_apply_player_projectile_hit_effects(packet, impact_position)
 		combat_manager.resolve_projectile_hit(projectile, target, packet)
 		return
 	var damage_landed := _apply_damage_to_target(target, packet)
@@ -489,6 +499,29 @@ func _on_projectile_hit(projectile, target: Node, packet) -> void:
 	effects_manager.play_projectile_impact(impact_position, impact_direction, impact_radius, blocked)
 	if damage_landed:
 		_request_projectile_damage_side_effects(target, packet)
+
+
+func _on_projectile_expired(_projectile, expire_info: Dictionary) -> void:
+	var reason := String(expire_info.get("reason", ""))
+	if reason.is_empty() or reason == "hit" or reason == "absorbed":
+		return
+	var impact_position: Vector2 = expire_info.get("position", Vector2.ZERO)
+	var impact_direction: Vector2 = expire_info.get("direction", Vector2.RIGHT)
+	var impact_radius: float = float(expire_info.get("radius", 7.0))
+	if reason == "wall":
+		audio_manager.play_bullet_impact()
+	effects_manager.play_projectile_impact(impact_position, impact_direction, impact_radius, false)
+	if String(expire_info.get("kind", "")) == "rocket":
+		effects_manager.play_explosion(impact_position, max(impact_radius * 5.2, 58.0))
+
+
+func _apply_player_projectile_hit_effects(packet, impact_position: Vector2) -> void:
+	if packet == null:
+		return
+	if String(packet.projectile_kind) == "rocket":
+		effects_manager.play_explosion(impact_position, max(float(packet.knockback) * 0.11, 58.0))
+	if float(packet.knockback) > 0.0:
+		player_manager.apply_pushback(packet.knockback_direction, float(packet.knockback))
 
 
 func _on_damage_resolved(target: Node, packet) -> bool:
@@ -565,7 +598,7 @@ func _on_player_damage_resolved(amount: int) -> void:
 
 
 func _on_spawn_requested(spawn_position: Vector2, profile) -> void:
-	enemy_manager.spawn_enemy(profile, spawn_position)
+	enemy_manager.spawn_enemy(profile, spawn_position, {"birth": true})
 
 
 func _on_hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: Dictionary) -> void:
@@ -580,7 +613,7 @@ func _on_enemy_defeated(_enemy, score_value: int) -> void:
 			_run_boss_kills += 1
 			if _is_main_loop_run:
 				_score += _get_boss_floor_bonus()
-				_begin_boss_clear_transition(_enemy.global_position, float(_enemy.body_radius), "FLOOR_CLEARED")
+				_activate_boss_exit_portal(_enemy.global_position, float(_enemy.body_radius))
 				_update_hud()
 				return
 		else:
@@ -851,6 +884,8 @@ func _update_hud() -> void:
 		footer = "BOSS DEFEATED. Hold steady..."
 	elif _status == "FLOOR_CLEARED":
 		footer = "FLOOR CLEARED. Press Enter/A for next floor, or R/Start to return to level select."
+	elif _is_main_loop_run and _floor_exit_portal_active():
+		footer = "BOSS DEFEATED. Enter the portal to finish the mission."
 	elif _status == "PAUSED":
 		footer = "PAUSED. Esc/Start resumes. Enter/A opens exit prompt."
 	elif _status == "PAUSE_EXIT_CONFIRM":
@@ -1082,9 +1117,9 @@ func _update_game_over_panel() -> void:
 	if win_panel != null:
 		win_panel.visible = _status == "WON" or _status == "FLOOR_CLEARED"
 	if win_title_label != null:
-		win_title_label.text = "FLOOR CLEARED" if _status == "FLOOR_CLEARED" else "LEVEL CLEARED"
+		win_title_label.text = "MISSION RESULTS" if _is_main_loop_run and _status == "FLOOR_CLEARED" else ("FLOOR CLEARED" if _status == "FLOOR_CLEARED" else "LEVEL CLEARED")
 	if win_score_label != null:
-		win_score_label.text = "Score: %d" % _score
+		win_score_label.text = "Score: %d\n%s" % [_score, _get_tally_text()] if _is_main_loop_run and _status == "FLOOR_CLEARED" else "Score: %d" % _score
 	if win_prompt_label != null:
 		win_prompt_label.text = "Press Enter/A for next floor" if _status == "FLOOR_CLEARED" else "Press R or Start to return to level select"
 	if game_over_title_label != null:
@@ -1177,6 +1212,10 @@ func _check_level_clear() -> void:
 	if spawner_manager.get_spawner_count() > 0 or enemy_manager.get_enemy_count() > 0:
 		return
 	if _is_dungeon_run:
+		if _is_main_loop_run and dungeon_manager.is_current_boss_room() and _floor_exit_portal_active():
+			room_manager.set_doors_unlocked(false)
+			_update_hud()
+			return
 		dungeon_manager.mark_current_room_cleared()
 		room_manager.set_doors_unlocked(true)
 		if dungeon_manager.is_current_boss_room() and not _is_main_loop_run:
@@ -1255,6 +1294,7 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool) -> 
 	_current_level = level_definition
 	_is_loading_room = true
 	_set_all_enabled(false)
+	_clear_floor_exit_portal()
 	if arena_view != null:
 		arena_view.configure(level_definition)
 	player_manager.set_arena_definition(level_definition)
@@ -1332,6 +1372,8 @@ func _is_gameplay_running() -> bool:
 
 
 func _get_status_label() -> String:
+	if _is_main_loop_run and _status == "DUNGEON" and _floor_exit_portal_active():
+		return "FLOOR %d EXIT OPEN" % _main_loop_floor
 	if _is_main_loop_run and _status == "DUNGEON":
 		return "FLOOR %d" % _main_loop_floor
 	if _is_main_loop_run and _status == "FLOOR_CLEARED":
@@ -1349,6 +1391,8 @@ func _get_dungeon_hud_suffix() -> String:
 		return ""
 	var piece = state["piece"]
 	var door_text := "doors open" if dungeon_manager.is_current_room_cleared() else "clear room to open doors"
+	if _is_main_loop_run and _floor_exit_portal_active():
+		door_text = "exit portal open"
 	var floor_text := "  |  Floor %d" % _main_loop_floor if _is_main_loop_run else ""
 	var seed_text := "  |  Seed %d" % _run_seed if _run_seed > 0 else ""
 	return "\nRoom: %s%s%s  |  %s" % [piece.display_name, floor_text, seed_text, door_text]
@@ -1395,9 +1439,57 @@ func _update_camera() -> void:
 	gameplay_camera.global_position = desired
 
 
+func _activate_boss_exit_portal(boss_position: Vector2, boss_radius: float) -> void:
+	if _floor_exit_portal_active():
+		return
+	var explosion_radius: float = max(boss_radius * 4.4, 180.0)
+	effects_manager.play_explosion(boss_position, explosion_radius, 0.72)
+	var portal = FLOOR_EXIT_PORTAL_SCENE.instantiate()
+	var portal_layer: Node = $World/DoorLayer
+	if portal_layer != null:
+		portal_layer.add_child(portal)
+	else:
+		add_child(portal)
+	var portal_position := _get_boss_exit_portal_position(boss_position)
+	if portal.has_method("initialize"):
+		portal.initialize(portal_position, max(boss_radius * 1.05, 48.0))
+	_connect_once(portal, &"entered", _on_floor_exit_portal_entered)
+	_floor_exit_portal = portal
+	_update_minimap()
+
+
+func _get_boss_exit_portal_position(boss_position: Vector2) -> Vector2:
+	if _current_level == null:
+		return boss_position
+	var bounds: Rect2 = _current_level.arena_bounds
+	var preferred := bounds.get_center()
+	if preferred.distance_squared_to(boss_position) < 110.0 * 110.0:
+		preferred = boss_position + Vector2(-180.0, 0.0)
+	return _find_safe_room_position(preferred, _current_level)
+
+
+func _on_floor_exit_portal_entered(portal) -> void:
+	if portal != _floor_exit_portal or not _is_main_loop_run or _status != "DUNGEON":
+		return
+	_clear_floor_exit_portal()
+	_complete_main_loop_floor()
+	_update_hud()
+
+
+func _floor_exit_portal_active() -> bool:
+	return _floor_exit_portal != null and is_instance_valid(_floor_exit_portal)
+
+
+func _clear_floor_exit_portal() -> void:
+	if _floor_exit_portal != null and is_instance_valid(_floor_exit_portal):
+		_floor_exit_portal.queue_free()
+	_floor_exit_portal = null
+
+
 func _complete_main_loop_floor() -> void:
 	if _status == "FLOOR_CLEARED":
 		return
+	_clear_floor_exit_portal()
 	_run_floors_cleared = max(_run_floors_cleared, _main_loop_floor)
 	_status = "FLOOR_CLEARED"
 	_set_all_enabled(false)

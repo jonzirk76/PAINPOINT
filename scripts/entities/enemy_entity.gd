@@ -36,6 +36,8 @@ const BOSS_ENEMY_TEXTURE := preload("res://art/characters/boss_enemy_overlord.sv
 @export var shot_projectile_count: int = 1
 @export var shot_spread_degrees: float = 0.0
 @export var projectile_shield_radius_bonus: float = 20.0
+@export var boss_special_cooldown: float = 5.4
+@export var boss_special_telegraph_seconds: float = 0.72
 
 var health: int = max_health
 var target_position: Vector2 = Vector2.ZERO
@@ -51,6 +53,13 @@ var _visual_kind: String = "basic"
 var _visual_direction: Vector2 = Vector2.RIGHT
 var _projectile_shield_remaining: float = 0.0
 var _projectile_shield_block_flash_remaining: float = 0.0
+var _birth_remaining: float = 0.0
+var _birth_duration: float = 0.55
+var _boss_special_timer: float = 0.0
+var _boss_special_telegraph_remaining: float = 0.0
+var _boss_special_telegraph_duration: float = 0.72
+var _boss_special_kind: String = ""
+var _boss_special_sequence_index: int = 0
 
 
 func _init() -> void:
@@ -96,6 +105,9 @@ func initialize(profile) -> void:
 	_visual_kind = _get_visual_kind(profile)
 	health = max_health
 	_shot_cooldown_remaining = shot_cooldown * 0.65
+	if behavior_kind == "boss":
+		_boss_special_timer = boss_special_cooldown * 0.55
+		_boss_special_sequence_index = 0
 
 
 func _physics_process(delta: float) -> void:
@@ -115,10 +127,21 @@ func _physics_process(delta: float) -> void:
 			death_animation_finished.emit(self)
 			queue_free()
 		return
+	if _birth_remaining > 0.0:
+		_birth_remaining = max(_birth_remaining - delta, 0.0)
+		velocity = Vector2.ZERO
+		if _birth_remaining <= 0.0:
+			_configure_collision_identity()
+		queue_redraw()
+		return
 
 	var to_target := target_position - global_position
 	var intent_velocity := _get_ranged_velocity(to_target) if behavior_kind == "shooter" or behavior_kind == "boss" else _get_chaser_velocity(to_target)
-	_try_emit_shot(to_target)
+	var special_active := _update_boss_special(delta, to_target)
+	if not special_active:
+		_try_emit_shot(to_target)
+	else:
+		intent_velocity *= 0.38
 	velocity = intent_velocity + _knockback_velocity + _crowd_separation_velocity
 	_update_visual_direction(velocity)
 	_knockback_velocity = _knockback_velocity.move_toward(Vector2.ZERO, 520.0 * delta)
@@ -149,7 +172,7 @@ func set_arena_definition(bounds: Rect2, shape: int, walls: Array = []) -> void:
 
 
 func take_damage(packet) -> bool:
-	if packet == null or health <= 0 or _is_dying:
+	if packet == null or health <= 0 or _is_dying or is_birth_animation_active():
 		return false
 	if blocks_projectile_damage(packet):
 		return false
@@ -187,7 +210,7 @@ func blocks_projectile_damage(packet) -> bool:
 
 
 func apply_pushback(source_position: Vector2, force: float) -> void:
-	if force <= 0.0 or health <= 0 or _is_dying:
+	if force <= 0.0 or health <= 0 or _is_dying or is_birth_animation_active():
 		return
 	var push_direction := global_position - source_position
 	if push_direction.length_squared() <= 0.001:
@@ -198,16 +221,32 @@ func apply_pushback(source_position: Vector2, force: float) -> void:
 
 
 func apply_crowd_separation(push_vector: Vector2) -> void:
-	if health <= 0 or _is_dying or push_vector.length_squared() <= 0.001:
+	if health <= 0 or _is_dying or is_birth_animation_active() or push_vector.length_squared() <= 0.001:
 		return
 	_crowd_separation_velocity += push_vector
 	_crowd_separation_velocity = _crowd_separation_velocity.limit_length(150.0)
+
+
+func play_birth_animation(duration: float = 0.55) -> void:
+	if health <= 0 or _is_dying:
+		return
+	_birth_duration = max(duration, 0.08)
+	_birth_remaining = _birth_duration
+	collision_layer = 0
+	collision_mask = 0
+	queue_redraw()
+
+
+func is_birth_animation_active() -> bool:
+	return _birth_remaining > 0.0 and health > 0 and not _is_dying
 
 
 func _draw() -> void:
 	if _is_dying:
 		_draw_death_animation()
 		return
+	if is_birth_animation_active():
+		_draw_birth_animation_underlay()
 	var health_ratio := 0.0
 	if max_health > 0:
 		health_ratio = float(health) / float(max_health)
@@ -217,6 +256,8 @@ func _draw() -> void:
 	_draw_enemy_character_art(draw_color)
 	if is_projectile_shield_active() or _projectile_shield_block_flash_remaining > 0.0:
 		_draw_projectile_shield()
+	if _boss_special_telegraph_remaining > 0.0:
+		_draw_boss_special_telegraph()
 	draw_line(Vector2(-body_radius, -body_radius - 8.0), Vector2(-body_radius + body_radius * 2.0 * health_ratio, -body_radius - 8.0), Color(0.4, 1.0, 0.35), 3.0)
 	if behavior_kind == "shooter" or behavior_kind == "boss":
 		var aim := (target_position - global_position).normalized()
@@ -229,6 +270,8 @@ func _draw() -> void:
 	if _hit_flash_remaining > 0.0:
 		draw_circle(Vector2.ZERO, body_radius * 1.08, Color(1.0, 0.95, 0.82, 0.28))
 		draw_arc(Vector2.ZERO, body_radius + 4.0, 0.0, TAU, 28, Color(1.0, 1.0, 1.0, 0.8), 3.0)
+	if is_birth_animation_active():
+		_draw_birth_animation_overlay()
 
 
 func _draw_enemy_character_art(tint: Color) -> void:
@@ -288,6 +331,48 @@ func _draw_projectile_shield() -> void:
 	draw_arc(Vector2.ZERO, radius * 1.12, PI * 0.2, PI * 1.8, 52, Color(0.85, 0.7, 1.0, 0.38 + block_ratio * 0.28), 2.6)
 
 
+func _draw_birth_animation_underlay() -> void:
+	var progress: float = 1.0 - clamp(_birth_remaining / max(_birth_duration, 0.001), 0.0, 1.0)
+	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.03)
+	var outer_radius: float = body_radius * (2.35 - progress * 0.7)
+	draw_circle(Vector2.ZERO, outer_radius, Color(0.35, 0.85, 1.0, 0.1 + pulse * 0.06))
+	draw_arc(Vector2.ZERO, outer_radius, progress * TAU, progress * TAU + TAU * 0.78, 36, Color(0.58, 1.0, 1.0, 0.82), 4.0)
+	draw_arc(Vector2.ZERO, outer_radius * 0.62, -progress * TAU * 1.3, -progress * TAU * 1.3 + TAU * 0.64, 28, Color(1.0, 0.9, 0.42, 0.68), 3.0)
+
+
+func _draw_birth_animation_overlay() -> void:
+	var progress: float = 1.0 - clamp(_birth_remaining / max(_birth_duration, 0.001), 0.0, 1.0)
+	var beam_height: float = body_radius * (2.8 - progress)
+	draw_line(Vector2(0.0, -beam_height), Vector2.ZERO, Color(0.72, 1.0, 1.0, 0.65 * (1.0 - progress * 0.4)), 3.0)
+	for index in range(5):
+		var angle: float = TAU * float(index) / 5.0 + progress * TAU
+		var from_point := Vector2.RIGHT.rotated(angle) * body_radius * (0.5 + progress * 0.3)
+		var to_point := Vector2.RIGHT.rotated(angle) * body_radius * (1.3 + progress * 0.7)
+		draw_line(from_point, to_point, Color(1.0, 1.0, 1.0, 0.58 * (1.0 - progress * 0.35)), 2.0)
+
+
+func _draw_boss_special_telegraph() -> void:
+	var progress: float = 1.0 - clamp(_boss_special_telegraph_remaining / max(_boss_special_telegraph_duration, 0.001), 0.0, 1.0)
+	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.045)
+	var aim := (target_position - global_position).normalized()
+	if aim.length_squared() <= 0.001:
+		aim = Vector2.RIGHT
+	var telegraph_color := Color(1.0, 0.92, 0.28, 0.78)
+	if _boss_special_kind == "rocket":
+		telegraph_color = Color(1.0, 0.32, 0.12, 0.86)
+	var radius: float = body_radius + 16.0 + progress * 18.0 + pulse * 4.0
+	draw_circle(Vector2.ZERO, radius, Color(telegraph_color.r, telegraph_color.g, telegraph_color.b, 0.09 + pulse * 0.08))
+	draw_arc(Vector2.ZERO, radius, -PI * 0.5, -PI * 0.5 + TAU * progress, 54, telegraph_color, 5.0)
+	if _boss_special_kind == "minigun":
+		var sweep_direction := aim.rotated(sin(progress * PI * 4.0) * 0.55)
+		var side := sweep_direction.orthogonal()
+		draw_line(side * -body_radius * 1.1, sweep_direction * (body_radius + 82.0), Color(1.0, 0.96, 0.58, 0.75), 4.0)
+		draw_line(side * body_radius * 1.1, sweep_direction * (body_radius + 82.0), Color(0.54, 1.0, 1.0, 0.45), 3.0)
+	else:
+		draw_line(Vector2.ZERO, aim * (body_radius + 92.0), Color(1.0, 0.42, 0.18, 0.85), 5.0)
+		draw_arc(aim * (body_radius + 78.0), 15.0 + pulse * 6.0, 0.0, TAU, 28, Color(1.0, 0.8, 0.28, 0.78), 3.0)
+
+
 func _get_visual_kind(profile) -> String:
 	if String(profile.behavior_kind) == "boss":
 		return "boss"
@@ -311,6 +396,66 @@ func _apply_knockback(packet) -> void:
 		return
 	_knockback_velocity += push_direction.normalized() * effective_knockback
 	_knockback_velocity = _knockback_velocity.limit_length(260.0)
+
+
+func _update_boss_special(delta: float, to_target: Vector2) -> bool:
+	if behavior_kind != "boss" or health <= 0 or _is_dying:
+		return false
+	if _boss_special_telegraph_remaining > 0.0:
+		_boss_special_telegraph_remaining = max(_boss_special_telegraph_remaining - delta, 0.0)
+		if _boss_special_telegraph_remaining <= 0.0:
+			_emit_boss_special(to_target)
+			_boss_special_timer = boss_special_cooldown
+			_boss_special_sequence_index += 1
+		queue_redraw()
+		return true
+	_boss_special_timer = max(_boss_special_timer - delta, 0.0)
+	if _boss_special_timer > 0.0 or to_target.length_squared() <= 4.0:
+		return false
+	if _wall_blocks_segment(global_position, target_position):
+		return false
+	_boss_special_kind = "minigun" if _boss_special_sequence_index % 2 == 0 else "rocket"
+	_boss_special_telegraph_duration = max(boss_special_telegraph_seconds, 0.1)
+	_boss_special_telegraph_remaining = _boss_special_telegraph_duration
+	activate_projectile_shield(_boss_special_telegraph_duration + 0.45)
+	queue_redraw()
+	return true
+
+
+func _emit_boss_special(to_target: Vector2) -> void:
+	if to_target.length_squared() <= 4.0:
+		return
+	var shot_direction := to_target.normalized()
+	var shot_config := _get_boss_special_shot_config(_boss_special_kind)
+	var radius: float = float(shot_config.get("radius", projectile_radius))
+	var shot_origin := global_position + shot_direction * (body_radius + radius + 6.0)
+	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
+		shot_origin = global_position
+	shot_ready.emit(self, shot_origin, shot_direction, shot_config)
+
+
+func _get_boss_special_shot_config(special_kind: String) -> Dictionary:
+	if special_kind == "rocket":
+		return {
+			"speed": projectile_speed * 0.92,
+			"damage": max(projectile_damage + 1, 2),
+			"radius": max(projectile_radius * 1.65, 11.5),
+			"kind": "rocket",
+			"projectile_count": 1,
+			"spread_angle_degrees": 0.0,
+			"lifetime": 2.35,
+			"knockback": 540.0
+		}
+	return {
+		"speed": projectile_speed * 1.38,
+		"damage": projectile_damage,
+		"radius": max(projectile_radius * 0.72, 4.8),
+		"kind": "hostile_minigun",
+		"projectile_count": 13,
+		"spread_angle_degrees": 74.0,
+		"lifetime": 1.55,
+		"knockback": 0.0
+	}
 
 
 func _get_chaser_velocity(to_target: Vector2) -> Vector2:

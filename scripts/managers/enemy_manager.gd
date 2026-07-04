@@ -71,6 +71,8 @@ func _physics_process(delta: float) -> void:
 		enemy.set_target_position(player_position)
 		var id: int = enemy.get_instance_id()
 		_contact_timers[id] = max(float(_contact_timers.get(id, 0.0)) - delta, 0.0)
+		if enemy.has_method("is_birth_animation_active") and bool(enemy.is_birth_animation_active()):
+			continue
 		if player != null and is_instance_valid(player):
 			var contact_range: float = _get_effective_contact_range(enemy, player)
 			if enemy.global_position.distance_squared_to(player.global_position) <= contact_range * contact_range and float(_contact_timers[id]) <= 0.0:
@@ -94,6 +96,8 @@ func spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary = {})
 		_enemy_layer.add_child(enemy)
 	else:
 		add_child(enemy)
+	if bool(spawn_flags.get("birth", false)) and enemy.has_method("play_birth_animation"):
+		enemy.play_birth_animation(float(spawn_flags.get("birth_duration", 0.55)))
 	enemy.health_depleted.connect(_on_enemy_health_depleted)
 	enemy.shot_ready.connect(_on_enemy_shot_ready)
 	_enemies.append(enemy)
@@ -229,7 +233,7 @@ func _update_boss_adds(delta: float) -> void:
 		return
 	var missing_count: int = boss_add_target_count - current_adds
 	for index in range(missing_count):
-		spawn_enemy(boss_add_profile, _get_boss_add_spawn_position(boss, index, missing_count), {"boss_add": true})
+		spawn_enemy(boss_add_profile, _get_boss_add_spawn_position(boss, index, missing_count), {"boss_add": true, "birth": true})
 	_boss_add_timer = boss_add_replenish_interval
 
 

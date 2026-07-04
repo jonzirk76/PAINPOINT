@@ -15,6 +15,10 @@ var direction: Vector2 = Vector2.RIGHT
 var damage_packet = null
 var pierce_remaining: int = 0
 var hit_targets: Array[Node] = []
+var last_expire_reason: String = ""
+var last_expire_position: Vector2 = Vector2.ZERO
+var last_expire_direction: Vector2 = Vector2.RIGHT
+var last_expire_radius: float = 6.0
 var _age: float = 0.0
 var _is_expired: bool = false
 var _base_body_radius: float = 6.0
@@ -62,16 +66,16 @@ func _physics_process(delta: float) -> void:
 	global_position = next_position
 	_check_swept_hit(previous_position, next_position)
 	if not _is_expired and not ArenaGeometry.contains_point(global_position, arena_bounds, arena_shape):
-		expire()
+		expire("bounds", global_position)
 		return
 	_update_growth(delta)
 	queue_redraw()
 	if _age >= lifetime_seconds:
-		expire()
+		expire("lifetime", global_position)
 
 
 func _on_body_entered(body: Node) -> void:
-	_handle_target_hit(body)
+	_handle_target_hit(body, global_position)
 
 
 func set_arena_definition(bounds: Rect2, shape: int) -> void:
@@ -84,11 +88,12 @@ func set_projectile_team(team: String) -> void:
 	_configure_collision_identity()
 
 
-func _handle_target_hit(body: Node) -> void:
+func _handle_target_hit(body: Node, hit_position: Vector2 = Vector2.INF) -> void:
 	if _is_expired:
 		return
+	var resolved_hit_position := global_position if hit_position == Vector2.INF else hit_position
 	if body.is_in_group("arena_walls"):
-		expire()
+		expire("wall", resolved_hit_position)
 		return
 	if projectile_team == "hostile":
 		if not body.is_in_group("player"):
@@ -105,7 +110,7 @@ func _handle_target_hit(body: Node) -> void:
 		damage_packet.hit_targets = hit_targets.duplicate()
 	hit_detected.emit(self, body)
 	if pierce_remaining <= 0:
-		expire()
+		expire("hit", resolved_hit_position)
 	else:
 		pierce_remaining -= 1
 
@@ -126,12 +131,17 @@ func _check_swept_hit(previous_position: Vector2, next_position: Vector2) -> voi
 		return
 	var collider = result.get("collider", null)
 	if collider is Node:
-		_handle_target_hit(collider)
+		_handle_target_hit(collider, result.get("position", global_position))
 
 
-func expire() -> void:
+func expire(reason: String = "expired", expire_position: Vector2 = Vector2.INF) -> void:
 	if _is_expired:
 		return
+	last_expire_reason = reason
+	last_expire_position = global_position if expire_position == Vector2.INF else expire_position
+	last_expire_direction = direction.normalized() if direction.length_squared() > 0.001 else Vector2.RIGHT
+	last_expire_radius = body_radius
+	global_position = last_expire_position
 	_is_expired = true
 	monitoring = false
 	monitorable = false
