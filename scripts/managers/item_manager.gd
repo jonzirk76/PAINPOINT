@@ -3,6 +3,7 @@ class_name ItemManager
 
 signal pickup_collected(effect)
 signal pickup_count_changed(count: int)
+signal reward_focus_changed(effect, description: String)
 
 const SPREAD_SHOT := preload("res://resources/upgrades/spread_shot.tres")
 const PIERCING_SHOT := preload("res://resources/upgrades/piercing_shot.tres")
@@ -13,26 +14,35 @@ const FASTER_REFLEXES := preload("res://resources/permanent_upgrades/faster_refl
 const RUNNER_LEGS := preload("res://resources/permanent_upgrades/runner_legs.tres")
 const HEAVY_TEARS := preload("res://resources/permanent_upgrades/heavy_tears.tres")
 const FAT_TEARS := preload("res://resources/permanent_upgrades/fat_tears.tres")
+const OVERDRIVE_CAPACITY := preload("res://resources/permanent_upgrades/overdrive_capacity.tres")
 const SMALL_HEAL := preload("res://resources/pickups/small_heal.tres")
 const FULL_HEAL := preload("res://resources/pickups/full_heal.tres")
+const OVERDRIVE_AMMO := preload("res://resources/pickups/overdrive_ammo.tres")
+const OVERDRIVE_AMMO_CACHE := preload("res://resources/pickups/overdrive_ammo_cache.tres")
 
 @export var pickup_scene: PackedScene = preload("res://scenes/entities/pickup_entity.tscn")
 @export var pickup_spawn_interval: float = 10.0
-@export var enemy_permanent_drop_chance: float = 0.18
-@export var enemy_temporary_drop_chance: float = 0.055
-@export var enemy_heal_drop_chance: float = 0.1
+@export var enemy_permanent_drop_chance: float = 0.0
+@export var enemy_temporary_drop_chance: float = 0.0
+@export var enemy_overdrive_ammo_drop_chance: float = 0.08
+@export var enemy_heal_drop_chance: float = 0.12
 @export var spawner_full_heal_drop_chance: float = 0.16
 
 var enabled: bool = false
 var upgrade_effects: Array = [SPREAD_SHOT, PIERCING_SHOT, CHAIN_LIGHTNING, FIRE_BURST, WATER_SWELL]
-var permanent_upgrades: Array = [FASTER_REFLEXES, RUNNER_LEGS, HEAVY_TEARS, FAT_TEARS]
+var permanent_upgrades: Array = [FASTER_REFLEXES, RUNNER_LEGS, HEAVY_TEARS, FAT_TEARS, OVERDRIVE_CAPACITY]
 var healing_pickups: Array = [SMALL_HEAL]
 var full_heal_pickup = FULL_HEAL
+var overdrive_ammo_pickup = OVERDRIVE_AMMO
+var overdrive_ammo_cache_pickup = OVERDRIVE_AMMO_CACHE
 var _pickup_layer: Node = null
 var _pickups: Array = []
 var _rng := RandomNumberGenerator.new()
 var _spawn_timer: float = 0.0
 var _effect_index: int = 0
+var _reward_choice_group_index: int = 0
+var _choice_groups: Dictionary = {}
+var _focused_reward_pickup = null
 
 
 func initialize(context: Dictionary) -> void:
@@ -44,6 +54,7 @@ func reset_run() -> void:
 	clear_pickups()
 	_spawn_timer = pickup_spawn_interval
 	_effect_index = 0
+	_reward_choice_group_index = 0
 	pickup_count_changed.emit(_pickups.size())
 
 
@@ -52,6 +63,9 @@ func clear_pickups() -> void:
 		if is_instance_valid(pickup):
 			pickup.queue_free()
 	_pickups.clear()
+	_choice_groups.clear()
+	_focused_reward_pickup = null
+	reward_focus_changed.emit(null, "")
 	pickup_count_changed.emit(0)
 
 
@@ -65,16 +79,24 @@ func _process(delta: float) -> void:
 	_spawn_timer = max(_spawn_timer - delta, 0.0)
 
 
-func spawn_pickup(effect, spawn_position: Vector2):
+func spawn_pickup(effect, spawn_position: Vector2, requires_confirm: bool = false, choice_group_id: String = ""):
 	var pickup = pickup_scene.instantiate()
 	if _pickup_layer != null:
 		_pickup_layer.add_child(pickup)
 	else:
 		add_child(pickup)
-	pickup.initialize(effect, spawn_position)
+	pickup.initialize(effect, spawn_position, requires_confirm, choice_group_id)
 	pickup.collected.connect(_on_pickup_collected)
 	pickup.expired.connect(_on_pickup_expired)
+	if pickup.has_signal("focused"):
+		pickup.focused.connect(_on_pickup_focused)
+	if pickup.has_signal("focus_exited"):
+		pickup.focus_exited.connect(_on_pickup_focus_exited)
 	_pickups.append(pickup)
+	if requires_confirm and not choice_group_id.is_empty():
+		var group: Array = _choice_groups.get(choice_group_id, [])
+		group.append(pickup)
+		_choice_groups[choice_group_id] = group
 	pickup_count_changed.emit(_pickups.size())
 	return pickup
 
@@ -82,12 +104,10 @@ func spawn_pickup(effect, spawn_position: Vector2):
 func roll_enemy_drop(enemy_position: Vector2) -> void:
 	if not enabled:
 		return
-	if _rng.randf() < enemy_temporary_drop_chance:
-		spawn_pickup(_choose_temporary_upgrade(), _jitter_drop_position(enemy_position))
-	if _rng.randf() < enemy_permanent_drop_chance:
-		spawn_pickup(_choose_permanent_upgrade(), _jitter_drop_position(enemy_position))
 	if _rng.randf() < enemy_heal_drop_chance:
 		spawn_pickup(_choose_heal_pickup(), _jitter_drop_position(enemy_position))
+	if _rng.randf() < enemy_overdrive_ammo_drop_chance:
+		spawn_pickup(overdrive_ammo_pickup, _jitter_drop_position(enemy_position))
 
 
 func drop_spawner_reward(spawner_position: Vector2) -> void:
@@ -96,7 +116,7 @@ func drop_spawner_reward(spawner_position: Vector2) -> void:
 	if _rng.randf() < spawner_full_heal_drop_chance:
 		spawn_pickup(full_heal_pickup, _jitter_drop_position(spawner_position))
 	else:
-		spawn_pickup(_choose_temporary_upgrade(), _jitter_drop_position(spawner_position))
+		spawn_pickup(overdrive_ammo_cache_pickup, _jitter_drop_position(spawner_position))
 
 
 func drop_destructible_reward(prop_position: Vector2, drop_kind: String) -> void:
@@ -105,10 +125,8 @@ func drop_destructible_reward(prop_position: Vector2, drop_kind: String) -> void
 	match drop_kind:
 		"treasure":
 			var roll := _rng.randf()
-			if roll < 0.42:
-				spawn_pickup(_choose_temporary_upgrade(), _jitter_drop_position(prop_position))
-			elif roll < 0.76:
-				spawn_pickup(_choose_permanent_upgrade(), _jitter_drop_position(prop_position))
+			if roll < 0.5:
+				spawn_pickup(overdrive_ammo_pickup, _jitter_drop_position(prop_position))
 			else:
 				spawn_pickup(_choose_heal_pickup(), _jitter_drop_position(prop_position))
 		"minor":
@@ -120,14 +138,44 @@ func get_pickup_count() -> int:
 	return _pickups.size()
 
 
+func spawn_overdrive_reward_choices(center_position: Vector2) -> void:
+	_spawn_reward_choices(_choose_unique_rewards(upgrade_effects, 3), center_position)
+
+
+func spawn_treasure_reward_choices(center_position: Vector2) -> void:
+	_spawn_reward_choices(_choose_unique_rewards(permanent_upgrades, 3), center_position)
+
+
+func collect_focused_reward() -> bool:
+	if _focused_reward_pickup == null or not is_instance_valid(_focused_reward_pickup):
+		_focused_reward_pickup = null
+		reward_focus_changed.emit(null, "")
+		return false
+	if not bool(_focused_reward_pickup.get("requires_confirm")):
+		return false
+	if _focused_reward_pickup.has_method("confirm_collect"):
+		_focused_reward_pickup.confirm_collect()
+		return true
+	return false
+
+
 func _on_pickup_collected(pickup, _collector: Node, effect) -> void:
 	_pickups.erase(pickup)
+	var choice_group_id := String(pickup.get("choice_group_id")) if pickup != null else ""
+	if not choice_group_id.is_empty():
+		_clear_choice_group(choice_group_id, pickup)
+	if pickup == _focused_reward_pickup:
+		_focused_reward_pickup = null
+		reward_focus_changed.emit(null, "")
 	pickup_collected.emit(effect)
 	pickup_count_changed.emit(_pickups.size())
 
 
 func _on_pickup_expired(pickup) -> void:
 	_pickups.erase(pickup)
+	if pickup == _focused_reward_pickup:
+		_focused_reward_pickup = null
+		reward_focus_changed.emit(null, "")
 	pickup_count_changed.emit(_pickups.size())
 
 
@@ -145,3 +193,62 @@ func _choose_heal_pickup():
 
 func _jitter_drop_position(origin: Vector2) -> Vector2:
 	return origin + Vector2(_rng.randf_range(-22.0, 22.0), _rng.randf_range(-22.0, 22.0))
+
+
+func _spawn_reward_choices(options: Array, center_position: Vector2) -> void:
+	if options.is_empty():
+		return
+	_reward_choice_group_index += 1
+	var group_id := "reward_choice_%d" % _reward_choice_group_index
+	var spacing := 72.0
+	var start_x := -spacing * float(options.size() - 1) * 0.5
+	for index in range(options.size()):
+		var offset := Vector2(start_x + float(index) * spacing, 0.0)
+		spawn_pickup(options[index], center_position + offset, true, group_id)
+
+
+func _choose_unique_rewards(pool: Array, count: int) -> Array:
+	var available := pool.duplicate()
+	var choices: Array = []
+	while not available.is_empty() and choices.size() < count:
+		var index := _rng.randi_range(0, available.size() - 1)
+		choices.append(available[index])
+		available.remove_at(index)
+	return choices
+
+
+func _on_pickup_focused(pickup, _collector: Node, effect) -> void:
+	if pickup == null or not bool(pickup.get("requires_confirm")):
+		return
+	_focused_reward_pickup = pickup
+	reward_focus_changed.emit(effect, _get_reward_description(effect))
+
+
+func _on_pickup_focus_exited(pickup, _collector: Node, _effect) -> void:
+	if pickup != _focused_reward_pickup:
+		return
+	_focused_reward_pickup = null
+	reward_focus_changed.emit(null, "")
+
+
+func _clear_choice_group(choice_group_id: String, selected_pickup) -> void:
+	if choice_group_id.is_empty() or not _choice_groups.has(choice_group_id):
+		return
+	var group: Array = _choice_groups[choice_group_id]
+	for pickup in group:
+		if pickup == selected_pickup:
+			continue
+		_pickups.erase(pickup)
+		if is_instance_valid(pickup):
+			pickup.queue_free()
+	_choice_groups.erase(choice_group_id)
+
+
+func _get_reward_description(effect) -> String:
+	if effect == null:
+		return ""
+	if effect.has_method("get_reward_description"):
+		return effect.get_reward_description()
+	if effect.get("display_name") != null:
+		return String(effect.display_name)
+	return "Reward"

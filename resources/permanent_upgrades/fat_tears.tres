@@ -7,5 +7,5 @@ script = ExtResource("1")
 id = "fat_tears"
 display_name = "Fat Tears"
 stat_type = 3
-amount = 0.06
+amount = 0.1
 max_stacks = 14

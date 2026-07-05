@@ -4,8 +4,8 @@
 
 [resource]
 script = ExtResource("1")
-id = "runner_legs"
-display_name = "Runner Legs"
-stat_type = 1
-amount = 0.07
-max_stacks = 16
+id = "overdrive_capacity"
+display_name = "Overdrive Battery"
+stat_type = 4
+amount = 20.0
+max_stacks = 12

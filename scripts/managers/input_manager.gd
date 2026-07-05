@@ -13,17 +13,20 @@ signal parry_requested
 signal pause_requested
 signal super_charge_pressed
 signal super_charge_released(direction: Vector2)
+signal overdrive_changed(is_held: bool)
 
 @export var stick_deadzone: float = 0.25
 @export var aim_change_threshold: float = 0.18
 @export var move_change_threshold: float = 0.03
 @export var super_trigger_threshold: float = 0.55
+@export var overdrive_trigger_threshold: float = 0.55
 
 var enabled: bool = false
 @export var extra_pause_button_indices: Array[int] = []
 var _last_move: Vector2 = Vector2.ZERO
 var _last_aim: Vector2 = Vector2.ZERO
 var _super_held: bool = false
+var _overdrive_held: bool = false
 var _aim_origin_provider: Callable
 
 
@@ -39,10 +42,14 @@ func reset_run() -> void:
 	_last_move = Vector2.ZERO
 	_last_aim = Vector2.ZERO
 	_super_held = false
+	_overdrive_held = false
 
 
 func set_enabled(value: bool) -> void:
 	enabled = value
+	if not enabled and _overdrive_held:
+		_overdrive_held = false
+		overdrive_changed.emit(false)
 
 
 func _process(_delta: float) -> void:
@@ -55,6 +62,10 @@ func _process(_delta: float) -> void:
 
 	var was_super_held := _super_held
 	var super_held := _read_super_held()
+	var overdrive_held := _read_overdrive_held()
+	if overdrive_held != _overdrive_held:
+		_overdrive_held = overdrive_held
+		overdrive_changed.emit(_overdrive_held)
 	var aim_vector := _read_aim_vector()
 	if should_fire_for_aim_change(aim_vector):
 		aim_changed.emit(_last_aim)
@@ -170,6 +181,12 @@ func _read_super_held() -> bool:
 	if Input.is_physical_key_pressed(KEY_E) or Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
 		return true
 	return Input.get_joy_axis(0, JOY_AXIS_TRIGGER_RIGHT) >= super_trigger_threshold
+
+
+func _read_overdrive_held() -> bool:
+	if Input.is_physical_key_pressed(KEY_SHIFT):
+		return true
+	return Input.get_joy_axis(0, JOY_AXIS_TRIGGER_LEFT) >= overdrive_trigger_threshold
 
 
 func _apply_deadzone(vector: Vector2) -> Vector2:

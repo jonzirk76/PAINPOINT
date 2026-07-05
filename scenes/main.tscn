@@ -146,61 +146,105 @@ anchor_right = 1.0
 offset_left = -376.0
 offset_top = 16.0
 offset_right = -16.0
-offset_bottom = 92.0
+offset_bottom = 146.0
 
 [node name="PanelBackground" type="ColorRect" parent="UI/CombatPanel"]
 offset_right = 360.0
-offset_bottom = 76.0
+offset_bottom = 130.0
 color = Color(0.02, 0.025, 0.03, 0.78)
 
 [node name="HealthLabel" type="Label" parent="UI/CombatPanel"]
 offset_left = 18.0
-offset_top = 10.0
+offset_top = 6.0
 offset_right = 330.0
-offset_bottom = 34.0
-text = "PC HEALTH"
+offset_bottom = 24.0
+text = "LIFE"
 
 [node name="HealthBarBack" type="ColorRect" parent="UI/CombatPanel"]
 offset_left = 18.0
-offset_top = 38.0
+offset_top = 26.0
 offset_right = 324.0
-offset_bottom = 62.0
+offset_bottom = 46.0
 color = Color(0.055, 0.095, 0.065, 1)
 
 [node name="HealthBarFill" type="ColorRect" parent="UI/CombatPanel/HealthBarBack"]
 offset_right = 306.0
-offset_bottom = 24.0
+offset_bottom = 20.0
 color = Color(0.18, 0.92, 0.28, 1)
 
+[node name="HealthTickLayer" type="Control" parent="UI/CombatPanel/HealthBarBack"]
+offset_right = 306.0
+offset_bottom = 20.0
+
 [node name="InvulnerabilityBarBack" type="ColorRect" parent="UI/CombatPanel"]
+visible = false
 offset_left = 18.0
-offset_top = 68.0
+offset_top = 42.0
 offset_right = 324.0
-offset_bottom = 76.0
+offset_bottom = 46.0
 color = Color(0.035, 0.08, 0.09, 1)
 
 [node name="InvulnerabilityBarFill" type="ColorRect" parent="UI/CombatPanel/InvulnerabilityBarBack"]
 offset_right = 0.0
-offset_bottom = 8.0
+offset_bottom = 4.0
 color = Color(0.3, 1, 1, 1)
+
+[node name="OverdriveLabel" type="Label" parent="UI/CombatPanel"]
+offset_left = 18.0
+offset_top = 50.0
+offset_right = 330.0
+offset_bottom = 68.0
+text = "OVERDRIVE"
+
+[node name="OverdriveBarBack" type="ColorRect" parent="UI/CombatPanel"]
+offset_left = 18.0
+offset_top = 70.0
+offset_right = 324.0
+offset_bottom = 90.0
+color = Color(0.04, 0.07, 0.13, 1)
+
+[node name="OverdriveBarFill" type="ColorRect" parent="UI/CombatPanel/OverdriveBarBack"]
+offset_right = 306.0
+offset_bottom = 20.0
+color = Color(0.16, 0.52, 1, 1)
+
+[node name="SuperLabel" type="Label" parent="UI/CombatPanel"]
+offset_left = 18.0
+offset_top = 94.0
+offset_right = 330.0
+offset_bottom = 112.0
+text = "SPECIAL"
+
+[node name="SuperBarBack" type="ColorRect" parent="UI/CombatPanel"]
+offset_left = 18.0
+offset_top = 114.0
+offset_right = 324.0
+offset_bottom = 128.0
+color = Color(0.11, 0.085, 0.025, 1)
+
+[node name="SuperBarFill" type="ColorRect" parent="UI/CombatPanel/SuperBarBack"]
+offset_right = 0.0
+offset_bottom = 14.0
+color = Color(1, 0.76, 0.16, 1)
 
 [node name="AttributeLabel" type="Label" parent="UI/CombatPanel"]
 visible = false
 offset_left = 18.0
-offset_top = 84.0
+offset_top = 132.0
 offset_right = 342.0
-offset_bottom = 144.0
+offset_bottom = 192.0
 text = "Attributes"
 
 [node name="StatsLabel" type="Label" parent="UI/CombatPanel"]
 visible = false
 offset_left = 18.0
-offset_top = 150.0
+offset_top = 198.0
 offset_right = 342.0
-offset_bottom = 178.0
+offset_bottom = 226.0
 text = "Bullet Upgrade Ammo"
 
 [node name="AmmoCounterPanel" type="Control" parent="UI"]
+visible = false
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -72.0

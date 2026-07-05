@@ -56,6 +56,7 @@ const SCRIPT_PATHS := [
 	"res://scripts/resources/enemy_profile.gd",
 	"res://scripts/resources/upgrade_effect.gd",
 	"res://scripts/resources/permanent_upgrade.gd",
+	"res://scripts/resources/overdrive_ammo_pickup.gd",
 	"res://scripts/resources/level_definition.gd",
 	"res://scripts/resources/spawner_profile.gd",
 	"res://scripts/resources/spawner_placement.gd",
@@ -417,7 +418,10 @@ func _test_scene_loads(failures: Array[String]) -> void:
 			if path.ends_with("main.tscn"):
 				var required_nodes := [
 					"UI/CombatPanel/HealthBarBack/HealthBarFill",
+					"UI/CombatPanel/HealthBarBack/HealthTickLayer",
 					"UI/CombatPanel/InvulnerabilityBarBack/InvulnerabilityBarFill",
+					"UI/CombatPanel/OverdriveBarBack/OverdriveBarFill",
+					"UI/CombatPanel/SuperBarBack/SuperBarFill",
 					"UI/CombatPanel/AttributeLabel",
 					"UI/CombatPanel/StatsLabel",
 					"UI/AmmoCounterPanel",
@@ -463,8 +467,10 @@ func _test_scene_loads(failures: Array[String]) -> void:
 						failures.append("Score panel should sit prominently at the upper middle of the screen.")
 				if instance.has_node("UI/CombatPanel"):
 					var combat_panel: Control = instance.get_node("UI/CombatPanel")
-					if combat_panel.size.y > 96.0:
-						failures.append("Upper-right combat panel should stay compact enough to read as health-only.")
+					if combat_panel.size.y > 140.0:
+						failures.append("Upper-right combat panel should stay compact while showing health, overdrive, and special.")
+					if not instance.has_node("UI/CombatPanel/OverdriveBarBack/OverdriveBarFill") or not instance.has_node("UI/CombatPanel/SuperBarBack/SuperBarFill"):
+						failures.append("Combat panel should render blue overdrive and yellow special resource bars.")
 				if instance.has_node("Managers/InputManager"):
 					var input_manager_node: Node = instance.get_node("Managers/InputManager")
 					if input_manager_node.process_mode != Node.PROCESS_MODE_ALWAYS:
@@ -644,6 +650,9 @@ func _test_aim_change_logic(failures: Array[String]) -> void:
 		failures.append("Tiny aim drift should not request another fire.")
 	if not manager.should_fire_for_aim_change(Vector2.UP):
 		failures.append("Large aim state change should request fire.")
+	var input_source := _read_text("res://scripts/managers/input_manager.gd")
+	if not input_source.contains("JOY_AXIS_TRIGGER_LEFT") or not input_source.contains("KEY_SHIFT") or not input_source.contains("overdrive_changed"):
+		failures.append("InputManager should expose Left Shift / left-trigger overdrive without replacing right-trigger super charge.")
 	manager.free()
 
 
@@ -843,6 +852,20 @@ func _test_upgrade_modifiers_and_expiry(failures: Array[String]) -> void:
 	var move_speed = load("res://resources/permanent_upgrades/runner_legs.tres")
 	var damage = load("res://resources/permanent_upgrades/heavy_tears.tres")
 	var size = load("res://resources/permanent_upgrades/fat_tears.tres")
+	var capacity = load("res://resources/permanent_upgrades/overdrive_capacity.tres")
+	manager.reset_run()
+	if manager.get_overdrive_max_ammo() != 40 or manager.get_overdrive_ammo() != 40:
+		failures.append("Overdrive should start full with 40 max ammo.")
+	var idle_modifiers: Dictionary = manager.get_modifiers()
+	if bool(idle_modifiers["overdrive_active"]) or float(idle_modifiers["projectile_size_multiplier"]) != 1.0:
+		failures.append("Overdrive modifiers should not apply until overdrive is held.")
+	manager.set_overdrive_active(true)
+	var no_stack_modifiers: Dictionary = manager.get_modifiers()
+	if not bool(no_stack_modifiers["overdrive_active"]) or float(no_stack_modifiers["projectile_size_multiplier"]) < 2.0:
+		failures.append("No-stack overdrive should spend ammo for a doubled regular bullet.")
+	if not manager.consume_overdrive_shot() or manager.get_overdrive_ammo() != 39:
+		failures.append("Each overdrive shot should consume exactly one shared ammo.")
+	manager.activate_upgrade(spread)
 	manager.activate_upgrade(spread)
 	manager.activate_upgrade(pierce)
 	manager.activate_upgrade(fire)
@@ -851,16 +874,15 @@ func _test_upgrade_modifiers_and_expiry(failures: Array[String]) -> void:
 	manager.activate_permanent_upgrade(move_speed)
 	manager.activate_permanent_upgrade(damage)
 	manager.activate_permanent_upgrade(size)
-	manager.consume_shot()
+	manager.activate_permanent_upgrade(capacity)
 	var active_effects: Array = manager.get_active_effects()
-	for state in active_effects:
-		if int(state["max_ammo"]) > 0 and int(state["ammo"]) >= int(state["max_ammo"]):
-			failures.append("Upgrade ammo did not decrement after consume_shot.")
+	if active_effects.size() != 4:
+		failures.append("Overdrive effects should stack by effect type.")
 	var modifiers: Dictionary = manager.get_modifiers()
 	if int(modifiers["projectile_count"]) != 3:
-		failures.append("Spread shot should use a tuned three-way spread.")
-	if int(modifiers["pierce_count"]) < 3:
-		failures.append("Piercing shot did not increase pierce count.")
+		failures.append("Two Spread overdrive stacks should add two extra projectiles.")
+	if int(modifiers["pierce_count"]) < 2:
+		failures.append("Pierce and Water overdrive stacks should add stack-based pierce.")
 	if float(modifiers["fire_cooldown_multiplier"]) >= 1.0:
 		failures.append("Permanent fire-rate upgrade did not reduce cooldown multiplier.")
 	if float(modifiers["move_speed_multiplier"]) <= 1.0:
@@ -873,16 +895,20 @@ func _test_upgrade_modifiers_and_expiry(failures: Array[String]) -> void:
 		failures.append("Fire Burst did not add explosion radius.")
 	if float(modifiers["projectile_growth_per_second"]) <= 0.0:
 		failures.append("Water Swell did not add projectile growth.")
-	if int(modifiers["pierce_count"]) < 99:
-		failures.append("Water Swell did not allow projectiles to pass through enemies.")
-	if manager.get_permanent_stats().size() != 4:
+	if manager.get_permanent_stats().size() != 5:
 		failures.append("Permanent upgrade stats were not tracked.")
+	if manager.get_overdrive_max_ammo() != 60:
+		failures.append("Overdrive capacity treasure upgrade should add 20 max ammo.")
 	if fire_rate.max_stacks < 16 or move_speed.max_stacks < 16 or damage.max_stacks < 14 or size.max_stacks < 14:
 		failures.append("Permanent upgrade stack ceilings should be higher for longer dungeon runs.")
 	manager.set_enabled(true)
 	manager._process(99.0)
 	if manager.get_active_effects().is_empty():
-		failures.append("Ammo upgrades should not expire by timer.")
+		failures.append("Overdrive upgrades should be permanent run-long stacks.")
+	manager.set_overdrive_active(false)
+	var inactive_modifiers: Dictionary = manager.get_modifiers()
+	if int(inactive_modifiers["projectile_count"]) != 1 or int(inactive_modifiers["chain_count"]) != 0:
+		failures.append("Overdrive effect stacks should not affect regular shots while overdrive is released.")
 	manager.free()
 
 
@@ -894,27 +920,23 @@ func _test_ammo_type_balance(failures: Array[String]) -> void:
 	var water = load("res://resources/upgrades/water_swell.tres")
 	var manager = load("res://scripts/managers/upgrade_manager.gd").new()
 	var projectile_manager = load("res://scripts/managers/projectile_manager.gd").new()
-	if int(spread.max_ammo) > 48 or int(pierce.max_ammo) > 48 or int(chain.max_ammo) > 36 or int(fire.max_ammo) > 40 or int(water.max_ammo) > 42:
-		failures.append("Ammo upgrade caps should be trimmed so stacked synergies cannot sustain too long.")
+	if int(spread.max_ammo) != 0 or int(pierce.max_ammo) != 0 or int(chain.max_ammo) != 0 or int(fire.max_ammo) != 0 or int(water.max_ammo) != 0:
+		failures.append("Overdrive effect resources should not carry individual ammo pools.")
 	manager.activate_upgrade(pierce)
+	manager.set_overdrive_active(true)
 	var modifiers: Dictionary = manager.get_modifiers()
-	if float(modifiers["damage_multiplier"]) < 1.5:
-		failures.append("Piercing Shot should have a precision damage fallback.")
+	if float(modifiers["damage_multiplier"]) < 1.1:
+		failures.append("Piercing overdrive should have a small stack-based damage fallback.")
 	var packet = projectile_manager._create_damage_packet(modifiers, Vector2.ZERO, Vector2.RIGHT)
-	if packet.damage < 2:
-		failures.append("Piercing Shot should create a 2-damage projectile with current base damage.")
+	if packet.damage < 1 or packet.pierce_count < 1:
+		failures.append("Piercing overdrive should create a piercing projectile while held.")
 	manager.activate_upgrade(spread)
-	for _index in range(12):
-		manager.consume_shot()
-	var before_pierce: int = int(manager._active_effects["piercing_shot"]["ammo"])
-	var before_spread: int = int(manager._active_effects["spread_shot"]["ammo"])
+	for _index in range(10):
+		manager.consume_overdrive_shot()
+	var before_ammo: int = manager.get_overdrive_ammo()
 	var ammo_added: int = manager.add_ammo_to_active_upgrades(8)
-	var after_pierce: int = int(manager._active_effects["piercing_shot"]["ammo"])
-	var after_spread: int = int(manager._active_effects["spread_shot"]["ammo"])
-	if ammo_added != 8 or after_pierce + after_spread - before_pierce - before_spread != 8:
-		failures.append("Parry ammo should be a shared refill pool across active ammo upgrades.")
-	if after_pierce - before_pierce > 5 or after_spread - before_spread > 5:
-		failures.append("Shared parry ammo refill should not grant the full award to every stacked ammo type.")
+	if ammo_added != 8 or manager.get_overdrive_ammo() - before_ammo != 8:
+		failures.append("Parry ammo should refill the shared overdrive ammo pool.")
 	projectile_manager.free()
 	manager.free()
 
@@ -933,15 +955,14 @@ func _test_low_ammo_warning(failures: Array[String]) -> void:
 		main._enter_level_select()
 	main._selected_level_index = 0
 	main._start_selected_level()
-	var spread = load("res://resources/upgrades/spread_shot.tres")
-	main.upgrade_manager.activate_upgrade(spread)
-	for _index in range(max(int(spread.max_ammo) - 8, 0)):
-		main.upgrade_manager.consume_shot()
+	main.upgrade_manager.set_overdrive_active(true)
+	for _index in range(34):
+		main.upgrade_manager.consume_overdrive_shot()
 	main._update_hud()
 	if main.player_manager.player == null or not bool(main.player_manager.player._ammo_warning_active):
 		failures.append("Low ammo should create a visible warning around the player.")
-	elif not String(main.player_manager.player._ammo_warning_text).begins_with("SP"):
-		failures.append("Low ammo warning should identify the nearly empty ammo upgrade.")
+	elif not String(main.player_manager.player._ammo_warning_text).begins_with("OD"):
+		failures.append("Low ammo warning should identify the nearly empty overdrive pool.")
 	main.free()
 
 
@@ -955,10 +976,10 @@ func _test_parry_absorbs_hostile_projectiles_for_ammo(failures: Array[String]) -
 		"projectile_layer": projectile_layer
 	})
 	projectile_manager.set_enabled(true)
-	upgrade_manager.activate_upgrade(load("res://resources/upgrades/spread_shot.tres"))
-	var spread_max_ammo := int(load("res://resources/upgrades/spread_shot.tres").max_ammo)
+	upgrade_manager.reset_run()
+	upgrade_manager.set_overdrive_active(true)
 	for _index in range(20):
-		upgrade_manager.consume_shot()
+		upgrade_manager.consume_overdrive_shot()
 	projectile_manager.fire_hostile(Vector2(12.0, 0.0), Vector2.RIGHT, {"speed": 250.0, "damage": 1, "radius": 7.0})
 	projectile_manager.fire_hostile(Vector2(82.0, 0.0), Vector2.RIGHT, {"speed": 250.0, "damage": 1, "radius": 7.0})
 	projectile_manager.fire_hostile(Vector2(220.0, 0.0), Vector2.RIGHT, {"speed": 250.0, "damage": 1, "radius": 7.0})
@@ -980,9 +1001,8 @@ func _test_parry_absorbs_hostile_projectiles_for_ammo(failures: Array[String]) -
 	if projectile_manager._projectiles.size() != 2:
 		failures.append("Parry should leave outside hostile bullets and player bullets alive.")
 	var ammo_added: int = upgrade_manager.add_ammo_to_active_upgrades(int(absorbed["ammo_awarded"]))
-	var active_effects: Array = upgrade_manager.get_active_effects()
-	if ammo_added != 11 or active_effects.is_empty() or int(active_effects[0]["ammo"]) != spread_max_ammo - 9:
-		failures.append("Parry ammo should refill currently active ammo upgrades.")
+	if ammo_added != 11 or upgrade_manager.get_overdrive_ammo() != 31:
+		failures.append("Parry ammo should refill the shared overdrive pool.")
 	projectile_manager.free()
 	projectile_layer.free()
 	upgrade_manager.free()
@@ -1035,10 +1055,9 @@ func _test_parry_absorb_visuals_and_ammo_flash(failures: Array[String]) -> void:
 		main._enter_level_select()
 	main._selected_level_index = 0
 	main._start_selected_level()
-	var spread = load("res://resources/upgrades/spread_shot.tres")
-	main.upgrade_manager.activate_upgrade(spread)
+	main.upgrade_manager.set_overdrive_active(true)
 	for _index in range(8):
-		main.upgrade_manager.consume_shot()
+		main.upgrade_manager.consume_overdrive_shot()
 	main.projectile_manager.fire_hostile(Vector2(18.0, 0.0), Vector2.RIGHT, {"speed": 250.0, "damage": 1, "radius": 7.0})
 	main._on_player_parry_requested(Vector2.ZERO, 100.0, 24.0, 430.0)
 	if main._ammo_refill_flash_remaining <= 0.0:
@@ -1055,18 +1074,10 @@ func _test_parry_absorb_visuals_and_ammo_flash(failures: Array[String]) -> void:
 		var absorb_effect = main.get_node("World/EffectLayer").get_child(0)
 		var absorb_target: Vector2 = absorb_effect.get("end_position")
 		if absorb_target.distance_squared_to(Vector2.ZERO) <= 1.0:
-			failures.append("Parry absorb effects should fly toward ammo counters instead of ending on the player.")
+			failures.append("Parry absorb effects should fly toward the overdrive bar instead of ending on the player.")
 	main._process(0.12)
-	if main.ammo_counter_panel.get_child_count() <= 0:
-		failures.append("Active ammo upgrades should render ammo counter squares.")
-	else:
-		var row: Control = main.ammo_counter_panel.get_child(0)
-		if row.get_node_or_null("RefillFlash") == null:
-			failures.append("Ammo counter squares should flash while parry ammo fills them.")
-		if row.get_node_or_null("PerfectRefillFlash") == null:
-			failures.append("Perfect parry ammo counter squares should flash white.")
-		if row.position.y >= -10.0:
-			failures.append("Perfect parry ammo counter squares should visibly jump higher during refill feedback.")
+	if main.overdrive_fill == null or main._ammo_refill_flash_remaining <= 0.0:
+		failures.append("Overdrive bar should flash while parry ammo fills it.")
 	main._stop_perfect_parry_slowmo()
 	main.free()
 
@@ -1176,23 +1187,17 @@ func _test_reward_driven_pickup_drops(failures: Array[String]) -> void:
 	manager._process(manager.pickup_spawn_interval + 1.0)
 	if manager.get_pickup_count() != 0:
 		failures.append("ItemManager should not spawn random timed map pickups.")
-	if manager.enemy_permanent_drop_chance > 0.2 or manager.enemy_permanent_drop_chance < 0.16:
-		failures.append("Enemy permanent drop chance should be reduced for larger battles.")
-	if manager.enemy_temporary_drop_chance > 0.065:
-		failures.append("Enemy ammo upgrade drops should be trimmed for higher enemy counts.")
-	if manager.enemy_heal_drop_chance > 0.11:
-		failures.append("Enemy heal drops should be trimmed for higher enemy counts.")
-	if manager.enemy_temporary_drop_chance >= manager.enemy_permanent_drop_chance:
-		failures.append("Enemy ammo upgrade drops should be infrequent compared to permanent drops.")
-	if manager.enemy_heal_drop_chance <= manager.enemy_temporary_drop_chance:
-		failures.append("Enemy heal drops should be slightly more frequent than ammo upgrade drops.")
+	if manager.enemy_permanent_drop_chance != 0.0 or manager.enemy_temporary_drop_chance != 0.0:
+		failures.append("Enemies should no longer drop permanent stats or overdrive effect upgrades.")
+	if manager.enemy_overdrive_ammo_drop_chance <= 0.0 or manager.enemy_overdrive_ammo_drop_chance >= manager.enemy_heal_drop_chance:
+		failures.append("Enemies should drop mostly health, with rarer overdrive ammo cells.")
 	manager.spawner_full_heal_drop_chance = 0.0
 	manager.drop_spawner_reward(Vector2.ZERO)
 	if manager.get_pickup_count() != 1:
 		failures.append("Spawner destruction should always create one reward pickup.")
 	var pickup = manager._pickups[0]
-	if pickup == null or pickup.upgrade_effect == null or (pickup.upgrade_effect.has_method("get_pickup_kind") and pickup.upgrade_effect.get_pickup_kind() == "permanent"):
-		failures.append("Spawner ammo reward should be an ammo/shot upgrade, not a permanent upgrade.")
+	if pickup == null or pickup.upgrade_effect == null or pickup.upgrade_effect.get_pickup_kind() != "overdrive_ammo" or int(pickup.upgrade_effect.amount) < 20:
+		failures.append("Spawner non-heal reward should be an overdrive ammo cache.")
 	manager.clear_pickups()
 	manager.spawner_full_heal_drop_chance = 1.0
 	manager.drop_spawner_reward(Vector2.ZERO)
@@ -1203,8 +1208,7 @@ func _test_reward_driven_pickup_drops(failures: Array[String]) -> void:
 		if full_heal_pickup.upgrade_effect == null or full_heal_pickup.upgrade_effect.get_pickup_kind() != "heal" or int(full_heal_pickup.upgrade_effect.heal_amount) < 99:
 			failures.append("Spawner full-heal reward should use a full heal pickup resource.")
 	manager.clear_pickups()
-	manager.enemy_temporary_drop_chance = 0.0
-	manager.enemy_permanent_drop_chance = 0.0
+	manager.enemy_overdrive_ammo_drop_chance = 0.0
 	manager.enemy_heal_drop_chance = 1.0
 	manager.roll_enemy_drop(Vector2.ZERO)
 	if manager.get_pickup_count() != 1:
@@ -1213,6 +1217,40 @@ func _test_reward_driven_pickup_drops(failures: Array[String]) -> void:
 		var heal_pickup = manager._pickups[0]
 		if heal_pickup.upgrade_effect == null or heal_pickup.upgrade_effect.get_pickup_kind() != "heal":
 			failures.append("Enemy heal drop should use the heal pickup resource.")
+	manager.clear_pickups()
+	manager.spawn_overdrive_reward_choices(Vector2.ZERO)
+	if manager.get_pickup_count() != 3:
+		failures.append("Overdrive reward rooms should spawn three optional choices.")
+	else:
+		var reward_pickup = manager._pickups[0]
+		if not bool(reward_pickup.get("requires_confirm")):
+			failures.append("Reward choices should require confirm instead of auto-collecting.")
+		var focus_descriptions: Array[String] = []
+		manager.reward_focus_changed.connect(func(_effect, description: String) -> void:
+			if not description.is_empty():
+				focus_descriptions.append(description)
+		)
+		var player = load("res://scenes/entities/player_entity.tscn").instantiate()
+		reward_pickup._on_body_entered(player)
+		if focus_descriptions.is_empty():
+			failures.append("Focused reward choices should publish a description.")
+		if not manager.collect_focused_reward() or manager.get_pickup_count() != 0:
+			failures.append("Confirming one reward choice should collect it and clear the other choices.")
+		player.free()
+	manager.clear_pickups()
+	manager.spawn_treasure_reward_choices(Vector2.ZERO)
+	if manager.get_pickup_count() != 3:
+		failures.append("Treasure rooms should spawn three permanent-stat choices.")
+	else:
+		var found_capacity_in_pool := false
+		for upgrade in manager.permanent_upgrades:
+			if upgrade != null and upgrade.has_method("get_stat_key") and upgrade.get_stat_key() == "overdrive_capacity":
+				found_capacity_in_pool = true
+		if not found_capacity_in_pool:
+			failures.append("Treasure reward pool should include overdrive capacity upgrades.")
+		for choice in manager._pickups:
+			if choice.upgrade_effect == null or choice.upgrade_effect.get_pickup_kind() != "permanent":
+				failures.append("Treasure reward choices should be permanent stat upgrades.")
 	manager.free()
 	pickup_layer.free()
 
@@ -3114,6 +3152,8 @@ func _test_orchestrator_main_loop_floor_progression(failures: Array[String]) -> 
 		failures.append("Main loop should tally boss kills immediately.")
 	if not main._floor_exit_portal_active():
 		failures.append("Main loop boss kill should activate an exit portal instead of instantly clearing the floor.")
+	if main.item_manager.get_pickup_count() != 3:
+		failures.append("Main loop boss kill should spawn three optional overdrive reward choices.")
 	if main.win_panel.visible:
 		failures.append("Main loop should wait for the portal entry before showing the next-floor panel.")
 	if bool(main._tree_pause_requested):
@@ -3169,9 +3209,16 @@ func _prime_main_for_direct_test_calls(main) -> void:
 	main.score_label = main.get_node("UI/ScorePanel/ScoreLabel")
 	main.dungeon_minimap = main.get_node("UI/DungeonMinimap")
 	main.combat_panel = main.get_node("UI/CombatPanel")
+	main.health_bar_back = main.get_node("UI/CombatPanel/HealthBarBack")
 	main.health_fill = main.get_node("UI/CombatPanel/HealthBarBack/HealthBarFill")
+	main.health_tick_layer = main.get_node("UI/CombatPanel/HealthBarBack/HealthTickLayer")
 	main.health_label = main.get_node("UI/CombatPanel/HealthLabel")
+	main.invulnerability_bar_back = main.get_node("UI/CombatPanel/InvulnerabilityBarBack")
 	main.invulnerability_fill = main.get_node("UI/CombatPanel/InvulnerabilityBarBack/InvulnerabilityBarFill")
+	main.overdrive_label = main.get_node("UI/CombatPanel/OverdriveLabel")
+	main.overdrive_fill = main.get_node("UI/CombatPanel/OverdriveBarBack/OverdriveBarFill")
+	main.super_label = main.get_node("UI/CombatPanel/SuperLabel")
+	main.super_fill = main.get_node("UI/CombatPanel/SuperBarBack/SuperBarFill")
 	main.attribute_label = main.get_node("UI/CombatPanel/AttributeLabel")
 	main.stats_label = main.get_node("UI/CombatPanel/StatsLabel")
 	main.ammo_counter_panel = main.get_node("UI/AmmoCounterPanel")

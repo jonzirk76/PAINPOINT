@@ -5,7 +5,8 @@ enum StatType {
 	FIRE_RATE,
 	MOVE_SPEED,
 	DAMAGE,
-	PROJECTILE_SIZE
+	PROJECTILE_SIZE,
+	OVERDRIVE_CAPACITY
 }
 
 @export var id: String = "permanent_upgrade"
@@ -29,6 +30,8 @@ func get_stat_key() -> String:
 			return "damage"
 		StatType.PROJECTILE_SIZE:
 			return "projectile_size"
+		StatType.OVERDRIVE_CAPACITY:
+			return "overdrive_capacity"
 	return "unknown"
 
 
@@ -42,4 +45,21 @@ func get_stat_label() -> String:
 			return "Bullet Damage"
 		StatType.PROJECTILE_SIZE:
 			return "Projectile Size"
+		StatType.OVERDRIVE_CAPACITY:
+			return "Overdrive Capacity"
 	return "Unknown"
+
+
+func get_reward_description() -> String:
+	match stat_type:
+		StatType.FIRE_RATE:
+			return "%s: fire rate +%d%%." % [display_name, roundi(amount * 100.0)]
+		StatType.MOVE_SPEED:
+			return "%s: move speed +%d%%." % [display_name, roundi(amount * 100.0)]
+		StatType.DAMAGE:
+			return "%s: bullet damage +%d%%." % [display_name, roundi(amount * 100.0)]
+		StatType.PROJECTILE_SIZE:
+			return "%s: projectile size +%d%%." % [display_name, roundi(amount * 100.0)]
+		StatType.OVERDRIVE_CAPACITY:
+			return "%s: max overdrive ammo +%d." % [display_name, roundi(amount)]
+	return display_name

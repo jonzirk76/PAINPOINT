@@ -8,3 +8,7 @@ class_name HealthPickup
 
 func get_pickup_kind() -> String:
 	return "heal"
+
+
+func get_reward_description() -> String:
+	return "%s: restore %d health." % [display_name, heal_amount]

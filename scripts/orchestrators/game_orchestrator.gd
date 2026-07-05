@@ -33,9 +33,16 @@ const FLOOR_EXIT_PORTAL_SCENE := preload("res://scenes/entities/floor_exit_porta
 @onready var score_label: Label = $UI/ScorePanel/ScoreLabel
 @onready var dungeon_minimap: Control = $UI/DungeonMinimap
 @onready var combat_panel: Control = $UI/CombatPanel
+@onready var health_bar_back: ColorRect = $UI/CombatPanel/HealthBarBack
 @onready var health_fill: ColorRect = $UI/CombatPanel/HealthBarBack/HealthBarFill
+@onready var health_tick_layer: Control = $UI/CombatPanel/HealthBarBack/HealthTickLayer
 @onready var health_label: Label = $UI/CombatPanel/HealthLabel
+@onready var invulnerability_bar_back: ColorRect = $UI/CombatPanel/InvulnerabilityBarBack
 @onready var invulnerability_fill: ColorRect = $UI/CombatPanel/InvulnerabilityBarBack/InvulnerabilityBarFill
+@onready var overdrive_label: Label = $UI/CombatPanel/OverdriveLabel
+@onready var overdrive_fill: ColorRect = $UI/CombatPanel/OverdriveBarBack/OverdriveBarFill
+@onready var super_label: Label = $UI/CombatPanel/SuperLabel
+@onready var super_fill: ColorRect = $UI/CombatPanel/SuperBarBack/SuperBarFill
 @onready var attribute_label: Label = $UI/CombatPanel/AttributeLabel
 @onready var stats_label: Label = $UI/CombatPanel/StatsLabel
 @onready var ammo_counter_panel: Control = $UI/AmmoCounterPanel
@@ -66,6 +73,12 @@ var _last_super_meter: float = 0.0
 var _last_super_meter_max: float = 100.0
 var _last_super_is_charging: bool = false
 var _last_super_charge_ratio: float = 0.0
+var _last_overdrive_ammo: int = 40
+var _last_overdrive_max_ammo: int = 40
+var _last_overdrive_is_held: bool = false
+var _last_overdrive_is_active: bool = false
+var _last_overdrive_has_effects: bool = false
+var _last_overdrive_effects: Array = []
 var _status: String = "RUNNING"
 var _latest_modifiers: Dictionary = {}
 var _attribute_modifiers: Dictionary = {}
@@ -90,6 +103,8 @@ var _tree_pause_requested: bool = false
 var _boss_clear_delay_remaining: float = 0.0
 var _boss_clear_pending_status: String = ""
 var _floor_exit_portal = null
+var _rewarded_room_ids: Dictionary = {}
+var _reward_prompt_text: String = ""
 var _ammo_refill_flash_remaining: float = 0.0
 var _ammo_refill_flash_duration: float = 0.48
 var _ammo_refill_perfect_flash_remaining: float = 0.0
@@ -157,6 +172,7 @@ func _connect_manager_signals() -> void:
 	_connect_once(input_manager, &"pause_requested", _on_pause_requested)
 	_connect_once(input_manager, &"super_charge_pressed", _on_input_super_charge_pressed)
 	_connect_once(input_manager, &"super_charge_released", _on_input_super_charge_released)
+	_connect_once(input_manager, &"overdrive_changed", _on_input_overdrive_changed)
 
 	_connect_once(player_manager, &"player_health_changed", _on_player_health_changed)
 	_connect_once(player_manager, &"player_invulnerability_changed", _on_player_invulnerability_changed)
@@ -187,8 +203,10 @@ func _connect_manager_signals() -> void:
 	_connect_once(destructible_manager, &"prop_destroyed", _on_destructible_prop_destroyed)
 	_connect_once(item_manager, &"pickup_collected", _on_pickup_collected)
 	_connect_once(item_manager, &"pickup_count_changed", _on_pickup_count_changed)
+	_connect_once(item_manager, &"reward_focus_changed", _on_reward_focus_changed)
 	_connect_once(upgrade_manager, &"upgrade_changed", _on_upgrade_changed)
 	_connect_once(upgrade_manager, &"permanent_upgrades_changed", _on_permanent_upgrades_changed)
+	_connect_once(upgrade_manager, &"overdrive_changed", _on_overdrive_changed)
 	_connect_once(room_manager, &"door_entered", _on_room_door_entered)
 
 
@@ -271,6 +289,7 @@ func _start_level(level_definition) -> void:
 	_last_super_meter_max = player_manager.get_super_meter_max()
 	_last_super_is_charging = false
 	_last_super_charge_ratio = 0.0
+	_reset_overdrive_hud_state()
 	_ammo_refill_flash_remaining = 0.0
 	_ammo_refill_perfect_flash_remaining = 0.0
 	_super_meter_flash_remaining = 0.0
@@ -279,6 +298,8 @@ func _start_level(level_definition) -> void:
 	_clear_floor_exit_portal()
 	_attribute_modifiers = {}
 	_permanent_stats = []
+	_rewarded_room_ids.clear()
+	_reward_prompt_text = ""
 	if level_select_panel != null:
 		level_select_panel.visible = false
 	if game_over_panel != null:
@@ -334,6 +355,7 @@ func _start_dungeon_run() -> void:
 	_last_super_meter_max = player_manager.get_super_meter_max()
 	_last_super_is_charging = false
 	_last_super_charge_ratio = 0.0
+	_reset_overdrive_hud_state()
 	_ammo_refill_flash_remaining = 0.0
 	_ammo_refill_perfect_flash_remaining = 0.0
 	_super_meter_flash_remaining = 0.0
@@ -342,6 +364,8 @@ func _start_dungeon_run() -> void:
 	_clear_floor_exit_portal()
 	_attribute_modifiers = {}
 	_permanent_stats = []
+	_rewarded_room_ids.clear()
+	_reward_prompt_text = ""
 	if level_select_panel != null:
 		level_select_panel.visible = false
 	if game_over_panel != null:
@@ -388,6 +412,7 @@ func _start_main_loop_run() -> void:
 	_last_super_meter_max = player_manager.get_super_meter_max()
 	_last_super_is_charging = false
 	_last_super_charge_ratio = 0.0
+	_reset_overdrive_hud_state()
 	_ammo_refill_flash_remaining = 0.0
 	_ammo_refill_perfect_flash_remaining = 0.0
 	_super_meter_flash_remaining = 0.0
@@ -396,6 +421,8 @@ func _start_main_loop_run() -> void:
 	_clear_floor_exit_portal()
 	_attribute_modifiers = {}
 	_permanent_stats = []
+	_rewarded_room_ids.clear()
+	_reward_prompt_text = ""
 	if level_select_panel != null:
 		level_select_panel.visible = false
 	if game_over_panel != null:
@@ -428,6 +455,8 @@ func _advance_main_loop_floor() -> void:
 	_main_loop_floor += 1
 	_status = "STARTING"
 	_clear_floor_exit_portal()
+	_rewarded_room_ids.clear()
+	_reward_prompt_text = ""
 	if win_panel != null:
 		win_panel.visible = false
 	dungeon_manager.reset_run(_main_loop_floor, _run_seed)
@@ -460,8 +489,11 @@ func _enter_level_select() -> void:
 	_last_super_meter_max = player_manager.get_super_meter_max()
 	_last_super_is_charging = false
 	_last_super_charge_ratio = 0.0
+	_reset_overdrive_hud_state()
 	_stop_perfect_parry_slowmo()
 	_clear_floor_exit_portal()
+	_rewarded_room_ids.clear()
+	_reward_prompt_text = ""
 	_set_all_enabled(false)
 	_clear_gameplay()
 	_clear_minimap()
@@ -516,6 +548,15 @@ func _set_tree_paused(value: bool) -> void:
 		get_tree().paused = value
 
 
+func _reset_overdrive_hud_state() -> void:
+	_last_overdrive_ammo = upgrade_manager.get_overdrive_ammo() if upgrade_manager != null else 40
+	_last_overdrive_max_ammo = upgrade_manager.get_overdrive_max_ammo() if upgrade_manager != null else 40
+	_last_overdrive_is_held = false
+	_last_overdrive_is_active = false
+	_last_overdrive_has_effects = false
+	_last_overdrive_effects = []
+
+
 func _should_advance_gameplay_feedback() -> bool:
 	return not _tree_pause_requested and (_is_gameplay_running() or _status == "DOWN")
 
@@ -536,10 +577,15 @@ func _on_input_super_charge_released(direction: Vector2) -> void:
 	player_manager.request_super_charge_release(direction)
 
 
+func _on_input_overdrive_changed(is_held: bool) -> void:
+	upgrade_manager.set_overdrive_active(is_held and _is_gameplay_running())
+
+
 func _on_player_shoot_requested(origin: Vector2, direction: Vector2) -> void:
 	audio_manager.play_player_shot()
-	projectile_manager.fire(origin, direction, _latest_modifiers)
-	upgrade_manager.consume_shot()
+	var shot_modifiers: Dictionary = upgrade_manager.get_modifiers()
+	projectile_manager.fire(origin, direction, shot_modifiers)
+	upgrade_manager.consume_overdrive_shot()
 
 
 func _on_player_super_shot_requested(origin: Vector2, direction: Vector2, charge_ratio: float) -> void:
@@ -732,6 +778,7 @@ func _on_enemy_defeated(_enemy, score_value: int) -> void:
 			_run_boss_kills += 1
 			if _is_main_loop_run:
 				_score += _get_boss_floor_bonus()
+				_spawn_floor_overdrive_reward_choices(_enemy.global_position)
 				_activate_boss_exit_portal(_enemy.global_position, float(_enemy.body_radius))
 				_update_hud()
 				return
@@ -817,7 +864,7 @@ func _on_player_parry_requested(origin: Vector2, effect_radius: float, perfect_r
 		var meter_gain: float = float(regular_count) * player_manager.super_meter_parried_bullet_gain + float(perfect_count) * player_manager.super_meter_perfect_bullet_gain
 		player_manager.add_super_meter(meter_gain)
 	if ammo_awarded > 0:
-		ammo_added = upgrade_manager.add_ammo_to_active_upgrades(ammo_awarded)
+		ammo_added = upgrade_manager.add_overdrive_ammo(ammo_awarded)
 	if ammo_added > 0:
 		_ammo_refill_flash_remaining = _ammo_refill_flash_duration
 		if was_perfect:
@@ -856,30 +903,15 @@ func _target_parry_absorbs_at_ammo_counters(absorbed_projectiles: Array) -> void
 
 func _get_ammo_counter_world_targets() -> Array[Vector2]:
 	var targets: Array[Vector2] = []
-	if ammo_counter_panel == null:
+	if overdrive_fill != null:
+		targets.append(_screen_to_world_position(overdrive_fill.get_global_rect().get_center()))
 		return targets
-	for child in ammo_counter_panel.get_children():
-		var counter := child as Control
-		if counter == null:
-			continue
-		targets.append(_screen_to_world_position(counter.get_global_rect().get_center()))
-	if not targets.is_empty():
-		return targets
-	var fallback_count := 0
-	for state in upgrade_manager.get_active_effects():
-		if int(state.get("max_ammo", 0)) > 0:
-			fallback_count += 1
-	fallback_count = min(fallback_count, 5)
-	var panel_origin: Vector2 = ammo_counter_panel.get_global_rect().position
-	if panel_origin == Vector2.ZERO:
-		var viewport_size := Vector2(1280.0, 720.0)
-		if is_inside_tree():
-			viewport_size = get_viewport_rect().size
-			if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
-				viewport_size = Vector2(1280.0, 720.0)
-		panel_origin = Vector2(viewport_size.x - 72.0, 104.0)
-	for index in range(fallback_count):
-		targets.append(_screen_to_world_position(panel_origin + Vector2(28.0, float(index) * 62.0 + 28.0)))
+	var viewport_size := Vector2(1280.0, 720.0)
+	if is_inside_tree():
+		viewport_size = get_viewport_rect().size
+		if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+			viewport_size = Vector2(1280.0, 720.0)
+	targets.append(_screen_to_world_position(Vector2(viewport_size.x - 178.0, 64.0)))
 	return targets
 
 
@@ -933,6 +965,19 @@ func _on_upgrade_changed(modifiers: Dictionary, _active_effects: Array) -> void:
 	_update_hud()
 
 
+func _on_overdrive_changed(state: Dictionary) -> void:
+	var previous_ammo := _last_overdrive_ammo
+	_last_overdrive_ammo = int(state.get("ammo", 0))
+	_last_overdrive_max_ammo = max(int(state.get("max_ammo", 1)), 1)
+	_last_overdrive_is_held = bool(state.get("is_held", false))
+	_last_overdrive_is_active = bool(state.get("is_active", false))
+	_last_overdrive_has_effects = bool(state.get("has_effects", false))
+	_last_overdrive_effects = state.get("effects", [])
+	if _last_overdrive_ammo > previous_ammo:
+		_ammo_refill_flash_remaining = _ammo_refill_flash_duration
+	_update_hud()
+
+
 func _on_permanent_upgrades_changed(attribute_modifiers: Dictionary, permanent_stats: Array) -> void:
 	_attribute_modifiers = attribute_modifiers
 	_permanent_stats = permanent_stats
@@ -958,15 +1003,27 @@ func _on_pickup_collected(pickup_resource) -> void:
 		return
 	audio_manager.play_pickup()
 	_run_pickups_collected += 1
-	if pickup_resource.has_method("get_pickup_kind") and pickup_resource.get_pickup_kind() == "heal":
-		_run_heals += 1
-		player_manager.apply_healing(int(pickup_resource.heal_amount))
-	else:
-		if pickup_resource.has_method("get_pickup_kind") and pickup_resource.get_pickup_kind() == "permanent":
-			_run_permanent_upgrades += 1
-		else:
+	var pickup_kind := String(pickup_resource.get_pickup_kind()) if pickup_resource.has_method("get_pickup_kind") else "overdrive_effect"
+	match pickup_kind:
+		"heal":
+			_run_heals += 1
+			player_manager.apply_healing(int(pickup_resource.heal_amount))
+		"overdrive_ammo":
 			_run_ammo_upgrades += 1
-		upgrade_manager.activate_pickup(pickup_resource)
+			var added: int = upgrade_manager.add_overdrive_ammo(int(pickup_resource.amount))
+			if added > 0:
+				_ammo_refill_flash_remaining = _ammo_refill_flash_duration
+		"permanent":
+			_run_permanent_upgrades += 1
+			upgrade_manager.activate_pickup(pickup_resource)
+		_:
+			_run_ammo_upgrades += 1
+			upgrade_manager.activate_pickup(pickup_resource)
+	_update_hud()
+
+
+func _on_reward_focus_changed(_effect, description: String) -> void:
+	_reward_prompt_text = description
 	_update_hud()
 
 
@@ -1024,7 +1081,7 @@ func _update_hud() -> void:
 		_update_pause_panel()
 		return
 	var active_effects: Array = upgrade_manager.get_active_effects()
-	var footer: String = "Aim-change fire  |  Q/R-Shoulder parry  |  Hold E/R-Trigger super"
+	var footer: String = "Aim-change fire  |  Shift/L-Trigger overdrive  |  Q/R-Shoulder parry  |  Hold E/R-Trigger super"
 	if _status == "DOWN":
 		footer = "DOWN. Press R or Start/A on controller to restart."
 	elif _status == "BOSS_CLEARING":
@@ -1037,6 +1094,8 @@ func _update_hud() -> void:
 		footer = "PAUSED. Esc/Start resumes. Enter/A opens exit prompt."
 	elif _status == "PAUSE_EXIT_CONFIRM":
 		footer = "EXIT TO MAIN MENU? Enter/A confirms. R/Esc cancels."
+	if not _reward_prompt_text.is_empty() and _is_gameplay_running():
+		footer = "%s  |  %s  Press Enter/A to take." % [footer, _reward_prompt_text]
 	hud_label.text = "%s\nEnemies: %d  Pickups: %d\n%s" % [
 		_get_status_label(),
 		enemy_manager.get_enemy_count(),
@@ -1061,15 +1120,21 @@ func _update_score_panel() -> void:
 func _update_combat_panel(active_effects: Array) -> void:
 	var max_health: int = max(_last_max_health, 1)
 	var health_ratio: float = clamp(float(_last_health) / float(max_health), 0.0, 1.0)
+	var bar_width := 306.0
 	if health_fill != null:
-		health_fill.size.x = 306.0 * health_ratio
+		health_fill.size.x = bar_width * health_ratio
 	if health_label != null:
-		health_label.text = "PC HEALTH  %d / %d" % [_last_health, max_health]
+		health_label.text = "LIFE  %d / %d" % [_last_health, max_health]
+	_update_health_ticks(max_health, bar_width)
 	if invulnerability_fill != null:
 		var invulnerability_ratio: float = 0.0
 		if _last_invulnerability_duration > 0.0:
 			invulnerability_ratio = clamp(_last_invulnerability_remaining / _last_invulnerability_duration, 0.0, 1.0)
-		invulnerability_fill.size.x = 306.0 * invulnerability_ratio
+		invulnerability_fill.size.x = bar_width * invulnerability_ratio
+	if invulnerability_bar_back != null:
+		invulnerability_bar_back.visible = _last_invulnerability_remaining > 0.0
+	_update_overdrive_bar(bar_width)
+	_update_super_bar(bar_width)
 	if stats_label != null:
 		stats_label.visible = false
 		var parry_text := "READY"
@@ -1087,7 +1152,64 @@ func _update_combat_panel(active_effects: Array) -> void:
 		attribute_label.visible = false
 		attribute_label.text = _get_attribute_text()
 	_update_ammo_counter_panel(active_effects)
-	_update_ammo_warning(active_effects)
+	_update_ammo_warning()
+
+
+func _update_health_ticks(max_health: int, bar_width: float) -> void:
+	if health_tick_layer == null:
+		return
+	for child in health_tick_layer.get_children():
+		child.queue_free()
+	if max_health <= 1:
+		return
+	for index in range(1, max_health):
+		var tick := ColorRect.new()
+		tick.name = "HealthTick%d" % index
+		tick.position = Vector2((bar_width * float(index) / float(max_health)) - 1.0, 0.0)
+		tick.size = Vector2(2.0, 20.0)
+		tick.color = Color(0.03, 0.07, 0.04, 0.78)
+		health_tick_layer.add_child(tick)
+
+
+func _update_overdrive_bar(bar_width: float) -> void:
+	var max_ammo: int = max(_last_overdrive_max_ammo, 1)
+	var ratio: float = clamp(float(_last_overdrive_ammo) / float(max_ammo), 0.0, 1.0)
+	var flash_ratio := 0.0
+	if _ammo_refill_flash_duration > 0.0:
+		flash_ratio = clamp(_ammo_refill_flash_remaining / _ammo_refill_flash_duration, 0.0, 1.0)
+	if overdrive_fill != null:
+		overdrive_fill.size.x = bar_width * ratio
+		var fill_color := Color(0.16, 0.52, 1.0, 1.0)
+		if _last_overdrive_is_active:
+			fill_color = Color(0.36, 0.78, 1.0, 1.0)
+		if flash_ratio > 0.0:
+			fill_color = fill_color.lerp(Color(1.0, 1.0, 1.0, 1.0), flash_ratio * 0.55)
+		overdrive_fill.color = fill_color
+	if overdrive_label != null:
+		var state_text := "ON" if _last_overdrive_is_active else ("HELD" if _last_overdrive_is_held else "READY")
+		overdrive_label.text = "OVERDRIVE  %d / %d  %s" % [_last_overdrive_ammo, max_ammo, state_text]
+
+
+func _update_super_bar(bar_width: float) -> void:
+	var ratio: float = clamp(_last_super_meter / max(_last_super_meter_max, 1.0), 0.0, 1.0)
+	var charge_ratio: float = _last_super_charge_ratio if _last_super_is_charging else 0.0
+	var fill_ratio: float = max(ratio, charge_ratio)
+	var ready_flash_ratio := 0.0
+	if _super_meter_ready_flash_duration > 0.0:
+		ready_flash_ratio = clamp(_super_meter_ready_flash_remaining / _super_meter_ready_flash_duration, 0.0, 1.0)
+	if super_fill != null:
+		super_fill.size.x = bar_width * fill_ratio
+		var fill_color := Color(1.0, 0.76, 0.16, 1.0)
+		if _last_super_is_charging:
+			fill_color = fill_color.lerp(Color(0.42, 1.0, 1.0, 1.0), charge_ratio * 0.45)
+		if ready_flash_ratio > 0.0:
+			fill_color = fill_color.lerp(Color(1.0, 1.0, 1.0, 1.0), ready_flash_ratio)
+		super_fill.color = fill_color
+	if super_label != null:
+		var super_text := "READY" if ratio >= 1.0 and not _last_super_is_charging else "%d%%" % roundi(fill_ratio * 100.0)
+		if _last_super_is_charging:
+			super_text = "CHARGE %d%%" % roundi(charge_ratio * 100.0)
+		super_label.text = "SPECIAL  %s" % super_text
 
 
 func _update_ammo_counter_panel(active_effects: Array) -> void:
@@ -1095,53 +1217,16 @@ func _update_ammo_counter_panel(active_effects: Array) -> void:
 		return
 	for child in ammo_counter_panel.get_children():
 		child.free()
-	var ammo_states: Array = []
-	for state in active_effects:
-		if int(state.get("max_ammo", 0)) > 0:
-			ammo_states.append(state)
-	var row_index := 0
-	for index in range(min(ammo_states.size(), 5)):
-		var state: Dictionary = ammo_states[index]
-		var effect = state["effect"]
-		var refill_flash_ratio: float = 0.0
-		if _ammo_refill_flash_duration > 0.0:
-			refill_flash_ratio = clamp(_ammo_refill_flash_remaining / _ammo_refill_flash_duration, 0.0, 1.0)
-		var perfect_flash_ratio: float = 0.0
-		if _ammo_refill_perfect_flash_duration > 0.0:
-			perfect_flash_ratio = clamp(_ammo_refill_perfect_flash_remaining / _ammo_refill_perfect_flash_duration, 0.0, 1.0)
-		_add_ammo_counter_square(
-			String(effect.display_name),
-			int(state.get("ammo", 0)),
-			max(int(state.get("max_ammo", 1)), 1),
-			_get_ammo_counter_color(effect),
-			_get_ammo_counter_icon(effect),
-			row_index,
-			refill_flash_ratio,
-			perfect_flash_ratio
-		)
-		row_index += 1
-	if _should_show_super_counter():
-		_add_super_counter_square(row_index)
+	ammo_counter_panel.visible = false
 
 
-func _update_ammo_warning(active_effects: Array) -> void:
-	var lowest_ratio := 1.0
-	var lowest_ammo := 0
-	var lowest_icon := ""
-	for state in active_effects:
-		var max_ammo := int(state.get("max_ammo", 0))
-		if max_ammo <= 0:
-			continue
-		var ammo := int(state.get("ammo", max_ammo))
-		var ratio: float = clamp(float(ammo) / float(max_ammo), 0.0, 1.0)
-		if ratio < lowest_ratio:
-			lowest_ratio = ratio
-			lowest_ammo = ammo
-			lowest_icon = _get_ammo_counter_icon(state["effect"])
-	if lowest_icon.is_empty() or (lowest_ratio > 0.2 and lowest_ammo > 10):
+func _update_ammo_warning() -> void:
+	var max_ammo: int = max(_last_overdrive_max_ammo, 1)
+	var ratio: float = clamp(float(_last_overdrive_ammo) / float(max_ammo), 0.0, 1.0)
+	if ratio > 0.2 and _last_overdrive_ammo > 8:
 		player_manager.set_ammo_warning_state(false, "", 1.0)
 		return
-	player_manager.set_ammo_warning_state(true, "%s %d" % [lowest_icon, lowest_ammo], lowest_ratio)
+	player_manager.set_ammo_warning_state(true, "OD %d" % _last_overdrive_ammo, ratio)
 
 
 func _add_ammo_counter_square(display_name: String, ammo: int, max_ammo: int, fill_color: Color, icon_text: String, index: int, refill_flash_ratio: float = 0.0, perfect_flash_ratio: float = 0.0) -> void:
@@ -1383,21 +1468,17 @@ func _update_pause_panel() -> void:
 
 func _get_pause_stats_text() -> String:
 	var active_effects: Array = upgrade_manager.get_active_effects()
-	var ammo_lines: Array[String] = []
+	var overdrive_lines: Array[String] = []
 	for state in active_effects:
-		if int(state.get("max_ammo", 0)) > 0:
-			var effect = state["effect"]
-			ammo_lines.append("%s %d/%d" % [
-				effect.display_name,
-				int(state.get("ammo", 0)),
-				int(state.get("max_ammo", 0))
-			])
-	var ammo_text: String = "None" if ammo_lines.is_empty() else ", ".join(ammo_lines)
+		var effect = state["effect"]
+		overdrive_lines.append("%s x%d" % [effect.display_name, int(state.get("stacks", 0))])
+	var overdrive_text: String = "No effect stacks yet. Held overdrive doubles regular bullet size." if overdrive_lines.is_empty() else ", ".join(overdrive_lines)
 	var parry_text: String = "READY" if _last_parry_cooldown_remaining <= 0.0 else "%.1fs" % _last_parry_cooldown_remaining
 	var super_text: String = "READY" if _last_super_meter >= _last_super_meter_max else "%d%%" % roundi((_last_super_meter / max(_last_super_meter_max, 1.0)) * 100.0)
 	if _last_super_is_charging:
 		super_text = "Charging %d%%" % roundi(_last_super_charge_ratio * 100.0)
-	return "Score: %d\nHealth: %d / %d\nEnemies: %d  Spawners: %d  Pickups: %d\nParry: %s  Super: %s\n\n%s\n\nAmmo: %s" % [
+	var overdrive_state := "ON" if _last_overdrive_is_active else ("HELD" if _last_overdrive_is_held else "READY")
+	return "Score: %d\nHealth: %d / %d\nEnemies: %d  Spawners: %d  Pickups: %d\nParry: %s  Super: %s\nOverdrive: %d / %d  %s\n\n%s\n\nOverdrive Effects: %s" % [
 		_score,
 		_last_health,
 		max(_last_max_health, 1),
@@ -1406,8 +1487,11 @@ func _get_pause_stats_text() -> String:
 		item_manager.get_pickup_count(),
 		parry_text,
 		super_text,
+		_last_overdrive_ammo,
+		_last_overdrive_max_ammo,
+		overdrive_state,
 		_get_attribute_text(),
-		ammo_text
+		overdrive_text
 	]
 
 
@@ -1415,33 +1499,71 @@ func _get_upgrade_lines(active_effects: Array) -> Array[String]:
 	var lines: Array[String] = []
 	for state in active_effects:
 		var effect = state["effect"]
-		var remaining := float(state["remaining"])
-		var max_ammo := int(state.get("max_ammo", 0))
-		var ammo := int(state.get("ammo", max_ammo))
-		if max_ammo > 0:
-			lines.append("%s  %d/%d" % [effect.display_name, ammo, max_ammo])
-		else:
-			lines.append("%s  %.1fs" % [effect.display_name, remaining])
+		lines.append("%s x%d" % [effect.display_name, int(state.get("stacks", 0))])
 	return lines
 
 
 func _get_attribute_text() -> String:
 	if _permanent_stats.is_empty():
-		return "Attributes\nFire Rate +0%  Move +0%  Damage +0%  Size +0%"
+		return "Attributes\nFire Rate +0%  Move +0%  Damage +0%  Size +0%  OD Cap +0"
 	var fire_bonus := float(_attribute_modifiers.get("fire_rate_bonus", 0.0))
 	var move_bonus := float(_attribute_modifiers.get("move_speed_bonus", 0.0))
 	var damage_bonus := float(_attribute_modifiers.get("damage_bonus", 0.0))
 	var size_bonus := float(_attribute_modifiers.get("projectile_size_bonus", 0.0))
+	var overdrive_capacity_bonus := float(_attribute_modifiers.get("overdrive_capacity_bonus", 0.0))
 	var stack_lines: Array[String] = []
 	for stat in _permanent_stats:
 		stack_lines.append("%s x%d" % [stat["display_name"], int(stat["stacks"])])
-	return "Attributes\nFire Rate +%d%%  Move +%d%%  Damage +%d%%  Size +%d%%\n%s" % [
+	return "Attributes\nFire Rate +%d%%  Move +%d%%  Damage +%d%%  Size +%d%%  OD Cap +%d\n%s" % [
 		roundi(fire_bonus * 100.0),
 		roundi(move_bonus * 100.0),
 		roundi(damage_bonus * 100.0),
 		roundi(size_bonus * 100.0),
+		roundi(overdrive_capacity_bonus),
 		", ".join(stack_lines)
 	]
+
+
+func _maybe_spawn_current_room_reward_choices() -> void:
+	if not _is_dungeon_run:
+		return
+	var state: Dictionary = dungeon_manager.get_current_room_state()
+	if state.is_empty():
+		return
+	var room_kind := String(state["piece"].room_kind)
+	if room_kind != "treasure" and room_kind != "challenge":
+		return
+	if not dungeon_manager.is_current_room_cleared():
+		return
+	var reward_key := _get_current_room_reward_key()
+	if _rewarded_room_ids.has(reward_key):
+		return
+	_rewarded_room_ids[reward_key] = true
+	var reward_position := Vector2.ZERO
+	if _current_level != null:
+		reward_position = _find_safe_room_position(_current_level.arena_bounds.get_center(), _current_level)
+	if room_kind == "treasure":
+		item_manager.spawn_treasure_reward_choices(reward_position)
+	else:
+		item_manager.spawn_overdrive_reward_choices(reward_position)
+	_update_hud()
+
+
+func _spawn_floor_overdrive_reward_choices(origin: Vector2) -> void:
+	if not _is_main_loop_run:
+		return
+	var reward_key := "floor_%d_boss_reward" % _main_loop_floor
+	if _rewarded_room_ids.has(reward_key):
+		return
+	_rewarded_room_ids[reward_key] = true
+	var reward_position := origin
+	if _current_level != null:
+		reward_position = _find_safe_room_position(origin + Vector2(0.0, 86.0), _current_level)
+	item_manager.spawn_overdrive_reward_choices(reward_position)
+
+
+func _get_current_room_reward_key() -> String:
+	return "floor_%d_room_%s_reward" % [dungeon_manager.floor_number, dungeon_manager.current_room_id]
 
 
 func _check_level_clear() -> void:
@@ -1458,6 +1580,7 @@ func _check_level_clear() -> void:
 			return
 		dungeon_manager.mark_current_room_cleared()
 		room_manager.set_doors_unlocked(true)
+		_maybe_spawn_current_room_reward_choices()
 		if dungeon_manager.is_current_boss_room() and not _is_main_loop_run:
 			_status = "WON"
 			_set_all_enabled(false)
@@ -1489,6 +1612,9 @@ func _on_menu_down_requested() -> void:
 
 
 func _on_menu_confirm_requested() -> void:
+	if _is_gameplay_running() and item_manager.collect_focused_reward():
+		_update_hud()
+		return
 	if _status == "LEVEL_SELECT":
 		_start_selected_level()
 	elif _status == "PAUSED":

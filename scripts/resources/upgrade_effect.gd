@@ -50,4 +50,19 @@ func merge_into_modifiers(modifiers: Dictionary) -> Dictionary:
 
 
 func get_pickup_kind() -> String:
-	return "temporary"
+	return "overdrive_effect"
+
+
+func get_reward_description() -> String:
+	match upgrade_type:
+		UpgradeType.SPREAD:
+			return "%s: overdrive shots fire +1 projectile." % display_name
+		UpgradeType.PIERCING:
+			return "%s: overdrive shots pierce +%d target and hit harder." % [display_name, max(pierce_count, 1)]
+		UpgradeType.CHAIN_LIGHTNING:
+			return "%s: overdrive shots chain +%d jump." % [display_name, max(chain_count, 1)]
+		UpgradeType.FIRE:
+			return "%s: overdrive hits create a small explosion." % display_name
+		UpgradeType.WATER:
+			return "%s: overdrive shots grow while traveling and pierce." % display_name
+	return display_name
