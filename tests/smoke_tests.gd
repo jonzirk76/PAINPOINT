@@ -979,8 +979,10 @@ func _test_parry_absorbs_hostile_projectiles_for_ammo(failures: Array[String]) -
 	projectile_manager.set_enabled(true)
 	upgrade_manager.reset_run()
 	upgrade_manager.set_overdrive_active(true)
-	for _index in range(20):
+	for _index in range(30):
 		upgrade_manager.consume_overdrive_shot()
+	if projectile_manager.perfect_parry_projectile_ammo_award != 20:
+		failures.append("Perfect parry bullets should award 20 overdrive ammo each.")
 	projectile_manager.fire_hostile(Vector2(12.0, 0.0), Vector2.RIGHT, {"speed": 250.0, "damage": 1, "radius": 7.0})
 	projectile_manager.fire_hostile(Vector2(82.0, 0.0), Vector2.RIGHT, {"speed": 250.0, "damage": 1, "radius": 7.0})
 	projectile_manager.fire_hostile(Vector2(220.0, 0.0), Vector2.RIGHT, {"speed": 250.0, "damage": 1, "radius": 7.0})
@@ -988,8 +990,8 @@ func _test_parry_absorbs_hostile_projectiles_for_ammo(failures: Array[String]) -
 	var absorbed: Dictionary = projectile_manager.absorb_hostile_projectiles(Vector2.ZERO, 100.0, 24.0)
 	if int(absorbed["absorbed_count"]) != 2:
 		failures.append("Parry should erase hostile projectiles inside the effect radius only.")
-	if int(absorbed["perfect_count"]) != 1 or int(absorbed["ammo_awarded"]) != 11:
-		failures.append("Parry should award 10 ammo for close bullets and 1 ammo for other absorbed bullets.")
+	if int(absorbed["perfect_count"]) != 1 or int(absorbed["ammo_awarded"]) != 21:
+		failures.append("Parry should award 20 ammo for close bullets and 1 ammo for other absorbed bullets.")
 	var absorb_infos: Array = absorbed.get("absorbed_projectiles", [])
 	var absorb_visual_perfect_count := 0
 	for info in absorb_infos:
@@ -1002,7 +1004,7 @@ func _test_parry_absorbs_hostile_projectiles_for_ammo(failures: Array[String]) -
 	if projectile_manager._projectiles.size() != 2:
 		failures.append("Parry should leave outside hostile bullets and player bullets alive.")
 	var ammo_added: int = upgrade_manager.add_ammo_to_active_upgrades(int(absorbed["ammo_awarded"]))
-	if ammo_added != 11 or upgrade_manager.get_overdrive_ammo() != 31:
+	if ammo_added != 21 or upgrade_manager.get_overdrive_ammo() != 31:
 		failures.append("Parry ammo should refill the shared overdrive pool.")
 	projectile_manager.free()
 	projectile_layer.free()
@@ -1192,6 +1194,10 @@ func _test_reward_driven_pickup_drops(failures: Array[String]) -> void:
 		failures.append("Enemies should no longer drop permanent stats or overdrive effect upgrades.")
 	if manager.enemy_overdrive_ammo_drop_chance <= 0.0 or manager.enemy_overdrive_ammo_drop_chance >= manager.enemy_heal_drop_chance:
 		failures.append("Enemies should drop mostly health, with rarer overdrive ammo cells.")
+	if manager.enemy_heal_drop_chance > 0.08 or manager.enemy_overdrive_ammo_drop_chance > 0.03:
+		failures.append("Enemy health and overdrive ammo drops should be toned down after the overdrive economy rework.")
+	if manager.enemy_overdrive_ammo_drop_chance * 2.0 > manager.enemy_heal_drop_chance:
+		failures.append("Enemy overdrive ammo drops should be much rarer than health so parry remains the primary ammo source.")
 	manager.spawner_full_heal_drop_chance = 0.0
 	manager.drop_spawner_reward(Vector2.ZERO)
 	if manager.get_pickup_count() != 1:

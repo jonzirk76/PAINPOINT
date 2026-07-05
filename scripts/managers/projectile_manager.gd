@@ -17,6 +17,8 @@ signal projectile_expired(projectile, expire_info: Dictionary)
 @export var super_projectile_knockback_max: float = 560.0
 @export var super_projectile_explosion_radius: float = 122.0
 @export var super_projectile_explosion_damage_multiplier: float = 0.68
+@export var parry_projectile_ammo_award: int = 1
+@export var perfect_parry_projectile_ammo_award: int = 20
 
 const DAMAGE_PACKET_SCRIPT := preload("res://scripts/resources/damage_packet.gd")
 
@@ -147,9 +149,9 @@ func absorb_hostile_projectiles(origin: Vector2, radius: float, perfect_radius: 
 		absorbed_count += 1
 		if is_perfect:
 			perfect_count += 1
-			ammo_awarded += 10
+			ammo_awarded += perfect_parry_projectile_ammo_award
 		else:
-			ammo_awarded += 1
+			ammo_awarded += parry_projectile_ammo_award
 		absorbed_projectiles.append({
 			"position": projectile.global_position,
 			"perfect": is_perfect,

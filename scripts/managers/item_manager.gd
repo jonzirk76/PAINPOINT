@@ -24,8 +24,8 @@ const OVERDRIVE_AMMO_CACHE := preload("res://resources/pickups/overdrive_ammo_ca
 @export var pickup_spawn_interval: float = 10.0
 @export var enemy_permanent_drop_chance: float = 0.0
 @export var enemy_temporary_drop_chance: float = 0.0
-@export var enemy_overdrive_ammo_drop_chance: float = 0.08
-@export var enemy_heal_drop_chance: float = 0.12
+@export var enemy_overdrive_ammo_drop_chance: float = 0.03
+@export var enemy_heal_drop_chance: float = 0.08
 @export var spawner_full_heal_drop_chance: float = 0.16
 
 var enabled: bool = false

@@ -129,12 +129,12 @@ Parry:
 2. `GameOrchestrator` calls `PlayerManager.request_parry()`.
 3. `PlayerManager` enforces the long cooldown, plays the player pulse, and emits `parry_requested(origin, radius, perfect_radius, knockback)`.
 4. `GameOrchestrator` commands `ProjectileManager.absorb_hostile_projectiles(...)`, `EnemyManager.apply_parry_pushback(...)`, and `UpgradeManager.add_overdrive_ammo(...)`.
-5. Parry pushback never creates a damage packet. Absorbed hostile projectiles award 1 shared overdrive ammo each, or 10 ammo each when inside the small perfect radius.
+5. Parry pushback never creates a damage packet. Absorbed hostile projectiles award 1 shared overdrive ammo each, or 20 ammo each when inside the small perfect radius.
 
 Combat reward drops:
 
 1. `EnemyManager.enemy_defeated` is routed by `GameOrchestrator` to `ItemManager.roll_enemy_drop(...)`.
-2. `ItemManager` rolls small health pickups and rarer shared overdrive ammo pickups.
+2. `ItemManager` rolls occasional small health pickups and much rarer shared overdrive ammo pickups, keeping parry as the primary overdrive ammo source.
 3. `ItemManager.pickup_collected` flows to `GameOrchestrator`, which routes heal pickups to `PlayerManager.apply_healing(...)` and upgrade pickups to `UpgradeManager.activate_pickup(...)`.
 4. Challenge room and floor-end rewards spawn three optional overdrive effect choices. Treasure rooms spawn three optional permanent stat choices, including overdrive capacity.
 5. `UpgradeManager` stacks run-long attributes for fire-rate cooldown reduction, movement speed, bullet damage, projectile size, and overdrive capacity.
