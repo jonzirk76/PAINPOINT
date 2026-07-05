@@ -2894,6 +2894,21 @@ func _test_room_manager_doors(failures: Array[String]) -> void:
 	manager.initialize({
 		"door_layer": door_layer
 	})
+	for special_kind in ["treasure", "challenge", "boss"]:
+		var path := _get_path_to_room_kind(dungeon, special_kind)
+		if path.size() < 2:
+			failures.append("Dungeon should expose a path to a %s room for door marking." % special_kind)
+			continue
+		dungeon.current_room_id = path[path.size() - 2]
+		var target_id := String(path[path.size() - 1])
+		var found_marked_door := false
+		for door_info in dungeon.get_current_door_infos():
+			if String(door_info.get("target_room_id", "")) == target_id and String(door_info.get("target_room_kind", "")) == special_kind:
+				found_marked_door = true
+				break
+		if not found_marked_door:
+			failures.append("Door info should mark entrances leading to %s rooms." % special_kind)
+	dungeon.current_room_id = "start"
 	manager.set_enabled(true)
 	manager.load_room(dungeon.get_current_level_definition(), dungeon.get_current_door_infos(), true)
 	if manager.get_door_count() < 2:
@@ -2907,12 +2922,36 @@ func _test_room_manager_doors(failures: Array[String]) -> void:
 			failures.append("RoomManager should unlock doors for an already-cleared room.")
 		if (child.collision_mask & 1) == 0:
 			failures.append("Door entity should watch the player collision layer.")
+	var marker_layer := Node2D.new()
+	var marker_manager = load("res://scripts/managers/room_manager.gd").new()
+	var marker_level = load("res://scripts/resources/level_definition.gd").new()
+	var marker_infos := [
+		{"direction": "north", "target_room_id": "treasure_1", "target_room_kind": "treasure"},
+		{"direction": "east", "target_room_id": "challenge_1", "target_room_kind": "challenge"},
+		{"direction": "south", "target_room_id": "boss", "target_room_kind": "boss"}
+	]
+	root.add_child(marker_layer)
+	root.add_child(marker_manager)
+	marker_manager.initialize({
+		"door_layer": marker_layer
+	})
+	marker_manager.load_room(marker_level, marker_infos, true)
+	var seen_markers: Dictionary = {}
+	for child in marker_layer.get_children():
+		seen_markers[String(child.target_room_kind)] = bool(child.has_special_marker())
+	for special_kind in ["treasure", "challenge", "boss"]:
+		if not bool(seen_markers.get(special_kind, false)):
+			failures.append("RoomManager should propagate %s door markers to door entities." % special_kind)
+	marker_manager.free()
+	marker_layer.free()
 	var direct_door = load("res://scenes/entities/door_entity.tscn").instantiate()
 	var player = load("res://scenes/entities/player_entity.tscn").instantiate()
 	var entered_count := [0]
 	root.add_child(direct_door)
 	root.add_child(player)
-	direct_door.initialize("east", "next", Vector2.ZERO, Vector2(28.0, 92.0), true)
+	direct_door.initialize("east", "next", Vector2.ZERO, Vector2(28.0, 92.0), true, "boss")
+	if not direct_door.has_special_marker():
+		failures.append("Door entity should treat boss targets as special marked doors.")
 	direct_door.entered.connect(func(_door) -> void:
 		entered_count[0] += 1
 	)

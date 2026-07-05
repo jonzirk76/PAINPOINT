@@ -104,9 +104,11 @@ func get_current_door_infos() -> Array:
 	var door_infos: Array = []
 	for direction in ordered_directions:
 		if connections.has(direction):
+			var target_room_id := String(connections[direction])
 			door_infos.append({
 				"direction": direction,
-				"target_room_id": String(connections[direction])
+				"target_room_id": target_room_id,
+				"target_room_kind": _get_room_kind(target_room_id)
 			})
 	return door_infos
 
@@ -199,6 +201,16 @@ func get_occupied_cell_count() -> int:
 
 func get_room_ids() -> Array[String]:
 	return _room_order.duplicate()
+
+
+func _get_room_kind(room_id: String) -> String:
+	if room_id.is_empty() or not _rooms.has(room_id):
+		return ""
+	var state: Dictionary = _rooms[room_id]
+	var piece = state.get("piece", null)
+	if piece == null:
+		return ""
+	return String(piece.room_kind)
 
 
 func get_run_seed() -> int:

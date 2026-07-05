@@ -34,13 +34,14 @@ func load_room(level_definition, door_infos: Array, doors_unlocked: bool) -> voi
 	for door_info in door_infos:
 		var direction := String(door_info.get("direction", "north"))
 		var target_id := String(door_info.get("target_room_id", ""))
+		var target_kind := String(door_info.get("target_room_kind", ""))
 		var door = door_scene.instantiate()
 		var rect := _get_door_rect(level_definition.arena_bounds, direction)
 		if _door_layer != null:
 			_door_layer.add_child(door)
 		else:
 			add_child(door)
-		door.initialize(direction, target_id, rect.get_center(), rect.size, doors_unlocked)
+		door.initialize(direction, target_id, rect.get_center(), rect.size, doors_unlocked, target_kind)
 		door.entered.connect(_on_door_entered)
 		_doors.append(door)
 	set_enabled(enabled)
