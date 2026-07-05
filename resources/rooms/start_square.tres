@@ -1,6 +1,6 @@
-[gd_resource type="Resource" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="RoomPieceDefinition" load_steps=2 format=3 uid="uid://ciflewxss41y0"]
 
-[ext_resource type="Script" path="res://scripts/resources/room_piece_definition.gd" id="1"]
+[ext_resource type="Script" uid="uid://bag7c3y3fh8ng" path="res://scripts/resources/room_piece_definition.gd" id="1"]
 
 [resource]
 script = ExtResource("1")
@@ -8,8 +8,6 @@ id = "start_square"
 display_name = "Starting Cell"
 room_kind = "start"
 difficulty_weight = 0
-footprint_cells = Array[Vector2i]([Vector2i(0, 0)])
 connector_directions = PackedStringArray("north", "east", "south", "west")
 arena_bounds = Rect2(-520, -300, 1040, 600)
-arena_shape = 0
 max_active_enemies = 0

@@ -33,6 +33,7 @@ const FLOOR_EXIT_PORTAL_SCENE := preload("res://scenes/entities/floor_exit_porta
 @onready var score_label: Label = $UI/ScorePanel/ScoreLabel
 @onready var dungeon_minimap: Control = $UI/DungeonMinimap
 @onready var combat_panel: Control = $UI/CombatPanel
+@onready var character_ui: CanvasItem = $UI/CharacterUi
 @onready var health_bar_back: ColorRect = $UI/CombatPanel/HealthBarBack
 @onready var health_fill: ColorRect = $UI/CombatPanel/HealthBarBack/HealthBarFill
 @onready var health_tick_layer: Control = $UI/CombatPanel/HealthBarBack/HealthTickLayer
@@ -264,6 +265,13 @@ func _configure_pause_process_modes() -> void:
 	pause_panel.process_mode = Node.PROCESS_MODE_WHEN_PAUSED
 
 
+func _set_character_hud_visible(value: bool) -> void:
+	if combat_panel != null:
+		combat_panel.visible = value
+	if character_ui != null:
+		character_ui.visible = value
+
+
 func _start_selected_level() -> void:
 	if _selected_level_index < LEVELS.size():
 		_start_level(LEVELS[_selected_level_index])
@@ -310,8 +318,7 @@ func _start_level(level_definition) -> void:
 		game_over_panel.visible = false
 	if win_panel != null:
 		win_panel.visible = false
-	if combat_panel != null:
-		combat_panel.visible = true
+	_set_character_hud_visible(true)
 	room_manager.reset_run()
 	_clear_minimap()
 	if arena_view != null:
@@ -376,8 +383,7 @@ func _start_dungeon_run() -> void:
 		game_over_panel.visible = false
 	if win_panel != null:
 		win_panel.visible = false
-	if combat_panel != null:
-		combat_panel.visible = true
+	_set_character_hud_visible(true)
 	dungeon_manager.reset_run(_main_loop_floor, _run_seed)
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
@@ -433,8 +439,7 @@ func _start_main_loop_run() -> void:
 		game_over_panel.visible = false
 	if win_panel != null:
 		win_panel.visible = false
-	if combat_panel != null:
-		combat_panel.visible = true
+	_set_character_hud_visible(true)
 	dungeon_manager.reset_run(_main_loop_floor, _run_seed)
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
@@ -503,8 +508,7 @@ func _enter_level_select() -> void:
 	_clear_minimap()
 	if gameplay_camera != null:
 		gameplay_camera.global_position = Vector2.ZERO
-	if combat_panel != null:
-		combat_panel.visible = false
+	_set_character_hud_visible(false)
 	if game_over_panel != null:
 		game_over_panel.visible = false
 	if win_panel != null:

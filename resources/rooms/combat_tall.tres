@@ -1,17 +1,16 @@
-[gd_resource type="Resource" load_steps=11 format=3]
+[gd_resource type="Resource" script_class="RoomPieceDefinition" load_steps=11 format=3 uid="uid://sfxh0igmo6t7"]
 
-[ext_resource type="Script" path="res://scripts/resources/room_piece_definition.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/resources/spawner_placement.gd" id="2"]
-[ext_resource type="Resource" path="res://resources/spawners/basic_spawner.tres" id="3"]
-[ext_resource type="Resource" path="res://resources/spawners/shooter_spawner.tres" id="4"]
-[ext_resource type="Resource" path="res://resources/spawners/fast_spawner.tres" id="5"]
-[ext_resource type="Resource" path="res://resources/spawners/tank_spawner.tres" id="6"]
+[ext_resource type="Script" uid="uid://bag7c3y3fh8ng" path="res://scripts/resources/room_piece_definition.gd" id="1"]
+[ext_resource type="Script" uid="uid://dfk7vbsy2c2ax" path="res://scripts/resources/spawner_placement.gd" id="2"]
+[ext_resource type="Resource" uid="uid://bo3ufan40xwgu" path="res://resources/spawners/basic_spawner.tres" id="3"]
+[ext_resource type="Resource" uid="uid://4dt8j528ubjj" path="res://resources/spawners/shooter_spawner.tres" id="4"]
+[ext_resource type="Resource" uid="uid://jy73h2c2kee2" path="res://resources/spawners/fast_spawner.tres" id="5"]
+[ext_resource type="Resource" uid="uid://bxg8k5e3vk7fe" path="res://resources/spawners/tank_spawner.tres" id="6"]
 
 [sub_resource type="Resource" id="SpawnerPlacement_basic_1"]
 script = ExtResource("2")
 position = Vector2(-260, -430)
 profile = ExtResource("3")
-warmup_seconds = 1.0
 
 [sub_resource type="Resource" id="SpawnerPlacement_shooter_1"]
 script = ExtResource("2")
@@ -35,12 +34,10 @@ warmup_seconds = 3.2
 script = ExtResource("1")
 id = "combat_tall"
 display_name = "Tall Sightline Room"
-room_kind = "combat"
 difficulty_weight = 2
 footprint_cells = Array[Vector2i]([Vector2i(0, 0), Vector2i(0, 1)])
 connector_directions = PackedStringArray("west", "east", "north", "south")
 arena_bounds = Rect2(-560, -650, 1120, 1300)
-arena_shape = 0
 wall_rects = Array[Rect2]([Rect2(-340, -80, 240, 60), Rect2(100, 20, 240, 60)])
 spawner_placements = Array[Resource]([SubResource("SpawnerPlacement_basic_1"), SubResource("SpawnerPlacement_shooter_1"), SubResource("SpawnerPlacement_fast_1"), SubResource("SpawnerPlacement_tank_1")])
 max_active_enemies = 30

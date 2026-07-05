@@ -167,6 +167,7 @@ func _init() -> void:
 	_test_arena_geometry_boundaries(failures)
 	_test_arena_wall_generation(failures)
 	_test_scene_loads(failures)
+	_test_character_hud_visibility(failures)
 	_test_aim_change_logic(failures)
 	_test_restart_signal(failures)
 	_test_parry_input_and_cooldown(failures)
@@ -668,6 +669,28 @@ func _test_arena_wall_generation(failures: Array[String]) -> void:
 	if wall_count != level.wall_rects.size():
 		failures.append("ArenaView did not create one wall body per maze wall rect.")
 	arena.free()
+
+
+func _test_character_hud_visibility(failures: Array[String]) -> void:
+	var scene = load("res://scenes/main.tscn")
+	if scene == null:
+		failures.append("Main scene failed to load for character HUD visibility test.")
+		return
+	var main = scene.instantiate()
+	root.add_child(main)
+	if main.player_manager == null:
+		_prime_main_for_direct_test_calls(main)
+		main._connect_manager_signals()
+		main._initialize_managers()
+		main._enter_level_select()
+	var character_ui: CanvasItem = main.get_node("UI/CharacterUi")
+	if character_ui.visible or main.combat_panel.visible:
+		failures.append("Character HUD should be hidden on level select.")
+	main._selected_level_index = 0
+	main._start_selected_level()
+	if not character_ui.visible or not main.combat_panel.visible:
+		failures.append("Character HUD should be visible during gameplay.")
+	main.free()
 
 
 func _test_aim_change_logic(failures: Array[String]) -> void:
@@ -3346,6 +3369,7 @@ func _prime_main_for_direct_test_calls(main) -> void:
 	main.score_label = main.get_node("UI/ScorePanel/ScoreLabel")
 	main.dungeon_minimap = main.get_node("UI/DungeonMinimap")
 	main.combat_panel = main.get_node("UI/CombatPanel")
+	main.character_ui = main.get_node("UI/CharacterUi")
 	main.health_bar_back = main.get_node("UI/CombatPanel/HealthBarBack")
 	main.health_fill = main.get_node("UI/CombatPanel/HealthBarBack/HealthBarFill")
 	main.health_tick_layer = main.get_node("UI/CombatPanel/HealthBarBack/HealthTickLayer")

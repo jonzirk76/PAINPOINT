@@ -1,7 +1,7 @@
-[gd_resource type="Resource" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="RoomPieceDefinition" load_steps=3 format=3 uid="uid://8mjo7m6blmpl"]
 
-[ext_resource type="Script" path="res://scripts/resources/room_piece_definition.gd" id="1"]
-[ext_resource type="Resource" path="res://resources/enemies/first_boss_enemy.tres" id="2"]
+[ext_resource type="Script" uid="uid://bag7c3y3fh8ng" path="res://scripts/resources/room_piece_definition.gd" id="1"]
+[ext_resource type="Resource" uid="uid://c7lsas62p4ss8" path="res://resources/enemies/first_boss_enemy.tres" id="2"]
 
 [resource]
 script = ExtResource("1")
@@ -14,7 +14,6 @@ connector_directions = PackedStringArray("west")
 arena_bounds = Rect2(-820, -520, 1640, 1040)
 arena_shape = 2
 wall_rects = Array[Rect2]([Rect2(-130, -80, 260, 160)])
-spawner_placements = Array[Resource]([])
 max_active_enemies = 26
 boss_profile = ExtResource("2")
 boss_spawn_position = Vector2(260, 0)
