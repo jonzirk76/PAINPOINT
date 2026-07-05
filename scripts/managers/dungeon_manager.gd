@@ -84,6 +84,7 @@ func get_current_level_definition():
 	level.id = String(state["id"])
 	level.display_name = "%s - %s" % [piece.display_name, String(state["id"]).capitalize()]
 	level.difficulty_label = "Floor %d %s" % [floor_number, piece.room_kind.capitalize()]
+	level.floor_number = max(floor_number, 1)
 	_apply_floor_scaling(level, String(piece.room_kind))
 	return level
 
@@ -493,12 +494,14 @@ func _generate_room_interiors() -> void:
 			level.id = String(room_id)
 			level.display_name = "%s - %s" % [piece.display_name, String(room_id).capitalize()]
 			level.difficulty_label = "Floor %d %s" % [floor_number, room_kind.capitalize()]
+			level.floor_number = max(floor_number, 1)
 			_apply_floor_scaling(level, room_kind)
 		state["level_definition"] = level
 		_rooms[room_id] = state
 
 
 func _apply_floor_scaling(level, room_kind: String) -> void:
+	level.floor_number = max(floor_number, 1)
 	var floor_bonus: int = max(floor_number - 1, 0)
 	level.max_active_enemies = min(int(level.max_active_enemies) + floor_bonus * 3, 48)
 	var extra_spawner_count := _get_extra_spawner_count(room_kind)

@@ -132,6 +132,7 @@ func _make_base_level(piece, room_id: String, floor_number: int):
 	level.id = room_id
 	level.display_name = "%s - %s" % [piece.display_name, room_id.capitalize()]
 	level.difficulty_label = "Floor %d %s" % [floor_number, String(piece.room_kind).capitalize()]
+	level.floor_number = max(floor_number, 1)
 	if String(piece.room_kind) == "boss":
 		level.boss_spawn_position = level.arena_bounds.get_center()
 	level.use_default_spawners = false

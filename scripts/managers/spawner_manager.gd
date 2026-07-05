@@ -18,6 +18,10 @@ signal hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: 
 @export var initial_spawn_player_bias_fan_degrees: float = 136.0
 @export var pressure_damage_distance: float = 165.0
 @export var pressure_damage_bonus: int = 1
+@export var floor_one_spawn_interval_multiplier: float = 1.35
+@export var spawn_interval_floor_step: float = 0.08
+@export var minimum_floor_spawn_interval_multiplier: float = 0.72
+@export var minimum_scaled_spawn_interval: float = 1.15
 
 const SPAWNER_PLACEMENT_SCRIPT := preload("res://scripts/resources/spawner_placement.gd")
 
@@ -115,6 +119,7 @@ func _spawn_spawner(placement, index: int) -> void:
 	spawner.warmup_seconds = warmup
 	if profile != null and spawner.has_method("initialize_from_profile"):
 		spawner.initialize_from_profile(profile)
+		spawner.spawn_interval = _scale_spawn_interval_for_floor(float(spawner.spawn_interval))
 	else:
 		spawner.initialize(_get_spawner_health(), _get_spawn_interval(), _get_spawner_radius())
 	spawner.spawn_ready.connect(_on_spawner_spawn_ready)
@@ -261,9 +266,22 @@ func _get_spawner_health() -> int:
 
 
 func _get_spawn_interval() -> float:
+	var interval := default_spawn_interval
 	if _level_definition != null:
-		return _level_definition.spawn_interval
-	return default_spawn_interval
+		interval = _level_definition.spawn_interval
+	return _scale_spawn_interval_for_floor(interval)
+
+
+func _scale_spawn_interval_for_floor(base_interval: float) -> float:
+	return max(float(base_interval) * _get_floor_spawn_interval_multiplier(), minimum_scaled_spawn_interval)
+
+
+func _get_floor_spawn_interval_multiplier() -> float:
+	var current_floor := 1
+	if _level_definition != null and _level_definition.get("floor_number") != null:
+		current_floor = max(int(_level_definition.floor_number), 1)
+	var floor_pressure: float = float(current_floor - 1) * spawn_interval_floor_step
+	return max(floor_one_spawn_interval_multiplier - floor_pressure, minimum_floor_spawn_interval_multiplier)
 
 
 func _get_spawner_radius() -> float:

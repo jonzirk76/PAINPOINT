@@ -195,6 +195,7 @@ func _init() -> void:
 	_test_general_and_boss_projectile_shields(failures)
 	_test_spawner_pressure_damage(failures)
 	_test_typed_spawner_spawn_profile(failures)
+	_test_floor_scaled_spawner_rates(failures)
 	_test_hostile_shot_signals(failures)
 	_test_spawner_special_attacks(failures)
 	_test_hostile_shots_respect_walls(failures)
@@ -1794,6 +1795,50 @@ func _test_typed_spawner_spawn_profile(failures: Array[String]) -> void:
 		if requested_positions.is_empty():
 			failures.append("SpawnerManager should emit concrete spawn positions for requested enemies.")
 	manager.free()
+
+
+func _test_floor_scaled_spawner_rates(failures: Array[String]) -> void:
+	var spawner_layer := Node2D.new()
+	var manager = load("res://scripts/managers/spawner_manager.gd").new()
+	var level = load("res://scripts/resources/level_definition.gd").new()
+	var placement = load("res://scripts/resources/spawner_placement.gd").new()
+	var basic_profile = load("res://resources/spawners/basic_spawner.tres")
+	var placements: Array[Resource] = [placement]
+	placement.position = Vector2.ZERO
+	placement.profile = basic_profile
+	placement.warmup_seconds = 0.1
+	level.use_default_spawners = false
+	level.spawner_placements = placements
+	root.add_child(spawner_layer)
+	root.add_child(manager)
+	manager.initialize({
+		"spawner_layer": spawner_layer
+	})
+
+	level.floor_number = 1
+	manager.reset_run(level)
+	if manager._spawners.is_empty():
+		failures.append("Floor-scaled spawner rate test could not create a floor-one spawner.")
+		manager.free()
+		spawner_layer.free()
+		return
+	var profile_interval: float = float(basic_profile.spawn_interval)
+	var floor_one_interval: float = float(manager._spawners[0].spawn_interval)
+	if floor_one_interval <= profile_interval:
+		failures.append("Floor one spawn rates should start lower than the base spawner profile rate.")
+
+	level.floor_number = 6
+	manager.reset_run(level)
+	if manager._spawners.is_empty():
+		failures.append("Floor-scaled spawner rate test could not create a later-floor spawner.")
+	else:
+		var floor_six_interval: float = float(manager._spawners[0].spawn_interval)
+		if floor_six_interval >= floor_one_interval:
+			failures.append("Later floors should increase spawn rate by shortening spawner intervals.")
+		if floor_six_interval >= profile_interval:
+			failures.append("Mid-run floors should push spawn intervals below base profile timing.")
+	manager.free()
+	spawner_layer.free()
 
 
 func _test_hostile_shot_signals(failures: Array[String]) -> void:

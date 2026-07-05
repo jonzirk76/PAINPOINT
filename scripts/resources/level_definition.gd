@@ -12,6 +12,7 @@ enum ArenaShape {
 @export var id: String = "level"
 @export var display_name: String = "Level"
 @export var difficulty_label: String = "Easy"
+@export var floor_number: int = 1
 @export var arena_shape: ArenaShape = ArenaShape.RECTANGLE
 @export var arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 @export var use_default_spawners: bool = true

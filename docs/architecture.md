@@ -46,7 +46,7 @@ The orchestrator receives those signals and decides which manager command runs n
 
 The game starts in `LEVEL_SELECT`. `GameOrchestrator` owns the selected level index, displays levels in increasing difficulty, and starts the selected `LevelDefinition` only after player confirmation.
 
-Level definitions configure arena bounds, arena shape, spawner positions, spawner health, spawn interval, and max active enemies. `ArenaView`, `PlayerManager`, and `SpawnerManager` consume those values through orchestrator commands.
+Level definitions configure arena bounds, arena shape, floor number, spawner positions, spawner health, spawn interval, and max active enemies. `ArenaView`, `PlayerManager`, and `SpawnerManager` consume those values through orchestrator commands.
 
 A level is won only when `SpawnerManager.get_spawner_count()` and `EnemyManager.get_enemy_count()` both reach zero. The win state disables gameplay managers and shows a return-to-level-select prompt.
 
@@ -56,7 +56,7 @@ The level-select menu includes `Dungeon Prototype` and `Main Game Loop Test` ent
 
 Room pieces define footprint cells, connector directions, arena geometry, internal wall rectangles, typed spawner placements, and optional boss profile data. `DungeonManager` places pieces with cell-footprint collision so pieces fit spatially, tracks which rooms are cleared, and exposes only room-state queries/commands to `GameOrchestrator`.
 
-Dungeon layout is recipe-driven rather than a single fixed prototype. `GameOrchestrator` creates one run seed when a dungeon or main-loop run starts, preserves it across floor advances, and passes it into `DungeonManager.reset_run(floor, run_seed)`. `DungeonManager` combines the run seed and floor number into the floor generation seed, builds a guaranteed start-to-boss path, attaches guaranteed treasure and challenge branches, then fills optional side branches from the combat room-piece pool. Later floors increase the required boss-path length, total room target, active enemy budget, and extra typed spawner pressure applied to eligible room `LevelDefinition` instances.
+Dungeon layout is recipe-driven rather than a single fixed prototype. `GameOrchestrator` creates one run seed when a dungeon or main-loop run starts, preserves it across floor advances, and passes it into `DungeonManager.reset_run(floor, run_seed)`. `DungeonManager` combines the run seed and floor number into the floor generation seed, builds a guaranteed start-to-boss path, attaches guaranteed treasure and challenge branches, then fills optional side branches from the combat room-piece pool. Later floors increase the required boss-path length, total room target, active enemy budget, and extra typed spawner pressure applied to eligible room `LevelDefinition` instances. `SpawnerManager` also scales owned spawner intervals from slow floor-one timing toward faster later-floor timing so enemy pressure starts low and ramps with the run.
 
 `RoomManager` creates `DoorEntity` instances for the current room's connected exits. Doors are locked while the room has active enemies or spawners, then unlock after `GameOrchestrator` marks the room cleared. Door entry emits upward to `RoomManager`, and only `GameOrchestrator` commands `DungeonManager.enter_direction(...)` and reloads the next room.
 
