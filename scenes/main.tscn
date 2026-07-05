@@ -1,4 +1,4 @@
-[gd_scene load_steps=21 format=3 uid="uid://beu8j4ocyaju8"]
+[gd_scene load_steps=20 format=3 uid="uid://beu8j4ocyaju8"]
 
 [ext_resource type="Script" uid="uid://wt5kiqqk3ets" path="res://scripts/orchestrators/game_orchestrator.gd" id="1"]
 [ext_resource type="Script" uid="uid://bp4ssjl06eeir" path="res://scripts/arena/arena_view.gd" id="2"]
@@ -17,27 +17,7 @@
 [ext_resource type="Script" uid="uid://bhbn1qa7duxll" path="res://scripts/managers/audio_manager.gd" id="15"]
 [ext_resource type="Script" uid="uid://d2y6e6jpmklag" path="res://scripts/managers/destructible_manager.gd" id="16"]
 [ext_resource type="Texture2D" uid="uid://dqxmpotu858e" path="res://art/concept_art/canon.png" id="17"]
-
-[sub_resource type="Shader" id="Shader_5d4kq"]
-code = "shader_type canvas_item;
-
-uniform vec4 border_color : source_color = vec4(0.28, 0.9, 1.0, 1.0);
-uniform vec4 rim_color : source_color = vec4(1.0, 0.93, 0.45, 1.0);
-
-void fragment() {
-	vec4 tex_color = texture(TEXTURE, UV);
-	float distance_from_center = distance(UV, vec2(0.5));
-	float circle_alpha = 1.0 - smoothstep(0.475, 0.5, distance_from_center);
-	float border_alpha = smoothstep(0.42, 0.465, distance_from_center) * (1.0 - smoothstep(0.465, 0.5, distance_from_center));
-	float rim_alpha = smoothstep(0.26, 0.39, distance_from_center) * (1.0 - smoothstep(0.39, 0.455, distance_from_center));
-	vec3 final_color = mix(tex_color.rgb, border_color.rgb, border_alpha * 0.82);
-	final_color = mix(final_color, rim_color.rgb, rim_alpha * 0.12);
-	COLOR = vec4(final_color, max(tex_color.a * circle_alpha, border_alpha));
-}
-"
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_jv0xe"]
-shader = SubResource("Shader_5d4kq")
+[ext_resource type="Script" uid="uid://bwb2l25a0fml4" path="res://scripts/ui/circular_portrait.gd" id="18"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_lis5b"]
 atlas = ExtResource("17")
@@ -190,17 +170,15 @@ offset_right = 466.0
 offset_bottom = 112.0
 color = Color(0.02, 0.025, 0.03, 0.78)
 
-[node name="CharacterPortrait" type="TextureRect" parent="UI/CombatPanel"]
-material = SubResource("ShaderMaterial_jv0xe")
+[node name="CharacterPortrait" type="Control" parent="UI/CombatPanel"]
 layout_mode = 0
 offset_left = 8.0
 offset_top = 8.0
 offset_right = 104.0
 offset_bottom = 104.0
 mouse_filter = 2
+script = ExtResource("18")
 texture = SubResource("AtlasTexture_lis5b")
-expand_mode = 1
-stretch_mode = 6
 
 [node name="HealthLabel" type="Label" parent="UI/CombatPanel"]
 visible = false

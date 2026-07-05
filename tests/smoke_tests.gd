@@ -51,6 +51,7 @@ const SCRIPT_PATHS := [
 	"res://scripts/managers/room_manager.gd",
 	"res://scripts/managers/destructible_manager.gd",
 	"res://scripts/ui/dungeon_minimap.gd",
+	"res://scripts/ui/circular_portrait.gd",
 	"res://scripts/orchestrators/game_orchestrator.gd",
 	"res://scripts/resources/damage_packet.gd",
 	"res://scripts/resources/enemy_profile.gd",
@@ -487,11 +488,13 @@ func _test_scene_loads(failures: Array[String]) -> void:
 					if health_label.visible or overdrive_label.visible or super_label.visible:
 						failures.append("Combat resource bars should not need visible Life/Overdrive/Special text labels.")
 				if instance.has_node("UI/CombatPanel/CharacterPortrait"):
-					var character_portrait: TextureRect = instance.get_node("UI/CombatPanel/CharacterPortrait")
-					if character_portrait.texture == null:
+					var character_portrait: Control = instance.get_node("UI/CombatPanel/CharacterPortrait")
+					if character_portrait.get_script() == null:
+						failures.append("Character portrait should use the circular portrait drawing script.")
+					elif character_portrait.get("texture") == null:
 						failures.append("Character combat panel should use the canon sheet portrait texture.")
-					if character_portrait.material == null:
-						failures.append("Character portrait should use a circular mask material.")
+					if abs(character_portrait.size.x - character_portrait.size.y) > 0.01:
+						failures.append("Character portrait should draw into a square circular mask area.")
 				if instance.has_node("UI/DungeonMinimap"):
 					var dungeon_minimap_node: Control = instance.get_node("UI/DungeonMinimap")
 					if dungeon_minimap_node.anchor_left != 1.0 or dungeon_minimap_node.anchor_right != 1.0 or dungeon_minimap_node.offset_right < -24.0 or dungeon_minimap_node.offset_top < 48.0:
