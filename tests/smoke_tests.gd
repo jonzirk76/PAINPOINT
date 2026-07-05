@@ -433,7 +433,7 @@ func _test_scene_loads(failures: Array[String]) -> void:
 					"UI/CombatPanel/HealthBarBack/HealthTickLayer",
 					"UI/CombatPanel/InvulnerabilityBarBack/InvulnerabilityBarFill",
 					"UI/CombatPanel/CircularPortraitMask/CharacterPortrait",
-					"UI/CombatPanel/CharacterNameLabel",
+					"UI/CharacterUi/CharacterNameLabel",
 					"UI/CombatPanel/OverdriveBarBack/OverdriveBarFill",
 					"UI/CombatPanel/OverdriveBarBack/OverdriveTickLayer",
 					"UI/CombatPanel/SuperBarBack/SuperBarFill",
@@ -724,6 +724,7 @@ func _test_character_hud_feedback_and_manual_layout(failures: Array[String]) -> 
 	main._last_max_health = 5
 	main._last_health = 3
 	main._update_combat_panel([])
+	var expected_meter_skew: float = main.METER_SEGMENT_SKEW_DEGREES
 	if main.health_fill.size.x > health_rect.size.x * 0.61 or main.health_fill.size.x < health_rect.size.x * 0.59:
 		failures.append("Health depletion should use the manually authored fill width as its full meter.")
 	var health_segments := _get_meter_segments(main.health_tick_layer, "meter_active_segment")
@@ -737,8 +738,8 @@ func _test_character_hud_feedback_and_manual_layout(failures: Array[String]) -> 
 			failures.append("Health segments should align to the manually authored fill rect.")
 		if last_health_segment.position.x + last_health_segment_size.x > health_rect.position.x + health_rect.size.x + 0.01:
 			failures.append("Health segments should stay inside the manually authored fill rect.")
-		if abs(float(first_health_segment.get_meta("skew_degrees", 0.0)) - 20.0) > 0.01:
-			failures.append("Health segments should use the requested 20 degree skew.")
+		if abs(float(first_health_segment.get_meta("skew_degrees", 0.0)) - expected_meter_skew) > 0.01:
+			failures.append("Health segments should use the orchestrator's configured meter skew.")
 	main._last_health = 1
 	main._update_combat_panel([])
 	health_segments = _get_meter_segments(main.health_tick_layer, "meter_active_segment")
@@ -746,8 +747,8 @@ func _test_character_hud_feedback_and_manual_layout(failures: Array[String]) -> 
 		var low_health_segment: Polygon2D = health_segments[0] as Polygon2D
 		if low_health_segment.color.r <= low_health_segment.color.g:
 			failures.append("Health meter should shift toward red as health is depleted.")
-	var name_label: Label = main.get_node("UI/CombatPanel/CharacterNameLabel")
-	if name_label.text != "Volette":
+	var name_label: Label = main.get_node("UI/CharacterUi/CharacterNameLabel")
+	if name_label.text.strip_edges().to_lower() != "volette":
 		failures.append("Character HUD should label the player as Volette.")
 	var base_panel_position: Vector2 = main.combat_panel.position
 	main._on_player_health_changed(5, 4)
@@ -1101,6 +1102,7 @@ func _test_low_ammo_bar_warning(failures: Array[String]) -> void:
 	if main.overdrive_tick_layer == null:
 		failures.append("Overdrive bar should expose a tick layer.")
 	else:
+		var expected_meter_skew: float = main.METER_SEGMENT_SKEW_DEGREES
 		var expected_segments: int = main.upgrade_manager.get_overdrive_ammo()
 		var overdrive_segments := _get_meter_segments(main.overdrive_tick_layer, "meter_active_segment")
 		if overdrive_segments.size() != expected_segments:
@@ -1119,8 +1121,8 @@ func _test_low_ammo_bar_warning(failures: Array[String]) -> void:
 				failures.append("Overdrive segments should stay inside the manually authored fill rect.")
 			if first_tick.color.b <= first_tick.color.r:
 				failures.append("Overdrive segments should stay blue at low ammo.")
-			if abs(float(first_tick.get_meta("skew_degrees", 0.0)) - 20.0) > 0.01:
-				failures.append("Overdrive segments should use the requested 20 degree skew.")
+			if abs(float(first_tick.get_meta("skew_degrees", 0.0)) - expected_meter_skew) > 0.01:
+				failures.append("Overdrive segments should use the orchestrator's configured meter skew.")
 		main._last_overdrive_max_ammo = 8
 		main._last_overdrive_ammo = 8
 		var fill_rect: Rect2 = main._get_meter_full_rect(main.overdrive_fill, main.overdrive_bar_back, main.overdrive_bar_back.size.x)
