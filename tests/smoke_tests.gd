@@ -423,6 +423,7 @@ func _test_scene_loads(failures: Array[String]) -> void:
 					"UI/CombatPanel/InvulnerabilityBarBack/InvulnerabilityBarFill",
 					"UI/CombatPanel/CharacterPortrait",
 					"UI/CombatPanel/OverdriveBarBack/OverdriveBarFill",
+					"UI/CombatPanel/OverdriveBarBack/OverdriveTickLayer",
 					"UI/CombatPanel/SuperBarBack/SuperBarFill",
 					"UI/CombatPanel/AttributeLabel",
 					"UI/CombatPanel/StatsLabel",
@@ -465,8 +466,12 @@ func _test_scene_loads(failures: Array[String]) -> void:
 						failures.append("HUD state info should be anchored in a lower screen corner.")
 				if instance.has_node("UI/ScorePanel"):
 					var score_panel: Control = instance.get_node("UI/ScorePanel")
-					if score_panel.anchor_left != 0.5 or score_panel.anchor_right != 0.5 or score_panel.offset_top > 24.0:
-						failures.append("Score panel should sit prominently at the upper middle of the screen.")
+					if score_panel.anchor_left != 1.0 or score_panel.anchor_right != 1.0 or score_panel.offset_right < -28.0 or score_panel.offset_right > -8.0 or score_panel.offset_top > 20.0:
+						failures.append("Score panel should sit compactly above the upper-right minimap.")
+				if instance.has_node("UI/ScorePanel/ScoreLabel"):
+					var score_label: Label = instance.get_node("UI/ScorePanel/ScoreLabel")
+					if score_label.get_theme_font_size("font_size") > 22:
+						failures.append("Score label should be small enough to group with the minimap.")
 				if instance.has_node("UI/CombatPanel"):
 					var combat_panel: Control = instance.get_node("UI/CombatPanel")
 					if combat_panel.size.y > 140.0:
@@ -475,13 +480,21 @@ func _test_scene_loads(failures: Array[String]) -> void:
 						failures.append("Character combat panel should sit in the upper-left corner.")
 					if not instance.has_node("UI/CombatPanel/OverdriveBarBack/OverdriveBarFill") or not instance.has_node("UI/CombatPanel/SuperBarBack/SuperBarFill"):
 						failures.append("Combat panel should render blue overdrive and yellow special resource bars.")
+				if instance.has_node("UI/CombatPanel/HealthLabel") and instance.has_node("UI/CombatPanel/OverdriveLabel") and instance.has_node("UI/CombatPanel/SuperLabel"):
+					var health_label: Label = instance.get_node("UI/CombatPanel/HealthLabel")
+					var overdrive_label: Label = instance.get_node("UI/CombatPanel/OverdriveLabel")
+					var super_label: Label = instance.get_node("UI/CombatPanel/SuperLabel")
+					if health_label.visible or overdrive_label.visible or super_label.visible:
+						failures.append("Combat resource bars should not need visible Life/Overdrive/Special text labels.")
 				if instance.has_node("UI/CombatPanel/CharacterPortrait"):
 					var character_portrait: TextureRect = instance.get_node("UI/CombatPanel/CharacterPortrait")
 					if character_portrait.texture == null:
 						failures.append("Character combat panel should use the canon sheet portrait texture.")
+					if character_portrait.material == null:
+						failures.append("Character portrait should use a circular mask material.")
 				if instance.has_node("UI/DungeonMinimap"):
 					var dungeon_minimap_node: Control = instance.get_node("UI/DungeonMinimap")
-					if dungeon_minimap_node.anchor_left != 1.0 or dungeon_minimap_node.anchor_right != 1.0 or dungeon_minimap_node.offset_right < -24.0:
+					if dungeon_minimap_node.anchor_left != 1.0 or dungeon_minimap_node.anchor_right != 1.0 or dungeon_minimap_node.offset_right < -24.0 or dungeon_minimap_node.offset_top < 48.0:
 						failures.append("Dungeon minimap should sit in the upper-right corner.")
 				if instance.has_node("Managers/InputManager"):
 					var input_manager_node: Node = instance.get_node("Managers/InputManager")
@@ -980,6 +993,17 @@ func _test_low_ammo_bar_warning(failures: Array[String]) -> void:
 			failures.append("Low ammo should flash the overdrive fill red.")
 		if back_color.r <= back_color.b:
 			failures.append("Low ammo should tint the overdrive bar background red even when empty.")
+	if main.overdrive_tick_layer == null:
+		failures.append("Overdrive bar should expose a tick layer.")
+	else:
+		var expected_ticks: int = max(main.upgrade_manager.get_overdrive_max_ammo() - 1, 0)
+		if main.overdrive_tick_layer.get_child_count() != expected_ticks:
+			failures.append("Overdrive ticks should divide the bar once per ammo unit.")
+		main._last_overdrive_max_ammo = 50
+		main._last_overdrive_ammo = 50
+		main._update_overdrive_bar(main.overdrive_bar_back.size.x)
+		if main.overdrive_tick_layer.get_child_count() != 49:
+			failures.append("Overdrive capacity increases should make tick marks denser instead of wider.")
 	if main.player_manager.player != null and main.player_manager.player.has_method("set_ammo_warning_state"):
 		failures.append("Low ammo should no longer create a warning around the player.")
 	main.free()
@@ -3326,6 +3350,7 @@ func _prime_main_for_direct_test_calls(main) -> void:
 	main.overdrive_label = main.get_node("UI/CombatPanel/OverdriveLabel")
 	main.overdrive_bar_back = main.get_node("UI/CombatPanel/OverdriveBarBack")
 	main.overdrive_fill = main.get_node("UI/CombatPanel/OverdriveBarBack/OverdriveBarFill")
+	main.overdrive_tick_layer = main.get_node("UI/CombatPanel/OverdriveBarBack/OverdriveTickLayer")
 	main.super_label = main.get_node("UI/CombatPanel/SuperLabel")
 	main.super_fill = main.get_node("UI/CombatPanel/SuperBarBack/SuperBarFill")
 	main.attribute_label = main.get_node("UI/CombatPanel/AttributeLabel")

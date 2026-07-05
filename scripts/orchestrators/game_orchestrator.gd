@@ -42,6 +42,7 @@ const FLOOR_EXIT_PORTAL_SCENE := preload("res://scenes/entities/floor_exit_porta
 @onready var overdrive_label: Label = $UI/CombatPanel/OverdriveLabel
 @onready var overdrive_bar_back: ColorRect = $UI/CombatPanel/OverdriveBarBack
 @onready var overdrive_fill: ColorRect = $UI/CombatPanel/OverdriveBarBack/OverdriveBarFill
+@onready var overdrive_tick_layer: Control = $UI/CombatPanel/OverdriveBarBack/OverdriveTickLayer
 @onready var super_label: Label = $UI/CombatPanel/SuperLabel
 @onready var super_fill: ColorRect = $UI/CombatPanel/SuperBarBack/SuperBarFill
 @onready var attribute_label: Label = $UI/CombatPanel/AttributeLabel
@@ -1188,6 +1189,7 @@ func _update_overdrive_bar(bar_width: float) -> void:
 		if is_low:
 			back_color = OVERDRIVE_BAR_BACK_COLOR.lerp(OVERDRIVE_BAR_LOW_BACK_COLOR, 0.62 + pulse * 0.32)
 		overdrive_bar_back.color = back_color
+	_update_overdrive_ticks(max_ammo, bar_width)
 	if overdrive_fill != null:
 		overdrive_fill.size.x = bar_width * ratio
 		var fill_color := Color(0.16, 0.52, 1.0, 1.0)
@@ -1201,6 +1203,29 @@ func _update_overdrive_bar(bar_width: float) -> void:
 	if overdrive_label != null:
 		var state_text := "ON" if _last_overdrive_is_active else ("HELD" if _last_overdrive_is_held else "READY")
 		overdrive_label.text = "OVERDRIVE  %d / %d  %s" % [_last_overdrive_ammo, max_ammo, state_text]
+
+
+func _update_overdrive_ticks(max_ammo: int, bar_width: float) -> void:
+	if overdrive_tick_layer == null:
+		return
+	for child in overdrive_tick_layer.get_children():
+		child.free()
+	if max_ammo <= 1:
+		return
+	var tick_height: float = overdrive_tick_layer.size.y
+	if tick_height <= 0.0 and overdrive_bar_back != null:
+		tick_height = overdrive_bar_back.size.y
+	if tick_height <= 0.0:
+		tick_height = 20.0
+	for index in range(1, max_ammo):
+		var tick := ColorRect.new()
+		tick.name = "OverdriveTick%d" % index
+		var is_major := index % 10 == 0
+		var tick_width := 2.0 if is_major else 1.0
+		tick.position = Vector2((bar_width * float(index) / float(max_ammo)) - tick_width * 0.5, 0.0)
+		tick.size = Vector2(tick_width, tick_height)
+		tick.color = Color(0.01, 0.018, 0.026, 0.62 if is_major else 0.42)
+		overdrive_tick_layer.add_child(tick)
 
 
 func _update_super_bar(bar_width: float) -> void:
