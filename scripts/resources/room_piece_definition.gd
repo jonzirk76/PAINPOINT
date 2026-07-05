@@ -13,6 +13,7 @@ const LEVEL_DEFINITION_SCRIPT := preload("res://scripts/resources/level_definiti
 @export var arena_shape: int = 0
 @export var wall_rects: Array[Rect2] = []
 @export var spawner_placements: Array[Resource] = []
+@export var destructible_prop_placements: Array[Resource] = []
 @export var max_active_enemies: int = 12
 @export var boss_profile: Resource = null
 @export var boss_spawn_position: Vector2 = Vector2.ZERO
@@ -26,6 +27,7 @@ func create_level_definition():
 	level.arena_shape = arena_shape
 	level.arena_bounds = arena_bounds
 	level.spawner_placements = spawner_placements.duplicate()
+	level.destructible_prop_placements = destructible_prop_placements.duplicate()
 	level.wall_rects = wall_rects.duplicate()
 	var empty_voids: Array[Rect2] = []
 	level.void_rects = empty_voids

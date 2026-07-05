@@ -92,6 +92,9 @@ func _handle_target_hit(body: Node, hit_position: Vector2 = Vector2.INF) -> void
 	if _is_expired:
 		return
 	var resolved_hit_position := global_position if hit_position == Vector2.INF else hit_position
+	if body.is_in_group("destructible_props"):
+		_handle_destructible_hit(body, resolved_hit_position)
+		return
 	if body.is_in_group("arena_walls"):
 		expire("wall", resolved_hit_position)
 		return
@@ -115,12 +118,24 @@ func _handle_target_hit(body: Node, hit_position: Vector2 = Vector2.INF) -> void
 		pierce_remaining -= 1
 
 
+func _handle_destructible_hit(body: Node, hit_position: Vector2) -> void:
+	if damage_packet == null or hit_targets.has(body):
+		expire("wall", hit_position)
+		return
+	hit_targets.append(body)
+	damage_packet.hit_targets = hit_targets.duplicate()
+	hit_detected.emit(self, body)
+	expire("hit", hit_position)
+
+
 func _should_force_impact_on_target(body: Node) -> bool:
 	if damage_packet == null or not bool(damage_packet.impact_on_strong_targets):
 		return false
 	if body == null or not is_instance_valid(body):
 		return false
 	if body.has_method("is_projectile_shield_active") and bool(body.is_projectile_shield_active()):
+		return true
+	if body.is_in_group("destructible_props"):
 		return true
 	if body.is_in_group("spawners"):
 		return true

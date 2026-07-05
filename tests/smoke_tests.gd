@@ -11,6 +11,7 @@ const ENTITY_SCRIPT_PATHS := [
 	"res://scripts/entities/parry_absorb_effect.gd",
 	"res://scripts/entities/projectile_impact_effect.gd",
 	"res://scripts/entities/door_entity.gd",
+	"res://scripts/entities/destructible_prop_entity.gd",
 	"res://scripts/entities/floor_exit_portal_entity.gd"
 ]
 
@@ -34,6 +35,7 @@ const SCRIPT_PATHS := [
 	"res://scripts/entities/parry_absorb_effect.gd",
 	"res://scripts/entities/projectile_impact_effect.gd",
 	"res://scripts/entities/door_entity.gd",
+	"res://scripts/entities/destructible_prop_entity.gd",
 	"res://scripts/entities/floor_exit_portal_entity.gd",
 	"res://scripts/managers/input_manager.gd",
 	"res://scripts/managers/player_manager.gd",
@@ -47,6 +49,7 @@ const SCRIPT_PATHS := [
 	"res://scripts/managers/audio_manager.gd",
 	"res://scripts/managers/dungeon_manager.gd",
 	"res://scripts/managers/room_manager.gd",
+	"res://scripts/managers/destructible_manager.gd",
 	"res://scripts/ui/dungeon_minimap.gd",
 	"res://scripts/orchestrators/game_orchestrator.gd",
 	"res://scripts/resources/damage_packet.gd",
@@ -56,6 +59,7 @@ const SCRIPT_PATHS := [
 	"res://scripts/resources/level_definition.gd",
 	"res://scripts/resources/spawner_profile.gd",
 	"res://scripts/resources/spawner_placement.gd",
+	"res://scripts/resources/destructible_prop_placement.gd",
 	"res://scripts/resources/room_piece_definition.gd",
 	"res://scripts/resources/room_interior_generator.gd",
 	"res://scripts/resources/health_pickup.gd"
@@ -178,6 +182,7 @@ func _init() -> void:
 	_test_projectile_knockback_packet(failures)
 	_test_charged_super_shot(failures)
 	_test_projectile_reset_clears_visible_projectiles(failures)
+	_test_destructible_props(failures)
 	_test_parry_pushes_enemies_without_damage(failures)
 	_test_tank_ignores_knockback(failures)
 	_test_fast_enemy_contact_range(failures)
@@ -393,6 +398,7 @@ func _test_scene_loads(failures: Array[String]) -> void:
 		"res://scenes/entities/parry_absorb_effect.tscn",
 		"res://scenes/entities/projectile_impact_effect.tscn",
 		"res://scenes/entities/door_entity.tscn",
+		"res://scenes/entities/destructible_prop_entity.tscn",
 		"res://scenes/entities/floor_exit_portal_entity.tscn"
 	]
 	for path in scene_paths:
@@ -425,12 +431,14 @@ func _test_scene_loads(failures: Array[String]) -> void:
 					"UI/LevelSelectPanel/LevelListLabel",
 					"UI/WinPanel/WinPromptLabel",
 					"World/DoorLayer",
+					"World/DestructibleLayer",
 					"World/EffectLayer",
 					"Managers/InputManager",
 					"Managers/EffectsManager",
 					"Managers/AudioManager",
 					"Managers/DungeonManager",
-					"Managers/RoomManager"
+					"Managers/RoomManager",
+					"Managers/DestructibleManager"
 				]
 				for node_path in required_nodes:
 					if not instance.has_node(node_path):
@@ -1356,6 +1364,83 @@ func _test_projectile_reset_clears_visible_projectiles(failures: Array[String]) 
 	projectile_layer.free()
 
 
+func _test_destructible_props(failures: Array[String]) -> void:
+	var placement = load("res://scripts/resources/destructible_prop_placement.gd").new()
+	placement.position = Vector2(80.0, 0.0)
+	placement.size = Vector2(48.0, 48.0)
+	placement.prop_kind = "crate"
+	placement.max_health = 2
+	placement.score_value = 1
+	placement.drop_kind = "minor"
+	var prop = load("res://scenes/entities/destructible_prop_entity.tscn").instantiate()
+	prop.initialize(placement)
+	if (int(prop.collision_layer) & 32) == 0 or not prop.is_in_group("arena_walls") or not prop.is_in_group("destructible_props"):
+		failures.append("Destructible props should block movement/projectiles while alive.")
+	var packet = load("res://scripts/resources/damage_packet.gd").new()
+	packet.damage = 1
+	var depleted_count := [0]
+	prop.health_depleted.connect(func(_prop) -> void:
+		depleted_count[0] += 1
+	)
+	prop.take_damage(packet)
+	if prop.health != 1:
+		failures.append("Destructible prop damage should reduce health.")
+	prop.take_damage(packet)
+	if depleted_count[0] != 1 or int(prop.collision_layer) != 0:
+		failures.append("Destructible props should emit depletion and stop blocking when broken.")
+
+	var projectile = load("res://scenes/entities/projectile_entity.tscn").instantiate()
+	var hit_count := [0]
+	projectile.hit_detected.connect(func(_projectile, target) -> void:
+		if target == prop:
+			hit_count[0] += 1
+	)
+	prop.initialize(placement)
+	projectile.initialize(Vector2.ZERO, Vector2.RIGHT, packet, 560.0)
+	projectile._handle_target_hit(prop, prop.global_position)
+	if hit_count[0] != 1 or projectile.last_expire_reason != "hit":
+		failures.append("Player projectiles should damage destructible props and stop on impact.")
+	prop.free()
+	projectile.free()
+
+	var prop_layer := Node2D.new()
+	var manager = load("res://scripts/managers/destructible_manager.gd").new()
+	var level = load("res://scripts/resources/level_definition.gd").new()
+	var prop_placements: Array[Resource] = [placement]
+	level.destructible_prop_placements = prop_placements
+	root.add_child(prop_layer)
+	root.add_child(manager)
+	manager.initialize({
+		"destructible_layer": prop_layer
+	})
+	manager.reset_run(level)
+	manager.set_enabled(true)
+	if manager.get_destructible_count() != 1:
+		failures.append("DestructibleManager should spawn level-defined props.")
+	else:
+		var spawned_prop = manager._destructibles[0]
+		packet.damage = 3
+		manager.apply_damage(spawned_prop, packet)
+		if manager.get_destructible_count() != 0 or not level.destructible_prop_placements.is_empty():
+			failures.append("Destroyed props should be removed from the live room definition for revisits.")
+	manager.free()
+	prop_layer.free()
+
+	var pickup_layer := Node2D.new()
+	var item_manager = load("res://scripts/managers/item_manager.gd").new()
+	root.add_child(pickup_layer)
+	root.add_child(item_manager)
+	item_manager.initialize({
+		"pickup_layer": pickup_layer
+	})
+	item_manager.set_enabled(true)
+	item_manager.drop_destructible_reward(Vector2.ZERO, "treasure")
+	if item_manager.get_pickup_count() != 1:
+		failures.append("Treasure chest destructibles should drop one reward pickup.")
+	item_manager.free()
+	pickup_layer.free()
+
+
 func _test_parry_pushes_enemies_without_damage(failures: Array[String]) -> void:
 	var enemy_layer := Node2D.new()
 	var manager = load("res://scripts/managers/enemy_manager.gd").new()
@@ -2080,6 +2165,8 @@ func _test_room_interior_generator_determinism_and_budget(failures: Array[String
 	var floor_one = generator.generate(combat_piece, "floor_one", 1, 1111, connections)
 	if floor_one.get_spawner_count() < 4 or floor_one.get_spawner_count() > 6:
 		failures.append("Generated combat rooms should respect the v1 spawner count bounds.")
+	if floor_one.destructible_prop_placements.size() < 2:
+		failures.append("Generated combat rooms should include destructible crate/barrel cover.")
 	if int(floor_one.max_active_enemies) != clamp(24 + 1 * 4 + floor_one.get_spawner_count() * 2, 30, 52):
 		failures.append("Generated combat rooms should compute floor-scaled max active enemies.")
 	if not _generated_room_has_non_basic_spawner(floor_one):
@@ -2124,6 +2211,8 @@ func _test_room_interior_generator_determinism_and_budget(failures: Array[String
 	var complex_room_count := 0
 	var saw_wall_chain := false
 	var saw_void_mass := false
+	var prop_room_count := 0
+	var chest_room_count := 0
 	for seed in range(2400, 2420):
 		var sampled_room = generator.generate(combat_piece, "complex_%d" % seed, 2, seed, connections)
 		if sampled_room.wall_rects.size() + sampled_room.void_rects.size() >= 12:
@@ -2132,12 +2221,22 @@ func _test_room_interior_generator_determinism_and_budget(failures: Array[String
 			saw_wall_chain = true
 		if _has_contiguous_blocker_group(sampled_room.void_rects, 4):
 			saw_void_mass = true
+		if sampled_room.destructible_prop_placements.size() >= 2:
+			prop_room_count += 1
+		for prop in sampled_room.destructible_prop_placements:
+			if prop != null and String(prop.prop_kind) == "chest":
+				chest_room_count += 1
+				break
 	if complex_room_count < 8:
 		failures.append("Generated rooms should usually spend enough blocker budget to create richer interiors.")
 	if not saw_wall_chain:
 		failures.append("Generated wall blockers should be able to form snaking/massed chains.")
 	if not saw_void_mass:
 		failures.append("Generated void blockers should be able to form massed or snaking shapes.")
+	if prop_room_count < 12:
+		failures.append("Generated rooms should usually include destructible props.")
+	if chest_room_count <= 0 or chest_room_count >= prop_room_count:
+		failures.append("Generated treasure chests should appear rarely among destructible props.")
 
 
 func _test_room_interior_generator_validation(failures: Array[String]) -> void:
@@ -2176,6 +2275,14 @@ func _test_room_interior_generator_validation(failures: Array[String]) -> void:
 	too_closed.void_rects = no_voids
 	if bool(generator.validate_level(too_closed, connections, "combat").get("ok", false)):
 		failures.append("Room validation should reject rooms without enough navigable open area.")
+	var prop_blocked_spawn = generator.generate(piece, "path_prop_blocked_spawn", 2, 1212, connections)
+	var prop_placement = load("res://scripts/resources/destructible_prop_placement.gd").new()
+	prop_placement.position = prop_blocked_spawn.arena_bounds.get_center()
+	prop_placement.size = Vector2(120.0, 120.0)
+	prop_placement.max_health = 3
+	prop_blocked_spawn.destructible_prop_placements.append(prop_placement)
+	if bool(generator.validate_level(prop_blocked_spawn, connections, "combat").get("ok", false)):
+		failures.append("Room validation should reject destructible props blocking required spawn space.")
 
 	var fallback = piece.create_level_definition()
 	fallback.id = "fallback_test"
@@ -2335,10 +2442,22 @@ func _get_level_generation_signature(level) -> String:
 		if placement != null:
 			position = placement.position
 		spawner_parts.append("%s@%d,%d" % [profile_path.get_file(), int(round(position.x)), int(round(position.y))])
+	var prop_parts: Array[String] = []
+	for placement in level.destructible_prop_placements:
+		if placement == null:
+			continue
+		prop_parts.append("%s@%d,%d:%dx%d:%d" % [
+			String(placement.prop_kind),
+			int(round(placement.position.x)),
+			int(round(placement.position.y)),
+			int(round(placement.size.x)),
+			int(round(placement.size.y)),
+			int(placement.max_health)
+		])
 	return "%s|%s|%s|%d" % [
 		";".join(wall_parts),
 		";".join(void_parts),
-		";".join(spawner_parts),
+		";".join(spawner_parts) + "|" + ";".join(prop_parts),
 		int(level.max_active_enemies)
 	]
 
@@ -2705,6 +2824,24 @@ func _test_room_manager_doors(failures: Array[String]) -> void:
 			failures.append("RoomManager should unlock doors for an already-cleared room.")
 		if (child.collision_mask & 1) == 0:
 			failures.append("Door entity should watch the player collision layer.")
+	var direct_door = load("res://scenes/entities/door_entity.tscn").instantiate()
+	var player = load("res://scenes/entities/player_entity.tscn").instantiate()
+	var entered_count := [0]
+	root.add_child(direct_door)
+	root.add_child(player)
+	direct_door.initialize("east", "next", Vector2.ZERO, Vector2(28.0, 92.0), true)
+	direct_door.entered.connect(func(_door) -> void:
+		entered_count[0] += 1
+	)
+	direct_door._on_body_entered(player)
+	if entered_count[0] != 0:
+		failures.append("Freshly loaded doors should not trigger before the player leaves their trigger area.")
+	direct_door._refresh_armed_state()
+	direct_door._on_body_entered(player)
+	if entered_count[0] != 1:
+		failures.append("Door should trigger normally after it has armed.")
+	direct_door.free()
+	player.free()
 	manager.free()
 	dungeon.free()
 	door_layer.free()
@@ -3022,6 +3159,7 @@ func _prime_main_for_direct_test_calls(main) -> void:
 	main.effects_manager = main.get_node("Managers/EffectsManager")
 	main.dungeon_manager = main.get_node("Managers/DungeonManager")
 	main.room_manager = main.get_node("Managers/RoomManager")
+	main.destructible_manager = main.get_node("Managers/DestructibleManager")
 	main.audio_manager = main.get_node("Managers/AudioManager")
 	main.arena_view = main.get_node("World/Arena")
 	main.gameplay_camera = main.get_node("Camera2D")

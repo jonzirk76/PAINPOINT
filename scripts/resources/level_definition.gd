@@ -17,6 +17,7 @@ enum ArenaShape {
 @export var use_default_spawners: bool = true
 @export var spawner_positions: Array[Vector2] = []
 @export var spawner_placements: Array[Resource] = []
+@export var destructible_prop_placements: Array[Resource] = []
 @export var wall_rects: Array[Rect2] = []
 @export var void_rects: Array[Rect2] = []
 @export var max_active_enemies: int = 12

@@ -3,6 +3,7 @@ class_name RoomInteriorGenerator
 
 const LEVEL_DEFINITION_SCRIPT := preload("res://scripts/resources/level_definition.gd")
 const SPAWNER_PLACEMENT_SCRIPT := preload("res://scripts/resources/spawner_placement.gd")
+const DESTRUCTIBLE_PROP_PLACEMENT_SCRIPT := preload("res://scripts/resources/destructible_prop_placement.gd")
 const BASIC_SPAWNER := preload("res://resources/spawners/basic_spawner.tres")
 const FAST_SPAWNER := preload("res://resources/spawners/fast_spawner.tres")
 const SHOOTER_SPAWNER := preload("res://resources/spawners/shooter_spawner.tres")
@@ -48,6 +49,7 @@ func generate(piece, room_id: String, floor_number: int, floor_seed: int, connec
 		level.spawner_placements = generated_spawners
 		if level.spawner_placements.size() <= 0:
 			continue
+		level.destructible_prop_placements = _build_destructible_prop_placements(level, connections, room_kind, floor_number, rng)
 		level.max_active_enemies = clamp(24 + floor_number * 4 + level.spawner_placements.size() * 2, 30, 52)
 		var result: Dictionary = validate_level(level, connections, room_kind)
 		if bool(result.get("ok", false)):
@@ -135,10 +137,12 @@ func _make_base_level(piece, room_id: String, floor_number: int):
 	level.use_default_spawners = false
 	var empty_positions: Array[Vector2] = []
 	var empty_placements: Array[Resource] = []
+	var empty_props: Array[Resource] = []
 	var empty_walls: Array[Rect2] = []
 	var empty_voids: Array[Rect2] = []
 	level.spawner_positions = empty_positions
 	level.spawner_placements = empty_placements
+	level.destructible_prop_placements = empty_props
 	level.wall_rects = empty_walls
 	level.void_rects = empty_voids
 	return level
@@ -551,6 +555,96 @@ func _build_spawner_placements(level, room_kind: String, floor_number: int, rng:
 	return placements
 
 
+func _build_destructible_prop_placements(level, connections: Dictionary, room_kind: String, floor_number: int, rng: RandomNumberGenerator) -> Array[Resource]:
+	var placements: Array[Resource] = []
+	if room_kind != "combat" and room_kind != "challenge":
+		return placements
+	var target_count: int = clamp(2 + int(floor_number / 2) + rng.randi_range(0, 2), 2, 7)
+	if room_kind == "challenge":
+		target_count += 1
+	var chest_chance: float = clamp(0.07 + float(floor_number) * 0.008, 0.07, 0.14)
+	var chest_pending := rng.randf() < chest_chance
+	var candidate_points := _build_prop_candidate_points(level.arena_bounds, rng)
+	var blockers: Array[Rect2] = _get_wall_void_blockers(level)
+	for point in candidate_points:
+		if placements.size() >= target_count:
+			break
+		var prop_kind := "barrel" if rng.randf() < 0.34 else "crate"
+		if chest_pending and placements.size() >= 1 and rng.randf() < 0.28:
+			prop_kind = "chest"
+			chest_pending = false
+		var placement = _make_prop_placement(point, prop_kind)
+		if not _prop_placement_is_clear(level, placement, connections, blockers, placements):
+			continue
+		placements.append(placement)
+	if chest_pending and placements.size() < target_count + 1:
+		for point in candidate_points:
+			var chest = _make_prop_placement(point, "chest")
+			if not _prop_placement_is_clear(level, chest, connections, blockers, placements):
+				continue
+			placements.append(chest)
+			break
+	return placements
+
+
+func _make_prop_placement(position: Vector2, prop_kind: String):
+	var placement = DESTRUCTIBLE_PROP_PLACEMENT_SCRIPT.new()
+	placement.position = position
+	placement.prop_kind = prop_kind
+	match prop_kind:
+		"barrel":
+			placement.size = Vector2(42.0, 42.0)
+			placement.max_health = 2
+			placement.score_value = 1
+			placement.drop_kind = "minor"
+		"chest":
+			placement.size = Vector2(54.0, 42.0)
+			placement.max_health = 5
+			placement.score_value = 4
+			placement.drop_kind = "treasure"
+		_:
+			placement.size = Vector2(48.0, 48.0)
+			placement.max_health = 3
+			placement.score_value = 1
+			placement.drop_kind = "none"
+	return placement
+
+
+func _prop_placement_is_clear(level, placement, connections: Dictionary, blockers: Array[Rect2], placements: Array[Resource]) -> bool:
+	var rect := _prop_rect(placement)
+	if not _rect_fits_arena(rect, level):
+		return false
+	if _rect_hits_reserved_zone(rect.grow(42.0), level, connections):
+		return false
+	for blocker in blockers:
+		if blocker.grow(12.0).intersects(rect):
+			return false
+	for spawner in level.spawner_placements:
+		if spawner != null and rect.grow(SPAWNER_CLEARANCE).has_point(spawner.position):
+			return false
+	for existing in placements:
+		if _prop_rect(existing).grow(28.0).intersects(rect):
+			return false
+	return true
+
+
+func _build_prop_candidate_points(bounds: Rect2, rng: RandomNumberGenerator) -> Array[Vector2]:
+	var points: Array[Vector2] = []
+	var cols: int = max(int(floor(bounds.size.x / GRID_SIZE)), 1)
+	var rows: int = max(int(floor(bounds.size.y / GRID_SIZE)), 1)
+	for x in range(1, max(cols - 1, 1)):
+		for y in range(1, max(rows - 1, 1)):
+			if rng.randf() > 0.55:
+				continue
+			points.append(_cell_center(bounds, Vector2i(x, y)))
+	for index in range(points.size() - 1, 0, -1):
+		var swap_index := rng.randi_range(0, index)
+		var value := points[index]
+		points[index] = points[swap_index]
+		points[swap_index] = value
+	return points
+
+
 func _build_spawner_profile_budget(room_kind: String, floor_number: int, rng: RandomNumberGenerator) -> Array[Resource]:
 	var budget: int = (16 + floor_number * 4) if room_kind == "challenge" else (12 + floor_number * 3)
 	var min_count := 5 if room_kind == "challenge" else 4
@@ -770,10 +864,30 @@ func _point_has_spacing(point: Vector2, selected_points: Array[Vector2]) -> bool
 
 
 func _get_movement_blockers(level) -> Array[Rect2]:
+	var blockers := _get_wall_void_blockers(level)
+	blockers.append_array(_get_prop_blocker_rects(level))
+	return blockers
+
+
+func _get_wall_void_blockers(level) -> Array[Rect2]:
 	var blockers: Array[Rect2] = []
 	blockers.append_array(level.wall_rects)
 	blockers.append_array(level.void_rects)
 	return blockers
+
+
+func _get_prop_blocker_rects(level) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	for placement in level.destructible_prop_placements:
+		if placement != null:
+			rects.append(_prop_rect(placement))
+	return rects
+
+
+func _prop_rect(placement) -> Rect2:
+	if placement == null:
+		return Rect2()
+	return Rect2(placement.position - placement.size * 0.5, placement.size)
 
 
 func _point_is_clear(level, point: Vector2, blockers: Array[Rect2], clearance: float) -> bool:

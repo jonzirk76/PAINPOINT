@@ -9,6 +9,7 @@ var direction: String = "north"
 var target_room_id: String = ""
 var unlocked: bool = false
 var _collision_shape: CollisionShape2D = null
+var _armed: bool = false
 
 
 func _init() -> void:
@@ -18,6 +19,7 @@ func _init() -> void:
 func _ready() -> void:
 	_configure_collision_identity()
 	body_entered.connect(_on_body_entered)
+	body_exited.connect(_on_body_exited)
 	queue_redraw()
 
 
@@ -27,12 +29,17 @@ func initialize(door_direction: String, target_id: String, center_position: Vect
 	global_position = center_position
 	door_size = size
 	unlocked = is_unlocked
+	_armed = false
 	_add_or_update_collision()
+	set_physics_process(unlocked)
 	queue_redraw()
 
 
 func set_unlocked(value: bool) -> void:
 	unlocked = value
+	if not unlocked:
+		_armed = false
+	set_physics_process(unlocked and not _armed)
 	queue_redraw()
 
 
@@ -45,9 +52,32 @@ func _configure_collision_identity() -> void:
 
 
 func _on_body_entered(body: Node) -> void:
-	if not unlocked or not body.is_in_group("player"):
+	if not unlocked or not _armed or not body.is_in_group("player"):
 		return
+	_armed = false
 	entered.emit(self)
+
+
+func _on_body_exited(body: Node) -> void:
+	if unlocked and body.is_in_group("player"):
+		_refresh_armed_state()
+
+
+func _physics_process(_delta: float) -> void:
+	if unlocked and not _armed:
+		_refresh_armed_state()
+
+
+func _refresh_armed_state() -> void:
+	_armed = not _has_player_overlap()
+	set_physics_process(unlocked and not _armed)
+
+
+func _has_player_overlap() -> bool:
+	for body in get_overlapping_bodies():
+		if body != null and is_instance_valid(body) and body.is_in_group("player"):
+			return true
+	return false
 
 
 func _draw() -> void:

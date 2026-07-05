@@ -99,6 +99,23 @@ func drop_spawner_reward(spawner_position: Vector2) -> void:
 		spawn_pickup(_choose_temporary_upgrade(), _jitter_drop_position(spawner_position))
 
 
+func drop_destructible_reward(prop_position: Vector2, drop_kind: String) -> void:
+	if not enabled:
+		return
+	match drop_kind:
+		"treasure":
+			var roll := _rng.randf()
+			if roll < 0.42:
+				spawn_pickup(_choose_temporary_upgrade(), _jitter_drop_position(prop_position))
+			elif roll < 0.76:
+				spawn_pickup(_choose_permanent_upgrade(), _jitter_drop_position(prop_position))
+			else:
+				spawn_pickup(_choose_heal_pickup(), _jitter_drop_position(prop_position))
+		"minor":
+			if _rng.randf() < 0.22:
+				spawn_pickup(_choose_heal_pickup(), _jitter_drop_position(prop_position))
+
+
 func get_pickup_count() -> int:
 	return _pickups.size()
 

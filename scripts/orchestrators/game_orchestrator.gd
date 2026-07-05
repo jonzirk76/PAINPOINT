@@ -23,6 +23,7 @@ const FLOOR_EXIT_PORTAL_SCENE := preload("res://scenes/entities/floor_exit_porta
 @onready var effects_manager = $Managers/EffectsManager
 @onready var dungeon_manager = $Managers/DungeonManager
 @onready var room_manager = $Managers/RoomManager
+@onready var destructible_manager = $Managers/DestructibleManager
 @onready var audio_manager = $Managers/AudioManager
 @onready var arena_view = $World/Arena
 @onready var gameplay_camera: Camera2D = $Camera2D
@@ -183,6 +184,7 @@ func _connect_manager_signals() -> void:
 	_connect_once(spawner_manager, &"spawner_destroyed", _on_spawner_destroyed)
 	_connect_once(spawner_manager, &"spawner_count_changed", _on_spawner_count_changed)
 	_connect_once(spawner_manager, &"hostile_shot_requested", _on_hostile_shot_requested)
+	_connect_once(destructible_manager, &"prop_destroyed", _on_destructible_prop_destroyed)
 	_connect_once(item_manager, &"pickup_collected", _on_pickup_collected)
 	_connect_once(item_manager, &"pickup_count_changed", _on_pickup_count_changed)
 	_connect_once(upgrade_manager, &"upgrade_changed", _on_upgrade_changed)
@@ -216,6 +218,9 @@ func _initialize_managers() -> void:
 	})
 	item_manager.initialize({
 		"pickup_layer": $World/PickupLayer
+	})
+	destructible_manager.initialize({
+		"destructible_layer": $World/DestructibleLayer
 	})
 	upgrade_manager.initialize({})
 	combat_manager.initialize({})
@@ -293,6 +298,7 @@ func _start_level(level_definition) -> void:
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
 	spawner_manager.reset_run(level_definition)
+	destructible_manager.reset_run(level_definition)
 	item_manager.reset_run()
 	upgrade_manager.reset_run()
 	combat_manager.reset_run()
@@ -348,6 +354,7 @@ func _start_dungeon_run() -> void:
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
 	spawner_manager.clear_spawners()
+	destructible_manager.clear_destructibles()
 	item_manager.clear_pickups()
 	upgrade_manager.reset_run()
 	combat_manager.reset_run()
@@ -491,6 +498,7 @@ func _set_all_enabled(value: bool) -> void:
 	projectile_manager.set_enabled(value)
 	enemy_manager.set_enabled(value)
 	spawner_manager.set_enabled(value)
+	destructible_manager.set_enabled(value)
 	item_manager.set_enabled(value)
 	upgrade_manager.set_enabled(value)
 	combat_manager.set_enabled(value)
@@ -623,6 +631,7 @@ func _detonate_hostile_rocket(origin: Vector2, projectile_radius: float, packet,
 	var excluded: Array[Node] = []
 	var candidates = enemy_manager.get_nearby_enemies(origin, explosion_radius, excluded)
 	candidates.append_array(spawner_manager.get_nearby_spawners(origin, explosion_radius, excluded))
+	candidates.append_array(destructible_manager.get_nearby_destructibles(origin, explosion_radius, excluded))
 	for target in candidates:
 		explosion_packet.knockback_direction = (target.global_position - origin).normalized()
 		_on_damage_resolved(target, explosion_packet)
@@ -639,6 +648,8 @@ func _apply_damage_to_target(target: Node, packet) -> bool:
 		return bool(enemy_manager.apply_damage(target, packet))
 	elif target.is_in_group("spawners"):
 		return bool(spawner_manager.apply_damage(target, packet))
+	elif target.is_in_group("destructible_props"):
+		return bool(destructible_manager.apply_damage(target, packet))
 	return false
 
 
@@ -690,6 +701,7 @@ func _on_explosion_requested(origin: Vector2, packet) -> void:
 	var excluded: Array[Node] = []
 	var candidates = enemy_manager.get_nearby_enemies(origin, packet.explosion_radius, excluded)
 	candidates.append_array(spawner_manager.get_nearby_spawners(origin, packet.explosion_radius, excluded))
+	candidates.append_array(destructible_manager.get_nearby_destructibles(origin, packet.explosion_radius, excluded))
 	for target in candidates:
 		explosion_packet.knockback_direction = (target.global_position - origin).normalized()
 		_on_damage_resolved(target, explosion_packet)
@@ -739,6 +751,14 @@ func _on_spawner_destroyed(_spawner, score_value: int) -> void:
 	_score += score_value
 	_update_hud()
 	_check_level_clear()
+
+
+func _on_destructible_prop_destroyed(prop, score_value: int, drop_kind: String) -> void:
+	if prop != null and is_instance_valid(prop):
+		_score += max(score_value, 0)
+		item_manager.drop_destructible_reward(prop.global_position, drop_kind)
+		effects_manager.play_projectile_impact(prop.global_position, Vector2.UP, 10.0, true)
+	_update_hud()
 
 
 func _on_player_health_changed(_old_value: int, new_value: int) -> void:
@@ -1524,6 +1544,7 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool) -> 
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
 	spawner_manager.clear_spawners()
+	destructible_manager.clear_destructibles()
 	item_manager.clear_pickups()
 	effects_manager.reset_run()
 	room_manager.reset_run()
@@ -1534,6 +1555,7 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool) -> 
 	var room_is_cleared: bool = dungeon_manager.is_current_room_cleared()
 	if not room_is_cleared:
 		spawner_manager.reset_run(level_definition)
+	destructible_manager.reset_run(level_definition)
 	room_manager.load_room(level_definition, dungeon_manager.get_current_door_infos(), room_is_cleared)
 	_set_all_enabled(true)
 	if not room_is_cleared and level_definition.boss_profile != null:
