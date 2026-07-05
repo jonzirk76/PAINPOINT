@@ -2,10 +2,10 @@
 
 [ext_resource type="Script" uid="uid://ch0sx5oaq1deo" path="res://scripts/resources/level_definition.gd" id="1"]
 [ext_resource type="Script" uid="uid://dfk7vbsy2c2ax" path="res://scripts/resources/spawner_placement.gd" id="2"]
-[ext_resource type="Resource" path="res://resources/spawners/basic_spawner.tres" id="3"]
-[ext_resource type="Resource" path="res://resources/spawners/tank_spawner.tres" id="4"]
-[ext_resource type="Resource" path="res://resources/spawners/fast_spawner.tres" id="5"]
-[ext_resource type="Resource" path="res://resources/spawners/shooter_spawner.tres" id="6"]
+[ext_resource type="Resource" uid="uid://bo3ufan40xwgu" path="res://resources/spawners/basic_spawner.tres" id="3"]
+[ext_resource type="Resource" uid="uid://bxg8k5e3vk7fe" path="res://resources/spawners/tank_spawner.tres" id="4"]
+[ext_resource type="Resource" uid="uid://jy73h2c2kee2" path="res://resources/spawners/fast_spawner.tres" id="5"]
+[ext_resource type="Resource" uid="uid://4dt8j528ubjj" path="res://resources/spawners/shooter_spawner.tres" id="6"]
 
 [sub_resource type="Resource" id="SpawnerPlacement_basic_1"]
 script = ExtResource("2")
