@@ -2,6 +2,20 @@ extends Resource
 class_name RoomPieceDefinition
 
 const LEVEL_DEFINITION_SCRIPT := preload("res://scripts/resources/level_definition.gd")
+const CARDINAL_CONNECTORS := ["north", "east", "south", "west"]
+const CONNECTOR_FALLBACKS := {
+	"start_square": ["north", "east", "south", "west"],
+	"combat_wide": ["west", "east", "north", "south"],
+	"combat_tall": ["west", "east", "north", "south"],
+	"combat_l_room": ["west", "east", "south", "north"],
+	"combat_t_room": ["west", "east", "north", "south"],
+	"combat_ring": ["west", "east", "north", "south"],
+	"combat_hourglass": ["west", "east", "north", "south"],
+	"combat_crossroads": ["west", "east", "north", "south"],
+	"challenge_zigzag": ["north", "west", "east"],
+	"treasure_nook": ["south", "west"],
+	"boss_chamber": ["west"]
+}
 
 @export var id: String = "room_piece"
 @export var display_name: String = "Room Piece"
@@ -37,8 +51,18 @@ func create_level_definition():
 	return level
 
 
+func get_connector_directions() -> PackedStringArray:
+	if not connector_directions.is_empty():
+		return connector_directions.duplicate()
+	if CONNECTOR_FALLBACKS.has(id):
+		return PackedStringArray(CONNECTOR_FALLBACKS[id])
+	if room_kind == "combat":
+		return PackedStringArray(CARDINAL_CONNECTORS)
+	return PackedStringArray()
+
+
 func has_connector(direction: String) -> bool:
-	return connector_directions.has(direction)
+	return get_connector_directions().has(direction)
 
 
 func get_min_cell() -> Vector2i:

@@ -144,6 +144,8 @@ const CHARACTER_HUD_DAMAGE_SHAKE_PIXELS := 5.0
 const SUPER_CRACKLE_SECONDS := 0.16
 const SUPER_CRACKLE_MIN_INTERVAL := 0.52
 const SUPER_CRACKLE_MAX_INTERVAL := 0.9
+const METER_SEGMENT_GAP_PIXELS := 1.25
+const METER_SEGMENT_MIN_WIDTH := 0.45
 
 
 func _ready() -> void:
@@ -1283,9 +1285,10 @@ func _update_combat_panel(active_effects: Array) -> void:
 	var health_fill_rect := _get_meter_full_rect(health_fill, health_bar_back, 342.0)
 	if health_fill != null:
 		_set_meter_fill_width(health_fill, health_fill_rect.size.x * health_ratio)
+		health_fill.visible = false
 	if health_label != null:
 		health_label.text = "LIFE  %d / %d" % [_last_health, max_health]
-	_update_health_ticks(max_health, health_fill_rect)
+	_update_health_segments(max_health, _last_health, health_fill_rect)
 	if invulnerability_fill != null:
 		var invulnerability_fill_rect := _get_meter_full_rect(invulnerability_fill, invulnerability_bar_back, health_fill_rect.size.x)
 		var invulnerability_ratio: float = 0.0
@@ -1333,24 +1336,17 @@ func _set_meter_fill_width(fill: Control, width: float) -> void:
 	fill.offset_right = fill.offset_left + max(width, 0.0)
 
 
-func _update_health_ticks(max_health: int, fill_rect: Rect2) -> void:
+func _update_health_segments(max_health: int, health: int, fill_rect: Rect2) -> void:
 	if health_tick_layer == null:
 		return
-	for child in health_tick_layer.get_children():
-		child.queue_free()
-	if max_health <= 1:
-		return
-	var tick_height: float = fill_rect.size.y
-	if tick_height <= 0.0:
-		tick_height = 20.0
-	for index in range(1, max_health):
-		var tick := ColorRect.new()
-		tick.name = "HealthTick%d" % index
-		var tick_width := 1.0
-		tick.position = Vector2(fill_rect.position.x + (fill_rect.size.x * float(index) / float(max_health)) - tick_width * 0.5, fill_rect.position.y)
-		tick.size = Vector2(tick_width, tick_height)
-		tick.color = Color(0.0, 0.015, 0.0, 0.78)
-		health_tick_layer.add_child(tick)
+	_update_meter_segments(
+		health_tick_layer,
+		max_health,
+		clampi(health, 0, max_health),
+		fill_rect,
+		Color(0.18, 0.92, 0.28, 1.0),
+		"HealthSegment"
+	)
 
 
 func _update_overdrive_bar(fill_rect: Rect2) -> void:
@@ -1363,41 +1359,55 @@ func _update_overdrive_bar(fill_rect: Rect2) -> void:
 		flash_ratio = clamp(_ammo_refill_flash_remaining / _ammo_refill_flash_duration, 0.0, 1.0)
 	if overdrive_bar_back != null:
 		overdrive_bar_back.color = OVERDRIVE_BAR_BACK_COLOR
-	_update_overdrive_ticks(max_ammo, fill_rect)
+	var fill_color := Color(0.16, 0.52, 1.0, 1.0)
+	if _last_overdrive_is_active:
+		fill_color = Color(0.36, 0.78, 1.0, 1.0)
+	if is_low:
+		fill_color = Color(1.0, 0.18 + pulse * 0.12, 0.08, 1.0)
+	if flash_ratio > 0.0:
+		fill_color = fill_color.lerp(Color(1.0, 1.0, 1.0, 1.0), flash_ratio * 0.55)
+	_update_overdrive_segments(max_ammo, _last_overdrive_ammo, fill_rect, fill_color)
 	if overdrive_fill != null:
 		_set_meter_fill_width(overdrive_fill, fill_rect.size.x * ratio)
-		var fill_color := Color(0.16, 0.52, 1.0, 1.0)
-		if _last_overdrive_is_active:
-			fill_color = Color(0.36, 0.78, 1.0, 1.0)
-		if is_low:
-			fill_color = Color(1.0, 0.18 + pulse * 0.12, 0.08, 1.0)
-		if flash_ratio > 0.0:
-			fill_color = fill_color.lerp(Color(1.0, 1.0, 1.0, 1.0), flash_ratio * 0.55)
 		overdrive_fill.color = fill_color
+		overdrive_fill.visible = false
 	if overdrive_label != null:
 		var state_text := "ON" if _last_overdrive_is_active else ("HELD" if _last_overdrive_is_held else "READY")
 		overdrive_label.text = "OVERDRIVE  %d / %d  %s" % [_last_overdrive_ammo, max_ammo, state_text]
 
 
-func _update_overdrive_ticks(max_ammo: int, fill_rect: Rect2) -> void:
+func _update_overdrive_segments(max_ammo: int, ammo: int, fill_rect: Rect2, fill_color: Color) -> void:
 	if overdrive_tick_layer == null:
 		return
-	for child in overdrive_tick_layer.get_children():
+	_update_meter_segments(
+		overdrive_tick_layer,
+		max_ammo,
+		clampi(ammo, 0, max_ammo),
+		fill_rect,
+		fill_color,
+		"OverdriveSegment"
+	)
+
+
+func _update_meter_segments(layer: Control, segment_count: int, active_count: int, fill_rect: Rect2, fill_color: Color, segment_prefix: String) -> void:
+	for child in layer.get_children():
 		child.free()
-	if max_ammo <= 1:
+	if segment_count <= 0 or active_count <= 0:
 		return
-	var tick_height: float = fill_rect.size.y
-	if tick_height <= 0.0:
-		tick_height = 20.0
-	for index in range(1, max_ammo):
-		var tick := ColorRect.new()
-		tick.name = "OverdriveTick%d" % index
-		var is_major := index % 10 == 0
-		var tick_width := 1.0 if is_major else 0.65
-		tick.position = Vector2(fill_rect.position.x + (fill_rect.size.x * float(index) / float(max_ammo)) - tick_width * 0.5, fill_rect.position.y)
-		tick.size = Vector2(tick_width, tick_height)
-		tick.color = Color(0.0, 0.006, 0.012, 0.74 if is_major else 0.48)
-		overdrive_tick_layer.add_child(tick)
+	var segment_height: float = fill_rect.size.y
+	if segment_height <= 0.0:
+		segment_height = 20.0
+	var segment_span: float = fill_rect.size.x / float(segment_count)
+	var gap_width: float = min(METER_SEGMENT_GAP_PIXELS, segment_span * 0.34)
+	var segment_width: float = max(segment_span - gap_width, METER_SEGMENT_MIN_WIDTH)
+	var visible_count: int = min(active_count, segment_count)
+	for index in range(visible_count):
+		var segment := ColorRect.new()
+		segment.name = "%s%d" % [segment_prefix, index + 1]
+		segment.position = Vector2(fill_rect.position.x + segment_span * float(index), fill_rect.position.y)
+		segment.size = Vector2(segment_width, segment_height)
+		segment.color = fill_color
+		layer.add_child(segment)
 
 
 func _update_super_bar(fill_rect: Rect2) -> void:

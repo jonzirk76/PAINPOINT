@@ -717,10 +717,15 @@ func _test_character_hud_feedback_and_manual_layout(failures: Array[String]) -> 
 	main._update_combat_panel([])
 	if main.health_fill.size.x > health_rect.size.x * 0.61 or main.health_fill.size.x < health_rect.size.x * 0.59:
 		failures.append("Health depletion should use the manually authored fill width as its full meter.")
+	if main.health_tick_layer.get_child_count() != main._last_health:
+		failures.append("Health meter should draw one visible segment per current health point.")
 	if main.health_tick_layer.get_child_count() > 0:
-		var first_health_tick: ColorRect = main.health_tick_layer.get_child(0)
-		if abs(first_health_tick.position.y - health_rect.position.y) > 0.01 or first_health_tick.position.x < health_rect.position.x - 1.0:
-			failures.append("Health ticks should align to the manually authored fill rect.")
+		var first_health_segment: ColorRect = main.health_tick_layer.get_child(0)
+		var last_health_segment: ColorRect = main.health_tick_layer.get_child(main.health_tick_layer.get_child_count() - 1)
+		if abs(first_health_segment.position.y - health_rect.position.y) > 0.01 or first_health_segment.position.x < health_rect.position.x - 1.0:
+			failures.append("Health segments should align to the manually authored fill rect.")
+		if last_health_segment.position.x + last_health_segment.size.x > health_rect.position.x + health_rect.size.x + 0.01:
+			failures.append("Health segments should stay inside the manually authored fill rect.")
 	var base_panel_position: Vector2 = main.combat_panel.position
 	main._on_player_health_changed(5, 4)
 	if main._character_hud_damage_flash_remaining <= 0.0 or main._character_hud_shake_remaining <= 0.0:
@@ -1073,19 +1078,28 @@ func _test_low_ammo_bar_warning(failures: Array[String]) -> void:
 	if main.overdrive_tick_layer == null:
 		failures.append("Overdrive bar should expose a tick layer.")
 	else:
-		var expected_ticks: int = max(main.upgrade_manager.get_overdrive_max_ammo() - 1, 0)
-		if main.overdrive_tick_layer.get_child_count() != expected_ticks:
-			failures.append("Overdrive ticks should divide the bar once per ammo unit.")
+		var expected_segments: int = main.upgrade_manager.get_overdrive_ammo()
+		if main.overdrive_tick_layer.get_child_count() != expected_segments:
+			failures.append("Overdrive meter should draw one visible segment per current ammo unit.")
+		var default_segment_width := 0.0
 		if main.overdrive_tick_layer.get_child_count() > 0:
 			var first_tick: ColorRect = main.overdrive_tick_layer.get_child(0)
+			default_segment_width = first_tick.size.x
 			var fill_rect: Rect2 = main._get_meter_full_rect(main.overdrive_fill, main.overdrive_bar_back, main.overdrive_bar_back.size.x)
 			if abs(first_tick.position.y - fill_rect.position.y) > 0.01 or first_tick.position.x < fill_rect.position.x - 1.0:
-				failures.append("Overdrive ticks should align to the manually authored fill rect.")
+				failures.append("Overdrive segments should align to the manually authored fill rect.")
+			var last_tick: ColorRect = main.overdrive_tick_layer.get_child(main.overdrive_tick_layer.get_child_count() - 1)
+			if last_tick.position.x + last_tick.size.x > fill_rect.position.x + fill_rect.size.x + 0.01:
+				failures.append("Overdrive segments should stay inside the manually authored fill rect.")
 		main._last_overdrive_max_ammo = 50
 		main._last_overdrive_ammo = 50
 		main._update_overdrive_bar(main._get_meter_full_rect(main.overdrive_fill, main.overdrive_bar_back, main.overdrive_bar_back.size.x))
-		if main.overdrive_tick_layer.get_child_count() != 49:
-			failures.append("Overdrive capacity increases should make tick marks denser instead of wider.")
+		if main.overdrive_tick_layer.get_child_count() != 50:
+			failures.append("Overdrive capacity increases should add denser filled segments.")
+		elif default_segment_width > 0.0:
+			var denser_segment: ColorRect = main.overdrive_tick_layer.get_child(0)
+			if denser_segment.size.x >= default_segment_width:
+				failures.append("Overdrive capacity increases should make segments denser instead of wider.")
 	if main.player_manager.player != null and main.player_manager.player.has_method("set_ammo_warning_state"):
 		failures.append("Low ammo should no longer create a warning around the player.")
 	main.free()
@@ -2321,7 +2335,7 @@ func _test_room_piece_resources(failures: Array[String]) -> void:
 			continue
 		if piece.footprint_cells.is_empty():
 			failures.append("Room piece has no footprint cells: %s" % path)
-		if piece.connector_directions.is_empty():
+		if piece.get_connector_directions().is_empty():
 			failures.append("Room piece has no connector directions: %s" % path)
 		var level = piece.create_level_definition()
 		if level == null:
@@ -2355,6 +2369,11 @@ func _test_room_piece_resources(failures: Array[String]) -> void:
 				failures.append("Boss room max active enemies should allow the boss encounter.")
 	if combat_piece_count < 7:
 		failures.append("Dungeon solver should have at least seven combat room pieces to vary floor shapes.")
+	var fallback_piece = load("res://scripts/resources/room_piece_definition.gd").new()
+	fallback_piece.id = "combat_wide"
+	fallback_piece.room_kind = "combat"
+	if not fallback_piece.has_connector("north") or not fallback_piece.has_connector("west"):
+		failures.append("Room piece connector fallbacks should protect dungeon generation when serialized connector fields are omitted.")
 
 
 func _test_room_interior_generator_determinism_and_budget(failures: Array[String]) -> void:
