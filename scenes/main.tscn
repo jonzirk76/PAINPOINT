@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="Script" path="res://scripts/orchestrators/game_orchestrator.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/arena/arena_view.gd" id="2"]
@@ -16,6 +16,32 @@
 [ext_resource type="Script" path="res://scripts/ui/dungeon_minimap.gd" id="14"]
 [ext_resource type="Script" path="res://scripts/managers/audio_manager.gd" id="15"]
 [ext_resource type="Script" path="res://scripts/managers/destructible_manager.gd" id="16"]
+[ext_resource type="Texture2D" path="res://art/concept_art/canon.png" id="17"]
+
+[sub_resource type="Shader" id="Shader_5d4kq"]
+code = "shader_type canvas_item;
+
+uniform vec4 border_color : source_color = vec4(0.28, 0.9, 1.0, 1.0);
+uniform vec4 rim_color : source_color = vec4(1.0, 0.93, 0.45, 1.0);
+
+void fragment() {
+	vec4 tex_color = texture(TEXTURE, UV);
+	float distance_from_center = distance(UV, vec2(0.5));
+	float circle_alpha = 1.0 - smoothstep(0.475, 0.5, distance_from_center);
+	float border_alpha = smoothstep(0.415, 0.465, distance_from_center) * (1.0 - smoothstep(0.465, 0.5, distance_from_center));
+	float rim_alpha = smoothstep(0.25, 0.39, distance_from_center) * (1.0 - smoothstep(0.39, 0.455, distance_from_center));
+	vec3 final_color = mix(tex_color.rgb, border_color.rgb, border_alpha * 0.85);
+	final_color = mix(final_color, rim_color.rgb, rim_alpha * 0.14);
+	COLOR = vec4(final_color, max(tex_color.a * circle_alpha, border_alpha));
+}
+"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_jv0xe"]
+shader = SubResource("Shader_5d4kq")
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_lis5b"]
+atlas = ExtResource("17")
+region = Rect2(315, 68, 270, 270)
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1")
@@ -134,54 +160,65 @@ text = "SCORE 000000"
 
 [node name="DungeonMinimap" type="Control" parent="UI"]
 visible = false
-offset_left = 16.0
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -198.0
 offset_top = 14.0
-offset_right = 198.0
+offset_right = -16.0
 offset_bottom = 164.0
 script = ExtResource("14")
 
 [node name="CombatPanel" type="Control" parent="UI"]
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -376.0
-offset_top = 16.0
-offset_right = -16.0
-offset_bottom = 146.0
+offset_left = 16.0
+offset_top = 14.0
+offset_right = 510.0
+offset_bottom = 150.0
 
 [node name="PanelBackground" type="ColorRect" parent="UI/CombatPanel"]
-offset_right = 360.0
-offset_bottom = 130.0
+offset_right = 494.0
+offset_bottom = 136.0
 color = Color(0.02, 0.025, 0.03, 0.78)
 
+[node name="CharacterPortrait" type="TextureRect" parent="UI/CombatPanel"]
+material = SubResource("ShaderMaterial_jv0xe")
+offset_left = 14.0
+offset_top = 16.0
+offset_right = 118.0
+offset_bottom = 120.0
+mouse_filter = 2
+texture = SubResource("AtlasTexture_lis5b")
+expand_mode = 1
+stretch_mode = 6
+
 [node name="HealthLabel" type="Label" parent="UI/CombatPanel"]
-offset_left = 18.0
-offset_top = 6.0
-offset_right = 330.0
-offset_bottom = 24.0
+offset_left = 132.0
+offset_top = 10.0
+offset_right = 474.0
+offset_bottom = 28.0
 text = "LIFE"
 
 [node name="HealthBarBack" type="ColorRect" parent="UI/CombatPanel"]
-offset_left = 18.0
-offset_top = 26.0
-offset_right = 324.0
-offset_bottom = 46.0
+offset_left = 132.0
+offset_top = 30.0
+offset_right = 474.0
+offset_bottom = 50.0
 color = Color(0.055, 0.095, 0.065, 1)
 
 [node name="HealthBarFill" type="ColorRect" parent="UI/CombatPanel/HealthBarBack"]
-offset_right = 306.0
+offset_right = 342.0
 offset_bottom = 20.0
 color = Color(0.18, 0.92, 0.28, 1)
 
 [node name="HealthTickLayer" type="Control" parent="UI/CombatPanel/HealthBarBack"]
-offset_right = 306.0
+offset_right = 342.0
 offset_bottom = 20.0
 
 [node name="InvulnerabilityBarBack" type="ColorRect" parent="UI/CombatPanel"]
 visible = false
-offset_left = 18.0
-offset_top = 42.0
-offset_right = 324.0
-offset_bottom = 46.0
+offset_left = 132.0
+offset_top = 48.0
+offset_right = 474.0
+offset_bottom = 52.0
 color = Color(0.035, 0.08, 0.09, 1)
 
 [node name="InvulnerabilityBarFill" type="ColorRect" parent="UI/CombatPanel/InvulnerabilityBarBack"]
@@ -190,41 +227,41 @@ offset_bottom = 4.0
 color = Color(0.3, 1, 1, 1)
 
 [node name="OverdriveLabel" type="Label" parent="UI/CombatPanel"]
-offset_left = 18.0
-offset_top = 50.0
-offset_right = 330.0
-offset_bottom = 68.0
+offset_left = 132.0
+offset_top = 58.0
+offset_right = 474.0
+offset_bottom = 76.0
 text = "OVERDRIVE"
 
 [node name="OverdriveBarBack" type="ColorRect" parent="UI/CombatPanel"]
-offset_left = 18.0
-offset_top = 70.0
-offset_right = 324.0
-offset_bottom = 90.0
+offset_left = 132.0
+offset_top = 78.0
+offset_right = 474.0
+offset_bottom = 98.0
 color = Color(0.04, 0.07, 0.13, 1)
 
 [node name="OverdriveBarFill" type="ColorRect" parent="UI/CombatPanel/OverdriveBarBack"]
-offset_right = 306.0
+offset_right = 342.0
 offset_bottom = 20.0
 color = Color(0.16, 0.52, 1, 1)
 
 [node name="SuperLabel" type="Label" parent="UI/CombatPanel"]
-offset_left = 18.0
-offset_top = 94.0
-offset_right = 330.0
-offset_bottom = 112.0
+offset_left = 132.0
+offset_top = 106.0
+offset_right = 474.0
+offset_bottom = 124.0
 text = "SPECIAL"
 
 [node name="SuperBarBack" type="ColorRect" parent="UI/CombatPanel"]
-offset_left = 18.0
-offset_top = 114.0
-offset_right = 324.0
-offset_bottom = 128.0
+offset_left = 132.0
+offset_top = 126.0
+offset_right = 474.0
+offset_bottom = 136.0
 color = Color(0.11, 0.085, 0.025, 1)
 
 [node name="SuperBarFill" type="ColorRect" parent="UI/CombatPanel/SuperBarBack"]
 offset_right = 0.0
-offset_bottom = 14.0
+offset_bottom = 10.0
 color = Color(1, 0.76, 0.16, 1)
 
 [node name="AttributeLabel" type="Label" parent="UI/CombatPanel"]
@@ -248,7 +285,7 @@ visible = false
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -72.0
-offset_top = 104.0
+offset_top = 180.0
 offset_right = -16.0
 offset_bottom = 520.0
 

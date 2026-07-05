@@ -173,7 +173,7 @@ func _init() -> void:
 	_test_pause_menu_flow(failures)
 	_test_upgrade_modifiers_and_expiry(failures)
 	_test_ammo_type_balance(failures)
-	_test_low_ammo_warning(failures)
+	_test_low_ammo_bar_warning(failures)
 	_test_parry_absorbs_hostile_projectiles_for_ammo(failures)
 	_test_parry_absorb_visuals_and_ammo_flash(failures)
 	_test_projectile_impact_visuals(failures)
@@ -421,6 +421,7 @@ func _test_scene_loads(failures: Array[String]) -> void:
 					"UI/CombatPanel/HealthBarBack/HealthBarFill",
 					"UI/CombatPanel/HealthBarBack/HealthTickLayer",
 					"UI/CombatPanel/InvulnerabilityBarBack/InvulnerabilityBarFill",
+					"UI/CombatPanel/CharacterPortrait",
 					"UI/CombatPanel/OverdriveBarBack/OverdriveBarFill",
 					"UI/CombatPanel/SuperBarBack/SuperBarFill",
 					"UI/CombatPanel/AttributeLabel",
@@ -469,9 +470,19 @@ func _test_scene_loads(failures: Array[String]) -> void:
 				if instance.has_node("UI/CombatPanel"):
 					var combat_panel: Control = instance.get_node("UI/CombatPanel")
 					if combat_panel.size.y > 140.0:
-						failures.append("Upper-right combat panel should stay compact while showing health, overdrive, and special.")
+						failures.append("Character combat panel should stay compact while showing portrait, health, overdrive, and special.")
+					if combat_panel.anchor_left != 0.0 or combat_panel.anchor_right != 0.0 or combat_panel.offset_left > 24.0:
+						failures.append("Character combat panel should sit in the upper-left corner.")
 					if not instance.has_node("UI/CombatPanel/OverdriveBarBack/OverdriveBarFill") or not instance.has_node("UI/CombatPanel/SuperBarBack/SuperBarFill"):
 						failures.append("Combat panel should render blue overdrive and yellow special resource bars.")
+				if instance.has_node("UI/CombatPanel/CharacterPortrait"):
+					var character_portrait: TextureRect = instance.get_node("UI/CombatPanel/CharacterPortrait")
+					if character_portrait.texture == null:
+						failures.append("Character combat panel should use the canon sheet portrait texture.")
+				if instance.has_node("UI/DungeonMinimap"):
+					var dungeon_minimap_node: Control = instance.get_node("UI/DungeonMinimap")
+					if dungeon_minimap_node.anchor_left != 1.0 or dungeon_minimap_node.anchor_right != 1.0 or dungeon_minimap_node.offset_right < -24.0:
+						failures.append("Dungeon minimap should sit in the upper-right corner.")
 				if instance.has_node("Managers/InputManager"):
 					var input_manager_node: Node = instance.get_node("Managers/InputManager")
 					if input_manager_node.process_mode != Node.PROCESS_MODE_ALWAYS:
@@ -942,10 +953,10 @@ func _test_ammo_type_balance(failures: Array[String]) -> void:
 	manager.free()
 
 
-func _test_low_ammo_warning(failures: Array[String]) -> void:
+func _test_low_ammo_bar_warning(failures: Array[String]) -> void:
 	var scene = load("res://scenes/main.tscn")
 	if scene == null:
-		failures.append("Main scene failed to load for low ammo warning test.")
+		failures.append("Main scene failed to load for low ammo bar warning test.")
 		return
 	var main = scene.instantiate()
 	root.add_child(main)
@@ -960,10 +971,17 @@ func _test_low_ammo_warning(failures: Array[String]) -> void:
 	for _index in range(34):
 		main.upgrade_manager.consume_overdrive_shot()
 	main._update_hud()
-	if main.player_manager.player == null or not bool(main.player_manager.player._ammo_warning_active):
-		failures.append("Low ammo should create a visible warning around the player.")
-	elif not String(main.player_manager.player._ammo_warning_text).begins_with("OD"):
-		failures.append("Low ammo warning should identify the nearly empty overdrive pool.")
+	if main.overdrive_fill == null or main.overdrive_bar_back == null:
+		failures.append("Low ammo should be represented by the overdrive bar.")
+	else:
+		var fill_color: Color = main.overdrive_fill.color
+		var back_color: Color = main.overdrive_bar_back.color
+		if fill_color.r < 0.9 or fill_color.g > 0.42 or fill_color.b > 0.2:
+			failures.append("Low ammo should flash the overdrive fill red.")
+		if back_color.r <= back_color.b:
+			failures.append("Low ammo should tint the overdrive bar background red even when empty.")
+	if main.player_manager.player != null and main.player_manager.player.has_method("set_ammo_warning_state"):
+		failures.append("Low ammo should no longer create a warning around the player.")
 	main.free()
 
 
@@ -3306,6 +3324,7 @@ func _prime_main_for_direct_test_calls(main) -> void:
 	main.invulnerability_bar_back = main.get_node("UI/CombatPanel/InvulnerabilityBarBack")
 	main.invulnerability_fill = main.get_node("UI/CombatPanel/InvulnerabilityBarBack/InvulnerabilityBarFill")
 	main.overdrive_label = main.get_node("UI/CombatPanel/OverdriveLabel")
+	main.overdrive_bar_back = main.get_node("UI/CombatPanel/OverdriveBarBack")
 	main.overdrive_fill = main.get_node("UI/CombatPanel/OverdriveBarBack/OverdriveBarFill")
 	main.super_label = main.get_node("UI/CombatPanel/SuperLabel")
 	main.super_fill = main.get_node("UI/CombatPanel/SuperBarBack/SuperBarFill")

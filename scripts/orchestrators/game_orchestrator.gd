@@ -40,6 +40,7 @@ const FLOOR_EXIT_PORTAL_SCENE := preload("res://scenes/entities/floor_exit_porta
 @onready var invulnerability_bar_back: ColorRect = $UI/CombatPanel/InvulnerabilityBarBack
 @onready var invulnerability_fill: ColorRect = $UI/CombatPanel/InvulnerabilityBarBack/InvulnerabilityBarFill
 @onready var overdrive_label: Label = $UI/CombatPanel/OverdriveLabel
+@onready var overdrive_bar_back: ColorRect = $UI/CombatPanel/OverdriveBarBack
 @onready var overdrive_fill: ColorRect = $UI/CombatPanel/OverdriveBarBack/OverdriveBarFill
 @onready var super_label: Label = $UI/CombatPanel/SuperLabel
 @onready var super_fill: ColorRect = $UI/CombatPanel/SuperBarBack/SuperBarFill
@@ -120,6 +121,8 @@ const DUNGEON_OPTION_COUNT := 2
 const BOSS_CLEAR_DELAY_SECONDS := 0.85
 const PERFECT_PARRY_TIME_SCALE := 0.24
 const PERFECT_PARRY_SLOWMO_SECONDS := 0.16
+const OVERDRIVE_BAR_BACK_COLOR := Color(0.04, 0.07, 0.13, 1.0)
+const OVERDRIVE_BAR_LOW_BACK_COLOR := Color(0.2, 0.035, 0.035, 1.0)
 
 
 func _ready() -> void:
@@ -1120,7 +1123,9 @@ func _update_score_panel() -> void:
 func _update_combat_panel(active_effects: Array) -> void:
 	var max_health: int = max(_last_max_health, 1)
 	var health_ratio: float = clamp(float(_last_health) / float(max_health), 0.0, 1.0)
-	var bar_width := 306.0
+	var bar_width := 342.0
+	if health_bar_back != null:
+		bar_width = health_bar_back.size.x
 	if health_fill != null:
 		health_fill.size.x = bar_width * health_ratio
 	if health_label != null:
@@ -1152,7 +1157,6 @@ func _update_combat_panel(active_effects: Array) -> void:
 		attribute_label.visible = false
 		attribute_label.text = _get_attribute_text()
 	_update_ammo_counter_panel(active_effects)
-	_update_ammo_warning()
 
 
 func _update_health_ticks(max_health: int, bar_width: float) -> void:
@@ -1174,14 +1178,23 @@ func _update_health_ticks(max_health: int, bar_width: float) -> void:
 func _update_overdrive_bar(bar_width: float) -> void:
 	var max_ammo: int = max(_last_overdrive_max_ammo, 1)
 	var ratio: float = clamp(float(_last_overdrive_ammo) / float(max_ammo), 0.0, 1.0)
+	var is_low := ratio <= 0.2 or _last_overdrive_ammo <= 8
+	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.018)
 	var flash_ratio := 0.0
 	if _ammo_refill_flash_duration > 0.0:
 		flash_ratio = clamp(_ammo_refill_flash_remaining / _ammo_refill_flash_duration, 0.0, 1.0)
+	if overdrive_bar_back != null:
+		var back_color := OVERDRIVE_BAR_BACK_COLOR
+		if is_low:
+			back_color = OVERDRIVE_BAR_BACK_COLOR.lerp(OVERDRIVE_BAR_LOW_BACK_COLOR, 0.62 + pulse * 0.32)
+		overdrive_bar_back.color = back_color
 	if overdrive_fill != null:
 		overdrive_fill.size.x = bar_width * ratio
 		var fill_color := Color(0.16, 0.52, 1.0, 1.0)
 		if _last_overdrive_is_active:
 			fill_color = Color(0.36, 0.78, 1.0, 1.0)
+		if is_low:
+			fill_color = Color(1.0, 0.18 + pulse * 0.12, 0.08, 1.0)
 		if flash_ratio > 0.0:
 			fill_color = fill_color.lerp(Color(1.0, 1.0, 1.0, 1.0), flash_ratio * 0.55)
 		overdrive_fill.color = fill_color
@@ -1218,15 +1231,6 @@ func _update_ammo_counter_panel(active_effects: Array) -> void:
 	for child in ammo_counter_panel.get_children():
 		child.free()
 	ammo_counter_panel.visible = false
-
-
-func _update_ammo_warning() -> void:
-	var max_ammo: int = max(_last_overdrive_max_ammo, 1)
-	var ratio: float = clamp(float(_last_overdrive_ammo) / float(max_ammo), 0.0, 1.0)
-	if ratio > 0.2 and _last_overdrive_ammo > 8:
-		player_manager.set_ammo_warning_state(false, "", 1.0)
-		return
-	player_manager.set_ammo_warning_state(true, "OD %d" % _last_overdrive_ammo, ratio)
 
 
 func _add_ammo_counter_square(display_name: String, ammo: int, max_ammo: int, fill_color: Color, icon_text: String, index: int, refill_flash_ratio: float = 0.0, perfect_flash_ratio: float = 0.0) -> void:

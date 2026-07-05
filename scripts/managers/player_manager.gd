@@ -222,11 +222,6 @@ func set_weapon_modifiers(modifiers: Dictionary) -> void:
 	_sync_player_speed()
 
 
-func set_ammo_warning_state(is_active: bool, text: String, ratio: float) -> void:
-	if _has_player() and player.has_method("set_ammo_warning_state"):
-		player.set_ammo_warning_state(is_active, text, ratio)
-
-
 func play_perfect_parry_response(effect_radius: float, perfect_radius: float) -> void:
 	if _has_player() and player.has_method("play_perfect_parry_response"):
 		player.play_perfect_parry_response(effect_radius, perfect_radius)
