@@ -130,6 +130,7 @@ var _combat_panel_base_modulate := Color.WHITE
 var _character_ui_base_modulate := Color.WHITE
 var _meter_full_rects: Dictionary = {}
 var _meter_authoring_state_captured: bool = false
+var _meter_active_segment_counts: Dictionary = {}
 var _perfect_parry_slowmo_until_msec: int = 0
 var _perfect_parry_slowmo_restore_scale: float = 1.0
 
@@ -146,6 +147,9 @@ const SUPER_CRACKLE_MIN_INTERVAL := 0.52
 const SUPER_CRACKLE_MAX_INTERVAL := 0.9
 const METER_SEGMENT_GAP_PIXELS := 1.25
 const METER_SEGMENT_MIN_WIDTH := 0.45
+const METER_SEGMENT_SKEW_DEGREES := 20.0
+const METER_SEGMENT_EJECT_SECONDS := 0.28
+const METER_SEGMENT_EJECT_OFFSET := Vector2(12.0, -16.0)
 
 
 func _ready() -> void:
@@ -1339,12 +1343,13 @@ func _set_meter_fill_width(fill: Control, width: float) -> void:
 func _update_health_segments(max_health: int, health: int, fill_rect: Rect2) -> void:
 	if health_tick_layer == null:
 		return
+	var health_ratio: float = clamp(float(health) / float(max(max_health, 1)), 0.0, 1.0)
 	_update_meter_segments(
 		health_tick_layer,
 		max_health,
 		clampi(health, 0, max_health),
 		fill_rect,
-		Color(0.18, 0.92, 0.28, 1.0),
+		_get_health_meter_color(health_ratio),
 		"HealthSegment"
 	)
 
@@ -1352,8 +1357,6 @@ func _update_health_segments(max_health: int, health: int, fill_rect: Rect2) -> 
 func _update_overdrive_bar(fill_rect: Rect2) -> void:
 	var max_ammo: int = max(_last_overdrive_max_ammo, 1)
 	var ratio: float = clamp(float(_last_overdrive_ammo) / float(max_ammo), 0.0, 1.0)
-	var is_low := ratio <= 0.2 or _last_overdrive_ammo <= 8
-	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.018)
 	var flash_ratio := 0.0
 	if _ammo_refill_flash_duration > 0.0:
 		flash_ratio = clamp(_ammo_refill_flash_remaining / _ammo_refill_flash_duration, 0.0, 1.0)
@@ -1362,8 +1365,6 @@ func _update_overdrive_bar(fill_rect: Rect2) -> void:
 	var fill_color := Color(0.16, 0.52, 1.0, 1.0)
 	if _last_overdrive_is_active:
 		fill_color = Color(0.36, 0.78, 1.0, 1.0)
-	if is_low:
-		fill_color = Color(1.0, 0.18 + pulse * 0.12, 0.08, 1.0)
 	if flash_ratio > 0.0:
 		fill_color = fill_color.lerp(Color(1.0, 1.0, 1.0, 1.0), flash_ratio * 0.55)
 	_update_overdrive_segments(max_ammo, _last_overdrive_ammo, fill_rect, fill_color)
@@ -1389,9 +1390,24 @@ func _update_overdrive_segments(max_ammo: int, ammo: int, fill_rect: Rect2, fill
 	)
 
 
+func _get_health_meter_color(health_ratio: float) -> Color:
+	var red := Color(1.0, 0.12, 0.08, 1.0)
+	var orange := Color(1.0, 0.54, 0.12, 1.0)
+	var green := Color(0.18, 0.92, 0.28, 1.0)
+	if health_ratio <= 0.5:
+		return red.lerp(orange, clamp(health_ratio / 0.5, 0.0, 1.0))
+	return orange.lerp(green, clamp((health_ratio - 0.5) / 0.5, 0.0, 1.0))
+
+
 func _update_meter_segments(layer: Control, segment_count: int, active_count: int, fill_rect: Rect2, fill_color: Color, segment_prefix: String) -> void:
+	var layer_key := layer.get_instance_id()
+	var previous_active_count: int = int(_meter_active_segment_counts.get(layer_key, -1))
+	if previous_active_count > active_count:
+		_spawn_meter_segment_ejections(layer, segment_count, active_count, previous_active_count, fill_rect, fill_color, segment_prefix)
+	_meter_active_segment_counts[layer_key] = active_count
 	for child in layer.get_children():
-		child.free()
+		if bool(child.get_meta("meter_active_segment", false)):
+			child.free()
 	if segment_count <= 0 or active_count <= 0:
 		return
 	var segment_height: float = fill_rect.size.y
@@ -1402,12 +1418,64 @@ func _update_meter_segments(layer: Control, segment_count: int, active_count: in
 	var segment_width: float = max(segment_span - gap_width, METER_SEGMENT_MIN_WIDTH)
 	var visible_count: int = min(active_count, segment_count)
 	for index in range(visible_count):
-		var segment := ColorRect.new()
-		segment.name = "%s%d" % [segment_prefix, index + 1]
-		segment.position = Vector2(fill_rect.position.x + segment_span * float(index), fill_rect.position.y)
-		segment.size = Vector2(segment_width, segment_height)
-		segment.color = fill_color
+		var segment := _create_meter_segment(
+			"%s%d" % [segment_prefix, index + 1],
+			Vector2(fill_rect.position.x + segment_span * float(index), fill_rect.position.y),
+			Vector2(segment_width, segment_height),
+			fill_color
+		)
+		segment.set_meta("meter_active_segment", true)
 		layer.add_child(segment)
+
+
+func _spawn_meter_segment_ejections(layer: Control, segment_count: int, active_count: int, previous_active_count: int, fill_rect: Rect2, fill_color: Color, segment_prefix: String) -> void:
+	if segment_count <= 0:
+		return
+	var segment_height: float = fill_rect.size.y
+	if segment_height <= 0.0:
+		segment_height = 20.0
+	var segment_span: float = fill_rect.size.x / float(segment_count)
+	var gap_width: float = min(METER_SEGMENT_GAP_PIXELS, segment_span * 0.34)
+	var segment_width: float = max(segment_span - gap_width, METER_SEGMENT_MIN_WIDTH)
+	var first_removed: int = clampi(active_count, 0, segment_count)
+	var last_removed: int = clampi(previous_active_count, 0, segment_count)
+	for index in range(first_removed, last_removed):
+		var segment := _create_meter_segment(
+			"%sEject%d" % [segment_prefix, index + 1],
+			Vector2(fill_rect.position.x + segment_span * float(index), fill_rect.position.y),
+			Vector2(segment_width, segment_height),
+			fill_color
+		)
+		segment.z_index = 4
+		segment.set_meta("meter_ejected_segment", true)
+		layer.add_child(segment)
+		if not is_inside_tree():
+			continue
+		var tween := create_tween()
+		tween.set_parallel(true)
+		tween.tween_property(segment, "position", segment.position + METER_SEGMENT_EJECT_OFFSET, METER_SEGMENT_EJECT_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.tween_property(segment, "modulate:a", 0.0, METER_SEGMENT_EJECT_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tween.finished.connect(func() -> void:
+			if is_instance_valid(segment):
+				segment.queue_free()
+		)
+
+
+func _create_meter_segment(segment_name: String, segment_position: Vector2, segment_size: Vector2, fill_color: Color) -> Polygon2D:
+	var segment := Polygon2D.new()
+	segment.name = segment_name
+	segment.position = segment_position
+	segment.color = fill_color
+	var skew_offset: float = min(tan(deg_to_rad(METER_SEGMENT_SKEW_DEGREES)) * segment_size.y, segment_size.x * 0.45)
+	segment.polygon = PackedVector2Array([
+		Vector2(skew_offset, 0.0),
+		Vector2(segment_size.x, 0.0),
+		Vector2(segment_size.x - skew_offset, segment_size.y),
+		Vector2(0.0, segment_size.y)
+	])
+	segment.set_meta("meter_size", segment_size)
+	segment.set_meta("skew_degrees", METER_SEGMENT_SKEW_DEGREES)
+	return segment
 
 
 func _update_super_bar(fill_rect: Rect2) -> void:

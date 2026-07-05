@@ -373,6 +373,14 @@ func _read_text(path: String) -> String:
 	return file.get_as_text()
 
 
+func _get_meter_segments(layer: Node, meta_name: String) -> Array:
+	var segments: Array = []
+	for child in layer.get_children():
+		if bool(child.get_meta(meta_name, false)):
+			segments.append(child)
+	return segments
+
+
 func _test_scripts_instantiate(failures: Array[String]) -> void:
 	for path in SCRIPT_PATHS:
 		var script = load(path)
@@ -425,6 +433,7 @@ func _test_scene_loads(failures: Array[String]) -> void:
 					"UI/CombatPanel/HealthBarBack/HealthTickLayer",
 					"UI/CombatPanel/InvulnerabilityBarBack/InvulnerabilityBarFill",
 					"UI/CombatPanel/CircularPortraitMask/CharacterPortrait",
+					"UI/CombatPanel/CharacterNameLabel",
 					"UI/CombatPanel/OverdriveBarBack/OverdriveBarFill",
 					"UI/CombatPanel/OverdriveBarBack/OverdriveTickLayer",
 					"UI/CombatPanel/SuperBarBack/SuperBarFill",
@@ -717,15 +726,29 @@ func _test_character_hud_feedback_and_manual_layout(failures: Array[String]) -> 
 	main._update_combat_panel([])
 	if main.health_fill.size.x > health_rect.size.x * 0.61 or main.health_fill.size.x < health_rect.size.x * 0.59:
 		failures.append("Health depletion should use the manually authored fill width as its full meter.")
-	if main.health_tick_layer.get_child_count() != main._last_health:
+	var health_segments := _get_meter_segments(main.health_tick_layer, "meter_active_segment")
+	if health_segments.size() != main._last_health:
 		failures.append("Health meter should draw one visible segment per current health point.")
-	if main.health_tick_layer.get_child_count() > 0:
-		var first_health_segment: ColorRect = main.health_tick_layer.get_child(0)
-		var last_health_segment: ColorRect = main.health_tick_layer.get_child(main.health_tick_layer.get_child_count() - 1)
+	if health_segments.size() > 0:
+		var first_health_segment: Polygon2D = health_segments[0] as Polygon2D
+		var last_health_segment: Polygon2D = health_segments[health_segments.size() - 1] as Polygon2D
+		var last_health_segment_size: Vector2 = last_health_segment.get_meta("meter_size", Vector2.ZERO)
 		if abs(first_health_segment.position.y - health_rect.position.y) > 0.01 or first_health_segment.position.x < health_rect.position.x - 1.0:
 			failures.append("Health segments should align to the manually authored fill rect.")
-		if last_health_segment.position.x + last_health_segment.size.x > health_rect.position.x + health_rect.size.x + 0.01:
+		if last_health_segment.position.x + last_health_segment_size.x > health_rect.position.x + health_rect.size.x + 0.01:
 			failures.append("Health segments should stay inside the manually authored fill rect.")
+		if abs(float(first_health_segment.get_meta("skew_degrees", 0.0)) - 20.0) > 0.01:
+			failures.append("Health segments should use the requested 20 degree skew.")
+	main._last_health = 1
+	main._update_combat_panel([])
+	health_segments = _get_meter_segments(main.health_tick_layer, "meter_active_segment")
+	if health_segments.size() > 0:
+		var low_health_segment: Polygon2D = health_segments[0] as Polygon2D
+		if low_health_segment.color.r <= low_health_segment.color.g:
+			failures.append("Health meter should shift toward red as health is depleted.")
+	var name_label: Label = main.get_node("UI/CombatPanel/CharacterNameLabel")
+	if name_label.text != "Volette":
+		failures.append("Character HUD should label the player as Volette.")
 	var base_panel_position: Vector2 = main.combat_panel.position
 	main._on_player_health_changed(5, 4)
 	if main._character_hud_damage_flash_remaining <= 0.0 or main._character_hud_shake_remaining <= 0.0:
@@ -1071,34 +1094,52 @@ func _test_low_ammo_bar_warning(failures: Array[String]) -> void:
 	else:
 		var fill_color: Color = main.overdrive_fill.color
 		var back_color: Color = main.overdrive_bar_back.color
-		if fill_color.r < 0.9 or fill_color.g > 0.42 or fill_color.b > 0.2:
-			failures.append("Low ammo should flash the overdrive fill red.")
+		if fill_color.b <= fill_color.r or fill_color.b < 0.9:
+			failures.append("Low ammo should keep the overdrive fill blue.")
 		if back_color.r > 0.03 or back_color.g > 0.03 or back_color.b > 0.04:
 			failures.append("Low ammo should keep a black overdrive backplate for depletion readability.")
 	if main.overdrive_tick_layer == null:
 		failures.append("Overdrive bar should expose a tick layer.")
 	else:
 		var expected_segments: int = main.upgrade_manager.get_overdrive_ammo()
-		if main.overdrive_tick_layer.get_child_count() != expected_segments:
+		var overdrive_segments := _get_meter_segments(main.overdrive_tick_layer, "meter_active_segment")
+		if overdrive_segments.size() != expected_segments:
 			failures.append("Overdrive meter should draw one visible segment per current ammo unit.")
 		var default_segment_width := 0.0
-		if main.overdrive_tick_layer.get_child_count() > 0:
-			var first_tick: ColorRect = main.overdrive_tick_layer.get_child(0)
-			default_segment_width = first_tick.size.x
+		if overdrive_segments.size() > 0:
+			var first_tick: Polygon2D = overdrive_segments[0] as Polygon2D
+			var first_tick_size: Vector2 = first_tick.get_meta("meter_size", Vector2.ZERO)
+			default_segment_width = first_tick_size.x
 			var fill_rect: Rect2 = main._get_meter_full_rect(main.overdrive_fill, main.overdrive_bar_back, main.overdrive_bar_back.size.x)
 			if abs(first_tick.position.y - fill_rect.position.y) > 0.01 or first_tick.position.x < fill_rect.position.x - 1.0:
 				failures.append("Overdrive segments should align to the manually authored fill rect.")
-			var last_tick: ColorRect = main.overdrive_tick_layer.get_child(main.overdrive_tick_layer.get_child_count() - 1)
-			if last_tick.position.x + last_tick.size.x > fill_rect.position.x + fill_rect.size.x + 0.01:
+			var last_tick: Polygon2D = overdrive_segments[overdrive_segments.size() - 1] as Polygon2D
+			var last_tick_size: Vector2 = last_tick.get_meta("meter_size", Vector2.ZERO)
+			if last_tick.position.x + last_tick_size.x > fill_rect.position.x + fill_rect.size.x + 0.01:
 				failures.append("Overdrive segments should stay inside the manually authored fill rect.")
+			if first_tick.color.b <= first_tick.color.r:
+				failures.append("Overdrive segments should stay blue at low ammo.")
+			if abs(float(first_tick.get_meta("skew_degrees", 0.0)) - 20.0) > 0.01:
+				failures.append("Overdrive segments should use the requested 20 degree skew.")
+		main._last_overdrive_max_ammo = 8
+		main._last_overdrive_ammo = 8
+		var fill_rect: Rect2 = main._get_meter_full_rect(main.overdrive_fill, main.overdrive_bar_back, main.overdrive_bar_back.size.x)
+		main._update_overdrive_bar(fill_rect)
+		main._last_overdrive_ammo = 5
+		main._update_overdrive_bar(fill_rect)
+		var ejected_segments := _get_meter_segments(main.overdrive_tick_layer, "meter_ejected_segment")
+		if ejected_segments.is_empty():
+			failures.append("Spent overdrive ammo should create short-lived ejected segment animations.")
 		main._last_overdrive_max_ammo = 50
 		main._last_overdrive_ammo = 50
 		main._update_overdrive_bar(main._get_meter_full_rect(main.overdrive_fill, main.overdrive_bar_back, main.overdrive_bar_back.size.x))
-		if main.overdrive_tick_layer.get_child_count() != 50:
+		overdrive_segments = _get_meter_segments(main.overdrive_tick_layer, "meter_active_segment")
+		if overdrive_segments.size() != 50:
 			failures.append("Overdrive capacity increases should add denser filled segments.")
 		elif default_segment_width > 0.0:
-			var denser_segment: ColorRect = main.overdrive_tick_layer.get_child(0)
-			if denser_segment.size.x >= default_segment_width:
+			var denser_segment: Polygon2D = overdrive_segments[0] as Polygon2D
+			var denser_segment_size: Vector2 = denser_segment.get_meta("meter_size", Vector2.ZERO)
+			if denser_segment_size.x >= default_segment_width:
 				failures.append("Overdrive capacity increases should make segments denser instead of wider.")
 	if main.player_manager.player != null and main.player_manager.player.has_method("set_ammo_warning_state"):
 		failures.append("Low ammo should no longer create a warning around the player.")

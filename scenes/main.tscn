@@ -195,6 +195,18 @@ texture = ExtResource("18_gqmmt")
 script = ExtResource("18_dp3eg")
 metadata/_edit_use_anchors_ = true
 
+[node name="CharacterNameLabel" type="Label" parent="UI/CombatPanel"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 80.0
+offset_right = 78.0
+offset_bottom = 94.0
+theme_override_font_sizes/font_size = 10
+text = "Volette"
+horizontal_alignment = 1
+vertical_alignment = 1
+metadata/_edit_use_anchors_ = true
+
 [node name="HealthLabel" type="Label" parent="UI/CombatPanel"]
 visible = false
 layout_mode = 0
