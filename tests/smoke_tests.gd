@@ -568,7 +568,7 @@ func _test_enemy_and_spawner_profiles(failures: Array[String]) -> void:
 	var fast_spawner = load("res://resources/spawners/fast_spawner.tres")
 	var basic_spawner = load("res://resources/spawners/basic_spawner.tres")
 	var shooter_spawner = load("res://resources/spawners/shooter_spawner.tres")
-	if tank_spawner.max_health < 51 or tank_spawner.body_radius < 44.0:
+	if tank_spawner.max_health < 40 or tank_spawner.body_radius < 44.0:
 		failures.append("Tank spawner profile should be tougher and larger.")
 	if fast_spawner.max_health > 15 or fast_spawner.body_radius >= 31.0:
 		failures.append("Fast spawner profile should be smaller and fragile.")
@@ -898,8 +898,8 @@ func _test_upgrade_modifiers_and_expiry(failures: Array[String]) -> void:
 		failures.append("Water Swell did not add projectile growth.")
 	if manager.get_permanent_stats().size() != 5:
 		failures.append("Permanent upgrade stats were not tracked.")
-	if manager.get_overdrive_max_ammo() != 60:
-		failures.append("Overdrive capacity treasure upgrade should add 20 max ammo.")
+	if manager.get_overdrive_max_ammo() != 50:
+		failures.append("Overdrive capacity treasure upgrade should add 10 max ammo.")
 	if fire_rate.max_stacks < 16 or move_speed.max_stacks < 16 or damage.max_stacks < 14 or size.max_stacks < 14:
 		failures.append("Permanent upgrade stack ceilings should be higher for longer dungeon runs.")
 	manager.set_enabled(true)
@@ -1203,7 +1203,7 @@ func _test_reward_driven_pickup_drops(failures: Array[String]) -> void:
 	if manager.get_pickup_count() != 1:
 		failures.append("Spawner destruction should always create one reward pickup.")
 	var pickup = manager._pickups[0]
-	if pickup == null or pickup.upgrade_effect == null or pickup.upgrade_effect.get_pickup_kind() != "overdrive_ammo" or int(pickup.upgrade_effect.amount) < 20:
+	if pickup == null or pickup.upgrade_effect == null or pickup.upgrade_effect.get_pickup_kind() != "overdrive_ammo" or int(pickup.upgrade_effect.amount) < 6:
 		failures.append("Spawner non-heal reward should be an overdrive ammo cache.")
 	manager.clear_pickups()
 	manager.spawner_full_heal_drop_chance = 1.0
@@ -2980,7 +2980,7 @@ func _test_first_boss_profile_and_spread(failures: Array[String]) -> void:
 	if boss_profile == null:
 		failures.append("First boss profile failed to load.")
 		return
-	if boss_profile.behavior_kind != "boss" or boss_profile.max_health < 120:
+	if boss_profile.behavior_kind != "boss" or boss_profile.max_health < 80:
 		failures.append("First boss profile should use boss behavior and tuned boss-scale health.")
 	if boss_profile.shot_projectile_count < 3 or boss_profile.shot_spread_degrees <= 0.0:
 		failures.append("First boss profile should fire a visible spread pattern.")

@@ -6,4 +6,4 @@
 script = ExtResource("1")
 id = "overdrive_ammo_cache"
 display_name = "Overdrive Cache"
-amount = 24
+amount = 6

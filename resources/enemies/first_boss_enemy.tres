@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1")
 behavior_kind = "boss"
-max_health = 128
+max_health = 80
 speed = 56.0
 contact_damage = 2
 contact_radius = 72.0

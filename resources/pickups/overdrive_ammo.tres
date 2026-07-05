@@ -6,4 +6,4 @@
 script = ExtResource("1")
 id = "overdrive_ammo"
 display_name = "Overdrive Cell"
-amount = 8
+amount = 2

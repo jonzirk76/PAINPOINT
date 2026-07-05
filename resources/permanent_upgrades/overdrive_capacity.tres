@@ -7,5 +7,5 @@ script = ExtResource("1")
 id = "overdrive_capacity"
 display_name = "Overdrive Battery"
 stat_type = 4
-amount = 20.0
+amount = 10.0
 max_stacks = 12
