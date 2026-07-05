@@ -1,6 +1,6 @@
-[gd_resource type="Resource" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="OverdriveAmmoPickup" load_steps=2 format=3 uid="uid://dhy545tjweggv"]
 
-[ext_resource type="Script" path="res://scripts/resources/overdrive_ammo_pickup.gd" id="1"]
+[ext_resource type="Script" uid="uid://b3dgkyfvs5wg8" path="res://scripts/resources/overdrive_ammo_pickup.gd" id="1"]
 
 [resource]
 script = ExtResource("1")

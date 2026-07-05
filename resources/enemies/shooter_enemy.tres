@@ -1,23 +1,14 @@
-[gd_resource type="Resource" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="EnemyProfile" load_steps=2 format=3 uid="uid://cq1jajuglcdqg"]
 
-[ext_resource type="Script" path="res://scripts/resources/enemy_profile.gd" id="1"]
+[ext_resource type="Script" uid="uid://dlpts8v3bgbx4" path="res://scripts/resources/enemy_profile.gd" id="1"]
 
 [resource]
 script = ExtResource("1")
 behavior_kind = "shooter"
-max_health = 3
 speed = 70.0
-contact_damage = 1
 contact_radius = 32.0
 contact_cooldown = 0.85
 score_value = 22
 body_radius = 16.0
 body_color = Color(0.72, 0.16, 0.95, 1)
 accent_color = Color(0.3, 0.95, 1, 1)
-preferred_distance = 280.0
-distance_band = 70.0
-strafe_speed = 95.0
-shot_cooldown = 1.2
-projectile_speed = 250.0
-projectile_damage = 1
-projectile_radius = 7.0

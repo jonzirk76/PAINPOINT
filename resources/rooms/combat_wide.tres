@@ -34,7 +34,6 @@ id = "combat_wide"
 display_name = "Wide Pressure Room"
 difficulty_weight = 2
 footprint_cells = Array[Vector2i]([Vector2i(0, 0), Vector2i(1, 0)])
-connector_directions = PackedStringArray("west", "east", "north", "south")
 arena_bounds = Rect2(-980, -330, 1960, 660)
 wall_rects = Array[Rect2]([Rect2(-120, -110, 240, 70), Rect2(-120, 40, 240, 70)])
 spawner_placements = Array[Resource]([SubResource("SpawnerPlacement_basic_1"), SubResource("SpawnerPlacement_fast_1"), SubResource("SpawnerPlacement_basic_2"), SubResource("SpawnerPlacement_fast_2")])

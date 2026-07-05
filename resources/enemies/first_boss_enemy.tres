@@ -1,6 +1,6 @@
-[gd_resource type="Resource" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="EnemyProfile" load_steps=2 format=3 uid="uid://c7lsas62p4ss8"]
 
-[ext_resource type="Script" path="res://scripts/resources/enemy_profile.gd" id="1"]
+[ext_resource type="Script" uid="uid://dlpts8v3bgbx4" path="res://scripts/resources/enemy_profile.gd" id="1"]
 
 [resource]
 script = ExtResource("1")
@@ -20,7 +20,6 @@ distance_band = 95.0
 strafe_speed = 82.0
 shot_cooldown = 1.05
 projectile_speed = 285.0
-projectile_damage = 1
 projectile_radius = 8.0
 shot_projectile_count = 3
 shot_spread_degrees = 26.0

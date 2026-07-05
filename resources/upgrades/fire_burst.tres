@@ -1,6 +1,6 @@
-[gd_resource type="Resource" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="UpgradeEffect" load_steps=2 format=3 uid="uid://c06t43ymjo58v"]
 
-[ext_resource type="Script" path="res://scripts/resources/upgrade_effect.gd" id="1"]
+[ext_resource type="Script" uid="uid://h65dh27xupi5" path="res://scripts/resources/upgrade_effect.gd" id="1"]
 
 [resource]
 script = ExtResource("1")
@@ -8,16 +8,7 @@ id = "fire_burst"
 display_name = "Fire Burst"
 upgrade_type = 3
 duration_seconds = 0.0
-max_ammo = 0
-projectile_count = 1
-spread_angle_degrees = 0.0
-pierce_count = 0
-chain_count = 0
-chain_radius = 0.0
 explosion_radius = 54.0
 explosion_damage_multiplier = 0.35
 projectile_size_multiplier = 1.05
-projectile_growth_per_second = 0.0
 projectile_max_size_multiplier = 1.15
-damage_multiplier = 1.0
-fire_cooldown_multiplier = 1.0

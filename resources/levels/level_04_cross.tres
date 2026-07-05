@@ -1,7 +1,7 @@
-[gd_resource type="Resource" load_steps=12 format=3]
+[gd_resource type="Resource" script_class="LevelDefinition" load_steps=12 format=3 uid="uid://dmn2odj5317el"]
 
-[ext_resource type="Script" path="res://scripts/resources/level_definition.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/resources/spawner_placement.gd" id="2"]
+[ext_resource type="Script" uid="uid://ch0sx5oaq1deo" path="res://scripts/resources/level_definition.gd" id="1"]
+[ext_resource type="Script" uid="uid://dfk7vbsy2c2ax" path="res://scripts/resources/spawner_placement.gd" id="2"]
 [ext_resource type="Resource" path="res://resources/spawners/basic_spawner.tres" id="3"]
 [ext_resource type="Resource" path="res://resources/spawners/tank_spawner.tres" id="4"]
 [ext_resource type="Resource" path="res://resources/spawners/fast_spawner.tres" id="5"]
@@ -17,7 +17,6 @@ warmup_seconds = 2.4
 script = ExtResource("2")
 position = Vector2(-540, 0)
 profile = ExtResource("5")
-warmup_seconds = 1.0
 
 [sub_resource type="Resource" id="SpawnerPlacement_fast_2"]
 script = ExtResource("2")
@@ -33,7 +32,6 @@ warmup_seconds = 2.0
 
 [sub_resource type="Resource" id="SpawnerPlacement_shooter_1"]
 script = ExtResource("2")
-position = Vector2(0, 0)
 profile = ExtResource("6")
 warmup_seconds = 3.0
 

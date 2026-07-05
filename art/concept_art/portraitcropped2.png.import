@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dkrost5yp4hg1"
-path="res://.godot/imported/4f940b88-c4f5-4b05-8710-3f35aeffc3e2.png-ae322dd22356361d2c839680f244e527.ctex"
+uid="uid://dmmnsmupy476b"
+path="res://.godot/imported/portraitcropped2.png-05c117fbf445ceadc916c64cc307614a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://art/concept_art/4f940b88-c4f5-4b05-8710-3f35aeffc3e2.png"
-dest_files=["res://.godot/imported/4f940b88-c4f5-4b05-8710-3f35aeffc3e2.png-ae322dd22356361d2c839680f244e527.ctex"]
+source_file="res://art/concept_art/portraitcropped2.png"
+dest_files=["res://.godot/imported/portraitcropped2.png-05c117fbf445ceadc916c64cc307614a.ctex"]
 
 [params]
 

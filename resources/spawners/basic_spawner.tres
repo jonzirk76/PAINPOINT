@@ -1,7 +1,7 @@
-[gd_resource type="Resource" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="SpawnerProfile" load_steps=3 format=3 uid="uid://bo3ufan40xwgu"]
 
-[ext_resource type="Script" path="res://scripts/resources/spawner_profile.gd" id="1"]
-[ext_resource type="Resource" path="res://resources/enemies/basic_enemy.tres" id="2"]
+[ext_resource type="Script" uid="uid://dnnga38sju8kn" path="res://scripts/resources/spawner_profile.gd" id="1"]
+[ext_resource type="Resource" uid="uid://c2saf1oqg8gn0" path="res://resources/enemies/basic_enemy.tres" id="2"]
 
 [resource]
 script = ExtResource("1")
@@ -9,23 +9,10 @@ enemy_profile = ExtResource("2")
 max_health = 21
 spawn_interval = 3.85
 spawn_batch_count = 2
-body_radius = 31.0
-score_value = 75
-base_color = Color(0.34, 0.28, 0.38, 1)
-core_color = Color(0.72, 0.24, 0.92, 1)
-accent_color = Color(0.52, 1, 0.42, 1)
-shape_kind = "basic"
 shoots_projectiles = true
 shot_cooldown = 2.1
-projectile_speed = 250.0
-projectile_damage = 1
-projectile_radius = 7.0
-shot_projectile_count = 1
-shot_spread_degrees = 0.0
 special_attack_kind = "spread"
 special_cooldown = 5.6
 special_telegraph_seconds = 0.56
-move_speed = 18.0
 preferred_distance = 330.0
 distance_band = 80.0
-strafe_speed = 8.0

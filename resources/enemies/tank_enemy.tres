@@ -1,10 +1,9 @@
-[gd_resource type="Resource" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="EnemyProfile" load_steps=2 format=3 uid="uid://14sndd8sll5x"]
 
-[ext_resource type="Script" path="res://scripts/resources/enemy_profile.gd" id="1"]
+[ext_resource type="Script" uid="uid://dlpts8v3bgbx4" path="res://scripts/resources/enemy_profile.gd" id="1"]
 
 [resource]
 script = ExtResource("1")
-behavior_kind = "chaser"
 max_health = 9
 speed = 48.0
 contact_damage = 2

@@ -1,9 +1,7 @@
-[gd_resource type="Resource" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="HealthPickup" load_steps=2 format=3 uid="uid://bp0xnni55pan5"]
 
-[ext_resource type="Script" path="res://scripts/resources/health_pickup.gd" id="1"]
+[ext_resource type="Script" uid="uid://dkf52quwp78ur" path="res://scripts/resources/health_pickup.gd" id="1"]
 
 [resource]
 script = ExtResource("1")
-id = "small_heal"
-display_name = "Small Heal"
 heal_amount = 1

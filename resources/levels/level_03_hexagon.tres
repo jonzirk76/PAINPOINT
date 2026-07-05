@@ -1,7 +1,7 @@
-[gd_resource type="Resource" load_steps=11 format=3]
+[gd_resource type="Resource" script_class="LevelDefinition" load_steps=11 format=3 uid="uid://d3t63vsplif8q"]
 
-[ext_resource type="Script" path="res://scripts/resources/level_definition.gd" id="1"]
-[ext_resource type="Script" path="res://scripts/resources/spawner_placement.gd" id="2"]
+[ext_resource type="Script" uid="uid://ch0sx5oaq1deo" path="res://scripts/resources/level_definition.gd" id="1"]
+[ext_resource type="Script" uid="uid://dfk7vbsy2c2ax" path="res://scripts/resources/spawner_placement.gd" id="2"]
 [ext_resource type="Resource" path="res://resources/spawners/basic_spawner.tres" id="3"]
 [ext_resource type="Resource" path="res://resources/spawners/tank_spawner.tres" id="4"]
 [ext_resource type="Resource" path="res://resources/spawners/fast_spawner.tres" id="5"]
@@ -11,7 +11,6 @@
 script = ExtResource("2")
 position = Vector2(-400, -210)
 profile = ExtResource("3")
-warmup_seconds = 1.0
 
 [sub_resource type="Resource" id="SpawnerPlacement_tank_1"]
 script = ExtResource("2")

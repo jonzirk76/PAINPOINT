@@ -1,4 +1,4 @@
-[gd_scene load_steps=22 format=3 uid="uid://beu8j4ocyaju8"]
+[gd_scene load_steps=26 format=3 uid="uid://beu8j4ocyaju8"]
 
 [ext_resource type="Script" uid="uid://wt5kiqqk3ets" path="res://scripts/orchestrators/game_orchestrator.gd" id="1"]
 [ext_resource type="Script" uid="uid://bp4ssjl06eeir" path="res://scripts/arena/arena_view.gd" id="2"]
@@ -16,15 +16,26 @@
 [ext_resource type="Script" uid="uid://bdlfxool4aqai" path="res://scripts/ui/dungeon_minimap.gd" id="14"]
 [ext_resource type="Script" uid="uid://bhbn1qa7duxll" path="res://scripts/managers/audio_manager.gd" id="15"]
 [ext_resource type="Script" uid="uid://d2y6e6jpmklag" path="res://scripts/managers/destructible_manager.gd" id="16"]
+[ext_resource type="FontFile" uid="uid://ni13aeviyq7l" path="res://art/fonts/BoldPixels.ttf" id="16_yc10j"]
 [ext_resource type="Shader" uid="uid://b176a8d5tdc54" path="res://scenes/circular_portrait_mask.gdshader" id="18_0ld40"]
 [ext_resource type="Script" uid="uid://bbyh4kn6adeog" path="res://scenes/character_portrait.gd" id="18_dp3eg"]
-[ext_resource type="Texture2D" uid="uid://cfobif7qmxe72" path="res://art/concept_art/portraitcropped.png" id="18_gqmmt"]
+[ext_resource type="Texture2D" uid="uid://dmmnsmupy476b" path="res://art/concept_art/portraitcropped2.png" id="18_gqmmt"]
 [ext_resource type="Texture2D" uid="uid://cjvw5hc5udne8" path="res://art/character_UI.png" id="20_gqmmt"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_jscy8"]
+font = ExtResource("16_yc10j")
+
+[sub_resource type="LabelSettings" id="LabelSettings_pm3ni"]
+font = ExtResource("16_yc10j")
+font_size = 24
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_0ld40"]
 shader = ExtResource("18_0ld40")
 shader_parameter/radius = 0.48
 shader_parameter/softness = 0.01
+
+[sub_resource type="LabelSettings" id="LabelSettings_y6deb"]
+font = ExtResource("16_yc10j")
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1")
@@ -118,6 +129,7 @@ offset_top = -106.0
 offset_right = 532.0
 offset_bottom = -26.0
 text = "SHOOTY"
+label_settings = SubResource("LabelSettings_jscy8")
 
 [node name="ScorePanel" type="Control" parent="UI"]
 layout_mode = 3
@@ -143,6 +155,7 @@ offset_right = 174.0
 offset_bottom = 32.0
 theme_override_font_sizes/font_size = 18
 text = "SCORE 000000"
+label_settings = SubResource("LabelSettings_pm3ni")
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -191,20 +204,9 @@ offset_left = -6.0
 offset_top = -5.0
 offset_right = 68.0
 offset_bottom = 70.5
+scale = Vector2(0.55, 0.55)
 texture = ExtResource("18_gqmmt")
 script = ExtResource("18_dp3eg")
-metadata/_edit_use_anchors_ = true
-
-[node name="CharacterNameLabel" type="Label" parent="UI/CombatPanel"]
-layout_mode = 0
-offset_left = 16.0
-offset_top = 80.0
-offset_right = 78.0
-offset_bottom = 94.0
-theme_override_font_sizes/font_size = 10
-text = "Volette"
-horizontal_alignment = 1
-vertical_alignment = 1
 metadata/_edit_use_anchors_ = true
 
 [node name="HealthLabel" type="Label" parent="UI/CombatPanel"]
@@ -217,7 +219,12 @@ offset_bottom = 28.0
 text = "LIFE"
 
 [node name="HealthBarBack" type="ColorRect" parent="UI/CombatPanel"]
-layout_mode = 0
+layout_mode = 1
+anchors_preset = -1
+anchor_left = -0.011029412
+anchor_top = -0.033333335
+anchor_right = 0.018382354
+anchor_bottom = 0.020833334
 offset_left = 104.0
 offset_top = 25.0
 offset_right = 258.0
@@ -226,14 +233,23 @@ color = Color(0.004, 0.006, 0.005, 1)
 metadata/_edit_use_anchors_ = true
 
 [node name="HealthBarFill" type="ColorRect" parent="UI/CombatPanel/HealthBarBack"]
-layout_mode = 0
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.0061728423
+anchor_top = 0.044817924
+anchor_right = 0.055555556
+anchor_bottom = 0.38235295
 offset_right = 154.0
 offset_bottom = 10.5
 color = Color(0.18, 0.92, 0.28, 1)
 metadata/_edit_use_anchors_ = true
 
 [node name="HealthTickLayer" type="Control" parent="UI/CombatPanel/HealthBarBack"]
-anchors_preset = 0
+layout_mode = 1
+anchor_left = -0.0064935065
+anchor_top = -0.1904762
+anchor_right = 0.051948052
+anchor_bottom = 0.14285715
 offset_right = 154.0
 offset_bottom = 10.5
 metadata/_edit_use_anchors_ = true
@@ -271,14 +287,17 @@ color = Color(0.004, 0.005, 0.008, 1)
 metadata/_edit_use_anchors_ = true
 
 [node name="OverdriveBarFill" type="ColorRect" parent="UI/CombatPanel/OverdriveBarBack"]
-layout_mode = 0
+layout_mode = 1
+anchors_preset = -1
+anchor_top = -0.17391305
 offset_right = 139.0
 offset_bottom = 11.5
 color = Color(0.16, 0.52, 1, 1)
 metadata/_edit_use_anchors_ = true
 
 [node name="OverdriveTickLayer" type="Control" parent="UI/CombatPanel/OverdriveBarBack"]
-anchors_preset = 0
+layout_mode = 1
+anchor_top = -0.17391305
 offset_right = 139.0
 offset_bottom = 11.5
 metadata/_edit_use_anchors_ = true
@@ -302,7 +321,12 @@ color = Color(0.11, 0.085, 0.025, 1)
 metadata/_edit_use_anchors_ = true
 
 [node name="SuperBarFill" type="ColorRect" parent="UI/CombatPanel/SuperBarBack"]
-layout_mode = 0
+layout_mode = 1
+anchors_preset = -1
+anchor_left = -0.016806724
+anchor_top = -0.1904762
+anchor_right = -0.008403362
+anchor_bottom = 0.04761905
 offset_right = 119.0
 offset_bottom = 10.5
 color = Color(1, 0.76, 0.16, 1)
@@ -580,3 +604,19 @@ vertical_alignment = 1
 position = Vector2(147.67, 82.36)
 scale = Vector2(0.19030759, 0.19030762)
 texture = ExtResource("20_gqmmt")
+
+[node name="CharacterNameLabel" type="Label" parent="UI/CharacterUi"]
+anchors_preset = -1
+anchor_top = 0.425
+anchor_bottom = 0.425
+offset_left = -597.29626
+offset_top = -226.90567
+offset_right = -534.29626
+offset_bottom = -212.90567
+scale = Vector2(5, 5)
+theme_override_font_sizes/font_size = 10
+text = "VOLETTE"
+label_settings = SubResource("LabelSettings_y6deb")
+horizontal_alignment = 1
+vertical_alignment = 1
+metadata/_edit_use_anchors_ = true

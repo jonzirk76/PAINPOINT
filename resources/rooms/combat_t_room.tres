@@ -42,7 +42,6 @@ id = "combat_t_room"
 display_name = "T-Junction Room"
 difficulty_weight = 3
 footprint_cells = Array[Vector2i]([Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(1, 1)])
-connector_directions = PackedStringArray("west", "east", "north", "south")
 arena_bounds = Rect2(-900, -520, 1800, 1040)
 wall_rects = Array[Rect2]([Rect2(-900, 120, 520, 400), Rect2(380, 120, 520, 400), Rect2(-110, -80, 220, 160)])
 spawner_placements = Array[Resource]([SubResource("SpawnerPlacement_basic_1"), SubResource("SpawnerPlacement_shooter_1"), SubResource("SpawnerPlacement_fast_1"), SubResource("SpawnerPlacement_tank_1"), SubResource("SpawnerPlacement_shooter_2")])

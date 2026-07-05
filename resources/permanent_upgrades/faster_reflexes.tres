@@ -1,11 +1,10 @@
-[gd_resource type="Resource" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="PermanentUpgrade" load_steps=2 format=3 uid="uid://bssx6ieq65s0k"]
 
-[ext_resource type="Script" path="res://scripts/resources/permanent_upgrade.gd" id="1"]
+[ext_resource type="Script" uid="uid://xwd1q6fbp7gd" path="res://scripts/resources/permanent_upgrade.gd" id="1"]
 
 [resource]
 script = ExtResource("1")
 id = "faster_reflexes"
 display_name = "Faster Reflexes"
-stat_type = 0
 amount = 0.1
 max_stacks = 16

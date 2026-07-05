@@ -1,6 +1,6 @@
-[gd_resource type="Resource" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="SpawnerProfile" load_steps=3 format=3 uid="uid://jy73h2c2kee2"]
 
-[ext_resource type="Script" path="res://scripts/resources/spawner_profile.gd" id="1"]
+[ext_resource type="Script" uid="uid://dnnga38sju8kn" path="res://scripts/resources/spawner_profile.gd" id="1"]
 [ext_resource type="Resource" path="res://resources/enemies/fast_enemy.tres" id="2"]
 
 [resource]
@@ -18,10 +18,7 @@ shape_kind = "fast"
 shoots_projectiles = true
 shot_cooldown = 1.05
 projectile_speed = 390.0
-projectile_damage = 1
 projectile_radius = 4.5
-shot_projectile_count = 1
-shot_spread_degrees = 0.0
 special_attack_kind = "rapid"
 special_cooldown = 4.4
 special_telegraph_seconds = 0.42

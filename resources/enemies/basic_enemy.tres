@@ -1,16 +1,10 @@
-[gd_resource type="Resource" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="EnemyProfile" load_steps=2 format=3 uid="uid://c2saf1oqg8gn0"]
 
-[ext_resource type="Script" path="res://scripts/resources/enemy_profile.gd" id="1"]
+[ext_resource type="Script" uid="uid://dlpts8v3bgbx4" path="res://scripts/resources/enemy_profile.gd" id="1"]
 
 [resource]
 script = ExtResource("1")
-behavior_kind = "chaser"
 max_health = 2
 speed = 82.0
-contact_damage = 1
 contact_radius = 35.0
 contact_cooldown = 0.75
-score_value = 10
-body_radius = 18.0
-body_color = Color(1, 0.27, 0.22, 1)
-accent_color = Color(1, 0.72, 0.18, 1)

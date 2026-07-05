@@ -1,14 +1,13 @@
-[gd_resource type="Resource" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="SpawnerProfile" load_steps=3 format=3 uid="uid://4dt8j528ubjj"]
 
-[ext_resource type="Script" path="res://scripts/resources/spawner_profile.gd" id="1"]
-[ext_resource type="Resource" path="res://resources/enemies/shooter_enemy.tres" id="2"]
+[ext_resource type="Script" uid="uid://dnnga38sju8kn" path="res://scripts/resources/spawner_profile.gd" id="1"]
+[ext_resource type="Resource" uid="uid://cq1jajuglcdqg" path="res://resources/enemies/shooter_enemy.tres" id="2"]
 
 [resource]
 script = ExtResource("1")
 enemy_profile = ExtResource("2")
 max_health = 33
 spawn_interval = 3.75
-spawn_batch_count = 1
 body_radius = 34.0
 score_value = 110
 base_color = Color(0.24, 0.16, 0.38, 1)
@@ -16,17 +15,10 @@ core_color = Color(0.74, 0.2, 0.96, 1)
 accent_color = Color(0.32, 0.96, 1, 1)
 shape_kind = "shooter"
 shoots_projectiles = true
-shot_cooldown = 1.8
-projectile_speed = 250.0
-projectile_damage = 1
-projectile_radius = 7.0
-shot_projectile_count = 1
-shot_spread_degrees = 0.0
 special_attack_kind = "minigun"
 special_cooldown = 6.1
 special_telegraph_seconds = 0.62
 special_minigun_duration = 0.58
-special_minigun_shot_interval = 0.08
 special_minigun_sweep_degrees = 62.0
 move_speed = 24.0
 preferred_distance = 360.0
