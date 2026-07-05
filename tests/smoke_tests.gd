@@ -865,6 +865,21 @@ func _test_parry_input_and_cooldown(failures: Array[String]) -> void:
 	manager.request_parry()
 	if parry_count[0] != 2:
 		failures.append("PlayerManager parry should become available again after cooldown.")
+	manager.resolve_parry_result(true)
+	if manager.get_parry_chain_count() != 1 or manager.get_longest_parry_chain() != 1:
+		failures.append("Perfect parry should start a tracked parry chain.")
+	if manager.get_parry_cooldown_remaining() > manager.parry_chain_cooldown_seconds + 0.01:
+		failures.append("Perfect parry should reduce the next parry cooldown for chaining.")
+	if manager.player._parry_chain_grace_remaining <= 0.0:
+		failures.append("Player should show a parry-chain grace meter after a perfect parry.")
+	manager._process(manager.parry_chain_cooldown_seconds + 0.1)
+	manager.request_parry()
+	manager.resolve_parry_result(true)
+	if manager.get_parry_chain_count() != 2 or manager.get_longest_parry_chain() != 2:
+		failures.append("Consecutive perfect parries should advance the parry chain.")
+	manager._process(manager.parry_chain_grace_seconds + 0.1)
+	if manager.get_parry_chain_count() != 0 or manager.get_parry_cooldown_remaining() <= manager.parry_chain_cooldown_seconds:
+		failures.append("Letting the perfect-parry chain grace expire should start the long cooldown.")
 	manager.free()
 	player_layer.free()
 
@@ -1162,8 +1177,8 @@ func _test_parry_absorbs_hostile_projectiles_for_ammo(failures: Array[String]) -
 	upgrade_manager.set_overdrive_active(true)
 	for _index in range(30):
 		upgrade_manager.consume_overdrive_shot()
-	if projectile_manager.perfect_parry_projectile_ammo_award != 20:
-		failures.append("Perfect parry bullets should award 20 overdrive ammo each.")
+	if projectile_manager.perfect_parry_projectile_ammo_award != 2:
+		failures.append("Perfect parry bullets should award 2 overdrive ammo each for chain balance.")
 	projectile_manager.fire_hostile(Vector2(12.0, 0.0), Vector2.RIGHT, {"speed": 250.0, "damage": 1, "radius": 7.0})
 	projectile_manager.fire_hostile(Vector2(82.0, 0.0), Vector2.RIGHT, {"speed": 250.0, "damage": 1, "radius": 7.0})
 	projectile_manager.fire_hostile(Vector2(220.0, 0.0), Vector2.RIGHT, {"speed": 250.0, "damage": 1, "radius": 7.0})
@@ -1171,8 +1186,8 @@ func _test_parry_absorbs_hostile_projectiles_for_ammo(failures: Array[String]) -
 	var absorbed: Dictionary = projectile_manager.absorb_hostile_projectiles(Vector2.ZERO, 100.0, 24.0)
 	if int(absorbed["absorbed_count"]) != 2:
 		failures.append("Parry should erase hostile projectiles inside the effect radius only.")
-	if int(absorbed["perfect_count"]) != 1 or int(absorbed["ammo_awarded"]) != 21:
-		failures.append("Parry should award 20 ammo for close bullets and 1 ammo for other absorbed bullets.")
+	if int(absorbed["perfect_count"]) != 1 or int(absorbed["ammo_awarded"]) != 3:
+		failures.append("Parry should award 2 ammo for close bullets and 1 ammo for other absorbed bullets.")
 	var absorb_infos: Array = absorbed.get("absorbed_projectiles", [])
 	var absorb_visual_perfect_count := 0
 	for info in absorb_infos:
@@ -1185,7 +1200,7 @@ func _test_parry_absorbs_hostile_projectiles_for_ammo(failures: Array[String]) -
 	if projectile_manager._projectiles.size() != 2:
 		failures.append("Parry should leave outside hostile bullets and player bullets alive.")
 	var ammo_added: int = upgrade_manager.add_ammo_to_active_upgrades(int(absorbed["ammo_awarded"]))
-	if ammo_added != 21 or upgrade_manager.get_overdrive_ammo() != 31:
+	if ammo_added != 3 or upgrade_manager.get_overdrive_ammo() != 13:
 		failures.append("Parry ammo should refill the shared overdrive pool.")
 	projectile_manager.free()
 	projectile_layer.free()
@@ -1252,16 +1267,25 @@ func _test_parry_absorb_visuals_and_ammo_flash(failures: Array[String]) -> void:
 		failures.append("Perfect parry should briefly slow down time.")
 	if main.player_manager.player == null or main.player_manager.player._perfect_parry_flash_remaining <= 0.0:
 		failures.append("Perfect parry should create a bright player flash.")
+	if main._last_parry_chain_count != 1 or main._run_longest_parry_chain != 1:
+		failures.append("Perfect parry should update the current and longest parry-chain counters.")
 	if main.get_node("World/EffectLayer").get_child_count() <= 0:
 		failures.append("Parry absorption should create a visible swoop effect in the effect layer.")
 	else:
 		var absorb_effect = main.get_node("World/EffectLayer").get_child(0)
 		var absorb_target: Vector2 = absorb_effect.get("end_position")
-		if absorb_target.distance_squared_to(Vector2.ZERO) <= 1.0:
-			failures.append("Parry absorb effects should fly toward the overdrive bar instead of ending on the player.")
+		var portrait_targets: Array[Vector2] = main._get_character_portrait_world_targets()
+		if portrait_targets.is_empty() or absorb_target.distance_squared_to(portrait_targets[0]) > 36.0 * 36.0:
+			failures.append("Parry absorb effects should fly toward the character portrait.")
 	main._process(0.12)
 	if main.overdrive_fill == null or main._ammo_refill_flash_remaining <= 0.0:
 		failures.append("Overdrive bar should flash while parry ammo fills it.")
+	var flashed_segment_found := false
+	for segment in _get_meter_segments(main.overdrive_tick_layer, "meter_active_segment"):
+		if float(segment.get_meta("refill_flash_strength", 0.0)) > 0.0:
+			flashed_segment_found = true
+	if not flashed_segment_found:
+		failures.append("Parry ammo refill should flash newly filled overdrive segments one at a time.")
 	main._stop_perfect_parry_slowmo()
 	main.free()
 
@@ -3416,6 +3440,7 @@ func _test_orchestrator_main_loop_floor_progression(failures: Array[String]) -> 
 		failures.append("Main loop should create a positive run seed.")
 	if main.dungeon_manager.get_run_seed() != run_seed:
 		failures.append("Main loop should pass its run seed into DungeonManager.")
+	main._on_player_parry_chain_changed(3, 3, 2.0, 4.0)
 	main._score = 0
 	var boss = load("res://scenes/entities/enemy_entity.tscn").instantiate()
 	boss.initialize(load("res://resources/enemies/first_boss_enemy.tres"))
@@ -3445,6 +3470,8 @@ func _test_orchestrator_main_loop_floor_progression(failures: Array[String]) -> 
 		failures.append("Main loop floor clear should show the mission results panel after portal entry.")
 	if main.win_title_label == null or main.win_title_label.text != "MISSION RESULTS":
 		failures.append("Main loop floor clear should present a mission results screen.")
+	if main.win_score_label == null or not main.win_score_label.text.contains("Longest parry chain: 3"):
+		failures.append("Main loop mission results should include the longest parry chain.")
 	main._on_menu_confirm_requested()
 	if main._main_loop_floor != 2 or main._status != "DUNGEON":
 		failures.append("Main loop confirm should advance to the next generated floor.")

@@ -8,6 +8,7 @@ signal player_defeated(player)
 signal shoot_requested(origin: Vector2, direction: Vector2)
 signal parry_requested(origin: Vector2, effect_radius: float, perfect_radius: float, enemy_knockback: float)
 signal parry_cooldown_changed(remaining: float, duration: float)
+signal parry_chain_changed(current_chain: int, longest_chain: int, grace_remaining: float, grace_duration: float)
 signal super_meter_changed(current: float, maximum: float, is_charging: bool, charge_ratio: float)
 signal super_shot_requested(origin: Vector2, direction: Vector2, charge_ratio: float)
 
@@ -16,13 +17,15 @@ signal super_shot_requested(origin: Vector2, direction: Vector2, charge_ratio: f
 @export var base_fire_cooldown: float = 0.09
 @export var damage_invulnerability_seconds: float = 0.6
 @export var parry_cooldown_seconds: float = 8.0
+@export var parry_chain_cooldown_seconds: float = 0.5
+@export var parry_chain_grace_seconds: float = 4.0
 @export var parry_effect_radius: float = 154.0
 @export var parry_perfect_radius: float = 42.0
 @export var parry_enemy_knockback: float = 430.0
 @export var super_meter_max: float = 100.0
 @export var super_meter_enemy_kill_gain: float = 6.0
 @export var super_meter_parried_bullet_gain: float = 3.0
-@export var super_meter_perfect_bullet_gain: float = 18.0
+@export var super_meter_perfect_bullet_gain: float = 6.0
 @export var super_charge_seconds: float = 1.15
 @export var super_charge_speed_multiplier: float = 0.72
 
@@ -35,7 +38,13 @@ var _move_speed_multiplier: float = 1.0
 var _damage_cooldown_remaining: float = 0.0
 var _last_invulnerability_remaining: float = -1.0
 var _parry_cooldown_remaining: float = 0.0
+var _active_parry_cooldown_duration: float = 8.0
 var _last_parry_cooldown_remaining: float = -1.0
+var _parry_chain_count: int = 0
+var _longest_parry_chain: int = 0
+var _parry_chain_grace_remaining: float = 0.0
+var _last_parry_chain_count: int = -1
+var _last_parry_chain_grace_remaining: float = -1.0
 var _super_meter: float = 0.0
 var _super_is_charging: bool = false
 var _super_charge_elapsed: float = 0.0
@@ -64,13 +73,20 @@ func reset_run() -> void:
 	_damage_cooldown_remaining = 0.0
 	_last_invulnerability_remaining = -1.0
 	_parry_cooldown_remaining = 0.0
+	_active_parry_cooldown_duration = parry_cooldown_seconds
 	_last_parry_cooldown_remaining = -1.0
+	_parry_chain_count = 0
+	_longest_parry_chain = 0
+	_parry_chain_grace_remaining = 0.0
+	_last_parry_chain_count = -1
+	_last_parry_chain_grace_remaining = -1.0
 	_super_meter = 0.0
 	_super_is_charging = false
 	_super_charge_elapsed = 0.0
 	_last_super_ready = false
 	_sync_invulnerability_state()
 	_sync_parry_state()
+	_sync_parry_chain_state()
 	_sync_player_speed()
 	_sync_super_meter_state()
 	player_spawned.emit(player)
@@ -84,12 +100,16 @@ func clear_player() -> void:
 	_fire_cooldown_remaining = 0.0
 	_damage_cooldown_remaining = 0.0
 	_parry_cooldown_remaining = 0.0
+	_active_parry_cooldown_duration = parry_cooldown_seconds
+	_parry_chain_count = 0
+	_parry_chain_grace_remaining = 0.0
 	_super_meter = 0.0
 	_super_is_charging = false
 	_super_charge_elapsed = 0.0
 	_last_super_ready = false
 	player_health_changed.emit(0, 0)
 	_sync_parry_state()
+	_sync_parry_chain_state()
 	_sync_super_meter_state()
 
 
@@ -112,6 +132,13 @@ func _process(delta: float) -> void:
 		_parry_cooldown_remaining = max(_parry_cooldown_remaining - delta, 0.0)
 	if _parry_cooldown_remaining > 0.0 or _last_parry_cooldown_remaining > 0.0:
 		_sync_parry_state()
+	if _parry_chain_grace_remaining > 0.0:
+		_parry_chain_grace_remaining = max(_parry_chain_grace_remaining - delta, 0.0)
+		if _parry_chain_grace_remaining <= 0.0:
+			_end_parry_chain()
+			_set_parry_cooldown(parry_cooldown_seconds)
+			_sync_parry_state()
+		_sync_parry_chain_state()
 	if _super_is_charging:
 		_super_charge_elapsed = min(_super_charge_elapsed + delta, max(super_charge_seconds, 0.01))
 		if _has_player() and player.has_method("set_super_charge_state"):
@@ -149,11 +176,24 @@ func request_fire(direction: Vector2) -> void:
 func request_parry() -> void:
 	if not enabled or not _has_player() or _parry_cooldown_remaining > 0.0:
 		return
-	_parry_cooldown_remaining = parry_cooldown_seconds
+	_set_parry_cooldown(parry_cooldown_seconds)
 	if player.has_method("play_parry_response"):
 		player.play_parry_response(parry_effect_radius, parry_perfect_radius)
 	_sync_parry_state()
 	parry_requested.emit(player.global_position, parry_effect_radius, parry_perfect_radius, parry_enemy_knockback)
+
+
+func resolve_parry_result(was_perfect: bool) -> void:
+	if was_perfect:
+		_parry_chain_count += 1
+		_longest_parry_chain = max(_longest_parry_chain, _parry_chain_count)
+		_parry_chain_grace_remaining = max(parry_chain_grace_seconds, 0.0)
+		_set_parry_cooldown(parry_chain_cooldown_seconds)
+	else:
+		_end_parry_chain()
+		_set_parry_cooldown(parry_cooldown_seconds)
+	_sync_parry_state()
+	_sync_parry_chain_state()
 
 
 func request_super_charge_start() -> void:
@@ -280,7 +320,19 @@ func get_parry_cooldown_remaining() -> float:
 
 
 func get_parry_cooldown_duration() -> float:
-	return parry_cooldown_seconds
+	return _active_parry_cooldown_duration
+
+
+func get_parry_chain_count() -> int:
+	return _parry_chain_count
+
+
+func get_longest_parry_chain() -> int:
+	return _longest_parry_chain
+
+
+func get_parry_chain_grace_remaining() -> float:
+	return _parry_chain_grace_remaining
 
 
 func add_super_meter(amount: float) -> void:
@@ -351,7 +403,26 @@ func _sync_parry_state() -> void:
 			player.set_parry_ready_state(is_ready)
 		if is_ready and (previous_remaining > 0.0 or previous_remaining < 0.0) and player.has_method("play_parry_ready_response"):
 			player.play_parry_ready_response(parry_effect_radius, parry_perfect_radius)
-	parry_cooldown_changed.emit(_parry_cooldown_remaining, parry_cooldown_seconds)
+	parry_cooldown_changed.emit(_parry_cooldown_remaining, _active_parry_cooldown_duration)
+
+
+func _set_parry_cooldown(duration: float) -> void:
+	_active_parry_cooldown_duration = max(duration, 0.0)
+	_parry_cooldown_remaining = _active_parry_cooldown_duration
+
+
+func _end_parry_chain() -> void:
+	_parry_chain_count = 0
+	_parry_chain_grace_remaining = 0.0
+
+
+func _sync_parry_chain_state() -> void:
+	if _has_player() and player.has_method("set_parry_chain_state"):
+		player.set_parry_chain_state(_parry_chain_grace_remaining, parry_chain_grace_seconds, _parry_chain_count)
+	if _last_parry_chain_count != _parry_chain_count or abs(_last_parry_chain_grace_remaining - _parry_chain_grace_remaining) > 0.02:
+		_last_parry_chain_count = _parry_chain_count
+		_last_parry_chain_grace_remaining = _parry_chain_grace_remaining
+		parry_chain_changed.emit(_parry_chain_count, _longest_parry_chain, _parry_chain_grace_remaining, parry_chain_grace_seconds)
 
 
 func _cancel_super_charge(refund_meter: bool) -> void:

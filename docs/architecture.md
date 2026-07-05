@@ -127,9 +127,10 @@ Parry:
 
 1. `InputManager` emits `parry_requested` from keyboard/controller input.
 2. `GameOrchestrator` calls `PlayerManager.request_parry()`.
-3. `PlayerManager` enforces the long cooldown, plays the player pulse, and emits `parry_requested(origin, radius, perfect_radius, knockback)`.
-4. `GameOrchestrator` commands `ProjectileManager.absorb_hostile_projectiles(...)`, `EnemyManager.apply_parry_pushback(...)`, and `UpgradeManager.add_overdrive_ammo(...)`.
-5. Parry pushback never creates a damage packet. Absorbed hostile projectiles award 1 shared overdrive ammo each, or 20 ammo each when inside the small perfect radius.
+3. `PlayerManager` enforces the current cooldown, plays the player pulse, and emits `parry_requested(origin, radius, perfect_radius, knockback)`.
+4. `GameOrchestrator` commands `ProjectileManager.absorb_hostile_projectiles(...)`, routes the evaluated perfect/non-perfect result back to `PlayerManager`, commands `EnemyManager.apply_parry_pushback(...)`, and applies ammo through `UpgradeManager.add_overdrive_ammo(...)`.
+5. Parry pushback never creates a damage packet. Absorbed hostile projectiles award 1 shared overdrive ammo each, or 2 ammo each when inside the small perfect radius.
+6. Perfect parries reduce the next parry cooldown to 0.5 seconds and start a 4-second chain grace timer. Missing the next perfect parry or letting the grace timer expire starts the usual 8-second cooldown.
 
 Combat reward drops:
 

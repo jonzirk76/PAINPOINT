@@ -35,6 +35,9 @@ var _perfect_parry_flash_duration: float = 0.36
 var _parry_ready_flash_remaining: float = 0.0
 var _parry_ready_flash_duration: float = 0.42
 var _parry_ready: bool = false
+var _parry_chain_grace_remaining: float = 0.0
+var _parry_chain_grace_duration: float = 4.0
+var _parry_chain_count: int = 0
 var _super_charge_active: bool = false
 var _super_charge_ratio: float = 0.0
 var _parry_effect_radius: float = 154.0
@@ -85,7 +88,7 @@ func _process(delta: float) -> void:
 		_parry_ready_flash_remaining = max(_parry_ready_flash_remaining - delta, 0.0)
 	if _is_dead:
 		_death_elapsed = min(_death_elapsed + delta, _death_duration)
-	if is_walking or was_shooting or _shoot_pose_remaining > 0.0 or _parry_ready or _super_charge_active or _parry_ready_flash_remaining > 0.0 or _parry_pulse_remaining > 0.0 or _perfect_parry_flash_remaining > 0.0 or _hit_flash_remaining > 0.0 or _heal_flash_remaining > 0.0 or _is_dead:
+	if is_walking or was_shooting or _shoot_pose_remaining > 0.0 or _parry_ready or _parry_chain_grace_remaining > 0.0 or _super_charge_active or _parry_ready_flash_remaining > 0.0 or _parry_pulse_remaining > 0.0 or _perfect_parry_flash_remaining > 0.0 or _hit_flash_remaining > 0.0 or _heal_flash_remaining > 0.0 or _is_dead:
 		queue_redraw()
 
 
@@ -218,6 +221,13 @@ func set_parry_ready_state(is_ready: bool) -> void:
 	queue_redraw()
 
 
+func set_parry_chain_state(remaining: float, duration: float, chain_count: int) -> void:
+	_parry_chain_grace_remaining = max(remaining, 0.0)
+	_parry_chain_grace_duration = max(duration, 0.01)
+	_parry_chain_count = max(chain_count, 0)
+	queue_redraw()
+
+
 func play_parry_ready_response(effect_radius: float, perfect_radius: float) -> void:
 	if _is_dead:
 		return
@@ -250,6 +260,8 @@ func play_death_animation() -> void:
 	_knockback_velocity = Vector2.ZERO
 	invulnerable_remaining = 0.0
 	_parry_ready = false
+	_parry_chain_grace_remaining = 0.0
+	_parry_chain_count = 0
 	_super_charge_active = false
 	_super_charge_ratio = 0.0
 	_shoot_pose_remaining = 0.0
@@ -271,6 +283,8 @@ func reset_health() -> void:
 	_perfect_parry_flash_remaining = 0.0
 	_parry_ready_flash_remaining = 0.0
 	_parry_ready = false
+	_parry_chain_grace_remaining = 0.0
+	_parry_chain_count = 0
 	_super_charge_active = false
 	_super_charge_ratio = 0.0
 	_shoot_pose_remaining = 0.0
@@ -292,6 +306,8 @@ func _draw() -> void:
 		draw_arc(Vector2.ZERO, body_radius + 8.0, 0.0, TAU, 32, Color(0.28, 1.0, 0.45, heal_ratio), 4.0)
 	if _parry_ready:
 		_draw_parry_ready_idle()
+	if _parry_chain_grace_remaining > 0.0:
+		_draw_parry_chain_grace()
 	if _parry_ready_flash_remaining > 0.0:
 		_draw_parry_ready_flash()
 	if _parry_pulse_remaining > 0.0:
@@ -469,6 +485,21 @@ func _draw_parry_ready_flash() -> void:
 	for index in range(8):
 		var direction := Vector2.RIGHT.rotated(TAU * float(index) / 8.0 - progress * 0.4)
 		draw_line(direction * outer_radius, direction * (body_radius + 7.0), Color(0.75, 1.0, 1.0, alpha * 0.75), 2.0)
+
+
+func _draw_parry_chain_grace() -> void:
+	var ratio: float = clamp(_parry_chain_grace_remaining / max(_parry_chain_grace_duration, 0.01), 0.0, 1.0)
+	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.018)
+	var radius: float = body_radius + 25.0 + pulse * 1.6
+	var start_angle := -PI * 0.5
+	var end_angle := start_angle + TAU * ratio
+	var chain_alpha: float = 0.34 + min(float(_parry_chain_count), 5.0) * 0.06
+	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 48, Color(0.08, 0.4, 0.42, 0.26), 3.0)
+	draw_arc(Vector2.ZERO, radius, start_angle, end_angle, 48, Color(0.42, 1.0, 0.96, chain_alpha), 4.2)
+	draw_arc(Vector2.ZERO, radius - 5.0, start_angle, end_angle, 40, Color(1.0, 1.0, 0.72, chain_alpha * 0.72), 2.4)
+	for index in range(min(_parry_chain_count, 6)):
+		var direction := Vector2.RIGHT.rotated(start_angle + TAU * float(index + 1) / float(min(_parry_chain_count, 6) + 1))
+		draw_line(direction * (radius - 7.0), direction * (radius + 6.0), Color(1.0, 1.0, 0.84, 0.52), 2.0)
 
 
 func _draw_super_charge() -> void:

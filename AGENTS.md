@@ -42,9 +42,10 @@ This project is a Godot 4.x GDScript top-down arena shooter. Keep the architectu
 - The `DOWN` state must remain recoverable through `InputManager.restart_requested`; do not leave the player in an unrestartable frozen arena.
 - Contact damage should respect player-side invulnerability frames so overlapping enemies cannot all damage the player in the same instant.
 - Player damage must be visually readable: hit flash, translucent invulnerability flicker, and HUD invulnerability meter.
-- Player parry is a long-cooldown defensive "get off me" command. It should push enemies without damage, erase hostile projectiles in range, and convert erased hostile projectiles into ammo for currently active ammo-based shot upgrades. Very close projectile parries currently award 10 ammo instead of 1.
+- Player parry is a long-cooldown defensive "get off me" command. It should push enemies without damage, erase hostile projectiles in range, and convert erased hostile projectiles into ammo for currently active ammo-based shot upgrades. Regular absorbed hostile projectiles award 1 ammo; perfect absorbed projectiles award 2 ammo and start/continue a short-cooldown parry chain.
 - Parry readiness should be visually obvious on the player, including a clear flash when cooldown returns to ready.
-- Parry absorption should be visually readable: erased hostile bullets should swoop into the player, perfect parries should add a special shine, and ammo buff squares should flash/jump when refilled.
+- Parry-chain grace should be visually obvious around the player as a circular timer; letting it expire or missing the next perfect parry should start the usual long cooldown.
+- Parry absorption should be visually readable: erased hostile bullets should swoop into the character portrait, perfect parries should add a special shine, and refilled ammo segments should flash white one at a time before returning blue.
 - Bullet upgrades use ammo instead of duration; do not add timers to ammo-based projectile upgrades.
 - Keep the upper-right combat HUD compact: health/invulnerability only. Ammo upgrades should appear as right-side buff squares with visible meters, while detailed attribute/stat readouts belong in the pause menu.
 - Spread shot is intentionally capped at a 3-way spread for now; do not return it to 5-way without explicit retuning.
