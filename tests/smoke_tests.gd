@@ -474,7 +474,7 @@ func _test_scene_loads(failures: Array[String]) -> void:
 						failures.append("Score label should be small enough to group with the minimap.")
 				if instance.has_node("UI/CombatPanel"):
 					var combat_panel: Control = instance.get_node("UI/CombatPanel")
-					if combat_panel.size.y > 140.0:
+					if combat_panel.size.y > 120.0:
 						failures.append("Character combat panel should stay compact while showing portrait, health, overdrive, and special.")
 					if combat_panel.anchor_left != 0.0 or combat_panel.anchor_right != 0.0 or combat_panel.offset_left > 24.0:
 						failures.append("Character combat panel should sit in the upper-left corner.")

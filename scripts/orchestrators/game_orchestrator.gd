@@ -1167,11 +1167,16 @@ func _update_health_ticks(max_health: int, bar_width: float) -> void:
 		child.queue_free()
 	if max_health <= 1:
 		return
+	var tick_height: float = health_tick_layer.size.y
+	if tick_height <= 0.0 and health_bar_back != null:
+		tick_height = health_bar_back.size.y
+	if tick_height <= 0.0:
+		tick_height = 20.0
 	for index in range(1, max_health):
 		var tick := ColorRect.new()
 		tick.name = "HealthTick%d" % index
 		tick.position = Vector2((bar_width * float(index) / float(max_health)) - 1.0, 0.0)
-		tick.size = Vector2(2.0, 20.0)
+		tick.size = Vector2(2.0, tick_height)
 		tick.color = Color(0.03, 0.07, 0.04, 0.78)
 		health_tick_layer.add_child(tick)
 
