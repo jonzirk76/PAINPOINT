@@ -11,6 +11,10 @@ const FAST_ENEMY_TEXTURE := preload("res://art/characters/fast_enemy_runner.svg"
 const TANK_ENEMY_TEXTURE := preload("res://art/characters/tank_enemy_brute.svg")
 const SHOOTER_ENEMY_TEXTURE := preload("res://art/characters/shooter_enemy_orbiter.svg")
 const BOSS_ENEMY_TEXTURE := preload("res://art/characters/boss_enemy_overlord.svg")
+const PATH_REPATH_BASE_SECONDS := 0.1
+const PATH_REPATH_STAGGER_SECONDS := 0.015
+const PATH_CACHE_TARGET_MOVE_SQUARED := 48.0 * 48.0
+const PATH_CACHE_SELF_MOVE_SQUARED := 36.0 * 36.0
 
 @export var max_health: int = 3
 @export var speed: float = 85.0
@@ -68,6 +72,12 @@ var _boss_minigun_remaining: float = 0.0
 var _boss_minigun_elapsed: float = 0.0
 var _boss_minigun_next_shot_remaining: float = 0.0
 var _boss_minigun_base_direction: Vector2 = Vector2.RIGHT
+var _path_blocker_rects: Array[Rect2] = []
+var _cached_steering_target: Vector2 = Vector2.INF
+var _path_cache_target_position: Vector2 = Vector2.INF
+var _path_cache_enemy_position: Vector2 = Vector2.INF
+var _path_repath_remaining: float = 0.0
+var _path_repath_interval: float = PATH_REPATH_BASE_SECONDS
 
 
 func _init() -> void:
@@ -77,6 +87,7 @@ func _init() -> void:
 func _ready() -> void:
 	health = max_health
 	_configure_collision_identity()
+	_configure_path_cache_timing()
 	_add_collision()
 	queue_redraw()
 
@@ -124,6 +135,8 @@ func _physics_process(delta: float) -> void:
 		_hit_flash_remaining = max(_hit_flash_remaining - delta, 0.0)
 	if _shot_cooldown_remaining > 0.0:
 		_shot_cooldown_remaining = max(_shot_cooldown_remaining - delta, 0.0)
+	if _path_repath_remaining > 0.0:
+		_path_repath_remaining = max(_path_repath_remaining - delta, 0.0)
 	if _is_dying:
 		_death_elapsed += delta
 		velocity = _knockback_velocity
@@ -182,6 +195,8 @@ func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: A
 	for void_rect in voids:
 		if void_rect is Rect2:
 			void_rects.append(void_rect)
+	_rebuild_path_blocker_cache()
+	_invalidate_path_cache()
 	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
 
 
@@ -259,6 +274,23 @@ func play_birth_animation(duration: float = 0.36) -> void:
 	collision_layer = 0
 	collision_mask = 0
 	queue_redraw()
+
+
+func _configure_path_cache_timing() -> void:
+	_path_repath_interval = PATH_REPATH_BASE_SECONDS + float(get_instance_id() % 7) * PATH_REPATH_STAGGER_SECONDS
+
+
+func _rebuild_path_blocker_cache() -> void:
+	_path_blocker_rects.clear()
+	_path_blocker_rects.append_array(wall_rects)
+	_path_blocker_rects.append_array(void_rects)
+
+
+func _invalidate_path_cache() -> void:
+	_cached_steering_target = Vector2.INF
+	_path_cache_target_position = Vector2.INF
+	_path_cache_enemy_position = Vector2.INF
+	_path_repath_remaining = 0.0
 
 
 func is_birth_animation_active() -> bool:
@@ -589,8 +621,8 @@ func _get_chaser_velocity(to_target: Vector2) -> Vector2:
 func _get_ranged_velocity(to_target: Vector2) -> Vector2:
 	if to_target.length_squared() <= 4.0:
 		return Vector2.ZERO
-	if _path_blocks_segment(global_position, target_position, body_radius + 8.0):
-		var steering_target := _get_path_steering_target(target_position)
+	var steering_target := _get_path_steering_target(target_position)
+	if steering_target.distance_squared_to(target_position) > 1.0:
 		var to_steering := steering_target - global_position
 		if to_steering.length_squared() > 4.0:
 			return to_steering.normalized() * speed
@@ -687,10 +719,14 @@ func _wall_blocks_segment(from_position: Vector2, to_position: Vector2) -> bool:
 
 func _get_path_steering_target(final_target: Vector2) -> Vector2:
 	var clearance: float = body_radius + 10.0
+	if _can_reuse_path_cache(final_target):
+		return _cached_steering_target
 	if not _path_blocks_segment(global_position, final_target, clearance):
+		_store_path_cache(final_target, final_target)
 		return final_target
 	var blocking_wall := _get_blocking_wall_rect(global_position, final_target, clearance)
 	if blocking_wall.size == Vector2.ZERO:
+		_store_path_cache(final_target, final_target)
 		return final_target
 	var expanded_wall := blocking_wall.grow(body_radius + 28.0)
 	var candidates := [
@@ -714,13 +750,31 @@ func _get_path_steering_target(final_target: Vector2) -> Vector2:
 		if score < best_score:
 			best_score = score
 			best_target = candidate
+	_store_path_cache(final_target, best_target)
 	return best_target
+
+
+func _can_reuse_path_cache(final_target: Vector2) -> bool:
+	if _cached_steering_target == Vector2.INF or _path_repath_remaining <= 0.0:
+		return false
+	if final_target.distance_squared_to(_path_cache_target_position) > PATH_CACHE_TARGET_MOVE_SQUARED:
+		return false
+	if global_position.distance_squared_to(_path_cache_enemy_position) > PATH_CACHE_SELF_MOVE_SQUARED:
+		return false
+	return true
+
+
+func _store_path_cache(final_target: Vector2, steering_target: Vector2) -> void:
+	_cached_steering_target = steering_target
+	_path_cache_target_position = final_target
+	_path_cache_enemy_position = global_position
+	_path_repath_remaining = _path_repath_interval
 
 
 func _get_blocking_wall_rect(from_position: Vector2, to_position: Vector2, margin: float) -> Rect2:
 	var best_rect := Rect2()
 	var best_distance := INF
-	for blocker_rect in _get_path_blocker_rects():
+	for blocker_rect in _path_blocker_rects:
 		var expanded_blocker := blocker_rect.grow(margin)
 		if not _segment_intersects_rect(from_position, to_position, expanded_blocker):
 			continue
@@ -734,27 +788,30 @@ func _get_blocking_wall_rect(from_position: Vector2, to_position: Vector2, margi
 func _path_blocks_segment(from_position: Vector2, to_position: Vector2, margin: float) -> bool:
 	if from_position.distance_squared_to(to_position) <= 0.001:
 		return false
-	for blocker_rect in _get_path_blocker_rects():
+	for blocker_rect in _path_blocker_rects:
 		if _segment_intersects_rect(from_position, to_position, blocker_rect.grow(margin)):
 			return true
 	return false
 
 
 func _point_inside_wall(point: Vector2, margin: float) -> bool:
-	for blocker_rect in _get_path_blocker_rects():
+	for blocker_rect in _path_blocker_rects:
 		if blocker_rect.grow(margin).has_point(point):
 			return true
 	return false
 
 
 func _get_path_blocker_rects() -> Array[Rect2]:
-	var blockers: Array[Rect2] = []
-	blockers.append_array(wall_rects)
-	blockers.append_array(void_rects)
-	return blockers
+	return _path_blocker_rects
 
 
 func _segment_intersects_rect(from_position: Vector2, to_position: Vector2, rect: Rect2) -> bool:
+	var min_x: float = min(from_position.x, to_position.x)
+	var max_x: float = max(from_position.x, to_position.x)
+	var min_y: float = min(from_position.y, to_position.y)
+	var max_y: float = max(from_position.y, to_position.y)
+	if rect.position.x > max_x or rect.position.x + rect.size.x < min_x or rect.position.y > max_y or rect.position.y + rect.size.y < min_y:
+		return false
 	if rect.has_point(from_position) or rect.has_point(to_position):
 		return true
 	var top_left := rect.position

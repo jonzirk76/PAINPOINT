@@ -202,26 +202,64 @@ func _apply_crowd_separation() -> void:
 		if is_instance_valid(enemy) and enemy.has_method("apply_crowd_separation"):
 			valid_enemies.append(enemy)
 			pushes.append(Vector2.ZERO)
+	if valid_enemies.size() < 2:
+		return
+	var bucket_size := _get_crowd_separation_bucket_size(valid_enemies)
+	var buckets: Dictionary = {}
+	for index in range(valid_enemies.size()):
+		var enemy = valid_enemies[index]
+		var key := _crowd_bucket_key(enemy.global_position, bucket_size)
+		var bucket: Array = buckets.get(key, [])
+		bucket.append(index)
+		buckets[key] = bucket
 	for first_index in range(valid_enemies.size()):
 		var first = valid_enemies[first_index]
-		for second_index in range(first_index + 1, valid_enemies.size()):
-			var second = valid_enemies[second_index]
-			var separation: Vector2 = first.global_position - second.global_position
-			var desired_distance: float = float(first.body_radius) + float(second.body_radius) + crowd_separation_padding
-			var distance_squared: float = separation.length_squared()
-			if distance_squared > desired_distance * desired_distance:
-				continue
-			var direction: Vector2 = Vector2.RIGHT.rotated(float((first.get_instance_id() + second.get_instance_id()) % 628) * 0.01)
-			var distance: float = 0.0
-			if distance_squared > 0.001:
-				distance = sqrt(distance_squared)
-				direction = separation / distance
-			var strength: float = (1.0 - clamp(distance / desired_distance, 0.0, 1.0)) * crowd_separation_force
-			pushes[first_index] += direction * strength
-			pushes[second_index] -= direction * strength
+		var base_cell := _crowd_bucket_cell(first.global_position, bucket_size)
+		for offset_x in range(-1, 2):
+			for offset_y in range(-1, 2):
+				var key := "%d,%d" % [base_cell.x + offset_x, base_cell.y + offset_y]
+				var bucket: Array = buckets.get(key, [])
+				for second_index in bucket:
+					if int(second_index) <= first_index:
+						continue
+					_apply_crowd_separation_pair(first_index, int(second_index), valid_enemies, pushes)
 	for index in range(valid_enemies.size()):
 		if pushes[index].length_squared() > 0.001:
 			valid_enemies[index].apply_crowd_separation(pushes[index])
+
+
+func _apply_crowd_separation_pair(first_index: int, second_index: int, valid_enemies: Array, pushes: Array[Vector2]) -> void:
+	var first = valid_enemies[first_index]
+	var second = valid_enemies[second_index]
+	var separation: Vector2 = first.global_position - second.global_position
+	var desired_distance: float = float(first.body_radius) + float(second.body_radius) + crowd_separation_padding
+	var distance_squared: float = separation.length_squared()
+	if distance_squared > desired_distance * desired_distance:
+		return
+	var direction: Vector2 = Vector2.RIGHT.rotated(float((first.get_instance_id() + second.get_instance_id()) % 628) * 0.01)
+	var distance: float = 0.0
+	if distance_squared > 0.001:
+		distance = sqrt(distance_squared)
+		direction = separation / distance
+	var strength: float = (1.0 - clamp(distance / desired_distance, 0.0, 1.0)) * crowd_separation_force
+	pushes[first_index] += direction * strength
+	pushes[second_index] -= direction * strength
+
+
+func _get_crowd_separation_bucket_size(valid_enemies: Array) -> float:
+	var largest_body_radius := 0.0
+	for enemy in valid_enemies:
+		largest_body_radius = max(largest_body_radius, float(enemy.body_radius))
+	return max(96.0, largest_body_radius * 2.0 + crowd_separation_padding + 16.0)
+
+
+func _crowd_bucket_key(position: Vector2, bucket_size: float) -> String:
+	var cell := _crowd_bucket_cell(position, bucket_size)
+	return "%d,%d" % [cell.x, cell.y]
+
+
+func _crowd_bucket_cell(position: Vector2, bucket_size: float) -> Vector2i:
+	return Vector2i(floori(position.x / bucket_size), floori(position.y / bucket_size))
 
 
 func _update_boss_adds(delta: float) -> void:

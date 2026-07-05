@@ -1423,14 +1423,23 @@ func _test_enemy_pathing_steers_around_walls(failures: Array[String]) -> void:
 	enemy.set_arena_definition(
 		Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0)),
 		0,
-		[Rect2(90.0, -90.0, 46.0, 180.0)]
+		[Rect2(90.0, -90.0, 46.0, 180.0)],
+		[Rect2(-240.0, 120.0, 80.0, 80.0)]
 	)
+	if enemy._get_path_blocker_rects().size() != 2:
+		failures.append("Enemy pathing should cache wall and void blockers without rebuilding the list every query.")
 	enemy.set_target_position(Vector2.RIGHT * 320.0)
 	var velocity: Vector2 = enemy._get_chaser_velocity(enemy.target_position - enemy.global_position)
 	if velocity.length_squared() <= 0.001:
 		failures.append("Enemy wall pathing should produce a steering velocity.")
 	if abs(velocity.y) <= 1.0:
 		failures.append("Enemy wall pathing should steer around an internal wall instead of pushing straight into it.")
+	var cached_steering_target: Vector2 = enemy._cached_steering_target
+	var cached_repath_remaining: float = enemy._path_repath_remaining
+	enemy.set_target_position(Vector2(330.0, 8.0))
+	enemy._get_chaser_velocity(enemy.target_position - enemy.global_position)
+	if enemy._cached_steering_target != cached_steering_target or enemy._path_repath_remaining != cached_repath_remaining:
+		failures.append("Enemy pathing should reuse cached steering for tiny target movement near walls.")
 	enemy.free()
 
 
