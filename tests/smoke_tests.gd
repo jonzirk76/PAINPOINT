@@ -168,6 +168,7 @@ func _init() -> void:
 	_test_arena_wall_generation(failures)
 	_test_scene_loads(failures)
 	_test_character_hud_visibility(failures)
+	_test_character_hud_feedback_and_manual_layout(failures)
 	_test_aim_change_logic(failures)
 	_test_restart_signal(failures)
 	_test_parry_input_and_cooldown(failures)
@@ -693,6 +694,54 @@ func _test_character_hud_visibility(failures: Array[String]) -> void:
 	main.free()
 
 
+func _test_character_hud_feedback_and_manual_layout(failures: Array[String]) -> void:
+	var portrait_source := _read_text("res://scenes/character_portrait.gd")
+	if portrait_source.contains("stretch_mode") or portrait_source.contains("expand_mode"):
+		failures.append("Character portrait script should not override manually authored TextureRect sizing.")
+	var scene = load("res://scenes/main.tscn")
+	if scene == null:
+		failures.append("Main scene failed to load for character HUD feedback test.")
+		return
+	var main = scene.instantiate()
+	root.add_child(main)
+	if main.player_manager == null:
+		_prime_main_for_direct_test_calls(main)
+		main._connect_manager_signals()
+		main._initialize_managers()
+		main._enter_level_select()
+	main._selected_level_index = 0
+	main._start_selected_level()
+	var health_rect: Rect2 = main._get_meter_full_rect(main.health_fill, main.health_bar_back, main.health_bar_back.size.x)
+	main._last_max_health = 5
+	main._last_health = 3
+	main._update_combat_panel([])
+	if main.health_fill.size.x > health_rect.size.x * 0.61 or main.health_fill.size.x < health_rect.size.x * 0.59:
+		failures.append("Health depletion should use the manually authored fill width as its full meter.")
+	if main.health_tick_layer.get_child_count() > 0:
+		var first_health_tick: ColorRect = main.health_tick_layer.get_child(0)
+		if abs(first_health_tick.position.y - health_rect.position.y) > 0.01 or first_health_tick.position.x < health_rect.position.x - 1.0:
+			failures.append("Health ticks should align to the manually authored fill rect.")
+	var base_panel_position: Vector2 = main.combat_panel.position
+	main._on_player_health_changed(5, 4)
+	if main._character_hud_damage_flash_remaining <= 0.0 or main._character_hud_shake_remaining <= 0.0:
+		failures.append("Character HUD should start flash and shake feedback when health drops.")
+	if main.combat_panel.modulate == Color.WHITE and main.combat_panel.position == base_panel_position:
+		failures.append("Character HUD damage feedback should visibly affect the HUD.")
+	main._process(0.5)
+	if main.combat_panel.position != base_panel_position:
+		failures.append("Character HUD shake should return the panel to its authored position.")
+	main._last_super_meter_max = 100.0
+	main._last_super_meter = 100.0
+	main._last_super_is_charging = false
+	main._super_ready_pulse_time = 0.25
+	main._super_crackle_remaining = 0.1
+	var super_rect: Rect2 = main._get_meter_full_rect(main.super_fill, main.super_bar_back, main.super_bar_back.size.x)
+	main._update_super_bar(super_rect)
+	if main.super_bar_back.get_node_or_null("SuperCrackle") == null:
+		failures.append("Ready special meter should draw a white crackle overlay.")
+	main.free()
+
+
 func _test_aim_change_logic(failures: Array[String]) -> void:
 	var manager = load("res://scripts/managers/input_manager.gd").new()
 	manager.stick_deadzone = 0.25
@@ -1027,9 +1076,14 @@ func _test_low_ammo_bar_warning(failures: Array[String]) -> void:
 		var expected_ticks: int = max(main.upgrade_manager.get_overdrive_max_ammo() - 1, 0)
 		if main.overdrive_tick_layer.get_child_count() != expected_ticks:
 			failures.append("Overdrive ticks should divide the bar once per ammo unit.")
+		if main.overdrive_tick_layer.get_child_count() > 0:
+			var first_tick: ColorRect = main.overdrive_tick_layer.get_child(0)
+			var fill_rect: Rect2 = main._get_meter_full_rect(main.overdrive_fill, main.overdrive_bar_back, main.overdrive_bar_back.size.x)
+			if abs(first_tick.position.y - fill_rect.position.y) > 0.01 or first_tick.position.x < fill_rect.position.x - 1.0:
+				failures.append("Overdrive ticks should align to the manually authored fill rect.")
 		main._last_overdrive_max_ammo = 50
 		main._last_overdrive_ammo = 50
-		main._update_overdrive_bar(main.overdrive_bar_back.size.x)
+		main._update_overdrive_bar(main._get_meter_full_rect(main.overdrive_fill, main.overdrive_bar_back, main.overdrive_bar_back.size.x))
 		if main.overdrive_tick_layer.get_child_count() != 49:
 			failures.append("Overdrive capacity increases should make tick marks denser instead of wider.")
 	if main.player_manager.player != null and main.player_manager.player.has_method("set_ammo_warning_state"):

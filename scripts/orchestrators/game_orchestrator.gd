@@ -117,6 +117,19 @@ var _super_meter_flash_remaining: float = 0.0
 var _super_meter_flash_duration: float = 0.42
 var _super_meter_ready_flash_remaining: float = 0.0
 var _super_meter_ready_flash_duration: float = 0.62
+var _super_ready_pulse_time: float = 0.0
+var _super_crackle_remaining: float = 0.0
+var _super_crackle_interval_remaining: float = 0.0
+var _super_crackle_rng := RandomNumberGenerator.new()
+var _character_hud_damage_flash_remaining: float = 0.0
+var _character_hud_shake_remaining: float = 0.0
+var _character_hud_base_captured: bool = false
+var _combat_panel_base_position := Vector2.ZERO
+var _character_ui_base_position := Vector2.ZERO
+var _combat_panel_base_modulate := Color.WHITE
+var _character_ui_base_modulate := Color.WHITE
+var _meter_full_rects: Dictionary = {}
+var _meter_authoring_state_captured: bool = false
 var _perfect_parry_slowmo_until_msec: int = 0
 var _perfect_parry_slowmo_restore_scale: float = 1.0
 
@@ -125,10 +138,18 @@ const BOSS_CLEAR_DELAY_SECONDS := 0.85
 const PERFECT_PARRY_TIME_SCALE := 0.24
 const PERFECT_PARRY_SLOWMO_SECONDS := 0.16
 const OVERDRIVE_BAR_BACK_COLOR := Color(0.004, 0.005, 0.008, 1.0)
+const CHARACTER_HUD_DAMAGE_FLASH_SECONDS := 0.34
+const CHARACTER_HUD_DAMAGE_SHAKE_SECONDS := 0.28
+const CHARACTER_HUD_DAMAGE_SHAKE_PIXELS := 5.0
+const SUPER_CRACKLE_SECONDS := 0.16
+const SUPER_CRACKLE_MIN_INTERVAL := 0.52
+const SUPER_CRACKLE_MAX_INTERVAL := 0.9
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_super_crackle_rng.randomize()
+	_capture_hud_authoring_state()
 	_configure_pause_process_modes()
 	_set_tree_paused(false)
 	_connect_manager_signals()
@@ -158,6 +179,10 @@ func _process(delta: float) -> void:
 		if _super_meter_ready_flash_remaining > 0.0:
 			_super_meter_ready_flash_remaining = max(_super_meter_ready_flash_remaining - delta, 0.0)
 			hud_feedback_changed = true
+		if _update_super_ready_feedback(delta):
+			hud_feedback_changed = true
+	if _update_character_hud_damage_feedback(delta):
+		hud_feedback_changed = true
 	if hud_feedback_changed:
 		_update_hud()
 	if _is_gameplay_running():
@@ -221,6 +246,7 @@ func _connect_once(source: Object, signal_name: StringName, target: Callable) ->
 
 
 func _initialize_managers() -> void:
+	_capture_hud_authoring_state()
 	input_manager.initialize({
 		"aim_origin_provider": Callable(player_manager, "get_player_position")
 	})
@@ -265,11 +291,135 @@ func _configure_pause_process_modes() -> void:
 	pause_panel.process_mode = Node.PROCESS_MODE_WHEN_PAUSED
 
 
+func _capture_hud_authoring_state() -> void:
+	_capture_character_hud_base_state()
+	if _meter_authoring_state_captured:
+		return
+	var captured_any := false
+	if health_fill != null:
+		_capture_meter_fill_rect(health_fill)
+		captured_any = true
+	if invulnerability_fill != null:
+		_capture_meter_fill_rect(invulnerability_fill)
+		captured_any = true
+	if overdrive_fill != null:
+		_capture_meter_fill_rect(overdrive_fill)
+		captured_any = true
+	if super_fill != null:
+		_capture_meter_fill_rect(super_fill)
+		captured_any = true
+	if captured_any:
+		_meter_authoring_state_captured = true
+
+
+func _capture_character_hud_base_state() -> void:
+	if _character_hud_base_captured:
+		return
+	if combat_panel != null:
+		_combat_panel_base_position = combat_panel.position
+		_combat_panel_base_modulate = combat_panel.modulate
+	if character_ui != null:
+		_character_ui_base_position = character_ui.position
+		_character_ui_base_modulate = character_ui.modulate
+	_character_hud_base_captured = true
+
+
+func _get_meter_cache_key(fill: Control) -> int:
+	return fill.get_instance_id()
+
+
+func _capture_meter_fill_rect(fill: Control) -> void:
+	if fill == null:
+		return
+	_meter_full_rects[_get_meter_cache_key(fill)] = Rect2(fill.position, fill.size)
+
+
 func _set_character_hud_visible(value: bool) -> void:
 	if combat_panel != null:
 		combat_panel.visible = value
 	if character_ui != null:
 		character_ui.visible = value
+	if not value:
+		_clear_super_crackle()
+		_reset_character_hud_feedback()
+
+
+func _trigger_character_hud_damage_feedback() -> void:
+	_capture_character_hud_base_state()
+	_character_hud_damage_flash_remaining = CHARACTER_HUD_DAMAGE_FLASH_SECONDS
+	_character_hud_shake_remaining = CHARACTER_HUD_DAMAGE_SHAKE_SECONDS
+	_apply_character_hud_feedback()
+
+
+func _update_character_hud_damage_feedback(delta: float) -> bool:
+	if _character_hud_damage_flash_remaining <= 0.0 and _character_hud_shake_remaining <= 0.0:
+		return false
+	_character_hud_damage_flash_remaining = max(_character_hud_damage_flash_remaining - delta, 0.0)
+	_character_hud_shake_remaining = max(_character_hud_shake_remaining - delta, 0.0)
+	_apply_character_hud_feedback()
+	return true
+
+
+func _apply_character_hud_feedback() -> void:
+	_capture_character_hud_base_state()
+	var shake_offset := Vector2.ZERO
+	if _character_hud_shake_remaining > 0.0 and CHARACTER_HUD_DAMAGE_SHAKE_SECONDS > 0.0:
+		var shake_ratio: float = clamp(_character_hud_shake_remaining / CHARACTER_HUD_DAMAGE_SHAKE_SECONDS, 0.0, 1.0)
+		var ticks: float = float(Time.get_ticks_msec())
+		shake_offset = Vector2(sin(ticks * 0.095), cos(ticks * 0.123)) * CHARACTER_HUD_DAMAGE_SHAKE_PIXELS * shake_ratio
+	var flash_ratio := 0.0
+	if _character_hud_damage_flash_remaining > 0.0 and CHARACTER_HUD_DAMAGE_FLASH_SECONDS > 0.0:
+		flash_ratio = clamp(_character_hud_damage_flash_remaining / CHARACTER_HUD_DAMAGE_FLASH_SECONDS, 0.0, 1.0)
+	var flash_color := Color(1.0, 0.38, 0.34, 1.0).lerp(Color.WHITE, 1.0 - flash_ratio)
+	if combat_panel != null:
+		combat_panel.position = _combat_panel_base_position + shake_offset
+		combat_panel.modulate = _combat_panel_base_modulate * flash_color
+	if character_ui != null:
+		character_ui.position = _character_ui_base_position + shake_offset
+		character_ui.modulate = _character_ui_base_modulate * flash_color
+
+
+func _reset_character_hud_feedback() -> void:
+	_character_hud_damage_flash_remaining = 0.0
+	_character_hud_shake_remaining = 0.0
+	if combat_panel != null:
+		combat_panel.position = _combat_panel_base_position
+		combat_panel.modulate = _combat_panel_base_modulate
+	if character_ui != null:
+		character_ui.position = _character_ui_base_position
+		character_ui.modulate = _character_ui_base_modulate
+
+
+func _update_super_ready_feedback(delta: float) -> bool:
+	var is_ready := _is_super_meter_ready_for_feedback()
+	if not is_ready:
+		if _super_ready_pulse_time > 0.0 or _super_crackle_remaining > 0.0:
+			_super_ready_pulse_time = 0.0
+			_super_crackle_remaining = 0.0
+			_super_crackle_interval_remaining = 0.0
+			_clear_super_crackle()
+			return true
+		return false
+	_super_ready_pulse_time += delta
+	_super_crackle_interval_remaining -= delta
+	if _super_crackle_interval_remaining <= 0.0:
+		_super_crackle_remaining = SUPER_CRACKLE_SECONDS
+		_super_crackle_interval_remaining = _super_crackle_rng.randf_range(SUPER_CRACKLE_MIN_INTERVAL, SUPER_CRACKLE_MAX_INTERVAL)
+	if _super_crackle_remaining > 0.0:
+		_super_crackle_remaining = max(_super_crackle_remaining - delta, 0.0)
+	return true
+
+
+func _is_super_meter_ready_for_feedback() -> bool:
+	return _status != "LEVEL_SELECT" and not _last_super_is_charging and _last_super_meter_max > 0.0 and _last_super_meter >= _last_super_meter_max
+
+
+func _clear_super_crackle() -> void:
+	if super_bar_back == null:
+		return
+	var crackle := super_bar_back.get_node_or_null("SuperCrackle")
+	if crackle != null:
+		crackle.queue_free()
 
 
 func _start_selected_level() -> void:
@@ -816,7 +966,9 @@ func _on_destructible_prop_destroyed(prop, score_value: int, drop_kind: String) 
 	_update_hud()
 
 
-func _on_player_health_changed(_old_value: int, new_value: int) -> void:
+func _on_player_health_changed(old_value: int, new_value: int) -> void:
+	if new_value < old_value:
+		_trigger_character_hud_damage_feedback()
 	_last_health = new_value
 	_last_max_health = player_manager.get_player_max_health()
 	_update_hud()
@@ -1128,22 +1280,22 @@ func _update_score_panel() -> void:
 func _update_combat_panel(active_effects: Array) -> void:
 	var max_health: int = max(_last_max_health, 1)
 	var health_ratio: float = clamp(float(_last_health) / float(max_health), 0.0, 1.0)
-	var health_bar_width := _get_bar_width(health_bar_back, 342.0)
+	var health_fill_rect := _get_meter_full_rect(health_fill, health_bar_back, 342.0)
 	if health_fill != null:
-		_set_bar_fill_width(health_fill, health_bar_width * health_ratio)
+		_set_meter_fill_width(health_fill, health_fill_rect.size.x * health_ratio)
 	if health_label != null:
 		health_label.text = "LIFE  %d / %d" % [_last_health, max_health]
-	_update_health_ticks(max_health, health_bar_width)
+	_update_health_ticks(max_health, health_fill_rect)
 	if invulnerability_fill != null:
-		var invulnerability_bar_width := _get_bar_width(invulnerability_bar_back, health_bar_width)
+		var invulnerability_fill_rect := _get_meter_full_rect(invulnerability_fill, invulnerability_bar_back, health_fill_rect.size.x)
 		var invulnerability_ratio: float = 0.0
 		if _last_invulnerability_duration > 0.0:
 			invulnerability_ratio = clamp(_last_invulnerability_remaining / _last_invulnerability_duration, 0.0, 1.0)
-		_set_bar_fill_width(invulnerability_fill, invulnerability_bar_width * invulnerability_ratio)
+		_set_meter_fill_width(invulnerability_fill, invulnerability_fill_rect.size.x * invulnerability_ratio)
 	if invulnerability_bar_back != null:
 		invulnerability_bar_back.visible = _last_invulnerability_remaining > 0.0
-	_update_overdrive_bar(_get_bar_width(overdrive_bar_back, health_bar_width))
-	_update_super_bar(_get_bar_width(super_bar_back, health_bar_width))
+	_update_overdrive_bar(_get_meter_full_rect(overdrive_fill, overdrive_bar_back, health_fill_rect.size.x))
+	_update_super_bar(_get_meter_full_rect(super_fill, super_bar_back, health_fill_rect.size.x))
 	if stats_label != null:
 		stats_label.visible = false
 		var parry_text := "READY"
@@ -1163,41 +1315,45 @@ func _update_combat_panel(active_effects: Array) -> void:
 	_update_ammo_counter_panel(active_effects)
 
 
-func _get_bar_width(bar_back: Control, fallback_width: float) -> float:
+func _get_meter_full_rect(fill: Control, bar_back: Control, fallback_width: float) -> Rect2:
+	if fill != null:
+		var key := _get_meter_cache_key(fill)
+		if not _meter_full_rects.has(key):
+			_capture_meter_fill_rect(fill)
+		if _meter_full_rects.has(key):
+			return _meter_full_rects[key]
 	if bar_back != null and bar_back.size.x > 0.0:
-		return bar_back.size.x
-	return fallback_width
+		return Rect2(Vector2.ZERO, bar_back.size)
+	return Rect2(Vector2.ZERO, Vector2(fallback_width, 20.0))
 
 
-func _set_bar_fill_width(fill: Control, width: float) -> void:
+func _set_meter_fill_width(fill: Control, width: float) -> void:
 	if fill == null:
 		return
 	fill.offset_right = fill.offset_left + max(width, 0.0)
 
 
-func _update_health_ticks(max_health: int, bar_width: float) -> void:
+func _update_health_ticks(max_health: int, fill_rect: Rect2) -> void:
 	if health_tick_layer == null:
 		return
 	for child in health_tick_layer.get_children():
 		child.queue_free()
 	if max_health <= 1:
 		return
-	var tick_height: float = health_tick_layer.size.y
-	if tick_height <= 0.0 and health_bar_back != null:
-		tick_height = health_bar_back.size.y
+	var tick_height: float = fill_rect.size.y
 	if tick_height <= 0.0:
 		tick_height = 20.0
 	for index in range(1, max_health):
 		var tick := ColorRect.new()
 		tick.name = "HealthTick%d" % index
 		var tick_width := 1.0
-		tick.position = Vector2((bar_width * float(index) / float(max_health)) - tick_width * 0.5, 0.0)
+		tick.position = Vector2(fill_rect.position.x + (fill_rect.size.x * float(index) / float(max_health)) - tick_width * 0.5, fill_rect.position.y)
 		tick.size = Vector2(tick_width, tick_height)
 		tick.color = Color(0.0, 0.015, 0.0, 0.78)
 		health_tick_layer.add_child(tick)
 
 
-func _update_overdrive_bar(bar_width: float) -> void:
+func _update_overdrive_bar(fill_rect: Rect2) -> void:
 	var max_ammo: int = max(_last_overdrive_max_ammo, 1)
 	var ratio: float = clamp(float(_last_overdrive_ammo) / float(max_ammo), 0.0, 1.0)
 	var is_low := ratio <= 0.2 or _last_overdrive_ammo <= 8
@@ -1207,9 +1363,9 @@ func _update_overdrive_bar(bar_width: float) -> void:
 		flash_ratio = clamp(_ammo_refill_flash_remaining / _ammo_refill_flash_duration, 0.0, 1.0)
 	if overdrive_bar_back != null:
 		overdrive_bar_back.color = OVERDRIVE_BAR_BACK_COLOR
-	_update_overdrive_ticks(max_ammo, bar_width)
+	_update_overdrive_ticks(max_ammo, fill_rect)
 	if overdrive_fill != null:
-		_set_bar_fill_width(overdrive_fill, bar_width * ratio)
+		_set_meter_fill_width(overdrive_fill, fill_rect.size.x * ratio)
 		var fill_color := Color(0.16, 0.52, 1.0, 1.0)
 		if _last_overdrive_is_active:
 			fill_color = Color(0.36, 0.78, 1.0, 1.0)
@@ -1223,16 +1379,14 @@ func _update_overdrive_bar(bar_width: float) -> void:
 		overdrive_label.text = "OVERDRIVE  %d / %d  %s" % [_last_overdrive_ammo, max_ammo, state_text]
 
 
-func _update_overdrive_ticks(max_ammo: int, bar_width: float) -> void:
+func _update_overdrive_ticks(max_ammo: int, fill_rect: Rect2) -> void:
 	if overdrive_tick_layer == null:
 		return
 	for child in overdrive_tick_layer.get_children():
 		child.free()
 	if max_ammo <= 1:
 		return
-	var tick_height: float = overdrive_tick_layer.size.y
-	if tick_height <= 0.0 and overdrive_bar_back != null:
-		tick_height = overdrive_bar_back.size.y
+	var tick_height: float = fill_rect.size.y
 	if tick_height <= 0.0:
 		tick_height = 20.0
 	for index in range(1, max_ammo):
@@ -1240,32 +1394,72 @@ func _update_overdrive_ticks(max_ammo: int, bar_width: float) -> void:
 		tick.name = "OverdriveTick%d" % index
 		var is_major := index % 10 == 0
 		var tick_width := 1.0 if is_major else 0.65
-		tick.position = Vector2((bar_width * float(index) / float(max_ammo)) - tick_width * 0.5, 0.0)
+		tick.position = Vector2(fill_rect.position.x + (fill_rect.size.x * float(index) / float(max_ammo)) - tick_width * 0.5, fill_rect.position.y)
 		tick.size = Vector2(tick_width, tick_height)
 		tick.color = Color(0.0, 0.006, 0.012, 0.74 if is_major else 0.48)
 		overdrive_tick_layer.add_child(tick)
 
 
-func _update_super_bar(bar_width: float) -> void:
+func _update_super_bar(fill_rect: Rect2) -> void:
 	var ratio: float = clamp(_last_super_meter / max(_last_super_meter_max, 1.0), 0.0, 1.0)
 	var charge_ratio: float = _last_super_charge_ratio if _last_super_is_charging else 0.0
 	var fill_ratio: float = max(ratio, charge_ratio)
+	var is_ready := _is_super_meter_ready_for_feedback()
 	var ready_flash_ratio := 0.0
 	if _super_meter_ready_flash_duration > 0.0:
 		ready_flash_ratio = clamp(_super_meter_ready_flash_remaining / _super_meter_ready_flash_duration, 0.0, 1.0)
 	if super_fill != null:
-		_set_bar_fill_width(super_fill, bar_width * fill_ratio)
+		_set_meter_fill_width(super_fill, fill_rect.size.x * fill_ratio)
 		var fill_color := Color(1.0, 0.76, 0.16, 1.0)
 		if _last_super_is_charging:
 			fill_color = fill_color.lerp(Color(0.42, 1.0, 1.0, 1.0), charge_ratio * 0.45)
+		if is_ready:
+			var ready_pulse := 0.5 + 0.5 * sin(_super_ready_pulse_time * TAU * 2.25)
+			fill_color = fill_color.lerp(Color(1.0, 1.0, 1.0, 1.0), 0.18 + ready_pulse * 0.38)
 		if ready_flash_ratio > 0.0:
 			fill_color = fill_color.lerp(Color(1.0, 1.0, 1.0, 1.0), ready_flash_ratio)
 		super_fill.color = fill_color
+	_update_super_crackle(fill_rect, is_ready)
 	if super_label != null:
 		var super_text := "READY" if ratio >= 1.0 and not _last_super_is_charging else "%d%%" % roundi(fill_ratio * 100.0)
 		if _last_super_is_charging:
 			super_text = "CHARGE %d%%" % roundi(charge_ratio * 100.0)
 		super_label.text = "SPECIAL  %s" % super_text
+
+
+func _update_super_crackle(fill_rect: Rect2, is_ready: bool) -> void:
+	if super_bar_back == null:
+		return
+	if not is_ready or _super_crackle_remaining <= 0.0:
+		_clear_super_crackle()
+		return
+	var crackle: Line2D = super_bar_back.get_node_or_null("SuperCrackle") as Line2D
+	if crackle == null:
+		crackle = Line2D.new()
+		crackle.name = "SuperCrackle"
+		crackle.antialiased = true
+		super_bar_back.add_child(crackle)
+	var alpha: float = clamp(_super_crackle_remaining / SUPER_CRACKLE_SECONDS, 0.0, 1.0)
+	crackle.default_color = Color(1.0, 1.0, 1.0, 0.35 + alpha * 0.65)
+	crackle.width = 1.2 + alpha * 1.8
+	crackle.points = _build_super_crackle_points(fill_rect)
+
+
+func _build_super_crackle_points(fill_rect: Rect2) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	var point_count: int = 7
+	var start_x: float = fill_rect.position.x + 2.0
+	var end_x: float = fill_rect.position.x + max(fill_rect.size.x - 2.0, 2.0)
+	var center_y: float = fill_rect.position.y + fill_rect.size.y * 0.5
+	var amplitude: float = max(fill_rect.size.y * 0.38, 2.0)
+	for index in range(point_count):
+		var ratio: float = float(index) / float(point_count - 1)
+		var x: float = lerp(start_x, end_x, ratio)
+		var y: float = center_y
+		if index > 0 and index < point_count - 1:
+			y += _super_crackle_rng.randf_range(-amplitude, amplitude)
+		points.append(Vector2(x, y))
+	return points
 
 
 func _update_ammo_counter_panel(active_effects: Array) -> void:
