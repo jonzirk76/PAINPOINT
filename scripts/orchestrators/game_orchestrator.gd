@@ -44,6 +44,7 @@ const FLOOR_EXIT_PORTAL_SCENE := preload("res://scenes/entities/floor_exit_porta
 @onready var overdrive_fill: ColorRect = $UI/CombatPanel/OverdriveBarBack/OverdriveBarFill
 @onready var overdrive_tick_layer: Control = $UI/CombatPanel/OverdriveBarBack/OverdriveTickLayer
 @onready var super_label: Label = $UI/CombatPanel/SuperLabel
+@onready var super_bar_back: ColorRect = $UI/CombatPanel/SuperBarBack
 @onready var super_fill: ColorRect = $UI/CombatPanel/SuperBarBack/SuperBarFill
 @onready var attribute_label: Label = $UI/CombatPanel/AttributeLabel
 @onready var stats_label: Label = $UI/CombatPanel/StatsLabel
@@ -122,8 +123,7 @@ const DUNGEON_OPTION_COUNT := 2
 const BOSS_CLEAR_DELAY_SECONDS := 0.85
 const PERFECT_PARRY_TIME_SCALE := 0.24
 const PERFECT_PARRY_SLOWMO_SECONDS := 0.16
-const OVERDRIVE_BAR_BACK_COLOR := Color(0.04, 0.07, 0.13, 1.0)
-const OVERDRIVE_BAR_LOW_BACK_COLOR := Color(0.2, 0.035, 0.035, 1.0)
+const OVERDRIVE_BAR_BACK_COLOR := Color(0.004, 0.005, 0.008, 1.0)
 
 
 func _ready() -> void:
@@ -1124,23 +1124,22 @@ func _update_score_panel() -> void:
 func _update_combat_panel(active_effects: Array) -> void:
 	var max_health: int = max(_last_max_health, 1)
 	var health_ratio: float = clamp(float(_last_health) / float(max_health), 0.0, 1.0)
-	var bar_width := 342.0
-	if health_bar_back != null:
-		bar_width = health_bar_back.size.x
+	var health_bar_width := _get_bar_width(health_bar_back, 342.0)
 	if health_fill != null:
-		health_fill.size.x = bar_width * health_ratio
+		_set_bar_fill_width(health_fill, health_bar_width * health_ratio)
 	if health_label != null:
 		health_label.text = "LIFE  %d / %d" % [_last_health, max_health]
-	_update_health_ticks(max_health, bar_width)
+	_update_health_ticks(max_health, health_bar_width)
 	if invulnerability_fill != null:
+		var invulnerability_bar_width := _get_bar_width(invulnerability_bar_back, health_bar_width)
 		var invulnerability_ratio: float = 0.0
 		if _last_invulnerability_duration > 0.0:
 			invulnerability_ratio = clamp(_last_invulnerability_remaining / _last_invulnerability_duration, 0.0, 1.0)
-		invulnerability_fill.size.x = bar_width * invulnerability_ratio
+		_set_bar_fill_width(invulnerability_fill, invulnerability_bar_width * invulnerability_ratio)
 	if invulnerability_bar_back != null:
 		invulnerability_bar_back.visible = _last_invulnerability_remaining > 0.0
-	_update_overdrive_bar(bar_width)
-	_update_super_bar(bar_width)
+	_update_overdrive_bar(_get_bar_width(overdrive_bar_back, health_bar_width))
+	_update_super_bar(_get_bar_width(super_bar_back, health_bar_width))
 	if stats_label != null:
 		stats_label.visible = false
 		var parry_text := "READY"
@@ -1160,6 +1159,18 @@ func _update_combat_panel(active_effects: Array) -> void:
 	_update_ammo_counter_panel(active_effects)
 
 
+func _get_bar_width(bar_back: Control, fallback_width: float) -> float:
+	if bar_back != null and bar_back.size.x > 0.0:
+		return bar_back.size.x
+	return fallback_width
+
+
+func _set_bar_fill_width(fill: Control, width: float) -> void:
+	if fill == null:
+		return
+	fill.offset_right = fill.offset_left + max(width, 0.0)
+
+
 func _update_health_ticks(max_health: int, bar_width: float) -> void:
 	if health_tick_layer == null:
 		return
@@ -1175,9 +1186,10 @@ func _update_health_ticks(max_health: int, bar_width: float) -> void:
 	for index in range(1, max_health):
 		var tick := ColorRect.new()
 		tick.name = "HealthTick%d" % index
-		tick.position = Vector2((bar_width * float(index) / float(max_health)) - 1.0, 0.0)
-		tick.size = Vector2(2.0, tick_height)
-		tick.color = Color(0.03, 0.07, 0.04, 0.78)
+		var tick_width := 1.0
+		tick.position = Vector2((bar_width * float(index) / float(max_health)) - tick_width * 0.5, 0.0)
+		tick.size = Vector2(tick_width, tick_height)
+		tick.color = Color(0.0, 0.015, 0.0, 0.78)
 		health_tick_layer.add_child(tick)
 
 
@@ -1190,13 +1202,10 @@ func _update_overdrive_bar(bar_width: float) -> void:
 	if _ammo_refill_flash_duration > 0.0:
 		flash_ratio = clamp(_ammo_refill_flash_remaining / _ammo_refill_flash_duration, 0.0, 1.0)
 	if overdrive_bar_back != null:
-		var back_color := OVERDRIVE_BAR_BACK_COLOR
-		if is_low:
-			back_color = OVERDRIVE_BAR_BACK_COLOR.lerp(OVERDRIVE_BAR_LOW_BACK_COLOR, 0.62 + pulse * 0.32)
-		overdrive_bar_back.color = back_color
+		overdrive_bar_back.color = OVERDRIVE_BAR_BACK_COLOR
 	_update_overdrive_ticks(max_ammo, bar_width)
 	if overdrive_fill != null:
-		overdrive_fill.size.x = bar_width * ratio
+		_set_bar_fill_width(overdrive_fill, bar_width * ratio)
 		var fill_color := Color(0.16, 0.52, 1.0, 1.0)
 		if _last_overdrive_is_active:
 			fill_color = Color(0.36, 0.78, 1.0, 1.0)
@@ -1226,10 +1235,10 @@ func _update_overdrive_ticks(max_ammo: int, bar_width: float) -> void:
 		var tick := ColorRect.new()
 		tick.name = "OverdriveTick%d" % index
 		var is_major := index % 10 == 0
-		var tick_width := 2.0 if is_major else 1.0
+		var tick_width := 1.0 if is_major else 0.65
 		tick.position = Vector2((bar_width * float(index) / float(max_ammo)) - tick_width * 0.5, 0.0)
 		tick.size = Vector2(tick_width, tick_height)
-		tick.color = Color(0.01, 0.018, 0.026, 0.62 if is_major else 0.42)
+		tick.color = Color(0.0, 0.006, 0.012, 0.74 if is_major else 0.48)
 		overdrive_tick_layer.add_child(tick)
 
 
@@ -1241,7 +1250,7 @@ func _update_super_bar(bar_width: float) -> void:
 	if _super_meter_ready_flash_duration > 0.0:
 		ready_flash_ratio = clamp(_super_meter_ready_flash_remaining / _super_meter_ready_flash_duration, 0.0, 1.0)
 	if super_fill != null:
-		super_fill.size.x = bar_width * fill_ratio
+		_set_bar_fill_width(super_fill, bar_width * fill_ratio)
 		var fill_color := Color(1.0, 0.76, 0.16, 1.0)
 		if _last_super_is_charging:
 			fill_color = fill_color.lerp(Color(0.42, 1.0, 1.0, 1.0), charge_ratio * 0.45)

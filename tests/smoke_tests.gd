@@ -422,13 +422,14 @@ func _test_scene_loads(failures: Array[String]) -> void:
 					"UI/CombatPanel/HealthBarBack/HealthBarFill",
 					"UI/CombatPanel/HealthBarBack/HealthTickLayer",
 					"UI/CombatPanel/InvulnerabilityBarBack/InvulnerabilityBarFill",
-					"UI/CombatPanel/CharacterPortrait",
+					"UI/CombatPanel/CircularPortraitMask/CharacterPortrait",
 					"UI/CombatPanel/OverdriveBarBack/OverdriveBarFill",
 					"UI/CombatPanel/OverdriveBarBack/OverdriveTickLayer",
 					"UI/CombatPanel/SuperBarBack/SuperBarFill",
 					"UI/CombatPanel/AttributeLabel",
 					"UI/CombatPanel/StatsLabel",
 					"UI/AmmoCounterPanel",
+					"UI/CharacterUi",
 					"UI/HUDBackground",
 					"UI/ScorePanel/ScoreLabel",
 					"UI/PausePanel/PauseStatsLabel",
@@ -487,13 +488,14 @@ func _test_scene_loads(failures: Array[String]) -> void:
 					var super_label: Label = instance.get_node("UI/CombatPanel/SuperLabel")
 					if health_label.visible or overdrive_label.visible or super_label.visible:
 						failures.append("Combat resource bars should not need visible Life/Overdrive/Special text labels.")
-				if instance.has_node("UI/CombatPanel/CharacterPortrait"):
-					var character_portrait: Control = instance.get_node("UI/CombatPanel/CharacterPortrait")
+				if instance.has_node("UI/CombatPanel/CircularPortraitMask/CharacterPortrait"):
+					var character_portrait: Control = instance.get_node("UI/CombatPanel/CircularPortraitMask/CharacterPortrait")
 					if character_portrait.get_script() == null:
 						failures.append("Character portrait should use the circular portrait drawing script.")
 					elif character_portrait.get("texture") == null:
 						failures.append("Character combat panel should use the canon sheet portrait texture.")
-					if abs(character_portrait.size.x - character_portrait.size.y) > 0.01:
+					var portrait_mask: Control = instance.get_node("UI/CombatPanel/CircularPortraitMask")
+					if abs(portrait_mask.size.x - portrait_mask.size.y) > 0.01:
 						failures.append("Character portrait should draw into a square circular mask area.")
 				if instance.has_node("UI/DungeonMinimap"):
 					var dungeon_minimap_node: Control = instance.get_node("UI/DungeonMinimap")
@@ -994,8 +996,8 @@ func _test_low_ammo_bar_warning(failures: Array[String]) -> void:
 		var back_color: Color = main.overdrive_bar_back.color
 		if fill_color.r < 0.9 or fill_color.g > 0.42 or fill_color.b > 0.2:
 			failures.append("Low ammo should flash the overdrive fill red.")
-		if back_color.r <= back_color.b:
-			failures.append("Low ammo should tint the overdrive bar background red even when empty.")
+		if back_color.r > 0.03 or back_color.g > 0.03 or back_color.b > 0.04:
+			failures.append("Low ammo should keep a black overdrive backplate for depletion readability.")
 	if main.overdrive_tick_layer == null:
 		failures.append("Overdrive bar should expose a tick layer.")
 	else:
@@ -3355,6 +3357,7 @@ func _prime_main_for_direct_test_calls(main) -> void:
 	main.overdrive_fill = main.get_node("UI/CombatPanel/OverdriveBarBack/OverdriveBarFill")
 	main.overdrive_tick_layer = main.get_node("UI/CombatPanel/OverdriveBarBack/OverdriveTickLayer")
 	main.super_label = main.get_node("UI/CombatPanel/SuperLabel")
+	main.super_bar_back = main.get_node("UI/CombatPanel/SuperBarBack")
 	main.super_fill = main.get_node("UI/CombatPanel/SuperBarBack/SuperBarFill")
 	main.attribute_label = main.get_node("UI/CombatPanel/AttributeLabel")
 	main.stats_label = main.get_node("UI/CombatPanel/StatsLabel")

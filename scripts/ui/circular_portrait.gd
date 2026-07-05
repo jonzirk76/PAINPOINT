@@ -1,6 +1,6 @@
 @tool
 extends Control
-class_name CircularPortrait
+class_name CircularPortraitOld
 
 @export var texture: Texture2D:
 	set(value):

@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=3 uid="uid://beu8j4ocyaju8"]
+[gd_scene load_steps=22 format=3 uid="uid://beu8j4ocyaju8"]
 
 [ext_resource type="Script" uid="uid://wt5kiqqk3ets" path="res://scripts/orchestrators/game_orchestrator.gd" id="1"]
 [ext_resource type="Script" uid="uid://bp4ssjl06eeir" path="res://scripts/arena/arena_view.gd" id="2"]
@@ -16,12 +16,15 @@
 [ext_resource type="Script" uid="uid://bdlfxool4aqai" path="res://scripts/ui/dungeon_minimap.gd" id="14"]
 [ext_resource type="Script" uid="uid://bhbn1qa7duxll" path="res://scripts/managers/audio_manager.gd" id="15"]
 [ext_resource type="Script" uid="uid://d2y6e6jpmklag" path="res://scripts/managers/destructible_manager.gd" id="16"]
-[ext_resource type="Texture2D" uid="uid://dqxmpotu858e" path="res://art/concept_art/canon.png" id="17"]
-[ext_resource type="Script" uid="uid://bwb2l25a0fml4" path="res://scripts/ui/circular_portrait.gd" id="18"]
+[ext_resource type="Shader" uid="uid://b176a8d5tdc54" path="res://scenes/circular_portrait_mask.gdshader" id="18_0ld40"]
+[ext_resource type="Script" uid="uid://bbyh4kn6adeog" path="res://scenes/character_portrait.gd" id="18_dp3eg"]
+[ext_resource type="Texture2D" uid="uid://cfobif7qmxe72" path="res://art/concept_art/portraitcropped.png" id="18_gqmmt"]
+[ext_resource type="Texture2D" uid="uid://cjvw5hc5udne8" path="res://art/character_UI.png" id="20_gqmmt"]
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_lis5b"]
-atlas = ExtResource("17")
-region = Rect2(313, 846, 137, 137)
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_0ld40"]
+shader = ExtResource("18_0ld40")
+shader_parameter/radius = 0.48
+shader_parameter/softness = 0.01
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1")
@@ -160,25 +163,37 @@ script = ExtResource("14")
 layout_mode = 3
 anchors_preset = 0
 offset_left = 16.0
-offset_top = 14.0
-offset_right = 482.0
-offset_bottom = 126.0
+offset_top = 22.0
+offset_right = 288.0
+offset_bottom = 142.0
+metadata/_edit_use_anchors_ = true
 
 [node name="PanelBackground" type="ColorRect" parent="UI/CombatPanel"]
+visible = false
 layout_mode = 0
-offset_right = 466.0
-offset_bottom = 112.0
-color = Color(0.02, 0.025, 0.03, 0.78)
+offset_right = 272.0
+offset_bottom = 120.0
+metadata/_edit_use_anchors_ = true
 
-[node name="CharacterPortrait" type="Control" parent="UI/CombatPanel"]
+[node name="CircularPortraitMask" type="Control" parent="UI/CombatPanel"]
+clip_children = 1
+anchors_preset = 0
+offset_left = 17.5
+offset_top = 17.75
+offset_right = 73.5
+offset_bottom = 73.75
+metadata/_edit_use_anchors_ = true
+
+[node name="CharacterPortrait" type="TextureRect" parent="UI/CombatPanel/CircularPortraitMask"]
+material = SubResource("ShaderMaterial_0ld40")
 layout_mode = 0
-offset_left = 8.0
-offset_top = 8.0
-offset_right = 104.0
-offset_bottom = 104.0
-mouse_filter = 2
-script = ExtResource("18")
-texture = SubResource("AtlasTexture_lis5b")
+offset_left = -6.0
+offset_top = -5.0
+offset_right = 68.0
+offset_bottom = 70.5
+texture = ExtResource("18_gqmmt")
+script = ExtResource("18_dp3eg")
+metadata/_edit_use_anchors_ = true
 
 [node name="HealthLabel" type="Label" parent="UI/CombatPanel"]
 visible = false
@@ -191,35 +206,38 @@ text = "LIFE"
 
 [node name="HealthBarBack" type="ColorRect" parent="UI/CombatPanel"]
 layout_mode = 0
-offset_left = 118.0
-offset_top = 16.0
-offset_right = 456.0
-offset_bottom = 34.0
-color = Color(0.055, 0.095, 0.065, 1)
+offset_left = 104.0
+offset_top = 25.0
+offset_right = 258.0
+offset_bottom = 35.5
+color = Color(0.004, 0.006, 0.005, 1)
+metadata/_edit_use_anchors_ = true
 
 [node name="HealthBarFill" type="ColorRect" parent="UI/CombatPanel/HealthBarBack"]
 layout_mode = 0
-offset_right = 338.0
-offset_bottom = 18.0
+offset_right = 154.0
+offset_bottom = 10.5
 color = Color(0.18, 0.92, 0.28, 1)
+metadata/_edit_use_anchors_ = true
 
 [node name="HealthTickLayer" type="Control" parent="UI/CombatPanel/HealthBarBack"]
 anchors_preset = 0
-offset_right = 338.0
-offset_bottom = 18.0
+offset_right = 154.0
+offset_bottom = 10.5
+metadata/_edit_use_anchors_ = true
 
 [node name="InvulnerabilityBarBack" type="ColorRect" parent="UI/CombatPanel"]
 visible = false
 layout_mode = 0
-offset_left = 118.0
-offset_top = 36.0
-offset_right = 456.0
+offset_left = 104.0
+offset_top = 37.0
+offset_right = 258.0
 offset_bottom = 39.0
 color = Color(0.035, 0.08, 0.09, 1)
 
 [node name="InvulnerabilityBarFill" type="ColorRect" parent="UI/CombatPanel/InvulnerabilityBarBack"]
 layout_mode = 0
-offset_bottom = 3.0
+offset_bottom = 2.0
 color = Color(0.3, 1, 1, 1)
 
 [node name="OverdriveLabel" type="Label" parent="UI/CombatPanel"]
@@ -233,22 +251,25 @@ text = "OVERDRIVE"
 
 [node name="OverdriveBarBack" type="ColorRect" parent="UI/CombatPanel"]
 layout_mode = 0
-offset_left = 118.0
-offset_top = 45.0
-offset_right = 456.0
-offset_bottom = 63.0
-color = Color(0.04, 0.07, 0.13, 1)
+offset_left = 109.0
+offset_top = 51.0
+offset_right = 248.0
+offset_bottom = 62.5
+color = Color(0.004, 0.005, 0.008, 1)
+metadata/_edit_use_anchors_ = true
 
 [node name="OverdriveBarFill" type="ColorRect" parent="UI/CombatPanel/OverdriveBarBack"]
 layout_mode = 0
-offset_right = 338.0
-offset_bottom = 18.0
+offset_right = 139.0
+offset_bottom = 11.5
 color = Color(0.16, 0.52, 1, 1)
+metadata/_edit_use_anchors_ = true
 
 [node name="OverdriveTickLayer" type="Control" parent="UI/CombatPanel/OverdriveBarBack"]
 anchors_preset = 0
-offset_right = 338.0
-offset_bottom = 18.0
+offset_right = 139.0
+offset_bottom = 11.5
+metadata/_edit_use_anchors_ = true
 
 [node name="SuperLabel" type="Label" parent="UI/CombatPanel"]
 visible = false
@@ -261,16 +282,19 @@ text = "SPECIAL"
 
 [node name="SuperBarBack" type="ColorRect" parent="UI/CombatPanel"]
 layout_mode = 0
-offset_left = 118.0
+offset_left = 108.0
 offset_top = 74.0
-offset_right = 456.0
-offset_bottom = 87.0
+offset_right = 227.0
+offset_bottom = 84.5
 color = Color(0.11, 0.085, 0.025, 1)
+metadata/_edit_use_anchors_ = true
 
 [node name="SuperBarFill" type="ColorRect" parent="UI/CombatPanel/SuperBarBack"]
 layout_mode = 0
-offset_bottom = 13.0
+offset_right = 119.0
+offset_bottom = 10.5
 color = Color(1, 0.76, 0.16, 1)
+metadata/_edit_use_anchors_ = true
 
 [node name="AttributeLabel" type="Label" parent="UI/CombatPanel"]
 visible = false
@@ -539,3 +563,8 @@ theme_override_font_sizes/font_size = 28
 text = "Press R or Start to return to level select"
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="CharacterUi" type="Sprite2D" parent="UI"]
+position = Vector2(147.67, 82.36)
+scale = Vector2(0.19030759, 0.19030762)
+texture = ExtResource("20_gqmmt")
