@@ -7,11 +7,42 @@ This project is a Godot 4.x GDScript top-down arena shooter. Keep the architectu
 - Treat `main` as the user's stable playable/test area.
 - Agents should do feature work primarily on git feature branches, not directly on `main`, unless the user explicitly requests otherwise or the work is a tiny documentation-only edit.
 - When a feature is requested, create a feature branch before implementation and keep that branch's commit history meaningful enough for easy tweak rollbacks.
+- For broad overhaul feature sets, create one umbrella feature branch and keep related tweaks on that branch. Do not create a new branch for every small related tweak inside the same overhaul.
 - When the feature is finished and ready for user testing, move the active repo checkout to that feature branch and clearly tell the user which branch contains the test build.
-- If the user requests tweaks while the active checkout is a feature branch, the first action should be to move the repo back to the working `main` branch so the user's playable environment is restored before new branch work continues.
+- If the user requests tweaks while the active checkout is a feature branch, keep working on that branch only when the tweak clearly belongs to the same feature set. Move back to `main` first when starting unrelated work, restoring the playable baseline, or when the user explicitly asks.
 - Do not strand the user's active checkout on a broken or half-finished feature branch. If testing requires staying on a feature branch, say that explicitly.
 - Before switching branches, check for uncommitted work and avoid overwriting user changes.
 - Final summaries for feature work should include the exact git commands the user can run to merge the feature branch back into `main`.
+
+## Agent Cost Control
+
+- Do not run tests unless the user explicitly asks for testing or grants test permission for the current task.
+- When tests are allowed, prefer targeted checks first. Run the full smoke suite only before a commit/final handoff, and only when permitted.
+- Avoid repeated smoke-test loops after every tiny change. If a smoke test fails, inspect the relevant failure, make one focused fix, and stop unless the user has authorized another run.
+- Prefer the user-run `./smoke_test.sh` helper for full smoke coverage. Ask the user to paste only the relevant failures, not the full log.
+- Avoid long Godot play-mode/editor launches. Prefer headless checks, static scene inspection, resource inspection, and small validators.
+- Avoid repeated whole-repo searches. Start by reading `AGENTS.md`, `docs/architecture.md`, and targeted files; keep discoveries in the working summary instead of rediscovering them.
+- Do not reason over `.import`, cache, build, export, or generated metadata unless that file is directly relevant to the user's request.
+- Do not debug from huge logs. Ask for, or produce, a filtered tail of roughly 100-300 relevant lines.
+- For "try things until it works" tasks, propose the likely fix, make one bounded change, and stop for user feedback.
+- Split broad refactors from test-running. First refactor; then let the user test or explicitly authorize tests; then fix specific failures.
+- For visual/gameplay tuning, the user is the playtester. Adjust numbers after the user describes behavior.
+- If a task would be token-hungry for an agent but is straightforward for a human operator, give the user precise steps to do that part manually. The user can explicitly override this and ask the agent to do it anyway.
+
+## Godot Editor And Human Operator Boundary
+
+- Prefer handing editor-native work to the user with exact instructions instead of scripting around the editor.
+- Editor-native work includes Control layout, anchors, clipping masks, texture/import setup, portrait circular clipping, visual polish, inspector-only scene tuning, and similar node-system tasks.
+- For editor-native work, propose the node architecture, scene hierarchy, key inspector values, and signal/data flow. Do not churn through script-heavy substitutes unless the user asks.
+- Only script or directly edit `.tscn` scene layout when the user explicitly asks, or when the change is small, low-risk, and easier to review as text.
+- Gameplay or visual values likely to need user feel-tuning should be exposed through Godot `@export` variables or Resource fields so the user can adjust them in the inspector.
+
+## Smoke Test Policy
+
+- Smoke tests should protect architecture, required nodes, data flow, crash resistance, and core invariants.
+- Avoid rigid assertions for manually tuned values such as colors, positions, dimensions, spawn rates, cooldowns, damage values, and visual timing unless the user explicitly locks those values.
+- When numeric checks are needed, read configured/exported values or use broad sanity ranges instead of hard-coded tuning constants.
+- Prefer small targeted validators for new behavior. Keep full smoke coverage as a final confidence check, not the default inner loop.
 
 ## Hard Architecture Rules
 
