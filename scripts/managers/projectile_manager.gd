@@ -18,7 +18,7 @@ signal projectile_expired(projectile, expire_info: Dictionary)
 @export var super_projectile_explosion_radius: float = 122.0
 @export var super_projectile_explosion_damage_multiplier: float = 0.68
 @export var parry_projectile_ammo_award: int = 1
-@export var perfect_parry_projectile_ammo_award: int = 20
+@export var perfect_parry_projectile_ammo_award: int = 2
 
 const DAMAGE_PACKET_SCRIPT := preload("res://scripts/resources/damage_packet.gd")
 

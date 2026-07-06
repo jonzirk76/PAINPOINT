@@ -73,6 +73,9 @@ var _last_invulnerability_remaining: float = 0.0
 var _last_invulnerability_duration: float = 0.0
 var _last_parry_cooldown_remaining: float = 0.0
 var _last_parry_cooldown_duration: float = 0.0
+var _last_parry_chain_count: int = 0
+var _last_parry_chain_grace_remaining: float = 0.0
+var _last_parry_chain_grace_duration: float = 0.0
 var _last_super_meter: float = 0.0
 var _last_super_meter_max: float = 100.0
 var _last_super_is_charging: bool = false
@@ -103,6 +106,7 @@ var _run_ammo_upgrades: int = 0
 var _run_permanent_upgrades: int = 0
 var _run_heals: int = 0
 var _run_floors_cleared: int = 0
+var _run_longest_parry_chain: int = 0
 var _tree_pause_requested: bool = false
 var _boss_clear_delay_remaining: float = 0.0
 var _boss_clear_pending_status: String = ""
@@ -113,6 +117,10 @@ var _ammo_refill_flash_remaining: float = 0.0
 var _ammo_refill_flash_duration: float = 0.48
 var _ammo_refill_perfect_flash_remaining: float = 0.0
 var _ammo_refill_perfect_flash_duration: float = 0.58
+var _ammo_segment_refill_flash_remaining: float = 0.0
+var _ammo_segment_refill_flash_duration: float = 0.0
+var _ammo_segment_refill_start_ammo: int = 0
+var _ammo_segment_refill_end_ammo: int = 0
 var _super_meter_flash_remaining: float = 0.0
 var _super_meter_flash_duration: float = 0.42
 var _super_meter_ready_flash_remaining: float = 0.0
@@ -150,6 +158,9 @@ const METER_SEGMENT_MIN_WIDTH := 0.45
 const METER_SEGMENT_SKEW_DEGREES := 10.0
 const METER_SEGMENT_EJECT_SECONDS := 0.28
 const METER_SEGMENT_EJECT_OFFSET := Vector2(12.0, -16.0)
+const AMMO_SEGMENT_REFILL_STEP_SECONDS := 0.06
+const AMMO_SEGMENT_REFILL_MIN_SECONDS := 0.22
+const AMMO_SEGMENT_REFILL_MAX_SECONDS := 0.72
 
 
 func _ready() -> void:
@@ -178,6 +189,9 @@ func _process(delta: float) -> void:
 			hud_feedback_changed = true
 		if _ammo_refill_perfect_flash_remaining > 0.0:
 			_ammo_refill_perfect_flash_remaining = max(_ammo_refill_perfect_flash_remaining - delta, 0.0)
+			hud_feedback_changed = true
+		if _ammo_segment_refill_flash_remaining > 0.0:
+			_ammo_segment_refill_flash_remaining = max(_ammo_segment_refill_flash_remaining - delta, 0.0)
 			hud_feedback_changed = true
 		if _super_meter_flash_remaining > 0.0:
 			_super_meter_flash_remaining = max(_super_meter_flash_remaining - delta, 0.0)
@@ -213,6 +227,7 @@ func _connect_manager_signals() -> void:
 	_connect_once(player_manager, &"player_health_changed", _on_player_health_changed)
 	_connect_once(player_manager, &"player_invulnerability_changed", _on_player_invulnerability_changed)
 	_connect_once(player_manager, &"parry_cooldown_changed", _on_player_parry_cooldown_changed)
+	_connect_once(player_manager, &"parry_chain_changed", _on_player_parry_chain_changed)
 	_connect_once(player_manager, &"player_defeated", _on_player_defeated)
 	_connect_once(player_manager, &"shoot_requested", _on_player_shoot_requested)
 	_connect_once(player_manager, &"parry_requested", _on_player_parry_requested)
@@ -451,8 +466,7 @@ func _start_level(level_definition) -> void:
 	_last_max_health = 0
 	_last_invulnerability_remaining = 0.0
 	_last_invulnerability_duration = 0.0
-	_last_parry_cooldown_remaining = 0.0
-	_last_parry_cooldown_duration = 0.0
+	_reset_parry_hud_state()
 	_last_super_meter = 0.0
 	_last_super_meter_max = player_manager.get_super_meter_max()
 	_last_super_is_charging = false
@@ -460,6 +474,7 @@ func _start_level(level_definition) -> void:
 	_reset_overdrive_hud_state()
 	_ammo_refill_flash_remaining = 0.0
 	_ammo_refill_perfect_flash_remaining = 0.0
+	_reset_ammo_segment_refill_flash()
 	_super_meter_flash_remaining = 0.0
 	_super_meter_ready_flash_remaining = 0.0
 	_stop_perfect_parry_slowmo()
@@ -516,8 +531,7 @@ func _start_dungeon_run() -> void:
 	_last_max_health = 0
 	_last_invulnerability_remaining = 0.0
 	_last_invulnerability_duration = 0.0
-	_last_parry_cooldown_remaining = 0.0
-	_last_parry_cooldown_duration = 0.0
+	_reset_parry_hud_state()
 	_last_super_meter = 0.0
 	_last_super_meter_max = player_manager.get_super_meter_max()
 	_last_super_is_charging = false
@@ -525,6 +539,7 @@ func _start_dungeon_run() -> void:
 	_reset_overdrive_hud_state()
 	_ammo_refill_flash_remaining = 0.0
 	_ammo_refill_perfect_flash_remaining = 0.0
+	_reset_ammo_segment_refill_flash()
 	_super_meter_flash_remaining = 0.0
 	_super_meter_ready_flash_remaining = 0.0
 	_stop_perfect_parry_slowmo()
@@ -572,8 +587,7 @@ func _start_main_loop_run() -> void:
 	_last_max_health = 0
 	_last_invulnerability_remaining = 0.0
 	_last_invulnerability_duration = 0.0
-	_last_parry_cooldown_remaining = 0.0
-	_last_parry_cooldown_duration = 0.0
+	_reset_parry_hud_state()
 	_last_super_meter = 0.0
 	_last_super_meter_max = player_manager.get_super_meter_max()
 	_last_super_is_charging = false
@@ -581,6 +595,7 @@ func _start_main_loop_run() -> void:
 	_reset_overdrive_hud_state()
 	_ammo_refill_flash_remaining = 0.0
 	_ammo_refill_perfect_flash_remaining = 0.0
+	_reset_ammo_segment_refill_flash()
 	_super_meter_flash_remaining = 0.0
 	_super_meter_ready_flash_remaining = 0.0
 	_stop_perfect_parry_slowmo()
@@ -719,6 +734,22 @@ func _reset_overdrive_hud_state() -> void:
 	_last_overdrive_is_active = false
 	_last_overdrive_has_effects = false
 	_last_overdrive_effects = []
+	_reset_ammo_segment_refill_flash()
+
+
+func _reset_parry_hud_state() -> void:
+	_last_parry_cooldown_remaining = 0.0
+	_last_parry_cooldown_duration = 0.0
+	_last_parry_chain_count = 0
+	_last_parry_chain_grace_remaining = 0.0
+	_last_parry_chain_grace_duration = 0.0
+
+
+func _reset_ammo_segment_refill_flash() -> void:
+	_ammo_segment_refill_flash_remaining = 0.0
+	_ammo_segment_refill_flash_duration = 0.0
+	_ammo_segment_refill_start_ammo = 0
+	_ammo_segment_refill_end_ammo = 0
 
 
 func _should_advance_gameplay_feedback() -> bool:
@@ -999,6 +1030,14 @@ func _on_player_parry_cooldown_changed(remaining: float, duration: float) -> voi
 	_update_hud()
 
 
+func _on_player_parry_chain_changed(current_chain: int, longest_chain: int, grace_remaining: float, grace_duration: float) -> void:
+	_last_parry_chain_count = max(current_chain, 0)
+	_last_parry_chain_grace_remaining = max(grace_remaining, 0.0)
+	_last_parry_chain_grace_duration = max(grace_duration, 0.0)
+	_run_longest_parry_chain = max(_run_longest_parry_chain, longest_chain)
+	_update_hud()
+
+
 func _on_player_super_meter_changed(current: float, maximum: float, is_charging: bool, charge_ratio: float) -> void:
 	var previous_meter := _last_super_meter
 	var previous_ready := _last_super_meter_max > 0.0 and _last_super_meter >= _last_super_meter_max
@@ -1025,6 +1064,7 @@ func _on_player_parry_requested(origin: Vector2, effect_radius: float, perfect_r
 	var perfect_count := int(absorbed.get("perfect_count", 0))
 	var was_perfect := perfect_count > 0
 	var ammo_added := 0
+	player_manager.resolve_parry_result(was_perfect)
 	if absorbed_count > 0:
 		var regular_count: int = max(absorbed_count - perfect_count, 0)
 		var meter_gain: float = float(regular_count) * player_manager.super_meter_parried_bullet_gain + float(perfect_count) * player_manager.super_meter_perfect_bullet_gain
@@ -1041,14 +1081,14 @@ func _on_player_parry_requested(origin: Vector2, effect_radius: float, perfect_r
 		player_manager.play_perfect_parry_response(effect_radius, perfect_radius)
 		_start_perfect_parry_slowmo()
 	if not absorbed_projectiles.is_empty():
-		_target_parry_absorbs_at_ammo_counters(absorbed_projectiles)
+		_target_parry_absorbs_at_character_portrait(absorbed_projectiles)
 		effects_manager.play_parry_absorbs(absorbed_projectiles, origin)
 	enemy_manager.apply_parry_pushback(origin, effect_radius, enemy_knockback)
 	_update_hud()
 
 
-func _target_parry_absorbs_at_ammo_counters(absorbed_projectiles: Array) -> void:
-	var targets := _get_ammo_counter_world_targets()
+func _target_parry_absorbs_at_character_portrait(absorbed_projectiles: Array) -> void:
+	var targets := _get_character_portrait_world_targets()
 	if targets.is_empty():
 		return
 	var seed_base: float = float(Time.get_ticks_msec() % 10000)
@@ -1067,17 +1107,23 @@ func _target_parry_absorbs_at_ammo_counters(absorbed_projectiles: Array) -> void
 		absorbed_projectiles[index] = info
 
 
-func _get_ammo_counter_world_targets() -> Array[Vector2]:
+func _get_character_portrait_world_targets() -> Array[Vector2]:
 	var targets: Array[Vector2] = []
-	if overdrive_fill != null:
-		targets.append(_screen_to_world_position(overdrive_fill.get_global_rect().get_center()))
+	var portrait_mask: Control = null
+	if combat_panel != null:
+		portrait_mask = combat_panel.get_node_or_null("CircularPortraitMask") as Control
+	if portrait_mask != null:
+		targets.append(_screen_to_world_position(portrait_mask.get_global_rect().get_center()))
+		return targets
+	if character_ui != null:
+		targets.append(_screen_to_world_position(character_ui.global_position))
 		return targets
 	var viewport_size := Vector2(1280.0, 720.0)
 	if is_inside_tree():
 		viewport_size = get_viewport_rect().size
 		if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
 			viewport_size = Vector2(1280.0, 720.0)
-	targets.append(_screen_to_world_position(Vector2(viewport_size.x - 178.0, 64.0)))
+	targets.append(_screen_to_world_position(Vector2(136.0, 82.0)))
 	return targets
 
 
@@ -1141,6 +1187,7 @@ func _on_overdrive_changed(state: Dictionary) -> void:
 	_last_overdrive_effects = state.get("effects", [])
 	if _last_overdrive_ammo > previous_ammo:
 		_ammo_refill_flash_remaining = _ammo_refill_flash_duration
+		_trigger_ammo_segment_refill_flash(previous_ammo, _last_overdrive_ammo)
 	_update_hud()
 
 
@@ -1305,16 +1352,13 @@ func _update_combat_panel(active_effects: Array) -> void:
 	_update_super_bar(_get_meter_full_rect(super_fill, super_bar_back, health_fill_rect.size.x))
 	if stats_label != null:
 		stats_label.visible = false
-		var parry_text := "READY"
-		if _last_parry_cooldown_remaining > 0.0:
-			parry_text = "%.1fs" % _last_parry_cooldown_remaining
 		stats_label.text = "Shot x%d  Pierce %d  Chain %d  AoE %d  Size %d%%\nParry %s" % [
 			int(_latest_modifiers.get("projectile_count", 1)),
 			int(_latest_modifiers.get("pierce_count", 0)),
 			int(_latest_modifiers.get("chain_count", 0)),
 			roundi(float(_latest_modifiers.get("explosion_radius", 0.0))),
 			roundi(float(_latest_modifiers.get("projectile_size_multiplier", 1.0)) * 100.0),
-			parry_text
+			_get_parry_status_text()
 		]
 	if attribute_label != null:
 		attribute_label.visible = false
@@ -1380,14 +1424,39 @@ func _update_overdrive_bar(fill_rect: Rect2) -> void:
 func _update_overdrive_segments(max_ammo: int, ammo: int, fill_rect: Rect2, fill_color: Color) -> void:
 	if overdrive_tick_layer == null:
 		return
+	var flash_config := _get_ammo_segment_refill_flash_config()
 	_update_meter_segments(
 		overdrive_tick_layer,
 		max_ammo,
 		clampi(ammo, 0, max_ammo),
 		fill_rect,
 		fill_color,
-		"OverdriveSegment"
+		"OverdriveSegment",
+		flash_config
 	)
+
+
+func _trigger_ammo_segment_refill_flash(previous_ammo: int, current_ammo: int) -> void:
+	var start_ammo: int = clampi(previous_ammo, 0, _last_overdrive_max_ammo)
+	var end_ammo: int = clampi(current_ammo, 0, _last_overdrive_max_ammo)
+	if end_ammo <= start_ammo:
+		return
+	var added: int = end_ammo - start_ammo
+	_ammo_segment_refill_start_ammo = start_ammo
+	_ammo_segment_refill_end_ammo = end_ammo
+	_ammo_segment_refill_flash_duration = clamp(float(added) * AMMO_SEGMENT_REFILL_STEP_SECONDS + 0.16, AMMO_SEGMENT_REFILL_MIN_SECONDS, AMMO_SEGMENT_REFILL_MAX_SECONDS)
+	_ammo_segment_refill_flash_remaining = _ammo_segment_refill_flash_duration
+
+
+func _get_ammo_segment_refill_flash_config() -> Dictionary:
+	if _ammo_segment_refill_flash_remaining <= 0.0 or _ammo_segment_refill_flash_duration <= 0.0:
+		return {}
+	return {
+		"start": _ammo_segment_refill_start_ammo,
+		"end": _ammo_segment_refill_end_ammo,
+		"remaining": _ammo_segment_refill_flash_remaining,
+		"duration": _ammo_segment_refill_flash_duration
+	}
 
 
 func _get_health_meter_color(health_ratio: float) -> Color:
@@ -1399,7 +1468,7 @@ func _get_health_meter_color(health_ratio: float) -> Color:
 	return orange.lerp(green, clamp((health_ratio - 0.5) / 0.5, 0.0, 1.0))
 
 
-func _update_meter_segments(layer: Control, segment_count: int, active_count: int, fill_rect: Rect2, fill_color: Color, segment_prefix: String) -> void:
+func _update_meter_segments(layer: Control, segment_count: int, active_count: int, fill_rect: Rect2, fill_color: Color, segment_prefix: String, refill_flash_config: Dictionary = {}) -> void:
 	var layer_key := layer.get_instance_id()
 	var previous_active_count: int = int(_meter_active_segment_counts.get(layer_key, -1))
 	if previous_active_count > active_count:
@@ -1418,14 +1487,42 @@ func _update_meter_segments(layer: Control, segment_count: int, active_count: in
 	var segment_width: float = max(segment_span - gap_width, METER_SEGMENT_MIN_WIDTH)
 	var visible_count: int = min(active_count, segment_count)
 	for index in range(visible_count):
+		var segment_color := _get_meter_segment_flash_color(fill_color, index, refill_flash_config)
 		var segment := _create_meter_segment(
 			"%s%d" % [segment_prefix, index + 1],
 			Vector2(fill_rect.position.x + segment_span * float(index), fill_rect.position.y),
 			Vector2(segment_width, segment_height),
-			fill_color
+			segment_color
 		)
 		segment.set_meta("meter_active_segment", true)
+		var flash_strength := _get_meter_segment_flash_strength(index, refill_flash_config)
+		if flash_strength > 0.0:
+			segment.set_meta("refill_flash_strength", flash_strength)
 		layer.add_child(segment)
+
+
+func _get_meter_segment_flash_color(base_color: Color, index: int, refill_flash_config: Dictionary) -> Color:
+	var flash_strength := _get_meter_segment_flash_strength(index, refill_flash_config)
+	if flash_strength <= 0.0:
+		return base_color
+	return base_color.lerp(Color(1.0, 1.0, 1.0, base_color.a), flash_strength)
+
+
+func _get_meter_segment_flash_strength(index: int, refill_flash_config: Dictionary) -> float:
+	if refill_flash_config.is_empty():
+		return 0.0
+	var start_index: int = int(refill_flash_config.get("start", 0))
+	var end_index: int = int(refill_flash_config.get("end", 0))
+	if index < start_index or index >= end_index:
+		return 0.0
+	var added_count: int = max(end_index - start_index, 1)
+	var duration: float = max(float(refill_flash_config.get("duration", 0.0)), 0.01)
+	var remaining: float = clamp(float(refill_flash_config.get("remaining", 0.0)), 0.0, duration)
+	var elapsed_ratio: float = clamp((duration - remaining) / duration, 0.0, 1.0)
+	var local_index: int = index - start_index
+	var sweep_position: float = elapsed_ratio * float(added_count + 1)
+	var distance: float = abs(sweep_position - float(local_index + 1))
+	return clamp(1.0 - distance * 1.45, 0.0, 1.0)
 
 
 func _spawn_meter_segment_ejections(layer: Control, segment_count: int, active_count: int, previous_active_count: int, fill_rect: Rect2, fill_color: Color, segment_prefix: String) -> void:
@@ -1792,7 +1889,6 @@ func _get_pause_stats_text() -> String:
 		var effect = state["effect"]
 		overdrive_lines.append("%s x%d" % [effect.display_name, int(state.get("stacks", 0))])
 	var overdrive_text: String = "No effect stacks yet. Held overdrive doubles regular bullet size." if overdrive_lines.is_empty() else ", ".join(overdrive_lines)
-	var parry_text: String = "READY" if _last_parry_cooldown_remaining <= 0.0 else "%.1fs" % _last_parry_cooldown_remaining
 	var super_text: String = "READY" if _last_super_meter >= _last_super_meter_max else "%d%%" % roundi((_last_super_meter / max(_last_super_meter_max, 1.0)) * 100.0)
 	if _last_super_is_charging:
 		super_text = "Charging %d%%" % roundi(_last_super_charge_ratio * 100.0)
@@ -1804,7 +1900,7 @@ func _get_pause_stats_text() -> String:
 		enemy_manager.get_enemy_count(),
 		spawner_manager.get_spawner_count(),
 		item_manager.get_pickup_count(),
-		parry_text,
+		_get_parry_status_text(),
 		super_text,
 		_last_overdrive_ammo,
 		_last_overdrive_max_ammo,
@@ -1812,6 +1908,14 @@ func _get_pause_stats_text() -> String:
 		_get_attribute_text(),
 		overdrive_text
 	]
+
+
+func _get_parry_status_text() -> String:
+	if _last_parry_cooldown_remaining > 0.0:
+		return "%.1fs" % _last_parry_cooldown_remaining
+	if _last_parry_chain_count > 0 and _last_parry_chain_grace_remaining > 0.0:
+		return "CHAIN x%d  %.1fs" % [_last_parry_chain_count, _last_parry_chain_grace_remaining]
+	return "READY"
 
 
 func _get_upgrade_lines(active_effects: Array) -> Array[String]:
@@ -2295,18 +2399,20 @@ func _reset_run_tally() -> void:
 	_run_permanent_upgrades = 0
 	_run_heals = 0
 	_run_floors_cleared = 0
+	_run_longest_parry_chain = 0
 
 
 func _get_tally_text() -> String:
 	if not _is_main_loop_run:
 		var seed_line := "Seed: %d\n" % _run_seed if _is_dungeon_run and _run_seed > 0 else ""
-		return "%sEnemies: %d\nSpawners: %d\nPickups: %d" % [
+		return "%sEnemies: %d\nSpawners: %d\nPickups: %d\nLongest parry chain: %d" % [
 			seed_line,
 			_run_enemy_kills,
 			_run_spawner_kills,
-			_run_pickups_collected
+			_run_pickups_collected,
+			_run_longest_parry_chain
 		]
-	return "Seed: %d\nFloors cleared: %d\nEnemies: %d  Bosses: %d\nSpawners: %d\nPickups: %d\nAmmo: %d  Permanent: %d  Heals: %d" % [
+	return "Seed: %d\nFloors cleared: %d\nEnemies: %d  Bosses: %d\nSpawners: %d\nPickups: %d\nAmmo: %d  Permanent: %d  Heals: %d\nLongest parry chain: %d" % [
 		_run_seed,
 		_run_floors_cleared,
 		_run_enemy_kills,
@@ -2315,5 +2421,6 @@ func _get_tally_text() -> String:
 		_run_pickups_collected,
 		_run_ammo_upgrades,
 		_run_permanent_upgrades,
-		_run_heals
+		_run_heals,
+		_run_longest_parry_chain
 	]
