@@ -16,6 +16,7 @@ This project is a Godot 4.x GDScript top-down arena shooter. Keep the architectu
 
 ## Agent Cost Control
 
+- For usage-estimation and calibration rules, read `docs/usage_policy_calibration.md` before non-trivial work. After each non-trivial handoff, ask the user for optional before/after 5h and weekly usage percentages so future estimates can improve.
 - Do not run tests unless the user explicitly asks for testing or grants test permission for the current task.
 - When tests are allowed, prefer targeted checks first. Run the full smoke suite only before a commit/final handoff, and only when permitted.
 - Avoid repeated smoke-test loops after every tiny change. If a smoke test fails, inspect the relevant failure, make one focused fix, and stop unless the user has authorized another run.
