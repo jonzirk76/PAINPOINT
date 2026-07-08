@@ -29,6 +29,16 @@ This project is a Godot 4.x GDScript top-down arena shooter. Keep the architectu
 - For visual/gameplay tuning, the user is the playtester. Adjust numbers after the user describes behavior.
 - If a task would be token-hungry for an agent but is straightforward for a human operator, give the user precise steps to do that part manually. The user can explicitly override this and ask the agent to do it anyway.
 
+## Shared Reasoning Budget Policy
+
+- Treat reasoning level as a shared cost-control responsibility between the user and the agent. Start with the lowest reasoning level that can safely handle the task, then escalate only when the task justifies it.
+- Use low or medium reasoning for small number changes, documentation edits, helper scripts, known-file fixes, UI smoke-test updates, exported tuning variables, and user-provided implementation plans.
+- Use high reasoning for multi-file gameplay changes, bounded cross-system debugging, refactors inside established ownership boundaries, new signal/data-flow design, and architecture-rule reviews.
+- Use max or extra-high reasoning only for major architecture redesigns, unclear ownership across managers, high-risk migrations, core combat/run-state/dungeon changes, repeated blockers after targeted inspection, or planning refactor waves.
+- If the agent thinks max reasoning is needed, it should first explain why and offer a cheaper path when possible: targeted high-reasoning inspection, a narrow user-provided log/failure/screenshot, one bounded fix, or a refactor proposal.
+- If routine tasks appear to require max reasoning, treat that as a possible repository-organization smell. Suggest refactor waves or stronger responsibility boundaries such as smaller scripts, clearer manager/entity ownership, Resource tuning profiles, scene validators, architecture notes, stronger signal naming, or separating combat logic from presentation.
+- Prefer other tools or the human operator when they fit the task better than agentic coding at max reasoning. SVG/icon exploration, portrait art, VFX concepts, HUD mockups, sprite/texture generation, import setup, visual polish, clipping masks, and feel-tuning should usually be done by the user or a design/image-focused AI, with Codex providing architecture, scripting, wiring, validators, and inspector-exposed controls.
+
 ## Godot Editor And Human Operator Boundary
 
 - Prefer handing editor-native work to the user with exact instructions instead of scripting around the editor.
