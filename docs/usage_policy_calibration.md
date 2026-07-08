@@ -25,6 +25,12 @@ Notes:
 
 If the user provides the data, use it to adjust future estimates in the same conversation. Do not imply that Codex can see or verify those percentages.
 
+## Before-State Gating
+
+Before-state usage percentages are most valuable when collected before compute is spent. For potentially compute-heavy tasks, it is acceptable to pause before implementation and ask the user for current 5h and weekly percentages if they have not provided them.
+
+Use this gate for tasks estimated High or Very High, tasks with High snowball risk, or tasks likely to involve repeated tests, broad searches, large logs, asset iteration, scene editing, or exploratory debugging. Continue once the user provides the before-state data or explicitly asks to proceed without calibration.
+
 ## Pre-Task Estimate Format
 
 For non-trivial work, provide a short estimate before implementation:
@@ -100,5 +106,6 @@ Add concrete observations here when the user reports useful before/after data.
 | --- | --- | --- | --- |
 | Agent guardrail documentation edits | Low | Unknown | Doc-only changes were cheap enough to do directly; no tests needed. |
 | Usage calibration documentation edits | Low | Below 1% total reported change | Done at medium reasoning; confirms small doc/schema updates are negligible-cost tasks. |
+| Before-state gating documentation edit | Low | Before state: 5h 94%, weekly 3% | Weekly budget was very low, but the task was a small doc-only update and appropriate to proceed. |
 | Parry chain feature overhaul | High | Unknown | Multi-system gameplay/UI/stat work; should remain high-cost unless scoped tightly. |
 | SVG/visual asset iteration | High to Very High | User reported it felt token-hungry | Prefer user/design-tool iteration, then Codex wiring. |
