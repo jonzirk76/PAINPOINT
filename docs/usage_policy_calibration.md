@@ -17,13 +17,14 @@ After each non-trivial handoff, ask the user for optional usage feedback in a sh
 ```text
 Optional calibration:
 Reasoning level:
-5h usage before -> after:
-Weekly usage before -> after:
-Task felt: cheaper / as expected / more expensive
-Notes:
+5h usage after:
+5h reset time:
+Weekly usage after:
 ```
 
-If the user provides the data, use it to adjust future estimates in the same conversation. Do not imply that Codex can see or verify those percentages.
+If the user provides the data, compare it against the agent's pre-task estimate and any known before-state data to infer whether the task was cheaper, as expected, or more expensive than expected. Do not ask the user to classify the task cost manually unless more context is needed. Do not imply that Codex can see or verify those percentages.
+
+The 5h budget resets more frequently than the weekly budget, so request the 5h reset time when possible. If a reset occurred between the before-state and after-state reports, do not treat the after-state percentage as a normal task-cost delta.
 
 ## Before-State Gating
 
@@ -107,5 +108,6 @@ Add concrete observations here when the user reports useful before/after data.
 | Agent guardrail documentation edits | Low | Unknown | Doc-only changes were cheap enough to do directly; no tests needed. |
 | Usage calibration documentation edits | Low | Below 1% total reported change | Done at medium reasoning; confirms small doc/schema updates are negligible-cost tasks. |
 | Before-state gating documentation edit | Low | Before state: 5h 94%, weekly 3% | Weekly budget was very low, but the task was a small doc-only update and appropriate to proceed. |
+| Handoff schema reset-time edit | Low | After state: 5h 93%, weekly 3%, 5h reset 10:09 AM | User clarified that reset timing is needed because the 5h budget can reset between tasks. |
 | Parry chain feature overhaul | High | Unknown | Multi-system gameplay/UI/stat work; should remain high-cost unless scoped tightly. |
 | SVG/visual asset iteration | High to Very High | User reported it felt token-hungry | Prefer user/design-tool iteration, then Codex wiring. |
