@@ -132,6 +132,6 @@ Add concrete observations here when the user reports useful before/after data.
 | Usage calibration documentation edits | Low | Below 1% total reported change | Done at medium reasoning; confirms small doc/schema updates are negligible-cost tasks. |
 | Before-state gating documentation edit | Low | Before state: 5h 94%, weekly 3% | Weekly budget was very low, but the task was a small doc-only update and appropriate to proceed. |
 | Handoff schema reset-time edit | Low | After state: 5h 93%, weekly 3%, 5h reset 10:09 AM | User clarified that reset timing is needed because the 5h budget can reset between tasks. |
-| 5h usage block documentation edit | Low | Current state: 5h 91%, weekly 2%, 5h reset 10:09 AM | Done at medium reasoning in the same 10:09 AM block; added reset time as the block identifier model. |
+| 5h usage block documentation edit | Low | Same-block 5h: 91% -> 90%, weekly 2% -> 2%, reset 10:09 AM | Done at medium reasoning; measured about 1 point of 5h usage and no weekly percentage movement. |
 | Parry chain feature overhaul | High | Unknown | Multi-system gameplay/UI/stat work; should remain high-cost unless scoped tightly. |
 | SVG/visual asset iteration | High to Very High | User reported it felt token-hungry | Prefer user/design-tool iteration, then Codex wiring. |
