@@ -32,6 +32,29 @@ Before-state usage percentages are most valuable when collected before compute i
 
 Use this gate for tasks estimated High or Very High, tasks with High snowball risk, or tasks likely to involve repeated tests, broad searches, large logs, asset iteration, scene editing, or exploratory debugging. Continue once the user provides the before-state data or explicitly asks to proceed without calibration.
 
+## 5h Usage Blocks
+
+Treat the user-reported 5h reset time as the short-window block identifier. When the reset time is unchanged between before-state and after-state reports, estimate task cost from the 5h percentage drop inside that block.
+
+```text
+5h block id: reset time
+same-block task cost: before 5h percentage - after 5h percentage
+```
+
+If the reset time changes between reports, assume a new 5h block started. Do not compute a normal task-cost delta across that reset boundary.
+
+When possible, track calibration observations by:
+
+- 5h block id,
+- before 5h percentage,
+- after 5h percentage,
+- inferred percentage-point cost,
+- weekly percentage after,
+- reasoning level,
+- task type.
+
+This makes the reset time a useful organizing metric instead of only a warning that the percentages changed.
+
 ## Pre-Task Estimate Format
 
 For non-trivial work, provide a short estimate before implementation:
@@ -109,5 +132,6 @@ Add concrete observations here when the user reports useful before/after data.
 | Usage calibration documentation edits | Low | Below 1% total reported change | Done at medium reasoning; confirms small doc/schema updates are negligible-cost tasks. |
 | Before-state gating documentation edit | Low | Before state: 5h 94%, weekly 3% | Weekly budget was very low, but the task was a small doc-only update and appropriate to proceed. |
 | Handoff schema reset-time edit | Low | After state: 5h 93%, weekly 3%, 5h reset 10:09 AM | User clarified that reset timing is needed because the 5h budget can reset between tasks. |
+| 5h usage block documentation edit | Low | Current state: 5h 91%, weekly 2%, 5h reset 10:09 AM | Done at medium reasoning in the same 10:09 AM block; added reset time as the block identifier model. |
 | Parry chain feature overhaul | High | Unknown | Multi-system gameplay/UI/stat work; should remain high-cost unless scoped tightly. |
 | SVG/visual asset iteration | High to Very High | User reported it felt token-hungry | Prefer user/design-tool iteration, then Codex wiring. |
