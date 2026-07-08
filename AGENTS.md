@@ -39,6 +39,15 @@ This project is a Godot 4.x GDScript top-down arena shooter. Keep the architectu
 - If routine tasks appear to require max reasoning, treat that as a possible repository-organization smell. Suggest refactor waves or stronger responsibility boundaries such as smaller scripts, clearer manager/entity ownership, Resource tuning profiles, scene validators, architecture notes, stronger signal naming, or separating combat logic from presentation.
 - Prefer other tools or the human operator when they fit the task better than agentic coding at max reasoning. SVG/icon exploration, portrait art, VFX concepts, HUD mockups, sprite/texture generation, import setup, visual polish, clipping masks, and feel-tuning should usually be done by the user or a design/image-focused AI, with Codex providing architecture, scripting, wiring, validators, and inspector-exposed controls.
 
+## Weekly Reset And Low 5h Budget Strategy
+
+- Treat the weekly reset as a scarce replenishment tool. When possible, avoid encouraging the user to spend it early just to finish a compute-heavy agent task.
+- When the 5h token budget is low, prefer low-cost work: planning, code review, architecture notes, branch/status summaries, test-log triage from short pasted excerpts, writing manual editor instructions, documenting TODOs, and making small isolated edits.
+- Defer token-heavy work when the 5h budget is low unless it is urgent. Heavy work includes broad feature implementation, exploratory debugging, repeated test loops, large scene edits, SVG or visual-asset iteration, whole-repo audits, and major refactors.
+- Offer the user a split plan for large tasks near a low 5h budget: do a lightweight design pass now, ask the user to playtest or collect focused evidence, then implement after the short-window budget recovers or after the user explicitly chooses to use the weekly reset.
+- Prefer tasks that help the user make progress without agent compute when the 5h budget is low: inspector tuning, Godot editor layout, playtesting, taking screenshots, running `./smoke_test.sh`, trimming logs, or choosing between visual mockups.
+- If the user appears likely to use the weekly reset early, remind them of the tradeoff in neutral terms and suggest a cheaper next step. The user can always override and request the heavier agent work immediately.
+
 ## Godot Editor And Human Operator Boundary
 
 - Prefer handing editor-native work to the user with exact instructions instead of scripting around the editor.
