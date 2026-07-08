@@ -15,7 +15,12 @@ This document is a living guide for estimating and improving Codex task cost in 
 After each non-trivial handoff, ask the user for optional usage feedback in a short form:
 
 ```text
-Optional calibration: what were your 5h and weekly usage percentages before/after this task?
+Optional calibration:
+Reasoning level:
+5h usage before -> after:
+Weekly usage before -> after:
+Task felt: cheaper / as expected / more expensive
+Notes:
 ```
 
 If the user provides the data, use it to adjust future estimates in the same conversation. Do not imply that Codex can see or verify those percentages.
@@ -94,5 +99,6 @@ Add concrete observations here when the user reports useful before/after data.
 | Task Type | Estimate | Reported Usage Change | Notes |
 | --- | --- | --- | --- |
 | Agent guardrail documentation edits | Low | Unknown | Doc-only changes were cheap enough to do directly; no tests needed. |
+| Usage calibration documentation edits | Low | Below 1% total reported change | Done at medium reasoning; confirms small doc/schema updates are negligible-cost tasks. |
 | Parry chain feature overhaul | High | Unknown | Multi-system gameplay/UI/stat work; should remain high-cost unless scoped tightly. |
 | SVG/visual asset iteration | High to Very High | User reported it felt token-hungry | Prefer user/design-tool iteration, then Codex wiring. |
