@@ -122,6 +122,97 @@ Prefer user-performed or design-tool work for tasks that are expensive for Codex
 
 Codex should usually provide architecture, scene hierarchy, signal/data flow, exported tuning fields, scripts, validators, and exact manual steps for these tasks.
 
+## Local Model Delegation
+
+The user may have access to a weaker local coding model such as Qwen 2.5 Coder. Use local-model delegation to reduce Codex token spend when the task can be bounded and checked cheaply.
+
+During handoffs for Medium, High, Very High, or high-snowball tasks, include delegation suggestions when useful. Each suggestion should include a ready-to-copy prompt that the user can run locally. Do not require delegation for urgent work, tiny edits, or tasks where local-model output would be harder to verify than doing the work directly.
+
+Good delegation targets:
+
+- summarize one file, script, or function,
+- extract signals, exported variables, node paths, TODOs, or error locations,
+- turn a plan into a checklist,
+- condense a short log excerpt,
+- draft markdown notes, changelogs, or manual Godot editor instructions,
+- compare two short snippets for obvious behavioral differences,
+- inventory scene/resource references from a provided excerpt.
+
+Avoid delegating:
+
+- architecture decisions,
+- final patches that affect core gameplay behavior,
+- merge conflict resolution,
+- cross-system debugging,
+- scene/resource edits,
+- gameplay feel tuning,
+- test design for important invariants,
+- tasks requiring broad repository context.
+
+Use this prompt shape:
+
+```text
+You are helping preprocess information for a Godot 4 GDScript project.
+Task:
+[specific bounded task]
+
+Constraints:
+- Use only the pasted content.
+- Do not invent files, APIs, or project context.
+- Return concise bullets.
+- If uncertain, say what is missing.
+
+Content:
+[paste file excerpt, log excerpt, or plan]
+```
+
+Example local-model prompts:
+
+```text
+Summarize responsibilities:
+You are helping preprocess information for a Godot 4 GDScript project.
+Task:
+Summarize this script's responsibilities in 8 bullets or fewer. List emitted signals, connected signals, and exported variables separately.
+
+Constraints:
+- Use only the pasted content.
+- Do not infer architecture beyond this file.
+- If a responsibility is unclear, mark it as uncertain.
+
+Content:
+[paste script]
+```
+
+```text
+Condense failure log:
+You are helping preprocess a Godot smoke-test failure.
+Task:
+Extract only the relevant error lines, file paths, line numbers, and likely failing subsystem from this log excerpt.
+
+Constraints:
+- Use only the pasted log.
+- Do not suggest fixes unless the cause is explicit.
+- Keep the output under 20 bullets.
+
+Content:
+[paste 100-300 relevant log lines]
+```
+
+```text
+Create implementation checklist:
+You are helping turn a feature plan into a checklist for a Godot 4 GDScript project.
+Task:
+Convert this plan into a concise implementation checklist grouped by likely file or system.
+
+Constraints:
+- Do not add new requirements.
+- Mark any unclear item as a question.
+- Keep the checklist actionable and short.
+
+Content:
+[paste plan]
+```
+
 ## Calibration Notes
 
 Add concrete observations here when the user reports useful before/after data.
@@ -133,5 +224,6 @@ Add concrete observations here when the user reports useful before/after data.
 | Before-state gating documentation edit | Low | Before state: 5h 94%, weekly 3% | Weekly budget was very low, but the task was a small doc-only update and appropriate to proceed. |
 | Handoff schema reset-time edit | Low | After state: 5h 93%, weekly 3%, 5h reset 10:09 AM | User clarified that reset timing is needed because the 5h budget can reset between tasks. |
 | 5h usage block documentation edit | Low | Same-block 5h: 91% -> 90%, weekly 2% -> 2%, reset 10:09 AM | Done at medium reasoning; measured about 1 point of 5h usage and no weekly percentage movement. |
+| Local-model delegation policy edit | Low | Weekly around 2%, meters unreliable | User requested handoff delegation suggestions and ready-to-copy Qwen prompts to reduce Codex token spend. |
 | Parry chain feature overhaul | High | Unknown | Multi-system gameplay/UI/stat work; should remain high-cost unless scoped tightly. |
 | SVG/visual asset iteration | High to Very High | User reported it felt token-hungry | Prefer user/design-tool iteration, then Codex wiring. |
