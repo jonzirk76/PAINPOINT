@@ -42,8 +42,9 @@ func load_room(level_definition, door_infos: Array, doors_unlocked: bool) -> voi
 		else:
 			add_child(door)
 		door.initialize(direction, target_id, rect.get_center(), rect.size, doors_unlocked, target_kind)
-		if door_info.has("trigger_rect"):
-			door.visible = false
+		if door_info.has("opening_rect") and door.has_method("set_visual_rect"):
+			var opening_rect: Rect2 = door_info["opening_rect"]
+			door.set_visual_rect(opening_rect.get_center(), opening_rect.size)
 		door.entered.connect(_on_door_entered)
 		_doors.append(door)
 	set_enabled(enabled)

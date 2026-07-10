@@ -3221,8 +3221,8 @@ func _test_room_manager_doors(failures: Array[String]) -> void:
 			failures.append("RoomManager should unlock doors for an already-cleared room.")
 		if (child.collision_mask & 1) == 0:
 			failures.append("Door entity should watch the player collision layer.")
-		if child.visible:
-			failures.append("Generated dungeon doors should use invisible triggers aligned to wall openings.")
+		if not child.visible:
+			failures.append("Generated dungeon doors should draw visible gate tiles aligned to wall openings.")
 	var marker_layer := Node2D.new()
 	var marker_manager = load("res://scripts/managers/room_manager.gd").new()
 	var marker_level = load("res://scripts/resources/level_definition.gd").new()

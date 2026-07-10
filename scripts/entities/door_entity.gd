@@ -9,6 +9,8 @@ var direction: String = "north"
 var target_room_id: String = ""
 var target_room_kind: String = ""
 var unlocked: bool = false
+var visual_size: Vector2 = Vector2.ZERO
+var visual_offset: Vector2 = Vector2.ZERO
 var _collision_shape: CollisionShape2D = null
 var _armed: bool = false
 
@@ -34,6 +36,12 @@ func initialize(door_direction: String, target_id: String, center_position: Vect
 	_armed = false
 	_add_or_update_collision()
 	set_physics_process(unlocked)
+	queue_redraw()
+
+
+func set_visual_rect(center_position: Vector2, size: Vector2) -> void:
+	visual_offset = center_position - global_position
+	visual_size = size
 	queue_redraw()
 
 
@@ -83,32 +91,33 @@ func _has_player_overlap() -> bool:
 
 
 func _draw() -> void:
-	var fill_color := Color(0.34, 0.42, 0.48, 0.9)
-	var trim_color := Color(0.84, 0.94, 1.0, 1.0)
-	if unlocked:
-		fill_color = Color(0.1, 0.56, 0.38, 0.9)
-		trim_color = Color(0.42, 1.0, 0.72, 1.0)
-	var rect := Rect2(-door_size * 0.5, door_size)
-	draw_rect(rect, fill_color, true)
-	draw_rect(rect, trim_color, false, 3.0)
+	var size := visual_size if visual_size != Vector2.ZERO else door_size
+	var rect := Rect2(visual_offset - size * 0.5, size)
+	var trim_color := Color(0.16, 0.17, 0.18, 1.0)
 	if not unlocked:
-		draw_line(rect.position + Vector2(8.0, 8.0), rect.position + rect.size - Vector2(8.0, 8.0), trim_color, 3.0)
-		draw_line(rect.position + Vector2(rect.size.x - 8.0, 8.0), rect.position + Vector2(8.0, rect.size.y - 8.0), trim_color, 3.0)
-	_draw_room_kind_marker()
+		var fill_color := Color(0.075, 0.08, 0.09, 1.0)
+		if has_special_marker():
+			fill_color = Color(0.095, 0.085, 0.105, 1.0)
+		draw_rect(rect, fill_color, true)
+		draw_rect(rect, trim_color, false, 2.0)
+		_draw_room_kind_marker(rect.get_center(), min(rect.size.x, rect.size.y))
+	elif has_special_marker():
+		_draw_room_kind_marker(rect.get_center(), min(rect.size.x, rect.size.y))
 
 
 func has_special_marker() -> bool:
 	return target_room_kind == "treasure" or target_room_kind == "challenge" or target_room_kind == "boss"
 
 
-func _draw_room_kind_marker() -> void:
+func _draw_room_kind_marker(center: Vector2, marker_extent: float) -> void:
 	if not has_special_marker():
 		return
-	var marker_size: float = clamp(min(door_size.x, door_size.y) * 0.78, 16.0, 30.0)
-	var badge_color := Color(0.05, 0.07, 0.09, 0.92)
+	var marker_size: float = clamp(marker_extent * 0.78, 16.0, 30.0)
+	var badge_color := Color(0.015, 0.018, 0.02, 0.86) if unlocked else Color(0.05, 0.07, 0.09, 0.92)
 	var accent_color := _get_marker_accent_color()
-	draw_circle(Vector2.ZERO, marker_size * 0.54, badge_color)
-	draw_arc(Vector2.ZERO, marker_size * 0.54, 0.0, TAU, 24, accent_color, 2.0)
+	draw_circle(center, marker_size * 0.54, badge_color)
+	draw_arc(center, marker_size * 0.54, 0.0, TAU, 24, accent_color, 2.0)
+	draw_set_transform(center)
 	match target_room_kind:
 		"treasure":
 			_draw_treasure_marker(marker_size, accent_color)
@@ -116,6 +125,7 @@ func _draw_room_kind_marker() -> void:
 			_draw_challenge_marker(marker_size, accent_color)
 		"boss":
 			_draw_boss_marker(marker_size, accent_color)
+	draw_set_transform(Vector2.ZERO)
 
 
 func _get_marker_accent_color() -> Color:

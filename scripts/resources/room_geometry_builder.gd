@@ -2,10 +2,12 @@ extends RefCounted
 class_name RoomGeometryBuilder
 
 const CELL_SIZE := Vector2(1040.0, 600.0)
-const WALL_TILE_SIZE: float = 40.0
+const CELL_TILE_COLUMNS := 26
+const CELL_TILE_ROWS := 15
+const WALL_TILE_SIZE: float = CELL_SIZE.x / float(CELL_TILE_COLUMNS)
 const WALL_THICKNESS := WALL_TILE_SIZE
 const OPENING_WIDTH := WALL_TILE_SIZE * 5.0
-const TRIGGER_DEPTH := 92.0
+const TRIGGER_DEPTH := WALL_TILE_SIZE * 2.0
 const ENTRY_MARGIN := 96.0
 
 const DIRECTIONS := ["north", "east", "south", "west"]
@@ -75,6 +77,10 @@ static func get_cell_rect(cells: Array[Vector2i], local_cell: Vector2i) -> Rect2
 
 
 static func build_wall_rects(cells: Array[Vector2i], connection_edges: Dictionary = {}) -> Array[Rect2]:
+	return merge_wall_tiles(build_wall_tile_rects(cells, connection_edges))
+
+
+static func build_wall_tile_rects(cells: Array[Vector2i], connection_edges: Dictionary = {}) -> Array[Rect2]:
 	var walls: Array[Rect2] = []
 	var occupied := _build_cell_lookup(cells)
 	var min_cell := get_min_cell(cells)
@@ -95,6 +101,61 @@ static func build_wall_rects(cells: Array[Vector2i], connection_edges: Dictionar
 			for wall_rect in _build_edge_wall_rects(cells, cell, direction, opening):
 				walls.append(wall_rect)
 	return walls
+
+
+static func rects_to_wall_tiles(rects: Array[Rect2]) -> Array[Rect2]:
+	var tiles: Array[Rect2] = []
+	for rect in rects:
+		tiles.append_array(_rect_to_wall_tiles(rect))
+	return tiles
+
+
+static func merge_wall_tiles(tiles: Array[Rect2]) -> Array[Rect2]:
+	var rows := {}
+	for tile in tiles:
+		var key := "%d:%d" % [int(round(tile.position.y)), int(round(tile.size.y))]
+		var row: Array = rows.get(key, [])
+		row.append(tile)
+		rows[key] = row
+	var horizontal: Array[Rect2] = []
+	for key in rows.keys():
+		var row: Array = rows[key]
+		row.sort_custom(func(a: Rect2, b: Rect2) -> bool:
+			return a.position.x < b.position.x
+		)
+		var current: Rect2 = row[0]
+		for index in range(1, row.size()):
+			var next: Rect2 = row[index]
+			var touches: bool = abs((current.position.x + current.size.x) - next.position.x) <= 0.5
+			if touches and abs(current.position.y - next.position.y) <= 0.5 and abs(current.size.y - next.size.y) <= 0.5:
+				current.size.x += next.size.x
+			else:
+				horizontal.append(current)
+				current = next
+		horizontal.append(current)
+	var columns := {}
+	for rect in horizontal:
+		var key := "%d:%d:%d" % [int(round(rect.position.x)), int(round(rect.size.x)), int(round(rect.size.y))]
+		var column: Array = columns.get(key, [])
+		column.append(rect)
+		columns[key] = column
+	var merged: Array[Rect2] = []
+	for key in columns.keys():
+		var column: Array = columns[key]
+		column.sort_custom(func(a: Rect2, b: Rect2) -> bool:
+			return a.position.y < b.position.y
+		)
+		var current: Rect2 = column[0]
+		for index in range(1, column.size()):
+			var next: Rect2 = column[index]
+			var touches: bool = abs((current.position.y + current.size.y) - next.position.y) <= 0.5
+			if touches and abs(current.position.x - next.position.x) <= 0.5 and abs(current.size.x - next.size.x) <= 0.5:
+				current.size.y += next.size.y
+			else:
+				merged.append(current)
+				current = next
+		merged.append(current)
+	return merged
 
 
 static func get_opening_rect(cells: Array[Vector2i], local_cell: Vector2i, direction: String) -> Rect2:
@@ -184,8 +245,8 @@ static func find_contact_edge(source_cells: Array[Vector2i], source_anchor: Vect
 static func _build_edge_wall_rects(cells: Array[Vector2i], local_cell: Vector2i, direction: String, opening: Rect2) -> Array[Rect2]:
 	var rects: Array[Rect2] = []
 	var cell_rect := get_cell_rect(cells, local_cell)
-	var tile_count_x: int = int(round(CELL_SIZE.x / WALL_TILE_SIZE))
-	var tile_count_y: int = int(round(CELL_SIZE.y / WALL_TILE_SIZE))
+	var tile_count_x: int = CELL_TILE_COLUMNS
+	var tile_count_y: int = CELL_TILE_ROWS
 	match direction:
 		"north":
 			for index in range(tile_count_x):

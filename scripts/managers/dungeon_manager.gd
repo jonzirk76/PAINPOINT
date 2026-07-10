@@ -639,11 +639,12 @@ func _apply_floor_scaling(level, room_kind: String) -> void:
 func _apply_room_geometry(level, piece, connection_edges: Dictionary) -> void:
 	level.arena_shape = 0
 	level.arena_bounds = ROOM_GEOMETRY_BUILDER.get_bounds(piece.footprint_cells)
-	var canonical_walls: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_rects(piece.footprint_cells, connection_edges)
-	canonical_walls.append_array(piece.wall_rects.duplicate())
-	level.wall_rects = canonical_walls
+	var wall_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_tile_rects(piece.footprint_cells, connection_edges)
+	wall_tiles.append_array(ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(piece.wall_rects))
+	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(wall_tiles)
 	level.set_meta("footprint_cells", piece.footprint_cells.duplicate())
 	level.set_meta("connection_edges", connection_edges.duplicate())
+	level.set_meta("wall_tile_rects", wall_tiles)
 
 
 func _get_extra_spawner_count(room_kind: String) -> int:

@@ -2238,7 +2238,7 @@ func _update_camera() -> void:
 	else:
 		desired.x = clamp(desired.x, bounds.position.x + half_view.x, bounds.position.x + bounds.size.x - half_view.x)
 	if bounds.size.y <= viewport_size.y:
-		desired.y = bounds.get_center().y
+		desired.y = bounds.position.y + bounds.size.y - half_view.y
 	else:
 		desired.y = clamp(desired.y, bounds.position.y + half_view.y, bounds.position.y + bounds.size.y - half_view.y)
 	gameplay_camera.global_position = desired

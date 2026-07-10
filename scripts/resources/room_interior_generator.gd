@@ -29,11 +29,11 @@ func generate(piece, room_id: String, floor_number: int, floor_seed: int, connec
 	if room_kind == "boss":
 		for attempt in range(MAX_ATTEMPTS):
 			var level = _make_base_level(piece, room_id, floor_number, effective_connection_edges)
-			var shell_walls: Array[Rect2] = level.wall_rects.duplicate()
+			var shell_wall_tiles: Array[Rect2] = _get_level_wall_tiles(level)
 			var blockers: Dictionary = _build_boss_obstacles(level, connections, rng, floor_number, attempt)
-			var boss_walls: Array[Rect2] = shell_walls.duplicate()
-			boss_walls.append_array(blockers["walls"])
-			level.wall_rects = boss_walls
+			var boss_wall_tiles: Array[Rect2] = shell_wall_tiles.duplicate()
+			boss_wall_tiles.append_array(ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(blockers["walls"]))
+			_apply_wall_tiles(level, boss_wall_tiles)
 			level.void_rects = blockers["voids"]
 			level.max_active_enemies = 1
 			var result: Dictionary = validate_level(level, connections, room_kind)
@@ -44,13 +44,13 @@ func generate(piece, room_id: String, floor_number: int, floor_seed: int, connec
 		return fallback_boss
 	for attempt in range(MAX_ATTEMPTS):
 		var level = _make_base_level(piece, room_id, floor_number, effective_connection_edges)
-		var shell_walls: Array[Rect2] = level.wall_rects.duplicate()
+		var shell_wall_tiles: Array[Rect2] = _get_level_wall_tiles(level)
 		var archetype: int = (rng.randi_range(0, 4) + attempt) % 5
 		var blockers: Dictionary = _build_obstacles(level, connections, archetype, rng, room_kind, floor_number)
-		var generated_walls: Array[Rect2] = shell_walls.duplicate()
-		generated_walls.append_array(blockers["walls"])
+		var generated_wall_tiles: Array[Rect2] = shell_wall_tiles.duplicate()
+		generated_wall_tiles.append_array(ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(blockers["walls"]))
 		var generated_voids: Array[Rect2] = blockers["voids"]
-		level.wall_rects = generated_walls
+		_apply_wall_tiles(level, generated_wall_tiles)
 		level.void_rects = generated_voids
 		var generated_spawners: Array[Resource] = _build_spawner_placements(level, room_kind, floor_number, rng)
 		level.spawner_placements = generated_spawners
@@ -146,12 +146,12 @@ func _make_base_level(piece, room_id: String, floor_number: int, connection_edge
 	var empty_positions: Array[Vector2] = []
 	var empty_placements: Array[Resource] = []
 	var empty_props: Array[Resource] = []
-	var shell_walls: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_rects(piece.footprint_cells, connection_edges)
+	var shell_wall_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_tile_rects(piece.footprint_cells, connection_edges)
 	var empty_voids: Array[Rect2] = []
 	level.spawner_positions = empty_positions
 	level.spawner_placements = empty_placements
 	level.destructible_prop_placements = empty_props
-	level.wall_rects = shell_walls
+	_apply_wall_tiles(level, shell_wall_tiles)
 	level.void_rects = empty_voids
 	level.set_meta("footprint_cells", piece.footprint_cells.duplicate())
 	level.set_meta("connection_edges", connection_edges.duplicate())
@@ -773,6 +773,20 @@ func _get_room_spawn_position(level) -> Vector2:
 	return ROOM_GEOMETRY_BUILDER.get_spawn_position(_get_level_footprint_cells(level))
 
 
+func _apply_wall_tiles(level, wall_tiles: Array[Rect2]) -> void:
+	level.set_meta("wall_tile_rects", wall_tiles)
+	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(wall_tiles)
+
+
+func _get_level_wall_tiles(level) -> Array[Rect2]:
+	if level != null and level.has_meta("wall_tile_rects"):
+		var typed_tiles: Array[Rect2] = []
+		for rect in level.get_meta("wall_tile_rects"):
+			typed_tiles.append(rect)
+		return typed_tiles
+	return ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(level.wall_rects)
+
+
 func _get_spawner_options(floor_number: int) -> Array[Dictionary]:
 	var options: Array[Dictionary] = []
 	var floor_pressure_bonus: int = max(floor_number - 1, 0)
@@ -888,9 +902,10 @@ func _apply_fallback_interior(level, room_kind: String, floor_number: int, rng: 
 		_rect_at(center + Vector2(bounds.size.x * 0.18, bounds.size.y * 0.16), Vector2(2, 1))
 	]
 	var fallback_voids: Array[Rect2] = []
-	var shell_walls: Array[Rect2] = level.wall_rects.duplicate()
-	shell_walls.append_array(fallback_walls)
-	level.wall_rects = shell_walls
+	var shell_wall_tiles: Array[Rect2] = _get_level_wall_tiles(level)
+	var fallback_wall_tiles := shell_wall_tiles.duplicate()
+	fallback_wall_tiles.append_array(ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(fallback_walls))
+	_apply_wall_tiles(level, fallback_wall_tiles)
 	level.void_rects = fallback_voids
 	var min_count := _get_spawner_count_bounds(level, room_kind).x
 	var profiles := _build_spawner_profile_budget(room_kind, floor_number, rng, _get_level_cell_count(level))
@@ -901,7 +916,7 @@ func _apply_fallback_interior(level, room_kind: String, floor_number: int, rng: 
 	var points := _build_fallback_spawner_points(bounds, 7)
 	var selected_points := _select_fallback_spawner_points(level, points, min_count)
 	if selected_points.size() < min_count:
-		level.wall_rects = shell_walls.duplicate()
+		_apply_wall_tiles(level, fallback_wall_tiles.duplicate())
 		selected_points = _select_fallback_spawner_points(level, points, min_count)
 	for index in range(min_count):
 		var placement = SPAWNER_PLACEMENT_SCRIPT.new()
@@ -924,9 +939,10 @@ func _apply_fallback_boss_interior(level) -> void:
 	var fallback_voids: Array[Rect2] = []
 	var empty_spawners: Array[Resource] = []
 	var empty_positions: Array[Vector2] = []
-	var shell_walls: Array[Rect2] = level.wall_rects.duplicate()
-	shell_walls.append_array(fallback_walls)
-	level.wall_rects = shell_walls
+	var shell_wall_tiles: Array[Rect2] = _get_level_wall_tiles(level)
+	var fallback_wall_tiles := shell_wall_tiles.duplicate()
+	fallback_wall_tiles.append_array(ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(fallback_walls))
+	_apply_wall_tiles(level, fallback_wall_tiles)
 	level.void_rects = fallback_voids
 	level.spawner_placements = empty_spawners
 	level.spawner_positions = empty_positions
