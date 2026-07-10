@@ -1,6 +1,8 @@
 extends Node2D
 class_name ArenaView
 
+const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_builder.gd")
+
 @export var arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 @export var grid_size: float = 60.0
 @export var arena_shape: int = 0
@@ -138,7 +140,7 @@ func _draw_canonical_grid() -> void:
 
 
 func _cell_rect(cell: Vector2i) -> Rect2:
-	return Rect2(arena_bounds.position + Vector2(float(cell.x) * 1040.0, float(cell.y) * 600.0), Vector2(1040.0, 600.0))
+	return Rect2(arena_bounds.position + Vector2(float(cell.x) * ROOM_GEOMETRY_BUILDER.CELL_SIZE.x, float(cell.y) * ROOM_GEOMETRY_BUILDER.CELL_SIZE.y), ROOM_GEOMETRY_BUILDER.CELL_SIZE)
 
 
 func _get_meta_rects(level_definition, meta_key: String, fallback: Array[Rect2]) -> Array[Rect2]:

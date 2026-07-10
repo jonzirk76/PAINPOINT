@@ -1,12 +1,12 @@
 extends RefCounted
 class_name RoomGeometryBuilder
 
-const CELL_SIZE := Vector2(1040.0, 600.0)
-const CELL_TILE_COLUMNS := 26
-const CELL_TILE_ROWS := 15
+const CELL_SIZE := Vector2(1280.0, 720.0)
+const CELL_TILE_COLUMNS := 32
+const CELL_TILE_ROWS := 18
 const WALL_TILE_SIZE: float = CELL_SIZE.x / float(CELL_TILE_COLUMNS)
 const WALL_THICKNESS := WALL_TILE_SIZE
-const OPENING_WIDTH := WALL_TILE_SIZE * 5.0
+const OPENING_WIDTH := WALL_TILE_SIZE * 4.0
 const TRIGGER_DEPTH := WALL_TILE_SIZE * 2.0
 const ENTRY_MARGIN := 96.0
 
