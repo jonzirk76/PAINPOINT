@@ -12,6 +12,8 @@ var unlocked: bool = false
 var visual_size: Vector2 = Vector2.ZERO
 var visual_offset: Vector2 = Vector2.ZERO
 var _collision_shape: CollisionShape2D = null
+var _gate_body: StaticBody2D = null
+var _gate_collision_shape: CollisionShape2D = null
 var _armed: bool = false
 
 
@@ -35,13 +37,16 @@ func initialize(door_direction: String, target_id: String, center_position: Vect
 	unlocked = is_unlocked
 	_armed = false
 	_add_or_update_collision()
+	_add_or_update_gate_collision()
 	set_physics_process(unlocked)
 	queue_redraw()
 
 
 func set_visual_rect(center_position: Vector2, size: Vector2) -> void:
-	visual_offset = center_position - global_position
-	visual_size = size
+	var snapped_center := Vector2(round(center_position.x), round(center_position.y))
+	visual_offset = snapped_center - global_position
+	visual_size = Vector2(round(size.x), round(size.y))
+	_add_or_update_gate_collision()
 	queue_redraw()
 
 
@@ -49,8 +54,15 @@ func set_unlocked(value: bool) -> void:
 	unlocked = value
 	if not unlocked:
 		_armed = false
+	_set_gate_blocking_enabled(not unlocked)
 	set_physics_process(unlocked and not _armed)
 	queue_redraw()
+
+
+func is_gate_blocking() -> bool:
+	if _gate_body == null or _gate_collision_shape == null:
+		return false
+	return _gate_body.collision_layer != 0 and not _gate_collision_shape.disabled
 
 
 func _configure_collision_identity() -> void:
@@ -93,16 +105,17 @@ func _has_player_overlap() -> bool:
 func _draw() -> void:
 	var size := visual_size if visual_size != Vector2.ZERO else door_size
 	var rect := Rect2(visual_offset - size * 0.5, size)
+	var drawn_rect := rect.grow(-1.0) if rect.size.x > 2.0 and rect.size.y > 2.0 else rect
 	var trim_color := Color(0.16, 0.17, 0.18, 1.0)
 	if not unlocked:
 		var fill_color := Color(0.075, 0.08, 0.09, 1.0)
 		if has_special_marker():
 			fill_color = Color(0.095, 0.085, 0.105, 1.0)
-		draw_rect(rect, fill_color, true)
-		draw_rect(rect, trim_color, false, 2.0)
-		_draw_room_kind_marker(rect.get_center(), min(rect.size.x, rect.size.y))
+		draw_rect(drawn_rect, fill_color, true)
+		draw_rect(drawn_rect, trim_color, false, 2.0)
+		_draw_room_kind_marker(drawn_rect.get_center(), min(drawn_rect.size.x, drawn_rect.size.y))
 	elif has_special_marker():
-		_draw_room_kind_marker(rect.get_center(), min(rect.size.x, rect.size.y))
+		_draw_room_kind_marker(drawn_rect.get_center(), min(drawn_rect.size.x, drawn_rect.size.y))
 
 
 func has_special_marker() -> bool:
@@ -184,3 +197,29 @@ func _add_or_update_collision() -> void:
 	var shape := RectangleShape2D.new()
 	shape.size = door_size
 	_collision_shape.shape = shape
+
+
+func _add_or_update_gate_collision() -> void:
+	if _gate_body == null:
+		_gate_body = StaticBody2D.new()
+		_gate_body.name = "GateBlocker"
+		_gate_body.add_to_group("arena_walls")
+		add_child(_gate_body)
+	if _gate_collision_shape == null:
+		_gate_collision_shape = CollisionShape2D.new()
+		_gate_collision_shape.name = "CollisionShape2D"
+		_gate_body.add_child(_gate_collision_shape)
+	var size := visual_size if visual_size != Vector2.ZERO else door_size
+	var shape := RectangleShape2D.new()
+	shape.size = size
+	_gate_body.position = visual_offset
+	_gate_collision_shape.shape = shape
+	_set_gate_blocking_enabled(not unlocked)
+
+
+func _set_gate_blocking_enabled(value: bool) -> void:
+	if _gate_body == null or _gate_collision_shape == null:
+		return
+	_gate_body.collision_layer = 32 if value else 0
+	_gate_body.collision_mask = 0
+	_gate_collision_shape.disabled = not value

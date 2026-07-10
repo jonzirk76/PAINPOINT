@@ -3219,10 +3219,28 @@ func _test_room_manager_doors(failures: Array[String]) -> void:
 			failures.append("Door entity is missing the dungeon_doors group.")
 		if not child.unlocked:
 			failures.append("RoomManager should unlock doors for an already-cleared room.")
+		if child.has_method("is_gate_blocking") and child.is_gate_blocking():
+			failures.append("Unlocked dungeon doors should not keep gate collision enabled.")
 		if (child.collision_mask & 1) == 0:
 			failures.append("Door entity should watch the player collision layer.")
 		if not child.visible:
 			failures.append("Generated dungeon doors should draw visible gate tiles aligned to wall openings.")
+	var locked_layer := Node2D.new()
+	var locked_manager = load("res://scripts/managers/room_manager.gd").new()
+	root.add_child(locked_layer)
+	root.add_child(locked_manager)
+	locked_manager.initialize({
+		"door_layer": locked_layer
+	})
+	locked_manager.load_room(dungeon.get_current_level_definition(), dungeon.get_current_door_infos(), false)
+	for child in locked_layer.get_children():
+		if not child.has_method("is_gate_blocking") or not child.is_gate_blocking():
+			failures.append("Locked dungeon doors should block movement with gate collision.")
+		child.set_unlocked(true)
+		if child.has_method("is_gate_blocking") and child.is_gate_blocking():
+			failures.append("Dungeon gate collision should disable when a door unlocks.")
+	locked_manager.free()
+	locked_layer.free()
 	var marker_layer := Node2D.new()
 	var marker_manager = load("res://scripts/managers/room_manager.gd").new()
 	var marker_level = load("res://scripts/resources/level_definition.gd").new()
@@ -3251,6 +3269,12 @@ func _test_room_manager_doors(failures: Array[String]) -> void:
 	root.add_child(direct_door)
 	root.add_child(player)
 	direct_door.initialize("east", "next", Vector2.ZERO, Vector2(28.0, 92.0), true, "boss")
+	if direct_door.is_gate_blocking():
+		failures.append("Direct unlocked door should not create blocking gate collision.")
+	direct_door.set_unlocked(false)
+	if not direct_door.is_gate_blocking():
+		failures.append("Direct locked door should create blocking gate collision.")
+	direct_door.set_unlocked(true)
 	if not direct_door.has_special_marker():
 		failures.append("Door entity should treat boss targets as special marked doors.")
 	direct_door.entered.connect(func(_door) -> void:
