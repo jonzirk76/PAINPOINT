@@ -64,6 +64,7 @@ const SCRIPT_PATHS := [
 	"res://scripts/resources/destructible_prop_placement.gd",
 	"res://scripts/resources/room_piece_definition.gd",
 	"res://scripts/resources/room_interior_generator.gd",
+	"res://scripts/resources/room_geometry_builder.gd",
 	"res://scripts/resources/health_pickup.gd"
 ]
 
@@ -126,6 +127,7 @@ const CHARACTER_SVG_PATHS := [
 
 const ROOM_PIECE_PATHS := [
 	"res://resources/rooms/start_square.tres",
+	"res://resources/rooms/combat_cell.tres",
 	"res://resources/rooms/combat_wide.tres",
 	"res://resources/rooms/combat_tall.tres",
 	"res://resources/rooms/combat_l_room.tres",
@@ -1429,6 +1431,20 @@ func _test_reward_driven_pickup_drops(failures: Array[String]) -> void:
 		var heal_pickup = manager._pickups[0]
 		if heal_pickup.upgrade_effect == null or heal_pickup.upgrade_effect.get_pickup_kind() != "heal":
 			failures.append("Enemy heal drop should use the heal pickup resource.")
+		heal_pickup._process(heal_pickup.lifetime_seconds + 0.1)
+		if manager.get_pickup_count() != 0:
+			failures.append("Enemy heal drops should still despawn after their normal lifetime.")
+	manager.clear_pickups()
+	manager.enemy_heal_drop_chance = 0.0
+	manager.enemy_overdrive_ammo_drop_chance = 1.0
+	manager.roll_enemy_drop(Vector2.ZERO)
+	if manager.get_pickup_count() != 1:
+		failures.append("Forced enemy overdrive ammo drop should create one pickup.")
+	else:
+		var ammo_pickup = manager._pickups[0]
+		ammo_pickup._process(ammo_pickup.lifetime_seconds + 0.1)
+		if manager.get_pickup_count() != 0:
+			failures.append("Enemy overdrive ammo drops should still despawn after their normal lifetime.")
 	manager.clear_pickups()
 	manager.spawn_overdrive_reward_choices(Vector2.ZERO)
 	if manager.get_pickup_count() != 3:
@@ -1463,6 +1479,31 @@ func _test_reward_driven_pickup_drops(failures: Array[String]) -> void:
 		for choice in manager._pickups:
 			if choice.upgrade_effect == null or choice.upgrade_effect.get_pickup_kind() != "permanent":
 				failures.append("Treasure reward choices should be permanent stat upgrades.")
+	manager.clear_pickups()
+	manager.set_room_context(2, "treasure_1")
+	manager.spawn_treasure_reward_choices(Vector2(12.0, 18.0))
+	if manager.get_pickup_count() != 3:
+		failures.append("Persistent treasure room should spawn three permanent choices.")
+	else:
+		var persistent_choice = manager._pickups[0]
+		persistent_choice._process(persistent_choice.lifetime_seconds + 2.0)
+		if manager.get_pickup_count() != 3:
+			failures.append("Permanent upgrade choices should not despawn while staying on the floor.")
+		manager.clear_pickups()
+		if manager.get_pickup_count() != 0:
+			failures.append("Room transition should clear active permanent pickup nodes.")
+		manager.rehydrate_current_room_permanent_pickups()
+		if manager.get_pickup_count() != 3:
+			failures.append("Uncollected permanent upgrade choices should rehydrate when returning to the room.")
+		var player_for_persistent = load("res://scenes/entities/player_entity.tscn").instantiate()
+		manager._pickups[0]._on_body_entered(player_for_persistent)
+		if not manager.collect_focused_reward() or manager.get_pickup_count() != 0:
+			failures.append("Selecting one persistent permanent choice should clear the whole choice group.")
+		manager.rehydrate_current_room_permanent_pickups()
+		if manager.get_pickup_count() != 0:
+			failures.append("Selected persistent permanent choices should not rehydrate later.")
+		player_for_persistent.free()
+	manager.clear_floor_persistent_pickups()
 	manager.free()
 	pickup_layer.free()
 
@@ -2402,6 +2443,15 @@ func _test_room_piece_resources(failures: Array[String]) -> void:
 			continue
 		if piece.footprint_cells.is_empty():
 			failures.append("Room piece has no footprint cells: %s" % path)
+		var footprint_result: Dictionary = piece.validate_footprint()
+		if not bool(footprint_result.get("ok", false)):
+			failures.append("Room piece has invalid canonical footprint %s: %s" % [path, String(footprint_result.get("reason", ""))])
+		if piece.id != "combat_crossroads" and piece.footprint_cells.size() > 4:
+			failures.append("Only combat_crossroads may exceed four cells: %s" % path)
+		if piece.id == "combat_crossroads" and piece.footprint_cells.size() != 5:
+			failures.append("Combat crossroads should remain the sole five-cell room.")
+		if (piece.room_kind == "start" or piece.room_kind == "treasure") and piece.footprint_cells.size() != 1:
+			failures.append("Entry and treasure rooms should stay one cell: %s" % path)
 		if piece.get_connector_directions().is_empty():
 			failures.append("Room piece has no connector directions: %s" % path)
 		var level = piece.create_level_definition()
@@ -2421,10 +2471,11 @@ func _test_room_piece_resources(failures: Array[String]) -> void:
 			failures.append("Room piece boss spawn position is outside its playable shape: %s" % path)
 		if piece.room_kind == "combat":
 			combat_piece_count += 1
-			if level.get_spawner_count() < 4:
-				failures.append("Large combat room piece should carry at least four spawners: %s" % path)
-			if int(level.max_active_enemies) < 30:
-				failures.append("Combat room pieces should support larger battles: %s" % path)
+			var cell_count := piece.footprint_cells.size()
+			if cell_count == 1 and int(level.max_active_enemies) < 20:
+				failures.append("One-cell combat room pieces should still support a small encounter: %s" % path)
+			elif cell_count >= 4 and int(level.max_active_enemies) < 30:
+				failures.append("Large combat room pieces should support larger battles: %s" % path)
 		if piece.room_kind == "challenge" and level.get_spawner_count() < 5:
 			failures.append("Challenge room piece should carry at least five spawners: %s" % path)
 		if piece.room_kind == "boss":
@@ -2434,8 +2485,8 @@ func _test_room_piece_resources(failures: Array[String]) -> void:
 				failures.append("Boss room shell should carry a boss profile.")
 			if level.max_active_enemies <= 1:
 				failures.append("Boss room max active enemies should allow the boss encounter.")
-	if combat_piece_count < 7:
-		failures.append("Dungeon solver should have at least seven combat room pieces to vary floor shapes.")
+	if combat_piece_count < 8:
+		failures.append("Dungeon solver should have at least eight combat room pieces to vary floor sizes and shapes.")
 	var fallback_piece = load("res://scripts/resources/room_piece_definition.gd").new()
 	fallback_piece.id = "combat_wide"
 	fallback_piece.room_kind = "combat"
@@ -2466,7 +2517,7 @@ func _test_room_interior_generator_determinism_and_budget(failures: Array[String
 		failures.append("Generated combat rooms should respect the v1 spawner count bounds.")
 	if floor_one.destructible_prop_placements.size() < 2:
 		failures.append("Generated combat rooms should include destructible crate/barrel cover.")
-	if int(floor_one.max_active_enemies) != clamp(24 + 1 * 4 + floor_one.get_spawner_count() * 2, 30, 52):
+	if int(floor_one.max_active_enemies) != clamp(18 + 2 * 5 + floor_one.get_spawner_count() * 2 + 1 * 3, 24, 60):
 		failures.append("Generated combat rooms should compute floor-scaled max active enemies.")
 	if not _generated_room_has_non_basic_spawner(floor_one):
 		failures.append("Floor-one generated combat rooms should not collapse into only basic generals.")
@@ -2490,7 +2541,7 @@ func _test_room_interior_generator_determinism_and_budget(failures: Array[String
 	var challenge = generator.generate(challenge_piece, "challenge_1", 5, 5555, {"north": "start", "west": "path_1"})
 	if challenge.get_spawner_count() < 5 or challenge.get_spawner_count() > 7:
 		failures.append("Generated challenge rooms should respect the v1 spawner count bounds.")
-	if int(challenge.max_active_enemies) != clamp(24 + 5 * 4 + challenge.get_spawner_count() * 2, 30, 52):
+	if int(challenge.max_active_enemies) != clamp(18 + 3 * 5 + challenge.get_spawner_count() * 2 + 4 + 5 * 3, 24, 60):
 		failures.append("Generated challenge rooms should compute floor-scaled max active enemies.")
 	var boss = generator.generate(boss_piece, "boss", 4, 5555, {"west": "path_3"})
 	var repeated_boss = generator.generate(boss_piece, "boss", 4, 5555, {"west": "path_3"})
@@ -3012,6 +3063,33 @@ func _validate_dungeon_layout_integrity(manager, failures: Array[String], label:
 			if String(target_connections.get(opposite, "")) != String(room_id):
 				failures.append("Dungeon layout connection should be reciprocal %s.%s -> %s.%s: %s" % [room_id, direction, target_id, opposite, label])
 	_validate_dungeon_physical_door_adjacency(rooms_by_id, failures, label)
+	_validate_dungeon_room_size_mix(rooms_by_id, failures, label)
+
+
+func _validate_dungeon_room_size_mix(rooms_by_id: Dictionary, failures: Array[String], label: String) -> void:
+	var combat_count := 0
+	var large_count := 0
+	var crossroads_count := 0
+	for room_id in rooms_by_id.keys():
+		var room_info: Dictionary = rooms_by_id[room_id]
+		var kind := String(room_info.get("kind", ""))
+		var cell_count := Array(room_info.get("footprint_cells", [])).size()
+		if kind == "start" or kind == "treasure":
+			if cell_count != 1:
+				failures.append("Dungeon special rooms should stay one cell: %s %s" % [room_id, label])
+		if kind != "combat":
+			continue
+		combat_count += 1
+		if cell_count > 5:
+			failures.append("Dungeon combat room exceeded the five-cell hard limit: %s %s" % [room_id, label])
+		if cell_count == 5:
+			crossroads_count += 1
+		elif cell_count >= 4:
+			large_count += 1
+	if crossroads_count > 1:
+		failures.append("Dungeon should place at most one five-cell crossroads room per floor: %s" % label)
+	if combat_count > 0 and large_count > max(1, int(ceil(float(combat_count) * 0.25))):
+		failures.append("Dungeon generated too many four-cell combat rooms: %s" % label)
 
 
 func _validate_dungeon_physical_door_adjacency(rooms_by_id: Dictionary, failures: Array[String], label: String) -> void:
@@ -3127,6 +3205,11 @@ func _test_room_manager_doors(failures: Array[String]) -> void:
 	dungeon.current_room_id = "start"
 	manager.set_enabled(true)
 	manager.load_room(dungeon.get_current_level_definition(), dungeon.get_current_door_infos(), true)
+	for door_info in dungeon.get_current_door_infos():
+		if not door_info.has("trigger_rect") or not door_info.has("opening_rect"):
+			failures.append("Dungeon door infos should expose derived trigger and opening rects.")
+		if not door_info.has("source_cell") or not door_info.has("target_cell"):
+			failures.append("Dungeon door infos should expose source and target cells.")
 	if manager.get_door_count() < 2:
 		failures.append("RoomManager should create doors for the start room's connected exits.")
 	if door_layer.get_child_count() != manager.get_door_count():
@@ -3138,6 +3221,8 @@ func _test_room_manager_doors(failures: Array[String]) -> void:
 			failures.append("RoomManager should unlock doors for an already-cleared room.")
 		if (child.collision_mask & 1) == 0:
 			failures.append("Door entity should watch the player collision layer.")
+		if child.visible:
+			failures.append("Generated dungeon doors should use invisible triggers aligned to wall openings.")
 	var marker_layer := Node2D.new()
 	var marker_manager = load("res://scripts/managers/room_manager.gd").new()
 	var marker_level = load("res://scripts/resources/level_definition.gd").new()

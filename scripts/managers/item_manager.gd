@@ -43,6 +43,9 @@ var _effect_index: int = 0
 var _reward_choice_group_index: int = 0
 var _choice_groups: Dictionary = {}
 var _focused_reward_pickup = null
+var _current_floor: int = 0
+var _current_room_id: String = ""
+var _persistent_permanent_pickups: Dictionary = {}
 
 
 func initialize(context: Dictionary) -> void:
@@ -52,6 +55,7 @@ func initialize(context: Dictionary) -> void:
 
 func reset_run() -> void:
 	clear_pickups()
+	clear_floor_persistent_pickups()
 	_spawn_timer = pickup_spawn_interval
 	_effect_index = 0
 	_reward_choice_group_index = 0
@@ -69,6 +73,26 @@ func clear_pickups() -> void:
 	pickup_count_changed.emit(0)
 
 
+func clear_floor_persistent_pickups() -> void:
+	_persistent_permanent_pickups.clear()
+
+
+func set_room_context(floor_number: int, room_id: String) -> void:
+	_current_floor = floor_number
+	_current_room_id = room_id
+
+
+func rehydrate_current_room_permanent_pickups() -> void:
+	if _current_room_id.is_empty():
+		return
+	var room_key := _get_current_room_persistent_key()
+	var saved_pickups: Array = _persistent_permanent_pickups.get(room_key, [])
+	for saved in saved_pickups:
+		var data := Dictionary(saved)
+		_spawn_pickup_from_persistent_data(data)
+	pickup_count_changed.emit(_pickups.size())
+
+
 func set_enabled(value: bool) -> void:
 	enabled = value
 
@@ -79,13 +103,14 @@ func _process(delta: float) -> void:
 	_spawn_timer = max(_spawn_timer - delta, 0.0)
 
 
-func spawn_pickup(effect, spawn_position: Vector2, requires_confirm: bool = false, choice_group_id: String = ""):
+func spawn_pickup(effect, spawn_position: Vector2, requires_confirm: bool = false, choice_group_id: String = "", persist_for_floor: bool = false):
+	persist_for_floor = persist_for_floor or _should_persist_for_floor(effect)
 	var pickup = pickup_scene.instantiate()
 	if _pickup_layer != null:
 		_pickup_layer.add_child(pickup)
 	else:
 		add_child(pickup)
-	pickup.initialize(effect, spawn_position, requires_confirm, choice_group_id)
+	pickup.initialize(effect, spawn_position, requires_confirm, choice_group_id, persist_for_floor)
 	pickup.collected.connect(_on_pickup_collected)
 	pickup.expired.connect(_on_pickup_expired)
 	if pickup.has_signal("focused"):
@@ -97,6 +122,8 @@ func spawn_pickup(effect, spawn_position: Vector2, requires_confirm: bool = fals
 		var group: Array = _choice_groups.get(choice_group_id, [])
 		group.append(pickup)
 		_choice_groups[choice_group_id] = group
+	if persist_for_floor:
+		_register_persistent_pickup(pickup, effect, spawn_position, requires_confirm, choice_group_id)
 	pickup_count_changed.emit(_pickups.size())
 	return pickup
 
@@ -163,7 +190,10 @@ func _on_pickup_collected(pickup, _collector: Node, effect) -> void:
 	_pickups.erase(pickup)
 	var choice_group_id := String(pickup.get("choice_group_id")) if pickup != null else ""
 	if not choice_group_id.is_empty():
+		_clear_persistent_choice_group(choice_group_id)
 		_clear_choice_group(choice_group_id, pickup)
+	else:
+		_clear_persistent_pickup(pickup)
 	if pickup == _focused_reward_pickup:
 		_focused_reward_pickup = null
 		reward_focus_changed.emit(null, "")
@@ -242,6 +272,87 @@ func _clear_choice_group(choice_group_id: String, selected_pickup) -> void:
 		if is_instance_valid(pickup):
 			pickup.queue_free()
 	_choice_groups.erase(choice_group_id)
+
+
+func _should_persist_for_floor(effect) -> bool:
+	if effect == null or _current_room_id.is_empty():
+		return false
+	if not effect.has_method("get_pickup_kind"):
+		return false
+	return String(effect.get_pickup_kind()) == "permanent"
+
+
+func _register_persistent_pickup(pickup, effect, spawn_position: Vector2, requires_confirm: bool, choice_group_id: String) -> void:
+	var room_key := _get_current_room_persistent_key()
+	var persistent_id := "%s_pickup_%d" % [room_key, _get_persistent_room_pickups(room_key).size()]
+	pickup.set_meta("persistent_pickup_id", persistent_id)
+	var data := {
+		"id": persistent_id,
+		"effect": effect,
+		"position": spawn_position,
+		"requires_confirm": requires_confirm,
+		"choice_group_id": choice_group_id
+	}
+	var saved_pickups := _get_persistent_room_pickups(room_key)
+	saved_pickups.append(data)
+	_persistent_permanent_pickups[room_key] = saved_pickups
+
+
+func _spawn_pickup_from_persistent_data(data: Dictionary):
+	var pickup = pickup_scene.instantiate()
+	if _pickup_layer != null:
+		_pickup_layer.add_child(pickup)
+	else:
+		add_child(pickup)
+	var effect = data.get("effect", null)
+	var spawn_position: Vector2 = data.get("position", Vector2.ZERO)
+	var requires_confirm := bool(data.get("requires_confirm", false))
+	var choice_group_id := String(data.get("choice_group_id", ""))
+	pickup.initialize(effect, spawn_position, requires_confirm, choice_group_id, true)
+	pickup.set_meta("persistent_pickup_id", String(data.get("id", "")))
+	pickup.collected.connect(_on_pickup_collected)
+	pickup.expired.connect(_on_pickup_expired)
+	if pickup.has_signal("focused"):
+		pickup.focused.connect(_on_pickup_focused)
+	if pickup.has_signal("focus_exited"):
+		pickup.focus_exited.connect(_on_pickup_focus_exited)
+	_pickups.append(pickup)
+	if requires_confirm and not choice_group_id.is_empty():
+		var group: Array = _choice_groups.get(choice_group_id, [])
+		group.append(pickup)
+		_choice_groups[choice_group_id] = group
+	return pickup
+
+
+func _clear_persistent_pickup(pickup) -> void:
+	if pickup == null or not pickup.has_meta("persistent_pickup_id"):
+		return
+	var persistent_id := String(pickup.get_meta("persistent_pickup_id"))
+	var room_key := _get_current_room_persistent_key()
+	var saved_pickups := _get_persistent_room_pickups(room_key)
+	for index in range(saved_pickups.size() - 1, -1, -1):
+		var data := Dictionary(saved_pickups[index])
+		if String(data.get("id", "")) == persistent_id:
+			saved_pickups.remove_at(index)
+	_persistent_permanent_pickups[room_key] = saved_pickups
+
+
+func _clear_persistent_choice_group(choice_group_id: String) -> void:
+	var room_key := _get_current_room_persistent_key()
+	var saved_pickups := _get_persistent_room_pickups(room_key)
+	for index in range(saved_pickups.size() - 1, -1, -1):
+		var data := Dictionary(saved_pickups[index])
+		if String(data.get("choice_group_id", "")) == choice_group_id:
+			saved_pickups.remove_at(index)
+	_persistent_permanent_pickups[room_key] = saved_pickups
+
+
+func _get_persistent_room_pickups(room_key: String) -> Array:
+	return _persistent_permanent_pickups.get(room_key, []).duplicate()
+
+
+func _get_current_room_persistent_key() -> String:
+	return "%d:%s" % [_current_floor, _current_room_id]
 
 
 func _get_reward_description(effect) -> String:

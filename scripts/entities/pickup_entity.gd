@@ -12,6 +12,7 @@ signal focus_exited(pickup, collector: Node, upgrade_effect)
 var upgrade_effect = null
 var requires_confirm: bool = false
 var choice_group_id: String = ""
+var persistent_until_floor_change: bool = false
 var _age: float = 0.0
 var _is_expired: bool = false
 var _focused_body: Node = null
@@ -28,16 +29,19 @@ func _ready() -> void:
 	queue_redraw()
 
 
-func initialize(effect, spawn_position: Vector2, confirm_required: bool = false, reward_choice_group_id: String = "") -> void:
+func initialize(effect, spawn_position: Vector2, confirm_required: bool = false, reward_choice_group_id: String = "", persist_for_floor: bool = false) -> void:
 	upgrade_effect = effect
 	global_position = spawn_position
 	requires_confirm = confirm_required
 	choice_group_id = reward_choice_group_id
+	persistent_until_floor_change = persist_for_floor
 	queue_redraw()
 
 
 func _process(delta: float) -> void:
 	if _is_expired:
+		return
+	if persistent_until_floor_change or lifetime_seconds <= 0.0:
 		return
 	_age += delta
 	if _age >= lifetime_seconds:

@@ -2,9 +2,11 @@ extends Resource
 class_name RoomPieceDefinition
 
 const LEVEL_DEFINITION_SCRIPT := preload("res://scripts/resources/level_definition.gd")
+const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_builder.gd")
 const CARDINAL_CONNECTORS := ["north", "east", "south", "west"]
 const CONNECTOR_FALLBACKS := {
 	"start_square": ["north", "east", "south", "west"],
+	"combat_cell": ["north", "east", "south", "west"],
 	"combat_wide": ["west", "east", "north", "south"],
 	"combat_tall": ["west", "east", "north", "south"],
 	"combat_l_room": ["west", "east", "south", "north"],
@@ -38,16 +40,20 @@ func create_level_definition():
 	level.id = id
 	level.display_name = display_name
 	level.difficulty_label = room_kind.capitalize()
-	level.arena_shape = arena_shape
-	level.arena_bounds = arena_bounds
+	level.arena_shape = 0
+	level.arena_bounds = ROOM_GEOMETRY_BUILDER.get_bounds(footprint_cells)
 	level.spawner_placements = spawner_placements.duplicate()
 	level.destructible_prop_placements = destructible_prop_placements.duplicate()
-	level.wall_rects = wall_rects.duplicate()
+	var canonical_walls: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_rects(footprint_cells)
+	canonical_walls.append_array(wall_rects.duplicate())
+	level.wall_rects = canonical_walls
 	var empty_voids: Array[Rect2] = []
 	level.void_rects = empty_voids
 	level.max_active_enemies = max_active_enemies
 	level.boss_profile = boss_profile
 	level.boss_spawn_position = boss_spawn_position
+	level.set_meta("footprint_cells", footprint_cells.duplicate())
+	level.set_meta("connection_edges", {})
 	return level
 
 
@@ -66,16 +72,12 @@ func has_connector(direction: String) -> bool:
 
 
 func get_min_cell() -> Vector2i:
-	var min_cell := footprint_cells[0]
-	for cell in footprint_cells:
-		min_cell.x = min(min_cell.x, cell.x)
-		min_cell.y = min(min_cell.y, cell.y)
-	return min_cell
+	return ROOM_GEOMETRY_BUILDER.get_min_cell(footprint_cells)
 
 
 func get_max_cell() -> Vector2i:
-	var max_cell := footprint_cells[0]
-	for cell in footprint_cells:
-		max_cell.x = max(max_cell.x, cell.x)
-		max_cell.y = max(max_cell.y, cell.y)
-	return max_cell
+	return ROOM_GEOMETRY_BUILDER.get_max_cell(footprint_cells)
+
+
+func validate_footprint() -> Dictionary:
+	return ROOM_GEOMETRY_BUILDER.validate_footprint(id, room_kind, footprint_cells)

@@ -5,6 +5,7 @@ signal dungeon_generated(room_count: int)
 signal room_changed(room_id: String)
 
 const START_PIECE := preload("res://resources/rooms/start_square.tres")
+const CELL_PIECE := preload("res://resources/rooms/combat_cell.tres")
 const WIDE_PIECE := preload("res://resources/rooms/combat_wide.tres")
 const TALL_PIECE := preload("res://resources/rooms/combat_tall.tres")
 const L_PIECE := preload("res://resources/rooms/combat_l_room.tres")
@@ -16,6 +17,7 @@ const TREASURE_PIECE := preload("res://resources/rooms/treasure_nook.tres")
 const CHALLENGE_PIECE := preload("res://resources/rooms/challenge_zigzag.tres")
 const BOSS_PIECE := preload("res://resources/rooms/boss_chamber.tres")
 const ROOM_INTERIOR_GENERATOR_SCRIPT := preload("res://scripts/resources/room_interior_generator.gd")
+const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_builder.gd")
 const SPAWNER_PLACEMENT_SCRIPT := preload("res://scripts/resources/spawner_placement.gd")
 const BASIC_SPAWNER := preload("res://resources/spawners/basic_spawner.tres")
 const FAST_SPAWNER := preload("res://resources/spawners/fast_spawner.tres")
@@ -39,6 +41,7 @@ const DIRECTION_OFFSETS := {
 const CARDINAL_DIRECTIONS := ["north", "east", "south", "west"]
 
 const COMBAT_PIECES := [
+	CELL_PIECE,
 	WIDE_PIECE,
 	TALL_PIECE,
 	L_PIECE,
@@ -47,6 +50,14 @@ const COMBAT_PIECES := [
 	HOURGLASS_PIECE,
 	CROSSROADS_PIECE
 ]
+
+const COMBAT_PIECES_BY_SIZE := {
+	1: [CELL_PIECE],
+	2: [WIDE_PIECE, TALL_PIECE],
+	3: [L_PIECE, HOURGLASS_PIECE],
+	4: [T_PIECE, RING_PIECE],
+	5: [CROSSROADS_PIECE]
+}
 
 var enabled: bool = false
 var current_room_id: String = ""
@@ -57,6 +68,8 @@ var _rooms: Dictionary = {}
 var _room_order: Array[String] = []
 var _occupied_cells: Dictionary = {}
 var _interior_generator = ROOM_INTERIOR_GENERATOR_SCRIPT.new()
+var _large_room_count: int = 0
+var _crossroads_placed: bool = false
 
 
 func initialize(_context: Dictionary) -> void:
@@ -105,12 +118,39 @@ func get_current_door_infos() -> Array:
 	for direction in ordered_directions:
 		if connections.has(direction):
 			var target_room_id := String(connections[direction])
+			var edge := Dictionary(Dictionary(state.get("connection_edges", {})).get(direction, {}))
+			var source_cell: Vector2i = edge.get("source_cell", Vector2i.ZERO)
 			door_infos.append({
 				"direction": direction,
 				"target_room_id": target_room_id,
-				"target_room_kind": _get_room_kind(target_room_id)
+				"target_room_kind": _get_room_kind(target_room_id),
+				"trigger_rect": ROOM_GEOMETRY_BUILDER.get_trigger_rect(state["piece"].footprint_cells, source_cell, direction),
+				"opening_rect": ROOM_GEOMETRY_BUILDER.get_opening_rect(state["piece"].footprint_cells, source_cell, direction),
+				"source_cell": source_cell,
+				"target_cell": edge.get("target_cell", Vector2i.ZERO)
 			})
 	return door_infos
+
+
+func get_current_entry_position(entry_direction: String) -> Vector2:
+	var state := get_current_room_state()
+	if state.is_empty() or entry_direction.is_empty():
+		return Vector2.INF
+	var entry_edge_direction := String(OPPOSITE_DIRECTIONS.get(entry_direction, ""))
+	if entry_edge_direction.is_empty():
+		return Vector2.INF
+	var edge := Dictionary(Dictionary(state.get("connection_edges", {})).get(entry_edge_direction, {}))
+	if edge.is_empty():
+		return Vector2.INF
+	var source_cell: Vector2i = edge.get("source_cell", Vector2i.ZERO)
+	return ROOM_GEOMETRY_BUILDER.get_entry_position(state["piece"].footprint_cells, source_cell, entry_edge_direction)
+
+
+func get_current_spawn_position() -> Vector2:
+	var state := get_current_room_state()
+	if state.is_empty():
+		return Vector2.ZERO
+	return ROOM_GEOMETRY_BUILDER.get_spawn_position(state["piece"].footprint_cells)
 
 
 func is_current_room_cleared() -> bool:
@@ -225,6 +265,8 @@ func _generate_layout() -> void:
 	_rooms.clear()
 	_room_order.clear()
 	_occupied_cells.clear()
+	_large_room_count = 0
+	_crossroads_placed = false
 	current_room_id = ""
 	var rng := RandomNumberGenerator.new()
 	floor_generation_seed = _compute_floor_generation_seed()
@@ -350,15 +392,47 @@ func _piece_allows_connector(piece, direction: String) -> bool:
 
 
 func _choose_combat_piece(rng: RandomNumberGenerator, path_index: int):
-	var index: int = (rng.randi_range(0, COMBAT_PIECES.size() - 1) + floor_number + path_index) % COMBAT_PIECES.size()
-	return COMBAT_PIECES[index]
+	var size := _choose_combat_room_size(rng, true)
+	var pieces: Array = COMBAT_PIECES_BY_SIZE.get(size, [WIDE_PIECE])
+	var index: int = (rng.randi_range(0, pieces.size() - 1) + floor_number + path_index) % pieces.size()
+	return pieces[index]
 
 
 func _choose_branch_piece(rng: RandomNumberGenerator, branch_index: int):
 	if floor_number >= 3 and branch_index % 4 == 0:
 		return CHALLENGE_PIECE
-	var index: int = rng.randi_range(0, COMBAT_PIECES.size() - 1)
-	return COMBAT_PIECES[index]
+	var size := _choose_combat_room_size(rng, false)
+	var pieces: Array = COMBAT_PIECES_BY_SIZE.get(size, [WIDE_PIECE])
+	return pieces[rng.randi_range(0, pieces.size() - 1)]
+
+
+func _choose_combat_room_size(rng: RandomNumberGenerator, is_path_room: bool) -> int:
+	var non_special_room_count := _get_non_special_combat_room_count()
+	var large_cap: int = max(1, int(ceil(float(max(non_special_room_count + 1, 4)) * 0.25)))
+	var allow_large := _large_room_count < large_cap
+	var allow_crossroads := (not _crossroads_placed) and non_special_room_count >= 4
+	var roll := rng.randf()
+	if allow_crossroads and roll < 0.04:
+		return 5
+	if allow_large and roll < 0.18:
+		return 4
+	if roll < 0.46:
+		return 2
+	if roll < 0.74:
+		return 3
+	if not is_path_room or roll < 0.92:
+		return 1
+	return 2
+
+
+func _get_non_special_combat_room_count() -> int:
+	var count := 0
+	for room_id in _room_order:
+		var state: Dictionary = _rooms[room_id]
+		var piece = state["piece"]
+		if String(piece.room_kind) == "combat":
+			count += 1
+	return count
 
 
 func _shuffled_cardinal_directions(rng: RandomNumberGenerator) -> Array[String]:
@@ -393,11 +467,18 @@ func _place_room(room_id: String, piece, anchor: Vector2i, cleared_override: boo
 		"piece": piece,
 		"anchor": anchor,
 		"connections": {},
+		"connection_edges": {},
 		"level_definition": null,
 		"cleared": initially_cleared,
 		"revealed": false
 	}
 	_room_order.append(room_id)
+	if String(piece.room_kind) == "combat":
+		var cell_count: int = piece.footprint_cells.size()
+		if cell_count >= 4:
+			_large_room_count += 1
+		if String(piece.id) == "combat_crossroads":
+			_crossroads_placed = true
 	for local_cell in piece.footprint_cells:
 		var world_cell: Vector2i = anchor + local_cell
 		_occupied_cells[_cell_key(world_cell)] = room_id
@@ -409,10 +490,26 @@ func _connect_rooms(from_id: String, direction: String, to_id: String) -> void:
 	var to_state: Dictionary = _rooms[to_id]
 	var from_connections: Dictionary = from_state["connections"]
 	var to_connections: Dictionary = to_state["connections"]
+	var from_edges: Dictionary = from_state["connection_edges"]
+	var to_edges: Dictionary = to_state["connection_edges"]
 	from_connections[direction] = to_id
 	to_connections[opposite] = from_id
+	var contact := ROOM_GEOMETRY_BUILDER.find_contact_edge(
+		from_state["piece"].footprint_cells,
+		from_state["anchor"],
+		to_state["piece"].footprint_cells,
+		to_state["anchor"],
+		direction
+	)
+	from_edges[direction] = contact
+	to_edges[opposite] = {
+		"source_cell": contact.get("target_cell", Vector2i.ZERO),
+		"target_cell": contact.get("source_cell", Vector2i.ZERO)
+	}
 	from_state["connections"] = from_connections
 	to_state["connections"] = to_connections
+	from_state["connection_edges"] = from_edges
+	to_state["connection_edges"] = to_edges
 	_rooms[from_id] = from_state
 	_rooms[to_id] = to_state
 
@@ -500,7 +597,7 @@ func _generate_room_interiors() -> void:
 		var connections: Dictionary = state["connections"]
 		var level = null
 		if room_kind == "combat" or room_kind == "challenge" or room_kind == "boss":
-			level = _interior_generator.generate(piece, String(room_id), floor_number, floor_generation_seed, connections)
+			level = _interior_generator.generate(piece, String(room_id), floor_number, floor_generation_seed, connections, state["connection_edges"])
 		else:
 			level = piece.create_level_definition()
 			level.id = String(room_id)
@@ -508,6 +605,7 @@ func _generate_room_interiors() -> void:
 			level.difficulty_label = "Floor %d %s" % [floor_number, room_kind.capitalize()]
 			level.floor_number = max(floor_number, 1)
 			_apply_floor_scaling(level, room_kind)
+			_apply_room_geometry(level, piece, state["connection_edges"])
 		state["level_definition"] = level
 		_rooms[room_id] = state
 
@@ -536,6 +634,16 @@ func _apply_floor_scaling(level, room_kind: String) -> void:
 		placements.append(placement)
 		added += 1
 	level.spawner_placements = placements
+
+
+func _apply_room_geometry(level, piece, connection_edges: Dictionary) -> void:
+	level.arena_shape = 0
+	level.arena_bounds = ROOM_GEOMETRY_BUILDER.get_bounds(piece.footprint_cells)
+	var canonical_walls: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_rects(piece.footprint_cells, connection_edges)
+	canonical_walls.append_array(piece.wall_rects.duplicate())
+	level.wall_rects = canonical_walls
+	level.set_meta("footprint_cells", piece.footprint_cells.duplicate())
+	level.set_meta("connection_edges", connection_edges.duplicate())
 
 
 func _get_extra_spawner_count(room_kind: String) -> int:

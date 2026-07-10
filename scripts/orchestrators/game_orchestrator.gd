@@ -561,6 +561,7 @@ func _start_dungeon_run() -> void:
 	spawner_manager.clear_spawners()
 	destructible_manager.clear_destructibles()
 	item_manager.clear_pickups()
+	item_manager.clear_floor_persistent_pickups()
 	upgrade_manager.reset_run()
 	combat_manager.reset_run()
 	effects_manager.reset_run()
@@ -616,6 +617,7 @@ func _start_main_loop_run() -> void:
 	enemy_manager.reset_run()
 	spawner_manager.clear_spawners()
 	item_manager.clear_pickups()
+	item_manager.clear_floor_persistent_pickups()
 	upgrade_manager.reset_run()
 	combat_manager.reset_run()
 	effects_manager.reset_run()
@@ -644,6 +646,7 @@ func _advance_main_loop_floor() -> void:
 	enemy_manager.reset_run()
 	spawner_manager.clear_spawners()
 	item_manager.clear_pickups()
+	item_manager.clear_floor_persistent_pickups()
 	effects_manager.reset_run()
 	room_manager.reset_run()
 	input_manager.reset_run()
@@ -696,6 +699,7 @@ func _clear_gameplay() -> void:
 	enemy_manager.reset_run()
 	spawner_manager.clear_spawners()
 	item_manager.clear_pickups()
+	item_manager.clear_floor_persistent_pickups()
 	upgrade_manager.reset_run()
 	combat_manager.reset_run()
 	effects_manager.reset_run()
@@ -1964,7 +1968,7 @@ func _maybe_spawn_current_room_reward_choices() -> void:
 	_rewarded_room_ids[reward_key] = true
 	var reward_position := Vector2.ZERO
 	if _current_level != null:
-		reward_position = _find_safe_room_position(_current_level.arena_bounds.get_center(), _current_level)
+		reward_position = _find_safe_room_position(dungeon_manager.get_current_spawn_position(), _current_level)
 	if room_kind == "treasure":
 		item_manager.spawn_treasure_reward_choices(reward_position)
 	else:
@@ -2095,6 +2099,8 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool) -> 
 	spawner_manager.clear_spawners()
 	destructible_manager.clear_destructibles()
 	item_manager.clear_pickups()
+	item_manager.set_room_context(dungeon_manager.floor_number, dungeon_manager.current_room_id)
+	item_manager.rehydrate_current_room_permanent_pickups()
 	effects_manager.reset_run()
 	room_manager.reset_run()
 	if reset_player or _get_player_ref() == null:
@@ -2120,6 +2126,9 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool) -> 
 
 
 func _get_room_entry_position(level_definition, entry_direction: String) -> Vector2:
+	var derived_entry: Vector2 = dungeon_manager.get_current_entry_position(entry_direction)
+	if derived_entry != Vector2.INF:
+		return _find_safe_room_position(derived_entry, level_definition)
 	var bounds: Rect2 = level_definition.arena_bounds
 	var margin := 96.0
 	var position := bounds.get_center()

@@ -36,12 +36,14 @@ func load_room(level_definition, door_infos: Array, doors_unlocked: bool) -> voi
 		var target_id := String(door_info.get("target_room_id", ""))
 		var target_kind := String(door_info.get("target_room_kind", ""))
 		var door = door_scene.instantiate()
-		var rect := _get_door_rect(level_definition.arena_bounds, direction)
+		var rect: Rect2 = door_info.get("trigger_rect", _get_door_rect(level_definition.arena_bounds, direction))
 		if _door_layer != null:
 			_door_layer.add_child(door)
 		else:
 			add_child(door)
 		door.initialize(direction, target_id, rect.get_center(), rect.size, doors_unlocked, target_kind)
+		if door_info.has("trigger_rect"):
+			door.visible = false
 		door.entered.connect(_on_door_entered)
 		_doors.append(door)
 	set_enabled(enabled)

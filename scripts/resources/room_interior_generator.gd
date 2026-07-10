@@ -4,6 +4,7 @@ class_name RoomInteriorGenerator
 const LEVEL_DEFINITION_SCRIPT := preload("res://scripts/resources/level_definition.gd")
 const SPAWNER_PLACEMENT_SCRIPT := preload("res://scripts/resources/spawner_placement.gd")
 const DESTRUCTIBLE_PROP_PLACEMENT_SCRIPT := preload("res://scripts/resources/destructible_prop_placement.gd")
+const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_builder.gd")
 const BASIC_SPAWNER := preload("res://resources/spawners/basic_spawner.tres")
 const FAST_SPAWNER := preload("res://resources/spawners/fast_spawner.tres")
 const SHOOTER_SPAWNER := preload("res://resources/spawners/shooter_spawner.tres")
@@ -17,31 +18,37 @@ const SPAWNER_MIN_DISTANCE := 160.0
 const OBSTACLE_PADDING := 12.0
 
 
-func generate(piece, room_id: String, floor_number: int, floor_seed: int, connections: Dictionary):
+func generate(piece, room_id: String, floor_number: int, floor_seed: int, connections: Dictionary, connection_edges: Dictionary = {}):
 	var room_kind := String(piece.room_kind)
-	var base_level = _make_base_level(piece, room_id, floor_number)
+	var effective_connection_edges := _get_effective_connection_edges(piece.footprint_cells, connections, connection_edges)
+	var base_level = _make_base_level(piece, room_id, floor_number, effective_connection_edges)
 	if room_kind != "combat" and room_kind != "challenge" and room_kind != "boss":
 		return base_level
 	var rng := RandomNumberGenerator.new()
 	rng.seed = _compute_room_seed(room_id, floor_number, floor_seed, String(piece.id))
 	if room_kind == "boss":
 		for attempt in range(MAX_ATTEMPTS):
-			var level = _make_base_level(piece, room_id, floor_number)
+			var level = _make_base_level(piece, room_id, floor_number, effective_connection_edges)
+			var shell_walls: Array[Rect2] = level.wall_rects.duplicate()
 			var blockers: Dictionary = _build_boss_obstacles(level, connections, rng, floor_number, attempt)
-			level.wall_rects = blockers["walls"]
+			var boss_walls: Array[Rect2] = shell_walls.duplicate()
+			boss_walls.append_array(blockers["walls"])
+			level.wall_rects = boss_walls
 			level.void_rects = blockers["voids"]
 			level.max_active_enemies = 1
 			var result: Dictionary = validate_level(level, connections, room_kind)
 			if bool(result.get("ok", false)):
 				return level
-		var fallback_boss = _make_base_level(piece, room_id, floor_number)
+		var fallback_boss = _make_base_level(piece, room_id, floor_number, effective_connection_edges)
 		_apply_fallback_boss_interior(fallback_boss)
 		return fallback_boss
 	for attempt in range(MAX_ATTEMPTS):
-		var level = _make_base_level(piece, room_id, floor_number)
+		var level = _make_base_level(piece, room_id, floor_number, effective_connection_edges)
+		var shell_walls: Array[Rect2] = level.wall_rects.duplicate()
 		var archetype: int = (rng.randi_range(0, 4) + attempt) % 5
 		var blockers: Dictionary = _build_obstacles(level, connections, archetype, rng, room_kind, floor_number)
-		var generated_walls: Array[Rect2] = blockers["walls"]
+		var generated_walls: Array[Rect2] = shell_walls.duplicate()
+		generated_walls.append_array(blockers["walls"])
 		var generated_voids: Array[Rect2] = blockers["voids"]
 		level.wall_rects = generated_walls
 		level.void_rects = generated_voids
@@ -50,11 +57,11 @@ func generate(piece, room_id: String, floor_number: int, floor_seed: int, connec
 		if level.spawner_placements.size() <= 0:
 			continue
 		level.destructible_prop_placements = _build_destructible_prop_placements(level, connections, room_kind, floor_number, rng)
-		level.max_active_enemies = clamp(24 + floor_number * 4 + level.spawner_placements.size() * 2, 30, 52)
+		level.max_active_enemies = _get_room_active_enemy_budget(level, room_kind, floor_number)
 		var result: Dictionary = validate_level(level, connections, room_kind)
 		if bool(result.get("ok", false)):
 			return level
-	var fallback = _make_base_level(piece, room_id, floor_number)
+	var fallback = _make_base_level(piece, room_id, floor_number, effective_connection_edges)
 	var fallback_rng := RandomNumberGenerator.new()
 	fallback_rng.seed = _compute_room_seed(room_id, floor_number, floor_seed, String(piece.id)) + 9091
 	_apply_fallback_interior(fallback, room_kind, floor_number, fallback_rng)
@@ -65,7 +72,7 @@ func validate_level(level, connections: Dictionary, room_kind: String) -> Dictio
 	if level == null:
 		return {"ok": false, "reason": "missing_level"}
 	var blockers: Array[Rect2] = _get_movement_blockers(level)
-	var clear_points: Array[Vector2] = [level.arena_bounds.get_center()]
+	var clear_points: Array[Vector2] = [_get_room_spawn_position(level)]
 	if room_kind == "boss":
 		if level.boss_profile == null:
 			return {"ok": false, "reason": "missing_boss_profile"}
@@ -76,11 +83,11 @@ func validate_level(level, connections: Dictionary, room_kind: String) -> Dictio
 		clear_points.append(level.boss_spawn_position)
 	for direction_key in connections.keys():
 		var direction := String(direction_key)
-		var approach_rect := _get_door_clear_rect(level.arena_bounds, direction)
+		var approach_rect := _get_connection_clear_rect(level, direction)
 		for blocker in blockers:
 			if blocker.intersects(approach_rect):
 				return {"ok": false, "reason": "blocked_door_approach"}
-		clear_points.append(_get_door_entry_position(level.arena_bounds, direction))
+		clear_points.append(_get_connection_entry_position(level, direction))
 	for placement in level.spawner_placements:
 		if placement == null or placement.profile == null:
 			return {"ok": false, "reason": "bad_spawner"}
@@ -100,7 +107,7 @@ func validate_level(level, connections: Dictionary, room_kind: String) -> Dictio
 	var grid := _build_navigation_grid(level, blockers)
 	if grid["open"].is_empty():
 		return {"ok": false, "reason": "no_open_cells"}
-	var start_cell: Vector2i = _nearest_open_cell(level.arena_bounds.get_center(), grid["open"], level.arena_bounds)
+	var start_cell: Vector2i = _nearest_open_cell(_get_room_spawn_position(level), grid["open"], level.arena_bounds)
 	if not grid["open"].has(_cell_key(start_cell)):
 		return {"ok": false, "reason": "spawn_unreachable"}
 	var reachable: Dictionary = _flood_fill(start_cell, grid["open"])
@@ -121,32 +128,81 @@ func validate_level(level, connections: Dictionary, room_kind: String) -> Dictio
 		return {"ok": true, "reason": ""}
 	if _has_heavy_spawner(level) and _count_clear_lanes(level, blockers) < 2:
 		return {"ok": false, "reason": "heavy_spawner_lanes"}
-	var min_count := 5 if room_kind == "challenge" else 4
+	var min_count := _get_spawner_count_bounds(level, room_kind).x
 	if level.spawner_placements.size() < min_count:
 		return {"ok": false, "reason": "spawner_budget_low"}
 	return {"ok": true, "reason": ""}
 
 
-func _make_base_level(piece, room_id: String, floor_number: int):
+func _make_base_level(piece, room_id: String, floor_number: int, connection_edges: Dictionary = {}):
 	var level = piece.create_level_definition()
 	level.id = room_id
 	level.display_name = "%s - %s" % [piece.display_name, room_id.capitalize()]
 	level.difficulty_label = "Floor %d %s" % [floor_number, String(piece.room_kind).capitalize()]
 	level.floor_number = max(floor_number, 1)
 	if String(piece.room_kind) == "boss":
-		level.boss_spawn_position = level.arena_bounds.get_center()
+		level.boss_spawn_position = ROOM_GEOMETRY_BUILDER.get_spawn_position(piece.footprint_cells)
 	level.use_default_spawners = false
 	var empty_positions: Array[Vector2] = []
 	var empty_placements: Array[Resource] = []
 	var empty_props: Array[Resource] = []
-	var empty_walls: Array[Rect2] = []
+	var shell_walls: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_rects(piece.footprint_cells, connection_edges)
 	var empty_voids: Array[Rect2] = []
 	level.spawner_positions = empty_positions
 	level.spawner_placements = empty_placements
 	level.destructible_prop_placements = empty_props
-	level.wall_rects = empty_walls
+	level.wall_rects = shell_walls
 	level.void_rects = empty_voids
+	level.set_meta("footprint_cells", piece.footprint_cells.duplicate())
+	level.set_meta("connection_edges", connection_edges.duplicate())
 	return level
+
+
+func _get_effective_connection_edges(cells: Array[Vector2i], connections: Dictionary, connection_edges: Dictionary) -> Dictionary:
+	if not connection_edges.is_empty():
+		return connection_edges
+	var inferred := {}
+	for direction_key in connections.keys():
+		var direction := String(direction_key)
+		var source_cell := _pick_default_connection_cell(cells, direction)
+		inferred[direction] = {
+			"source_cell": source_cell,
+			"target_cell": Vector2i.ZERO
+		}
+	return inferred
+
+
+func _pick_default_connection_cell(cells: Array[Vector2i], direction: String) -> Vector2i:
+	if cells.is_empty():
+		return Vector2i.ZERO
+	var min_cell := ROOM_GEOMETRY_BUILDER.get_min_cell(cells)
+	var max_cell := ROOM_GEOMETRY_BUILDER.get_max_cell(cells)
+	var candidates: Array[Vector2i] = []
+	for cell in cells:
+		match direction:
+			"north":
+				if cell.y == min_cell.y:
+					candidates.append(cell)
+			"south":
+				if cell.y == max_cell.y:
+					candidates.append(cell)
+			"east":
+				if cell.x == max_cell.x:
+					candidates.append(cell)
+			"west":
+				if cell.x == min_cell.x:
+					candidates.append(cell)
+	if candidates.is_empty():
+		return cells[0]
+	var best := candidates[0]
+	var center := Vector2(float(min_cell.x + max_cell.x) * 0.5, float(min_cell.y + max_cell.y) * 0.5)
+	var best_distance := INF
+	for cell in candidates:
+		var distance := Vector2(float(cell.x), float(cell.y)).distance_squared_to(center)
+		if distance < best_distance:
+			best = cell
+			best_distance = distance
+	return best
 
 
 func _compute_room_seed(room_id: String, floor_number: int, floor_seed: int, piece_id: String) -> int:
@@ -514,13 +570,13 @@ func _rect_fits_arena(rect: Rect2, level) -> bool:
 
 func _rect_hits_reserved_zone(rect: Rect2, level, connections: Dictionary) -> bool:
 	var reserved: Array[Rect2] = [
-		Rect2(level.arena_bounds.get_center() - Vector2(180.0, 140.0), Vector2(360.0, 280.0))
+		Rect2(_get_room_spawn_position(level) - Vector2(180.0, 140.0), Vector2(360.0, 280.0))
 	]
 	if level.boss_profile != null:
 		var boss_clearance := _get_boss_clearance(level) + 72.0
 		reserved.append(Rect2(level.boss_spawn_position - Vector2(boss_clearance, boss_clearance), Vector2(boss_clearance * 2.0, boss_clearance * 2.0)))
 	for direction_key in connections.keys():
-		reserved.append(_get_door_clear_rect(level.arena_bounds, String(direction_key)))
+		reserved.append(_get_connection_clear_rect(level, String(direction_key)))
 	for zone in reserved:
 		if zone.intersects(rect):
 			return true
@@ -534,7 +590,7 @@ func _get_boss_clearance(level) -> float:
 
 
 func _build_spawner_placements(level, room_kind: String, floor_number: int, rng: RandomNumberGenerator) -> Array[Resource]:
-	var profiles: Array[Resource] = _build_spawner_profile_budget(room_kind, floor_number, rng)
+	var profiles: Array[Resource] = _build_spawner_profile_budget(room_kind, floor_number, rng, _get_level_cell_count(level))
 	var placements: Array[Resource] = []
 	var candidate_points := _build_spawner_candidate_points(level.arena_bounds, rng)
 	var blockers: Array[Rect2] = _get_movement_blockers(level)
@@ -646,10 +702,15 @@ func _build_prop_candidate_points(bounds: Rect2, rng: RandomNumberGenerator) -> 
 	return points
 
 
-func _build_spawner_profile_budget(room_kind: String, floor_number: int, rng: RandomNumberGenerator) -> Array[Resource]:
-	var budget: int = (16 + floor_number * 4) if room_kind == "challenge" else (12 + floor_number * 3)
-	var min_count := 5 if room_kind == "challenge" else 4
-	var max_count := 7 if room_kind == "challenge" else 6
+func _build_spawner_profile_budget(room_kind: String, floor_number: int, rng: RandomNumberGenerator, cell_count: int = 2) -> Array[Resource]:
+	var count_bounds := _get_spawner_count_bounds_for_cells(cell_count, room_kind)
+	var min_count := count_bounds.x
+	var max_count := count_bounds.y
+	var budget: int = min_count * 3 + max(floor_number - 1, 0) * (2 if room_kind == "challenge" else 1)
+	if cell_count >= 5:
+		budget += 8
+	elif cell_count >= 4:
+		budget += 5
 	var profiles: Array[Resource] = []
 	var options := _get_spawner_options(floor_number)
 	var minimum_cost := _get_min_spawner_cost(options)
@@ -669,6 +730,47 @@ func _build_spawner_profile_budget(room_kind: String, floor_number: int, rng: Ra
 		profiles.append(selected["profile"])
 		budget -= int(selected["cost"])
 	return profiles
+
+
+func _get_spawner_count_bounds(level, room_kind: String) -> Vector2i:
+	return _get_spawner_count_bounds_for_cells(_get_level_cell_count(level), room_kind)
+
+
+func _get_spawner_count_bounds_for_cells(cell_count: int, room_kind: String) -> Vector2i:
+	if room_kind == "boss":
+		return Vector2i(0, 0)
+	if cell_count <= 1:
+		return Vector2i(2, 3)
+	if cell_count == 2:
+		return Vector2i(4, 5)
+	if cell_count == 3:
+		return Vector2i(5, 6)
+	if cell_count == 4:
+		return Vector2i(6, 8)
+	return Vector2i(8, 10)
+
+
+func _get_level_cell_count(level) -> int:
+	if level != null and level.has_meta("footprint_cells"):
+		var cells: Array = level.get_meta("footprint_cells")
+		return max(cells.size(), 1)
+	return 1
+
+
+func _get_room_active_enemy_budget(level, room_kind: String, floor_number: int) -> int:
+	if room_kind == "boss":
+		return 1
+	var cell_count: int = _get_level_cell_count(level)
+	var base_budget: int = 18 + cell_count * 5 + level.spawner_placements.size() * 2
+	if cell_count >= 5:
+		base_budget += 8
+	elif room_kind == "challenge":
+		base_budget += 4
+	return clamp(base_budget + floor_number * 3, 24, 60)
+
+
+func _get_room_spawn_position(level) -> Vector2:
+	return ROOM_GEOMETRY_BUILDER.get_spawn_position(_get_level_footprint_cells(level))
 
 
 func _get_spawner_options(floor_number: int) -> Array[Dictionary]:
@@ -786,10 +888,12 @@ func _apply_fallback_interior(level, room_kind: String, floor_number: int, rng: 
 		_rect_at(center + Vector2(bounds.size.x * 0.18, bounds.size.y * 0.16), Vector2(2, 1))
 	]
 	var fallback_voids: Array[Rect2] = []
-	level.wall_rects = fallback_walls
+	var shell_walls: Array[Rect2] = level.wall_rects.duplicate()
+	shell_walls.append_array(fallback_walls)
+	level.wall_rects = shell_walls
 	level.void_rects = fallback_voids
-	var min_count := 5 if room_kind == "challenge" else 4
-	var profiles := _build_spawner_profile_budget(room_kind, floor_number, rng)
+	var min_count := _get_spawner_count_bounds(level, room_kind).x
+	var profiles := _build_spawner_profile_budget(room_kind, floor_number, rng, _get_level_cell_count(level))
 	while profiles.size() > min_count:
 		profiles.pop_back()
 	var fallback_placements: Array[Resource] = []
@@ -797,16 +901,15 @@ func _apply_fallback_interior(level, room_kind: String, floor_number: int, rng: 
 	var points := _build_fallback_spawner_points(bounds, 7)
 	var selected_points := _select_fallback_spawner_points(level, points, min_count)
 	if selected_points.size() < min_count:
-		var no_walls: Array[Rect2] = []
-		level.wall_rects = no_walls
+		level.wall_rects = shell_walls.duplicate()
 		selected_points = _select_fallback_spawner_points(level, points, min_count)
 	for index in range(min_count):
 		var placement = SPAWNER_PLACEMENT_SCRIPT.new()
-		placement.position = selected_points[index] if index < selected_points.size() else level.arena_bounds.get_center()
+		placement.position = selected_points[index] if index < selected_points.size() else _get_room_spawn_position(level)
 		placement.profile = profiles[index] if index < profiles.size() else BASIC_SPAWNER
 		placement.warmup_seconds = 1.0 + float(index) * 0.45
 		level.spawner_placements.append(placement)
-	level.max_active_enemies = clamp(24 + floor_number * 4 + level.spawner_placements.size() * 2, 30, 52)
+	level.max_active_enemies = _get_room_active_enemy_budget(level, room_kind, floor_number)
 
 
 func _apply_fallback_boss_interior(level) -> void:
@@ -821,7 +924,9 @@ func _apply_fallback_boss_interior(level) -> void:
 	var fallback_voids: Array[Rect2] = []
 	var empty_spawners: Array[Resource] = []
 	var empty_positions: Array[Vector2] = []
-	level.wall_rects = fallback_walls
+	var shell_walls: Array[Rect2] = level.wall_rects.duplicate()
+	shell_walls.append_array(fallback_walls)
+	level.wall_rects = shell_walls
 	level.void_rects = fallback_voids
 	level.spawner_placements = empty_spawners
 	level.spawner_positions = empty_positions
@@ -914,6 +1019,16 @@ func _get_door_entry_position(bounds: Rect2, direction: String) -> Vector2:
 	return bounds.get_center()
 
 
+func _get_connection_entry_position(level, direction: String) -> Vector2:
+	if level != null and level.has_meta("connection_edges") and level.has_meta("footprint_cells"):
+		var edges: Dictionary = level.get_meta("connection_edges")
+		if edges.has(direction):
+			var edge: Dictionary = edges[direction]
+			var cells: Array[Vector2i] = _get_level_footprint_cells(level)
+			return ROOM_GEOMETRY_BUILDER.get_entry_position(cells, edge.get("source_cell", Vector2i.ZERO), direction)
+	return _get_door_entry_position(level.arena_bounds, direction)
+
+
 func _get_door_clear_rect(bounds: Rect2, direction: String) -> Rect2:
 	var center := bounds.get_center()
 	match direction:
@@ -926,6 +1041,26 @@ func _get_door_clear_rect(bounds: Rect2, direction: String) -> Rect2:
 		"west":
 			return Rect2(Vector2(bounds.position.x, center.y - 150.0), Vector2(210.0, 300.0))
 	return Rect2(center - Vector2(150.0, 150.0), Vector2(300.0, 300.0))
+
+
+func _get_connection_clear_rect(level, direction: String) -> Rect2:
+	if level != null and level.has_meta("connection_edges") and level.has_meta("footprint_cells"):
+		var edges: Dictionary = level.get_meta("connection_edges")
+		if edges.has(direction):
+			var edge: Dictionary = edges[direction]
+			var cells: Array[Vector2i] = _get_level_footprint_cells(level)
+			return ROOM_GEOMETRY_BUILDER.get_door_clear_rect(cells, edge.get("source_cell", Vector2i.ZERO), direction)
+	return _get_door_clear_rect(level.arena_bounds, direction)
+
+
+func _get_level_footprint_cells(level) -> Array[Vector2i]:
+	var typed_cells: Array[Vector2i] = []
+	if level != null and level.has_meta("footprint_cells"):
+		for cell in level.get_meta("footprint_cells"):
+			typed_cells.append(cell)
+	if typed_cells.is_empty():
+		typed_cells.append(Vector2i.ZERO)
+	return typed_cells
 
 
 func _build_navigation_grid(level, blockers: Array[Rect2]) -> Dictionary:
