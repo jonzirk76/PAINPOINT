@@ -10,7 +10,7 @@ const FAST_SPAWNER := preload("res://resources/spawners/fast_spawner.tres")
 const SHOOTER_SPAWNER := preload("res://resources/spawners/shooter_spawner.tres")
 const TANK_SPAWNER := preload("res://resources/spawners/tank_spawner.tres")
 
-const GRID_SIZE := 60.0
+const GRID_SIZE: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
 const MAX_ATTEMPTS := 40
 const PLAYER_CLEARANCE := 34.0
 const SPAWNER_CLEARANCE := 54.0

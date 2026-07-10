@@ -2,8 +2,9 @@ extends RefCounted
 class_name RoomGeometryBuilder
 
 const CELL_SIZE := Vector2(1040.0, 600.0)
-const WALL_THICKNESS := 48.0
-const OPENING_WIDTH := 220.0
+const WALL_TILE_SIZE: float = 40.0
+const WALL_THICKNESS := WALL_TILE_SIZE
+const OPENING_WIDTH := WALL_TILE_SIZE * 5.0
 const TRIGGER_DEPTH := 92.0
 const ENTRY_MARGIN := 96.0
 
@@ -82,7 +83,7 @@ static func build_wall_rects(cells: Array[Vector2i], connection_edges: Dictionar
 		for y in range(min_cell.y, max_cell.y + 1):
 			var cell := Vector2i(x, y)
 			if not occupied.has(_cell_key(cell)):
-				walls.append(get_cell_rect(cells, cell))
+				walls.append_array(_rect_to_wall_tiles(get_cell_rect(cells, cell)))
 	for cell in cells:
 		for direction in DIRECTIONS:
 			var neighbor: Vector2i = cell + DIRECTION_OFFSETS.get(direction, Vector2i.ZERO)
@@ -183,36 +184,52 @@ static func find_contact_edge(source_cells: Array[Vector2i], source_anchor: Vect
 static func _build_edge_wall_rects(cells: Array[Vector2i], local_cell: Vector2i, direction: String, opening: Rect2) -> Array[Rect2]:
 	var rects: Array[Rect2] = []
 	var cell_rect := get_cell_rect(cells, local_cell)
-	var full_rect := Rect2()
+	var tile_count_x: int = int(round(CELL_SIZE.x / WALL_TILE_SIZE))
+	var tile_count_y: int = int(round(CELL_SIZE.y / WALL_TILE_SIZE))
 	match direction:
 		"north":
-			full_rect = Rect2(cell_rect.position, Vector2(cell_rect.size.x, WALL_THICKNESS))
+			for index in range(tile_count_x):
+				var tile := Rect2(cell_rect.position + Vector2(float(index) * WALL_TILE_SIZE, 0.0), Vector2(WALL_TILE_SIZE, WALL_TILE_SIZE))
+				if not _tile_is_inside_opening(tile, opening):
+					rects.append(tile)
 		"south":
-			full_rect = Rect2(Vector2(cell_rect.position.x, cell_rect.position.y + cell_rect.size.y - WALL_THICKNESS), Vector2(cell_rect.size.x, WALL_THICKNESS))
+			for index in range(tile_count_x):
+				var tile := Rect2(Vector2(cell_rect.position.x + float(index) * WALL_TILE_SIZE, cell_rect.position.y + cell_rect.size.y - WALL_TILE_SIZE), Vector2(WALL_TILE_SIZE, WALL_TILE_SIZE))
+				if not _tile_is_inside_opening(tile, opening):
+					rects.append(tile)
 		"east":
-			full_rect = Rect2(Vector2(cell_rect.position.x + cell_rect.size.x - WALL_THICKNESS, cell_rect.position.y), Vector2(WALL_THICKNESS, cell_rect.size.y))
+			for index in range(tile_count_y):
+				var tile := Rect2(Vector2(cell_rect.position.x + cell_rect.size.x - WALL_TILE_SIZE, cell_rect.position.y + float(index) * WALL_TILE_SIZE), Vector2(WALL_TILE_SIZE, WALL_TILE_SIZE))
+				if not _tile_is_inside_opening(tile, opening):
+					rects.append(tile)
 		"west":
-			full_rect = Rect2(cell_rect.position, Vector2(WALL_THICKNESS, cell_rect.size.y))
-	if opening.size == Vector2.ZERO:
-		rects.append(full_rect)
-		return rects
-	if direction == "north" or direction == "south":
-		var left_width: float = max(opening.position.x - full_rect.position.x, 0.0)
-		var right_x: float = opening.position.x + opening.size.x
-		var right_width: float = max(full_rect.position.x + full_rect.size.x - right_x, 0.0)
-		if left_width > 1.0:
-			rects.append(Rect2(full_rect.position, Vector2(left_width, full_rect.size.y)))
-		if right_width > 1.0:
-			rects.append(Rect2(Vector2(right_x, full_rect.position.y), Vector2(right_width, full_rect.size.y)))
-	else:
-		var top_height: float = max(opening.position.y - full_rect.position.y, 0.0)
-		var bottom_y: float = opening.position.y + opening.size.y
-		var bottom_height: float = max(full_rect.position.y + full_rect.size.y - bottom_y, 0.0)
-		if top_height > 1.0:
-			rects.append(Rect2(full_rect.position, Vector2(full_rect.size.x, top_height)))
-		if bottom_height > 1.0:
-			rects.append(Rect2(Vector2(full_rect.position.x, bottom_y), Vector2(full_rect.size.x, bottom_height)))
+			for index in range(tile_count_y):
+				var tile := Rect2(cell_rect.position + Vector2(0.0, float(index) * WALL_TILE_SIZE), Vector2(WALL_TILE_SIZE, WALL_TILE_SIZE))
+				if not _tile_is_inside_opening(tile, opening):
+					rects.append(tile)
 	return rects
+
+
+static func _rect_to_wall_tiles(rect: Rect2) -> Array[Rect2]:
+	var tiles: Array[Rect2] = []
+	var cols: int = int(ceil(rect.size.x / WALL_TILE_SIZE))
+	var rows: int = int(ceil(rect.size.y / WALL_TILE_SIZE))
+	for x in range(cols):
+		for y in range(rows):
+			var position := rect.position + Vector2(float(x) * WALL_TILE_SIZE, float(y) * WALL_TILE_SIZE)
+			var size := Vector2(
+				min(WALL_TILE_SIZE, rect.position.x + rect.size.x - position.x),
+				min(WALL_TILE_SIZE, rect.position.y + rect.size.y - position.y)
+			)
+			if size.x > 1.0 and size.y > 1.0:
+				tiles.append(Rect2(position, size))
+	return tiles
+
+
+static func _tile_is_inside_opening(tile: Rect2, opening: Rect2) -> bool:
+	if opening.size == Vector2.ZERO:
+		return false
+	return opening.has_point(tile.get_center())
 
 
 static func _connection_uses_cell_edge(connection_edges: Dictionary, direction: String, local_cell: Vector2i) -> bool:

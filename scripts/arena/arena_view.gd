@@ -9,6 +9,7 @@ class_name ArenaView
 
 var _wall_bodies: Array[StaticBody2D] = []
 var _void_bodies: Array[StaticBody2D] = []
+var _uses_canonical_wall_tiles: bool = false
 
 
 func configure(level_definition) -> void:
@@ -18,6 +19,7 @@ func configure(level_definition) -> void:
 	arena_shape = int(level_definition.arena_shape)
 	wall_rects = level_definition.wall_rects
 	void_rects = level_definition.void_rects
+	_uses_canonical_wall_tiles = level_definition.has_meta("footprint_cells")
 	_rebuild_blocker_bodies()
 	queue_redraw()
 
@@ -28,7 +30,8 @@ func _draw() -> void:
 	_draw_clipped_grid(polygon)
 	_draw_voids()
 	_draw_walls()
-	draw_polyline(_closed_points(polygon), Color(0.52, 0.58, 0.62), 4.0, true)
+	if not _uses_canonical_wall_tiles:
+		draw_polyline(_closed_points(polygon), Color(0.52, 0.58, 0.62), 4.0, true)
 
 
 func _draw_clipped_grid(polygon: PackedVector2Array) -> void:
