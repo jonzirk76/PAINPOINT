@@ -135,6 +135,7 @@ Good delegation targets:
 - summarize one file, script, or function,
 - extract signals, exported variables, node paths, TODOs, or error locations,
 - turn a plan into a checklist,
+- run `./smoke_test.sh`, collect the capped output, and summarize whether it passed or failed,
 - condense a short log excerpt,
 - draft markdown notes, changelogs, or manual Godot editor instructions,
 - compare two short snippets for obvious behavioral differences,
@@ -150,6 +151,8 @@ Avoid delegating:
 - gameplay feel tuning,
 - test design for important invariants,
 - tasks requiring broad repository context.
+
+Smoke testing is a good trial delegation task when the user has a local model/operator loop available. The local model may run `./smoke_test.sh`, wait for completion, save or locate `/tmp/shooty-smoke.log`, report pass/fail, extract major errors, and summarize the relevant failure lines. It should not make fixes, rerun repeatedly, edit files, or interpret gameplay correctness. Codex should use the summarized result as input, then decide the next engineering step.
 
 Use this prompt shape:
 
@@ -201,6 +204,27 @@ Content:
 ```
 
 ```text
+Run delegated smoke test:
+You are acting as a local test runner for a Godot 4 GDScript project.
+Task:
+Run ./smoke_test.sh from the repository root. Wait for it to finish. Report whether it passed or failed. If it failed, locate /tmp/shooty-smoke.log and summarize only the most relevant error lines, file paths, line numbers, and failing subsystem.
+
+Constraints:
+- Do not edit files.
+- Do not rerun the test unless explicitly asked.
+- Do not propose broad fixes.
+- Do not paste the full log.
+- Keep the result concise.
+
+Return:
+- Command run:
+- Pass/fail:
+- Exit code:
+- Relevant errors:
+- Log path:
+```
+
+```text
 Create implementation checklist:
 You are helping turn a feature plan into a checklist for a Godot 4 GDScript project.
 Task:
@@ -228,5 +252,6 @@ Add concrete observations here when the user reports useful before/after data.
 | 5h usage block documentation edit | Low | Same-block 5h: 91% -> 90%, weekly 2% -> 2%, reset 10:09 AM | Done at medium reasoning; measured about 1 point of 5h usage and no weekly percentage movement. |
 | Local-model delegation policy edit | Low | Weekly around 2%, meters unreliable | User requested handoff delegation suggestions and ready-to-copy Qwen prompts to reduce Codex token spend. |
 | Reset-aware schema update | Low | Time 4:03 AM, medium reasoning, after state: 5h 97%, weekly 99%, 5h reset 8:57, weekly reset Jul 17 | User reported the weekly reset may have applied early; schema now tracks report time and weekly reset date/time. |
+| Delegated smoke-test policy edit | Low | Unknown | Added Qwen/local-model smoke-test runner guidance; local model may run and summarize tests, but not fix or rerun repeatedly. |
 | Parry chain feature overhaul | High | Unknown | Multi-system gameplay/UI/stat work; should remain high-cost unless scoped tightly. |
 | SVG/visual asset iteration | High to Very High | User reported it felt token-hungry | Prefer user/design-tool iteration, then Codex wiring. |
