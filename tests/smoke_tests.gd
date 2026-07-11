@@ -2568,6 +2568,8 @@ func _test_room_interior_generator_determinism_and_budget(failures: Array[String
 		var sampled_room = generator.generate(combat_piece, "complex_%d" % seed, 2, seed, connections)
 		if not _level_blockers_are_tile_aligned(sampled_room):
 			failures.append("Generated room blockers should stay aligned to the canonical tile grid.")
+		if not _level_door_openings_are_unblocked(sampled_room, connections):
+			failures.append("Generated exterior wall growth should not block connected door openings.")
 		if _get_blocker_tile_count(sampled_room) >= 12:
 			complex_room_count += 1
 		if _has_contiguous_blocker_group(_get_level_meta_rects(sampled_room, "wall_tile_rects", sampled_room.wall_rects), 4):
@@ -2611,6 +2613,14 @@ func _test_room_interior_generator_validation(failures: Array[String]) -> void:
 	blocked_exit.wall_rects.append(Rect2(Vector2(bounds.position.x + bounds.size.x - 210.0, bounds.get_center().y - 150.0), Vector2(210.0, 300.0)))
 	if bool(generator.validate_level(blocked_exit, connections, "combat").get("ok", false)):
 		failures.append("Room validation should reject a blocked connected exit approach.")
+	var blocked_opening = generator.generate(piece, "path_blocked_opening", 2, 1212, connections)
+	var opening_rect := _get_level_connection_opening_rect(blocked_opening, "east")
+	if opening_rect.size == Vector2.ZERO:
+		failures.append("Generated validation test room should expose a connected door opening rect.")
+	else:
+		blocked_opening.wall_rects.append(opening_rect)
+		if bool(generator.validate_level(blocked_opening, connections, "combat").get("ok", false)):
+			failures.append("Room validation should reject a blocker occupying a connected door opening.")
 
 	var blocked_spawner = generator.generate(piece, "path_blocked_spawner", 2, 1212, connections)
 	if blocked_spawner.spawner_placements.is_empty():
@@ -2873,6 +2883,36 @@ func _level_blockers_are_tile_aligned(level) -> bool:
 		if not _rect_is_tile_aligned(rect, tile_size):
 			return false
 	return true
+
+
+func _level_door_openings_are_unblocked(level, connections: Dictionary) -> bool:
+	if level == null:
+		return false
+	for direction_key in connections.keys():
+		var opening_rect := _get_level_connection_opening_rect(level, String(direction_key))
+		if opening_rect.size == Vector2.ZERO:
+			continue
+		for rect in level.wall_rects:
+			if rect.intersects(opening_rect):
+				return false
+		for rect in level.void_rects:
+			if rect.intersects(opening_rect):
+				return false
+	return true
+
+
+func _get_level_connection_opening_rect(level, direction: String) -> Rect2:
+	if level == null or not level.has_meta("connection_edges") or not level.has_meta("footprint_cells"):
+		return Rect2()
+	var edges: Dictionary = level.get_meta("connection_edges")
+	if not edges.has(direction):
+		return Rect2()
+	var builder = load("res://scripts/resources/room_geometry_builder.gd")
+	var cells: Array[Vector2i] = []
+	for cell in level.get_meta("footprint_cells"):
+		cells.append(cell)
+	var edge: Dictionary = edges[direction]
+	return builder.get_opening_rect(cells, edge.get("source_cell", Vector2i.ZERO), direction)
 
 
 func _rect_is_tile_aligned(rect: Rect2, tile_size: float) -> bool:

@@ -83,8 +83,11 @@ func validate_level(level, connections: Dictionary, room_kind: String) -> Dictio
 		clear_points.append(level.boss_spawn_position)
 	for direction_key in connections.keys():
 		var direction := String(direction_key)
+		var opening_rect := _get_connection_opening_rect(level, direction)
 		var approach_rect := _get_connection_clear_rect(level, direction)
 		for blocker in blockers:
+			if opening_rect.size != Vector2.ZERO and blocker.intersects(opening_rect):
+				return {"ok": false, "reason": "blocked_door_opening"}
 			if blocker.intersects(approach_rect):
 				return {"ok": false, "reason": "blocked_door_approach"}
 		clear_points.append(_get_connection_entry_position(level, direction))
@@ -577,7 +580,11 @@ func _rect_hits_reserved_zone(rect: Rect2, level, connections: Dictionary) -> bo
 		var boss_clearance := _get_boss_clearance(level) + 72.0
 		reserved.append(Rect2(level.boss_spawn_position - Vector2(boss_clearance, boss_clearance), Vector2(boss_clearance * 2.0, boss_clearance * 2.0)))
 	for direction_key in connections.keys():
-		reserved.append(_get_connection_clear_rect(level, String(direction_key)))
+		var direction := String(direction_key)
+		var opening_rect := _get_connection_opening_rect(level, direction)
+		if opening_rect.size != Vector2.ZERO:
+			reserved.append(opening_rect)
+		reserved.append(_get_connection_clear_rect(level, direction))
 	for zone in reserved:
 		if zone.intersects(rect):
 			return true
@@ -1065,6 +1072,16 @@ func _get_connection_entry_position(level, direction: String) -> Vector2:
 			var cells: Array[Vector2i] = _get_level_footprint_cells(level)
 			return ROOM_GEOMETRY_BUILDER.get_entry_position(cells, edge.get("source_cell", Vector2i.ZERO), direction)
 	return _get_door_entry_position(level.arena_bounds, direction)
+
+
+func _get_connection_opening_rect(level, direction: String) -> Rect2:
+	if level != null and level.has_meta("connection_edges") and level.has_meta("footprint_cells"):
+		var edges: Dictionary = level.get_meta("connection_edges")
+		if edges.has(direction):
+			var edge: Dictionary = edges[direction]
+			var cells: Array[Vector2i] = _get_level_footprint_cells(level)
+			return ROOM_GEOMETRY_BUILDER.get_opening_rect(cells, edge.get("source_cell", Vector2i.ZERO), direction)
+	return Rect2()
 
 
 func _get_door_clear_rect(bounds: Rect2, direction: String) -> Rect2:
