@@ -96,6 +96,7 @@ var _current_level = null
 var _is_dungeon_run: bool = false
 var _is_main_loop_run: bool = false
 var _is_loading_room: bool = false
+var _loading_transition_pending: bool = false
 var _paused_previous_status: String = ""
 var _main_loop_floor: int = 1
 var _run_seed: int = 0
@@ -445,12 +446,19 @@ func _clear_super_crackle() -> void:
 
 
 func _start_selected_level() -> void:
+	if _loading_transition_pending:
+		return
+	_loading_transition_pending = true
 	if _selected_level_index < LEVELS.size():
+		await _show_loading_before_work("LOADING", "Preparing arena", 0.05)
 		_start_level(LEVELS[_selected_level_index])
 	elif _selected_level_index == LEVELS.size():
+		await _show_loading_before_work("LOADING FLOOR", "Generating dungeon", 0.05)
 		_start_dungeon_run()
 	else:
+		await _show_loading_before_work("LOADING FLOOR", "Generating dungeon", 0.05)
 		_start_main_loop_run()
+	_loading_transition_pending = false
 
 
 func _start_level(level_definition) -> void:
@@ -643,6 +651,7 @@ func _advance_main_loop_floor() -> void:
 	if not _is_main_loop_run:
 		return
 	_set_tree_paused(false)
+	await _show_loading_before_work("LOADING FLOOR", "Generating next floor", 0.05)
 	_begin_loading_screen("LOADING FLOOR", "Generating next floor", 0.05)
 	_main_loop_floor += 1
 	_status = "STARTING"
@@ -1263,6 +1272,9 @@ func _on_room_door_entered(direction: String) -> void:
 	if not _is_dungeon_run or _status != "DUNGEON":
 		return
 	if dungeon_manager.enter_direction(direction):
+		_is_loading_room = true
+		_set_all_enabled(false)
+		await _show_loading_before_work("LOADING ROOM", "Preparing room geometry", 0.1)
 		_load_dungeon_current_room(direction, false)
 		audio_manager.play_room_entry()
 
@@ -2245,6 +2257,12 @@ func _clear_minimap() -> void:
 func _begin_loading_screen(title: String, message: String, progress: float = 0.0) -> void:
 	if loading_screen != null and loading_screen.has_method("begin_loading"):
 		loading_screen.call("begin_loading", title, message, progress)
+
+
+func _show_loading_before_work(title: String, message: String, progress: float = 0.0) -> void:
+	_begin_loading_screen(title, message, progress)
+	await get_tree().process_frame
+	await get_tree().process_frame
 
 
 func _set_loading_progress(progress: float, message: String = "") -> void:

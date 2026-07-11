@@ -1,7 +1,10 @@
-[gd_scene load_steps=5 format=3 uid="uid://cprl8lufwm42b"]
+[gd_scene load_steps=8 format=3 uid="uid://cprl8lufwm42b"]
 
-[ext_resource type="Script" path="res://scripts/ui/loading_screen.gd" id="1_loading"]
+[ext_resource type="Script" uid="uid://cfpe3ujn3pfl6" path="res://scripts/ui/loading_screen.gd" id="1_loading"]
 [ext_resource type="FontFile" uid="uid://ni13aeviyq7l" path="res://art/fonts/BoldPixels.ttf" id="2_font"]
+[ext_resource type="Texture2D" uid="uid://by5gkvmcjiuy6" path="res://art/loading_screens/Loading_Screen_1.png" id="2_s41fs"]
+[ext_resource type="Texture2D" uid="uid://dg3lxbownx24" path="res://art/Title_Logo.png" id="4_y06jl"]
+[ext_resource type="Texture2D" uid="uid://sx6ypeuo4rj2" path="res://art/Loading_Bar.png" id="5_g5iak"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_title"]
 font = ExtResource("2_font")
@@ -16,6 +19,7 @@ font_color = Color(0.8, 0.9, 0.94, 1)
 [node name="LoadingScreen" type="Control"]
 process_mode = 3
 visible = false
+z_index = 100
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -34,6 +38,13 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0, 0, 0, 0.22)
 
+[node name="TextureRect" type="TextureRect" parent="Vignette"]
+layout_mode = 0
+offset_right = 1672.0
+offset_bottom = 941.0
+scale = Vector2(0.8, 0.8)
+texture = ExtResource("2_s41fs")
+
 [node name="TitleLabel" type="Label" parent="."]
 layout_mode = 1
 anchors_preset = 8
@@ -41,48 +52,50 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -360.0
-offset_top = -118.0
-offset_right = 360.0
-offset_bottom = -62.0
+offset_left = 207.0
+offset_top = 93.0
+offset_right = 927.0
+offset_bottom = 149.0
 grow_horizontal = 2
 grow_vertical = 2
-text = "LOADING"
 label_settings = SubResource("LabelSettings_title")
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="TextureRect" type="TextureRect" parent="TitleLabel"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+scale = Vector2(0.25, 0.25)
+texture = ExtResource("4_y06jl")
+
 [node name="StatusLabel" type="Label" parent="."]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -360.0
-offset_top = -50.0
-offset_right = 360.0
-offset_bottom = -10.0
-grow_horizontal = 2
-grow_vertical = 2
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 38.0
+offset_top = -686.0
+offset_right = 758.0
+offset_bottom = -646.0
+grow_vertical = 0
 text = "Preparing floor"
 label_settings = SubResource("LabelSettings_body")
-horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="LoadingBarOverlay" type="Control" parent="."]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -260.0
-offset_top = 18.0
-offset_right = 260.0
-offset_bottom = 58.0
-grow_horizontal = 2
-grow_vertical = 2
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -433.0
+offset_top = -91.0
+offset_right = -45.0
+offset_bottom = -72.0
+grow_horizontal = 0
+grow_vertical = 0
 mouse_filter = 2
 
 [node name="LoadingBarBack" type="ColorRect" parent="LoadingBarOverlay"]
@@ -97,8 +110,7 @@ color = Color(0.015, 0.017, 0.02, 0.94)
 
 [node name="LoadingBarFill" type="ColorRect" parent="LoadingBarOverlay/LoadingBarBack"]
 layout_mode = 0
-offset_right = 0.0
-offset_bottom = 40.0
+offset_bottom = 19.0
 mouse_filter = 2
 color = Color(0.12, 0.86, 0.94, 1)
 
@@ -112,20 +124,29 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.85, 0.95, 1, 0.18)
 
+[node name="TextureRect" type="TextureRect" parent="LoadingBarOverlay/LoadingBarFrame"]
+layout_mode = 0
+offset_left = -44.0
+offset_top = -141.0
+offset_right = 1492.0
+offset_bottom = 883.0
+scale = Vector2(0.3, 0.3)
+texture = ExtResource("5_g5iak")
+
 [node name="ContinueLabel" type="Label" parent="."]
 visible = false
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -360.0
-offset_top = 92.0
-offset_right = 360.0
-offset_bottom = 136.0
-grow_horizontal = 2
-grow_vertical = 2
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -375.0
+offset_top = -48.0
+offset_right = -95.0
+offset_bottom = -21.0
+grow_horizontal = 0
+grow_vertical = 0
 text = "PRESS A TO CONTINUE"
 label_settings = SubResource("LabelSettings_body")
 horizontal_alignment = 1
