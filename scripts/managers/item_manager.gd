@@ -234,7 +234,7 @@ func _spawn_reward_choices(options: Array, center_position: Vector2) -> void:
 	var start_x := -spacing * float(options.size() - 1) * 0.5
 	for index in range(options.size()):
 		var offset := Vector2(start_x + float(index) * spacing, 0.0)
-		spawn_pickup(options[index], center_position + offset, true, group_id)
+		spawn_pickup(options[index], center_position + offset, true, group_id, true)
 
 
 func _choose_unique_rewards(pool: Array, count: int) -> Array:
