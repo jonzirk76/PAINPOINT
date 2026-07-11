@@ -97,6 +97,7 @@ var _is_dungeon_run: bool = false
 var _is_main_loop_run: bool = false
 var _is_loading_room: bool = false
 var _loading_transition_pending: bool = false
+var _loading_completion_floor_start_pending: bool = false
 var _paused_previous_status: String = ""
 var _main_loop_floor: int = 1
 var _run_seed: int = 0
@@ -525,7 +526,7 @@ func _start_level(level_definition) -> void:
 	_set_loading_progress(0.9, "Starting encounter")
 	if level_definition.boss_profile != null:
 		enemy_manager.spawn_enemy(level_definition.boss_profile, level_definition.boss_spawn_position)
-	audio_manager.play_floor_start()
+	_queue_loading_floor_start_feedback()
 	_status = "RUNNING"
 	_on_upgrade_changed(upgrade_manager.get_modifiers(), upgrade_manager.get_active_effects())
 	_update_hud()
@@ -586,7 +587,7 @@ func _start_dungeon_run() -> void:
 	input_manager.reset_run()
 	_status = "DUNGEON"
 	_load_dungeon_current_room("", true)
-	audio_manager.play_floor_start()
+	_queue_loading_floor_start_feedback()
 	_on_upgrade_changed(upgrade_manager.get_modifiers(), upgrade_manager.get_active_effects())
 	_update_hud()
 
@@ -644,7 +645,7 @@ func _start_main_loop_run() -> void:
 	input_manager.reset_run()
 	_status = "DUNGEON"
 	_load_dungeon_current_room("", true)
-	audio_manager.play_floor_start()
+	_queue_loading_floor_start_feedback()
 	_on_upgrade_changed(upgrade_manager.get_modifiers(), upgrade_manager.get_active_effects())
 	_update_hud()
 
@@ -674,7 +675,7 @@ func _advance_main_loop_floor() -> void:
 	input_manager.reset_run()
 	_status = "DUNGEON"
 	_load_dungeon_current_room("", false)
-	audio_manager.play_floor_start()
+	_queue_loading_floor_start_feedback()
 	_update_hud()
 
 
@@ -686,6 +687,7 @@ func _enter_level_select() -> void:
 	_is_main_loop_run = false
 	_run_seed = 0
 	_paused_previous_status = ""
+	_loading_completion_floor_start_pending = false
 	_ammo_refill_flash_remaining = 0.0
 	_ammo_refill_perfect_flash_remaining = 0.0
 	_super_meter_flash_remaining = 0.0
@@ -2258,6 +2260,8 @@ func _clear_minimap() -> void:
 
 
 func _begin_loading_screen(title: String, message: String, progress: float = 0.0) -> void:
+	if player_manager != null and player_manager.has_method("set_spawn_feedback_deferred"):
+		player_manager.call("set_spawn_feedback_deferred", true)
 	if loading_screen != null and loading_screen.has_method("begin_loading"):
 		loading_screen.call("begin_loading", title, message, progress)
 
@@ -2287,7 +2291,23 @@ func _finish_loading_screen(message: String = "READY") -> void:
 func _on_loading_continue_requested() -> void:
 	if _status == "RUNNING" or _status == "DUNGEON":
 		_set_all_enabled(true)
+		_play_loading_completion_feedback()
 		_update_hud()
+
+
+func _queue_loading_floor_start_feedback() -> void:
+	if _loading_screen_is_visible():
+		_loading_completion_floor_start_pending = true
+	else:
+		audio_manager.play_floor_start()
+
+
+func _play_loading_completion_feedback() -> void:
+	if player_manager != null and player_manager.has_method("play_queued_spawn_feedback"):
+		player_manager.call("play_queued_spawn_feedback")
+	if _loading_completion_floor_start_pending:
+		_loading_completion_floor_start_pending = false
+		audio_manager.play_floor_start()
 
 
 func _update_camera() -> void:

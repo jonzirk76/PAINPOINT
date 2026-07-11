@@ -49,6 +49,8 @@ var _super_meter: float = 0.0
 var _super_is_charging: bool = false
 var _super_charge_elapsed: float = 0.0
 var _last_super_ready: bool = false
+var _defer_spawn_feedback: bool = false
+var _spawn_feedback_queued: bool = false
 var _arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 var _arena_shape: int = 0
 
@@ -97,6 +99,7 @@ func clear_player() -> void:
 	if player != null and is_instance_valid(player):
 		player.queue_free()
 	player = null
+	_spawn_feedback_queued = false
 	_fire_cooldown_remaining = 0.0
 	_damage_cooldown_remaining = 0.0
 	_parry_cooldown_remaining = 0.0
@@ -119,6 +122,21 @@ func set_enabled(value: bool) -> void:
 		_cancel_super_charge(true)
 		if _has_player():
 			player.stop_movement()
+
+
+func set_spawn_feedback_deferred(value: bool) -> void:
+	_defer_spawn_feedback = value
+	if not _defer_spawn_feedback:
+		_spawn_feedback_queued = false
+
+
+func play_queued_spawn_feedback() -> void:
+	_defer_spawn_feedback = false
+	if not _spawn_feedback_queued:
+		return
+	_spawn_feedback_queued = false
+	if _has_player() and player.has_method("play_parry_ready_response") and _parry_cooldown_remaining <= 0.0:
+		player.play_parry_ready_response(parry_effect_radius, parry_perfect_radius)
 
 
 func _process(delta: float) -> void:
@@ -402,7 +420,10 @@ func _sync_parry_state() -> void:
 		if player.has_method("set_parry_ready_state"):
 			player.set_parry_ready_state(is_ready)
 		if is_ready and (previous_remaining > 0.0 or previous_remaining < 0.0) and player.has_method("play_parry_ready_response"):
-			player.play_parry_ready_response(parry_effect_radius, parry_perfect_radius)
+			if _defer_spawn_feedback and previous_remaining < 0.0:
+				_spawn_feedback_queued = true
+			else:
+				player.play_parry_ready_response(parry_effect_radius, parry_perfect_radius)
 	parry_cooldown_changed.emit(_parry_cooldown_remaining, _active_parry_cooldown_duration)
 
 
