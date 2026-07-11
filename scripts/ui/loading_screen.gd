@@ -6,6 +6,7 @@ signal continue_requested
 @export var background_texture_directory: String = "res://art/loading_screens"
 @export var background_textures: Array[Texture2D] = []
 @export var progress_fill_speed: float = 1.8
+@export var ready_glow_speed: float = 1.8
 @export var progress: float = 0.0:
 	set(value):
 		progress = clamp(value, 0.0, 1.0)
@@ -22,6 +23,9 @@ signal continue_requested
 var _continue_enabled: bool = false
 var _background_index: int = 0
 var _displayed_progress: float = 0.0
+var _glow_time: float = 0.0
+var _crackle_remaining: float = 0.0
+var _crackle_interval_remaining: float = 0.0
 var _resolved_background_textures: Array[Texture2D] = []
 var _rng := RandomNumberGenerator.new()
 var _backgrounds: Array[Dictionary] = [
@@ -52,6 +56,8 @@ func begin_loading(title: String = "LOADING", message: String = "", initial_prog
 	status_label.text = message
 	progress = initial_progress
 	_continue_enabled = false
+	_glow_time = 0.0
+	_clear_ready_glow()
 	if not was_visible:
 		_displayed_progress = 0.0
 		_select_random_background()
@@ -71,6 +77,7 @@ func finish_loading(message: String = "READY", wait_for_continue: bool = false) 
 	progress = 1.0
 	status_label.text = message
 	_continue_enabled = true
+	_glow_time = 0.0
 	visible = true
 	set_process(true)
 	_update_continue_prompt()
@@ -81,6 +88,7 @@ func show_continue(message: String = "PRESS A TO CONTINUE") -> void:
 	status_label.text = "READY"
 	continue_label.text = message
 	_continue_enabled = true
+	_glow_time = 0.0
 	visible = true
 	set_process(true)
 	_update_continue_prompt()
@@ -89,6 +97,8 @@ func show_continue(message: String = "PRESS A TO CONTINUE") -> void:
 func hide_loading() -> void:
 	_continue_enabled = false
 	visible = false
+	_clear_loading_crackle()
+	_clear_ready_glow()
 	set_process(false)
 	_update_continue_prompt()
 
@@ -101,7 +111,11 @@ func _process(delta: float) -> void:
 	_displayed_progress = move_toward(_displayed_progress, progress, progress_fill_speed * delta)
 	if not is_equal_approx(previous_progress, _displayed_progress):
 		_update_progress_bar()
-	if is_equal_approx(_displayed_progress, progress):
+	_update_loading_crackle(delta)
+	if _continue_enabled:
+		_glow_time += delta
+		_update_ready_glow()
+	if is_equal_approx(_displayed_progress, progress) and not _continue_enabled:
 		set_process(false)
 
 
@@ -188,6 +202,80 @@ func _update_progress_bar() -> void:
 		return
 	var width: float = max(loading_bar_back.size.x * _displayed_progress, 0.0)
 	loading_bar_fill.size = Vector2(width, loading_bar_back.size.y)
+
+
+func _update_loading_crackle(delta: float) -> void:
+	if loading_bar_back == null or loading_bar_fill == null or _displayed_progress <= 0.02:
+		_clear_loading_crackle()
+		return
+	_crackle_interval_remaining -= delta
+	if _crackle_interval_remaining <= 0.0:
+		_crackle_remaining = 0.12
+		_crackle_interval_remaining = _rng.randf_range(0.08, 0.2)
+	if _crackle_remaining <= 0.0:
+		_clear_loading_crackle()
+		return
+	_crackle_remaining = max(_crackle_remaining - delta, 0.0)
+	var crackle: Line2D = loading_bar_back.get_node_or_null("LoadingCrackle") as Line2D
+	if crackle == null:
+		crackle = Line2D.new()
+		crackle.name = "LoadingCrackle"
+		crackle.antialiased = true
+		loading_bar_back.add_child(crackle)
+	var alpha: float = clamp(_crackle_remaining / 0.12, 0.0, 1.0)
+	crackle.default_color = Color(1.0, 1.0, 1.0, 0.35 + alpha * 0.65)
+	crackle.width = 1.2 + alpha * 1.8
+	crackle.points = _build_loading_crackle_points(Rect2(loading_bar_fill.position, loading_bar_fill.size))
+
+
+func _build_loading_crackle_points(fill_rect: Rect2) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	var point_count := 7
+	var start_x: float = fill_rect.position.x + 2.0
+	var end_x: float = fill_rect.position.x + max(fill_rect.size.x - 2.0, 2.0)
+	var center_y: float = fill_rect.position.y + fill_rect.size.y * 0.5
+	var amplitude: float = max(fill_rect.size.y * 0.38, 2.0)
+	for index in range(point_count):
+		var ratio: float = float(index) / float(point_count - 1)
+		var x: float = lerp(start_x, end_x, ratio)
+		var y: float = center_y
+		if index > 0 and index < point_count - 1:
+			y += _rng.randf_range(-amplitude, amplitude)
+		points.append(Vector2(x, y))
+	return points
+
+
+func _clear_loading_crackle() -> void:
+	if loading_bar_back == null:
+		return
+	var crackle := loading_bar_back.get_node_or_null("LoadingCrackle")
+	if crackle != null:
+		crackle.queue_free()
+
+
+func _update_ready_glow() -> void:
+	var pulse: float = 0.5 + 0.5 * sin(_glow_time * TAU * ready_glow_speed)
+	var font_color := Color(0.72, 0.9, 0.95, 1.0).lerp(Color(1.0, 1.0, 1.0, 1.0), 0.32 + pulse * 0.48)
+	var shadow_color := Color(0.2, 0.9, 1.0, 0.22 + pulse * 0.56)
+	for label in [status_label, continue_label]:
+		if label == null:
+			continue
+		label.add_theme_color_override("font_color", font_color)
+		label.add_theme_color_override("font_shadow_color", shadow_color)
+		label.add_theme_constant_override("shadow_offset_x", 0)
+		label.add_theme_constant_override("shadow_offset_y", 0)
+		label.add_theme_constant_override("shadow_outline_size", 6 + roundi(pulse * 8.0))
+
+
+func _clear_ready_glow() -> void:
+	for label in [status_label, continue_label]:
+		if label == null:
+			continue
+		label.remove_theme_color_override("font_color")
+		label.remove_theme_color_override("font_shadow_color")
+		label.remove_theme_constant_override("shadow_offset_x")
+		label.remove_theme_constant_override("shadow_offset_y")
+		label.remove_theme_constant_override("shadow_outline_size")
 
 
 func _update_continue_prompt() -> void:
