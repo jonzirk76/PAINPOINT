@@ -209,8 +209,8 @@ offset_top = -5.0
 offset_right = 68.0
 offset_bottom = 70.5
 scale = Vector2(0.55, 0.55)
+texture = ExtResource("18_gqmmt")
 script = ExtResource("18_dp3eg")
-portrait = ExtResource("18_gqmmt")
 metadata/_edit_use_anchors_ = true
 
 [node name="HealthLabel" type="Label" parent="UI/CombatPanel"]
