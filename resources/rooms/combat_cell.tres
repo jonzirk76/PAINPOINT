@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="RoomPieceDefinition" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="RoomPieceDefinition" load_steps=2 format=3 uid="uid://cy65v8obtw7k2"]
 
 [ext_resource type="Script" uid="uid://bag7c3y3fh8ng" path="res://scripts/resources/room_piece_definition.gd" id="1"]
 
@@ -6,8 +6,6 @@
 script = ExtResource("1")
 id = "combat_cell"
 display_name = "Skirmish Cell"
-difficulty_weight = 1
-footprint_cells = Array[Vector2i]([Vector2i(0, 0)])
 arena_bounds = Rect2(-520, -300, 1040, 600)
 wall_rects = Array[Rect2]([Rect2(-80, -60, 160, 120)])
 max_active_enemies = 24

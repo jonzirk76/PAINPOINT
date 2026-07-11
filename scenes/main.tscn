@@ -21,7 +21,7 @@
 [ext_resource type="Script" uid="uid://bbyh4kn6adeog" path="res://scenes/character_portrait.gd" id="18_dp3eg"]
 [ext_resource type="Texture2D" uid="uid://dmmnsmupy476b" path="res://art/concept_art/portraitcropped2.png" id="18_gqmmt"]
 [ext_resource type="Texture2D" uid="uid://cjvw5hc5udne8" path="res://art/character_UI.png" id="20_gqmmt"]
-[ext_resource type="PackedScene" path="res://scenes/ui/loading_screen.tscn" id="21_loading"]
+[ext_resource type="PackedScene" uid="uid://cprl8lufwm42b" path="res://scenes/ui/loading_screen.tscn" id="21_loading"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_jscy8"]
 font = ExtResource("16_yc10j")
@@ -209,8 +209,8 @@ offset_top = -5.0
 offset_right = 68.0
 offset_bottom = 70.5
 scale = Vector2(0.55, 0.55)
-texture = ExtResource("18_gqmmt")
 script = ExtResource("18_dp3eg")
+portrait = ExtResource("18_gqmmt")
 metadata/_edit_use_anchors_ = true
 
 [node name="HealthLabel" type="Label" parent="UI/CombatPanel"]
