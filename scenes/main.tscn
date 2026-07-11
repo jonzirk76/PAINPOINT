@@ -1,4 +1,4 @@
-[gd_scene load_steps=26 format=3 uid="uid://beu8j4ocyaju8"]
+[gd_scene load_steps=27 format=3 uid="uid://beu8j4ocyaju8"]
 
 [ext_resource type="Script" uid="uid://wt5kiqqk3ets" path="res://scripts/orchestrators/game_orchestrator.gd" id="1"]
 [ext_resource type="Script" uid="uid://bp4ssjl06eeir" path="res://scripts/arena/arena_view.gd" id="2"]
@@ -21,6 +21,7 @@
 [ext_resource type="Script" uid="uid://bbyh4kn6adeog" path="res://scenes/character_portrait.gd" id="18_dp3eg"]
 [ext_resource type="Texture2D" uid="uid://dmmnsmupy476b" path="res://art/concept_art/portraitcropped2.png" id="18_gqmmt"]
 [ext_resource type="Texture2D" uid="uid://cjvw5hc5udne8" path="res://art/character_UI.png" id="20_gqmmt"]
+[ext_resource type="PackedScene" path="res://scenes/ui/loading_screen.tscn" id="21_loading"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_jscy8"]
 font = ExtResource("16_yc10j")
@@ -109,6 +110,9 @@ script = ExtResource("15")
 
 [node name="UI" type="CanvasLayer" parent="."]
 process_mode = 3
+
+[node name="LoadingScreen" parent="UI" instance=ExtResource("21_loading")]
+visible = false
 
 [node name="HUDBackground" type="ColorRect" parent="UI"]
 anchors_preset = 2

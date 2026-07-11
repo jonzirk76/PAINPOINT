@@ -55,6 +55,7 @@ func create_level_definition():
 	level.set_meta("footprint_cells", footprint_cells.duplicate())
 	level.set_meta("connection_edges", {})
 	level.set_meta("wall_tile_rects", wall_tiles)
+	level.set_meta("void_tile_rects", empty_voids)
 	return level
 
 

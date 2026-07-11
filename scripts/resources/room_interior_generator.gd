@@ -34,7 +34,7 @@ func generate(piece, room_id: String, floor_number: int, floor_seed: int, connec
 			var boss_wall_tiles: Array[Rect2] = shell_wall_tiles.duplicate()
 			boss_wall_tiles.append_array(ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(blockers["walls"]))
 			_apply_wall_tiles(level, boss_wall_tiles)
-			level.void_rects = blockers["voids"]
+			_apply_void_rects(level, blockers["voids"])
 			level.max_active_enemies = 1
 			var result: Dictionary = validate_level(level, connections, room_kind)
 			if bool(result.get("ok", false)):
@@ -51,7 +51,7 @@ func generate(piece, room_id: String, floor_number: int, floor_seed: int, connec
 		generated_wall_tiles.append_array(ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(blockers["walls"]))
 		var generated_voids: Array[Rect2] = blockers["voids"]
 		_apply_wall_tiles(level, generated_wall_tiles)
-		level.void_rects = generated_voids
+		_apply_void_rects(level, generated_voids)
 		var generated_spawners: Array[Resource] = _build_spawner_placements(level, room_kind, floor_number, rng)
 		level.spawner_placements = generated_spawners
 		if level.spawner_placements.size() <= 0:
@@ -152,7 +152,7 @@ func _make_base_level(piece, room_id: String, floor_number: int, connection_edge
 	level.spawner_placements = empty_placements
 	level.destructible_prop_placements = empty_props
 	_apply_wall_tiles(level, shell_wall_tiles)
-	level.void_rects = empty_voids
+	_apply_void_rects(level, empty_voids)
 	level.set_meta("footprint_cells", piece.footprint_cells.duplicate())
 	level.set_meta("connection_edges", connection_edges.duplicate())
 	return level
@@ -550,8 +550,9 @@ func _get_snake_direction_order(direction: Vector2i, rng: RandomNumberGenerator)
 
 func _rect_at(center: Vector2, cells: Vector2) -> Rect2:
 	var size := Vector2(float(cells.x) * GRID_SIZE, float(cells.y) * GRID_SIZE)
-	var snapped_center := Vector2(round(center.x / GRID_SIZE) * GRID_SIZE, round(center.y / GRID_SIZE) * GRID_SIZE)
-	return Rect2(snapped_center - size * 0.5, size)
+	var approximate_top_left := center - size * 0.5
+	var snapped_top_left := Vector2(round(approximate_top_left.x / GRID_SIZE) * GRID_SIZE, round(approximate_top_left.y / GRID_SIZE) * GRID_SIZE)
+	return Rect2(snapped_top_left, size)
 
 
 func _rect_fits_arena(rect: Rect2, level) -> bool:
@@ -778,6 +779,12 @@ func _apply_wall_tiles(level, wall_tiles: Array[Rect2]) -> void:
 	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(wall_tiles)
 
 
+func _apply_void_rects(level, void_rects: Array[Rect2]) -> void:
+	var void_tiles := ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(void_rects)
+	level.set_meta("void_tile_rects", void_tiles)
+	level.void_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(void_tiles)
+
+
 func _get_level_wall_tiles(level) -> Array[Rect2]:
 	if level != null and level.has_meta("wall_tile_rects"):
 		var typed_tiles: Array[Rect2] = []
@@ -906,7 +913,7 @@ func _apply_fallback_interior(level, room_kind: String, floor_number: int, rng: 
 	var fallback_wall_tiles := shell_wall_tiles.duplicate()
 	fallback_wall_tiles.append_array(ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(fallback_walls))
 	_apply_wall_tiles(level, fallback_wall_tiles)
-	level.void_rects = fallback_voids
+	_apply_void_rects(level, fallback_voids)
 	var min_count := _get_spawner_count_bounds(level, room_kind).x
 	var profiles := _build_spawner_profile_budget(room_kind, floor_number, rng, _get_level_cell_count(level))
 	while profiles.size() > min_count:
@@ -943,7 +950,7 @@ func _apply_fallback_boss_interior(level) -> void:
 	var fallback_wall_tiles := shell_wall_tiles.duplicate()
 	fallback_wall_tiles.append_array(ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(fallback_walls))
 	_apply_wall_tiles(level, fallback_wall_tiles)
-	level.void_rects = fallback_voids
+	_apply_void_rects(level, fallback_voids)
 	level.spawner_placements = empty_spawners
 	level.spawner_positions = empty_positions
 	level.max_active_enemies = 1

@@ -13,6 +13,8 @@ var _wall_bodies: Array[StaticBody2D] = []
 var _void_bodies: Array[StaticBody2D] = []
 var _uses_canonical_wall_tiles: bool = false
 var _wall_tile_rects: Array[Rect2] = []
+var _wall_draw_rects: Array[Rect2] = []
+var _void_draw_rects: Array[Rect2] = []
 var _footprint_cells: Array[Vector2i] = []
 
 
@@ -25,6 +27,12 @@ func configure(level_definition) -> void:
 	void_rects = level_definition.void_rects
 	_uses_canonical_wall_tiles = level_definition.has_meta("footprint_cells")
 	_wall_tile_rects = _get_meta_rects(level_definition, "wall_tile_rects", wall_rects)
+	if _uses_canonical_wall_tiles:
+		_wall_draw_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(_wall_tile_rects)
+		_void_draw_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(_get_meta_rects(level_definition, "void_tile_rects", ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(void_rects)))
+	else:
+		_wall_draw_rects = wall_rects.duplicate()
+		_void_draw_rects = void_rects.duplicate()
 	_footprint_cells = _get_meta_cells(level_definition, "footprint_cells")
 	_rebuild_blocker_bodies()
 	queue_redraw()
@@ -218,13 +226,12 @@ func _rebuild_blocker_bodies() -> void:
 
 
 func _draw_walls() -> void:
-	var draw_rects := _wall_tile_rects if _uses_canonical_wall_tiles else wall_rects
-	for rect in draw_rects:
+	for rect in _wall_draw_rects:
 		draw_rect(rect, Color(0.11, 0.12, 0.14), true)
 		draw_rect(rect, Color(0.65, 0.72, 0.76), false, 3.0)
 
 
 func _draw_voids() -> void:
-	for rect in void_rects:
+	for rect in _void_draw_rects:
 		draw_rect(rect, Color(0.02, 0.03, 0.045), true)
 		draw_rect(rect, Color(0.17, 0.24, 0.34), false, 2.0)

@@ -5,6 +5,8 @@ signal entered(door)
 
 @export var door_size: Vector2 = Vector2(88.0, 28.0)
 
+const ARM_DELAY_SECONDS := 0.12
+
 var direction: String = "north"
 var target_room_id: String = ""
 var target_room_kind: String = ""
@@ -15,6 +17,7 @@ var _collision_shape: CollisionShape2D = null
 var _gate_body: StaticBody2D = null
 var _gate_collision_shape: CollisionShape2D = null
 var _armed: bool = false
+var _arm_delay_remaining: float = 0.0
 
 
 func _init() -> void:
@@ -36,6 +39,7 @@ func initialize(door_direction: String, target_id: String, center_position: Vect
 	door_size = size
 	unlocked = is_unlocked
 	_armed = false
+	_arm_delay_remaining = ARM_DELAY_SECONDS if unlocked else 0.0
 	_add_or_update_collision()
 	_add_or_update_gate_collision()
 	set_physics_process(unlocked)
@@ -52,8 +56,8 @@ func set_visual_rect(center_position: Vector2, size: Vector2) -> void:
 
 func set_unlocked(value: bool) -> void:
 	unlocked = value
-	if not unlocked:
-		_armed = false
+	_armed = false
+	_arm_delay_remaining = ARM_DELAY_SECONDS if unlocked else 0.0
 	_set_gate_blocking_enabled(not unlocked)
 	set_physics_process(unlocked and not _armed)
 	queue_redraw()
@@ -81,12 +85,16 @@ func _on_body_entered(body: Node) -> void:
 
 
 func _on_body_exited(body: Node) -> void:
-	if unlocked and body.is_in_group("player"):
+	if unlocked and _arm_delay_remaining <= 0.0 and body.is_in_group("player"):
 		_refresh_armed_state()
 
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	if unlocked and not _armed:
+		if _arm_delay_remaining > 0.0:
+			_arm_delay_remaining = max(_arm_delay_remaining - delta, 0.0)
+			set_physics_process(true)
+			return
 		_refresh_armed_state()
 
 

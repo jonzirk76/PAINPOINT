@@ -65,6 +65,7 @@ const FLOOR_EXIT_PORTAL_SCENE := preload("res://scenes/entities/floor_exit_porta
 @onready var win_title_label: Label = $UI/WinPanel/WinTitle
 @onready var win_score_label: Label = $UI/WinPanel/WinScoreLabel
 @onready var win_prompt_label: Label = $UI/WinPanel/WinPromptLabel
+@onready var loading_screen: Control = $UI/LoadingScreen
 
 var _score: int = 0
 var _last_health: int = 0
@@ -454,6 +455,7 @@ func _start_selected_level() -> void:
 
 func _start_level(level_definition) -> void:
 	_set_tree_paused(false)
+	_begin_loading_screen("LOADING", "Preparing arena", 0.05)
 	_is_dungeon_run = false
 	_is_main_loop_run = false
 	_current_level = level_definition
@@ -494,6 +496,7 @@ func _start_level(level_definition) -> void:
 	_clear_minimap()
 	if arena_view != null:
 		arena_view.configure(level_definition)
+	_set_loading_progress(0.35, "Configuring managers")
 	player_manager.set_arena_definition(level_definition)
 	projectile_manager.set_arena_definition(level_definition)
 	enemy_manager.set_arena_definition(level_definition)
@@ -509,16 +512,19 @@ func _start_level(level_definition) -> void:
 	input_manager.reset_run()
 	player_manager.reset_run()
 	_set_all_enabled(true)
+	_set_loading_progress(0.9, "Starting encounter")
 	if level_definition.boss_profile != null:
 		enemy_manager.spawn_enemy(level_definition.boss_profile, level_definition.boss_spawn_position)
 	audio_manager.play_floor_start()
 	_status = "RUNNING"
 	_on_upgrade_changed(upgrade_manager.get_modifiers(), upgrade_manager.get_active_effects())
 	_update_hud()
+	_finish_loading_screen()
 
 
 func _start_dungeon_run() -> void:
 	_set_tree_paused(false)
+	_begin_loading_screen("LOADING FLOOR", "Generating dungeon", 0.05)
 	_is_dungeon_run = true
 	_is_main_loop_run = false
 	_score = 0
@@ -556,6 +562,7 @@ func _start_dungeon_run() -> void:
 		win_panel.visible = false
 	_set_character_hud_visible(true)
 	dungeon_manager.reset_run(_main_loop_floor, _run_seed)
+	_set_loading_progress(0.18, "Preparing start room")
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
 	spawner_manager.clear_spawners()
@@ -576,6 +583,7 @@ func _start_dungeon_run() -> void:
 
 func _start_main_loop_run() -> void:
 	_set_tree_paused(false)
+	_begin_loading_screen("LOADING FLOOR", "Generating dungeon", 0.05)
 	_is_dungeon_run = true
 	_is_main_loop_run = true
 	_score = 0
@@ -613,6 +621,7 @@ func _start_main_loop_run() -> void:
 		win_panel.visible = false
 	_set_character_hud_visible(true)
 	dungeon_manager.reset_run(_main_loop_floor, _run_seed)
+	_set_loading_progress(0.18, "Preparing start room")
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
 	spawner_manager.clear_spawners()
@@ -634,6 +643,7 @@ func _advance_main_loop_floor() -> void:
 	if not _is_main_loop_run:
 		return
 	_set_tree_paused(false)
+	_begin_loading_screen("LOADING FLOOR", "Generating next floor", 0.05)
 	_main_loop_floor += 1
 	_status = "STARTING"
 	_clear_floor_exit_portal()
@@ -642,6 +652,7 @@ func _advance_main_loop_floor() -> void:
 	if win_panel != null:
 		win_panel.visible = false
 	dungeon_manager.reset_run(_main_loop_floor, _run_seed)
+	_set_loading_progress(0.18, "Preparing start room")
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
 	spawner_manager.clear_spawners()
@@ -2084,16 +2095,22 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool) -> 
 	var level_definition = dungeon_manager.get_current_level_definition()
 	if level_definition == null:
 		return
+	if loading_screen == null or not loading_screen.visible:
+		_begin_loading_screen("LOADING ROOM", "Preparing room geometry", 0.1)
+	else:
+		_set_loading_progress(max(float(loading_screen.get("progress")), 0.2), "Preparing room geometry")
 	_current_level = level_definition
 	_is_loading_room = true
 	_set_all_enabled(false)
 	_clear_floor_exit_portal()
 	if arena_view != null:
 		arena_view.configure(level_definition)
+	_set_loading_progress(0.38, "Configuring arena")
 	player_manager.set_arena_definition(level_definition)
 	projectile_manager.set_arena_definition(level_definition)
 	enemy_manager.set_arena_definition(level_definition)
 	spawner_manager.set_arena_definition(level_definition)
+	_set_loading_progress(0.54, "Clearing previous room")
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
 	spawner_manager.clear_spawners()
@@ -2107,6 +2124,7 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool) -> 
 		player_manager.reset_run()
 	else:
 		player_manager.set_player_position(_get_room_entry_position(level_definition, entry_direction))
+	_set_loading_progress(0.7, "Creating room contents")
 	var room_is_cleared: bool = dungeon_manager.is_current_room_cleared()
 	if not room_is_cleared:
 		spawner_manager.reset_run(level_definition)
@@ -2119,10 +2137,12 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool) -> 
 			_show_boss_exit_portal_preview(level_definition)
 	room_manager.set_doors_unlocked(room_is_cleared)
 	_is_loading_room = false
+	_set_loading_progress(0.95, "Entering room")
 	_update_camera()
 	_update_minimap()
 	_check_level_clear()
 	_update_hud()
+	_finish_loading_screen()
 
 
 func _get_room_entry_position(level_definition, entry_direction: String) -> Vector2:
@@ -2220,6 +2240,21 @@ func _update_minimap() -> void:
 func _clear_minimap() -> void:
 	if dungeon_minimap != null and dungeon_minimap.has_method("clear_map"):
 		dungeon_minimap.call("clear_map")
+
+
+func _begin_loading_screen(title: String, message: String, progress: float = 0.0) -> void:
+	if loading_screen != null and loading_screen.has_method("begin_loading"):
+		loading_screen.call("begin_loading", title, message, progress)
+
+
+func _set_loading_progress(progress: float, message: String = "") -> void:
+	if loading_screen != null and loading_screen.has_method("set_progress"):
+		loading_screen.call("set_progress", progress, message)
+
+
+func _finish_loading_screen(message: String = "READY") -> void:
+	if loading_screen != null and loading_screen.has_method("finish_loading"):
+		loading_screen.call("finish_loading", message, false)
 
 
 func _update_camera() -> void:

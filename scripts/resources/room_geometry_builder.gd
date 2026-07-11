@@ -110,6 +110,16 @@ static func rects_to_wall_tiles(rects: Array[Rect2]) -> Array[Rect2]:
 	return tiles
 
 
+static func snap_rect_to_tile_grid(rect: Rect2) -> Rect2:
+	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
+		return Rect2()
+	var left: float = floor(rect.position.x / WALL_TILE_SIZE) * WALL_TILE_SIZE
+	var top: float = floor(rect.position.y / WALL_TILE_SIZE) * WALL_TILE_SIZE
+	var right: float = ceil((rect.position.x + rect.size.x) / WALL_TILE_SIZE) * WALL_TILE_SIZE
+	var bottom: float = ceil((rect.position.y + rect.size.y) / WALL_TILE_SIZE) * WALL_TILE_SIZE
+	return Rect2(Vector2(left, top), Vector2(max(right - left, WALL_TILE_SIZE), max(bottom - top, WALL_TILE_SIZE)))
+
+
 static func merge_wall_tiles(tiles: Array[Rect2]) -> Array[Rect2]:
 	var rows := {}
 	for tile in tiles:
@@ -273,17 +283,13 @@ static func _build_edge_wall_rects(cells: Array[Vector2i], local_cell: Vector2i,
 
 static func _rect_to_wall_tiles(rect: Rect2) -> Array[Rect2]:
 	var tiles: Array[Rect2] = []
-	var cols: int = int(ceil(rect.size.x / WALL_TILE_SIZE))
-	var rows: int = int(ceil(rect.size.y / WALL_TILE_SIZE))
+	var snapped_rect := snap_rect_to_tile_grid(rect)
+	var cols: int = int(round(snapped_rect.size.x / WALL_TILE_SIZE))
+	var rows: int = int(round(snapped_rect.size.y / WALL_TILE_SIZE))
 	for x in range(cols):
 		for y in range(rows):
-			var position := rect.position + Vector2(float(x) * WALL_TILE_SIZE, float(y) * WALL_TILE_SIZE)
-			var size := Vector2(
-				min(WALL_TILE_SIZE, rect.position.x + rect.size.x - position.x),
-				min(WALL_TILE_SIZE, rect.position.y + rect.size.y - position.y)
-			)
-			if size.x > 1.0 and size.y > 1.0:
-				tiles.append(Rect2(position, size))
+			var position := snapped_rect.position + Vector2(float(x) * WALL_TILE_SIZE, float(y) * WALL_TILE_SIZE)
+			tiles.append(Rect2(position, Vector2(WALL_TILE_SIZE, WALL_TILE_SIZE)))
 	return tiles
 
 

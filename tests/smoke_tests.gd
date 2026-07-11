@@ -51,6 +51,7 @@ const SCRIPT_PATHS := [
 	"res://scripts/managers/room_manager.gd",
 	"res://scripts/managers/destructible_manager.gd",
 	"res://scripts/ui/dungeon_minimap.gd",
+	"res://scripts/ui/loading_screen.gd",
 	"res://scripts/ui/circular_portrait.gd",
 	"res://scripts/orchestrators/game_orchestrator.gd",
 	"res://scripts/resources/damage_packet.gd",
@@ -2551,7 +2552,7 @@ func _test_room_interior_generator_determinism_and_budget(failures: Array[String
 		failures.append("Generated boss rooms should not carry interior spawner structures.")
 	if boss.boss_profile == null:
 		failures.append("Generated boss rooms should preserve the boss profile.")
-	if boss.wall_rects.size() + boss.void_rects.size() < 4:
+	if _get_blocker_tile_count(boss) < 4:
 		failures.append("Generated boss rooms should include readable procedural arena blockers.")
 	if not _has_rotational_blocker_pair(boss.wall_rects, boss.arena_bounds.get_center()) and not _has_rotational_blocker_pair(boss.void_rects, boss.arena_bounds.get_center()):
 		failures.append("Generated boss rooms should bias toward symmetric blocker placement.")
@@ -2565,11 +2566,13 @@ func _test_room_interior_generator_determinism_and_budget(failures: Array[String
 	var chest_room_count := 0
 	for seed in range(2400, 2420):
 		var sampled_room = generator.generate(combat_piece, "complex_%d" % seed, 2, seed, connections)
-		if sampled_room.wall_rects.size() + sampled_room.void_rects.size() >= 12:
+		if not _level_blockers_are_tile_aligned(sampled_room):
+			failures.append("Generated room blockers should stay aligned to the canonical tile grid.")
+		if _get_blocker_tile_count(sampled_room) >= 12:
 			complex_room_count += 1
-		if _has_contiguous_blocker_group(sampled_room.wall_rects, 4):
+		if _has_contiguous_blocker_group(_get_level_meta_rects(sampled_room, "wall_tile_rects", sampled_room.wall_rects), 4):
 			saw_wall_chain = true
-		if _has_contiguous_blocker_group(sampled_room.void_rects, 4):
+		if _has_contiguous_blocker_group(_get_level_meta_rects(sampled_room, "void_tile_rects", sampled_room.void_rects), 4):
 			saw_void_mass = true
 		if sampled_room.destructible_prop_placements.size() >= 2:
 			prop_room_count += 1
@@ -2843,6 +2846,45 @@ func _collect_level_spawner_profile_files(level, seen_profiles: Dictionary) -> v
 		seen_profiles[String(placement.profile.resource_path).get_file()] = true
 
 
+func _get_level_meta_rects(level, meta_key: String, fallback: Array[Rect2]) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if level != null and level.has_meta(meta_key):
+		for rect in level.get_meta(meta_key):
+			rects.append(rect)
+	else:
+		rects.append_array(fallback)
+	return rects
+
+
+func _get_blocker_tile_count(level) -> int:
+	if level == null:
+		return 0
+	return _get_level_meta_rects(level, "wall_tile_rects", level.wall_rects).size() + _get_level_meta_rects(level, "void_tile_rects", level.void_rects).size()
+
+
+func _level_blockers_are_tile_aligned(level) -> bool:
+	if level == null:
+		return false
+	var tile_size: float = load("res://scripts/resources/room_geometry_builder.gd").WALL_TILE_SIZE
+	for rect in _get_level_meta_rects(level, "wall_tile_rects", level.wall_rects):
+		if not _rect_is_tile_aligned(rect, tile_size):
+			return false
+	for rect in _get_level_meta_rects(level, "void_tile_rects", level.void_rects):
+		if not _rect_is_tile_aligned(rect, tile_size):
+			return false
+	return true
+
+
+func _rect_is_tile_aligned(rect: Rect2, tile_size: float) -> bool:
+	if tile_size <= 0.0:
+		return false
+	var values := [rect.position.x, rect.position.y, rect.size.x, rect.size.y]
+	for value in values:
+		if abs(value - round(value / tile_size) * tile_size) > 0.5:
+			return false
+	return true
+
+
 func _has_contiguous_blocker_group(rects: Array[Rect2], min_count: int) -> bool:
 	var visited: Dictionary = {}
 	for index in range(rects.size()):
@@ -2881,10 +2923,11 @@ func _has_rotational_blocker_pair(rects: Array[Rect2], center: Vector2) -> bool:
 
 
 func _blocker_rects_touch(first: Rect2, second: Rect2) -> bool:
+	var tile_size: float = load("res://scripts/resources/room_geometry_builder.gd").WALL_TILE_SIZE
 	var center_delta := first.get_center() - second.get_center()
-	if abs(abs(center_delta.x) - 60.0) <= 1.0 and abs(center_delta.y) <= 1.0:
+	if abs(abs(center_delta.x) - tile_size) <= 1.0 and abs(center_delta.y) <= 1.0:
 		return true
-	if abs(abs(center_delta.y) - 60.0) <= 1.0 and abs(center_delta.x) <= 1.0:
+	if abs(abs(center_delta.y) - tile_size) <= 1.0 and abs(center_delta.x) <= 1.0:
 		return true
 	return false
 
