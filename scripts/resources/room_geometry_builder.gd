@@ -304,7 +304,9 @@ static func _build_exterior_corner_wall_tiles(cells: Array[Vector2i], connection
 		for spec in corner_specs:
 			var first_direction := String(spec["directions"][0])
 			var second_direction := String(spec["directions"][1])
-			if occupied.has(_cell_key(cell + DIRECTION_OFFSETS[first_direction])) or occupied.has(_cell_key(cell + DIRECTION_OFFSETS[second_direction])):
+			var first_neighbor_occupied := occupied.has(_cell_key(cell + DIRECTION_OFFSETS[first_direction]))
+			var second_neighbor_occupied := occupied.has(_cell_key(cell + DIRECTION_OFFSETS[second_direction]))
+			if first_neighbor_occupied and second_neighbor_occupied:
 				continue
 			var tile := Rect2(spec["position"], Vector2(WALL_TILE_SIZE, WALL_TILE_SIZE))
 			if _tile_is_inside_connection_opening(tile, cells, cell, first_direction, connection_edges):

@@ -2508,6 +2508,16 @@ func _test_room_piece_resources(failures: Array[String]) -> void:
 		failures.append("Room shell generation should preserve exterior corner wall tiles when one cell has adjacent openings.")
 	if _rect_list_count_rect(multi_open_tiles, north_east_corner) != 1:
 		failures.append("Room shell generation should not duplicate exterior corner wall tiles shared by adjacent wall edges.")
+	var l_cells: Array[Vector2i] = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)]
+	var l_tiles: Array[Rect2] = builder.build_wall_tile_rects(l_cells, {})
+	var l_boundary_turn_corner := Rect2(Vector2(
+		-builder.WALL_TILE_SIZE,
+		0.0
+	), Vector2(builder.WALL_TILE_SIZE, builder.WALL_TILE_SIZE))
+	if not _rect_list_has_rect(l_tiles, l_boundary_turn_corner):
+		failures.append("L-shaped room shell generation should preserve boundary turn corner wall tiles.")
+	if _rect_list_count_rect(l_tiles, l_boundary_turn_corner) != 1:
+		failures.append("L-shaped room shell generation should not duplicate boundary turn corner wall tiles.")
 
 
 func _test_room_interior_generator_determinism_and_budget(failures: Array[String]) -> void:
