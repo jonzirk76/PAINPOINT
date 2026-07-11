@@ -1192,7 +1192,7 @@ func _on_player_defeated(_player) -> void:
 func _on_restart_requested() -> void:
 	if _status == "DOWN" and _current_level != null:
 		if _is_main_loop_run:
-			await _show_loading_before_work("LOADING FLOOR", "Preparing Arena", 0.05)
+			await _show_loading_before_work("LOADING FLOOR", "Generating dungeon", 0.05)
 			_start_main_loop_run()
 		elif _is_dungeon_run:
 			await _show_loading_before_work("LOADING FLOOR", "Generating dungeon", 0.05)
