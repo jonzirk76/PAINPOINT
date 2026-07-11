@@ -1274,9 +1274,6 @@ func _on_room_door_entered(direction: String) -> void:
 	if not _is_dungeon_run or _status != "DUNGEON":
 		return
 	if dungeon_manager.enter_direction(direction):
-		_is_loading_room = true
-		_set_all_enabled(false)
-		await _show_loading_before_work("LOADING ROOM", "Preparing room geometry", 0.1)
 		_load_dungeon_current_room(direction, false)
 		audio_manager.play_room_entry()
 
@@ -2109,9 +2106,8 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool) -> 
 	var level_definition = dungeon_manager.get_current_level_definition()
 	if level_definition == null:
 		return
-	if loading_screen == null or not loading_screen.visible:
-		_begin_loading_screen("LOADING ROOM", "Preparing room geometry", 0.1)
-	else:
+	var should_update_loading_screen := _loading_screen_is_visible()
+	if should_update_loading_screen:
 		_set_loading_progress(max(float(loading_screen.get("progress")), 0.2), "Preparing room geometry")
 	_current_level = level_definition
 	_is_loading_room = true
@@ -2119,12 +2115,14 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool) -> 
 	_clear_floor_exit_portal()
 	if arena_view != null:
 		arena_view.configure(level_definition)
-	_set_loading_progress(0.38, "Configuring arena")
+	if should_update_loading_screen:
+		_set_loading_progress(0.38, "Configuring arena")
 	player_manager.set_arena_definition(level_definition)
 	projectile_manager.set_arena_definition(level_definition)
 	enemy_manager.set_arena_definition(level_definition)
 	spawner_manager.set_arena_definition(level_definition)
-	_set_loading_progress(0.54, "Clearing previous room")
+	if should_update_loading_screen:
+		_set_loading_progress(0.54, "Clearing previous room")
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
 	spawner_manager.clear_spawners()
@@ -2138,7 +2136,8 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool) -> 
 		player_manager.reset_run()
 	else:
 		player_manager.set_player_position(_get_room_entry_position(level_definition, entry_direction))
-	_set_loading_progress(0.7, "Creating room contents")
+	if should_update_loading_screen:
+		_set_loading_progress(0.7, "Creating room contents")
 	var room_is_cleared: bool = dungeon_manager.is_current_room_cleared()
 	if not room_is_cleared:
 		spawner_manager.reset_run(level_definition)
@@ -2151,12 +2150,14 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool) -> 
 			_show_boss_exit_portal_preview(level_definition)
 	room_manager.set_doors_unlocked(room_is_cleared)
 	_is_loading_room = false
-	_set_loading_progress(0.95, "Entering room")
+	if should_update_loading_screen:
+		_set_loading_progress(0.95, "Entering room")
 	_update_camera()
 	_update_minimap()
 	_check_level_clear()
 	_update_hud()
-	_finish_loading_screen()
+	if should_update_loading_screen:
+		_finish_loading_screen()
 
 
 func _get_room_entry_position(level_definition, entry_direction: String) -> Vector2:
@@ -2265,6 +2266,10 @@ func _show_loading_before_work(title: String, message: String, progress: float =
 	_begin_loading_screen(title, message, progress)
 	await get_tree().process_frame
 	await get_tree().process_frame
+
+
+func _loading_screen_is_visible() -> bool:
+	return loading_screen != null and loading_screen.visible
 
 
 func _set_loading_progress(progress: float, message: String = "") -> void:
