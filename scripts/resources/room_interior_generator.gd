@@ -617,18 +617,17 @@ func _build_destructible_prop_placements(level, connections: Dictionary, room_ki
 	var placements: Array[Resource] = []
 	if room_kind != "combat" and room_kind != "challenge":
 		return placements
-	var target_count: int = clamp(2 + int(floor_number / 2) + rng.randi_range(0, 2), 2, 7)
-	if room_kind == "challenge":
-		target_count += 1
-	var chest_chance: float = clamp(0.07 + float(floor_number) * 0.008, 0.07, 0.14)
-	var chest_pending := rng.randf() < chest_chance
+	var cell_count: int = _get_level_cell_count(level)
+	var target_count: int = _get_destructible_prop_budget(cell_count, room_kind, floor_number, rng)
+	var chest_chance: float = clamp(0.08 + float(cell_count) * 0.025 + float(floor_number) * 0.006, 0.1, 0.22)
+	var chest_pending := target_count >= 3 and rng.randf() < chest_chance
 	var candidate_points := _build_prop_candidate_points(level.arena_bounds, rng)
 	var blockers: Array[Rect2] = _get_wall_void_blockers(level)
 	for point in candidate_points:
 		if placements.size() >= target_count:
 			break
-		var prop_kind := "barrel" if rng.randf() < 0.34 else "crate"
-		if chest_pending and placements.size() >= 1 and rng.randf() < 0.28:
+		var prop_kind := "crate"
+		if chest_pending and placements.size() >= 1 and rng.randf() < 0.34:
 			prop_kind = "chest"
 			chest_pending = false
 		var placement = _make_prop_placement(point, prop_kind)
@@ -645,16 +644,32 @@ func _build_destructible_prop_placements(level, connections: Dictionary, room_ki
 	return placements
 
 
+func _get_destructible_prop_budget(cell_count: int, room_kind: String, floor_number: int, rng: RandomNumberGenerator) -> int:
+	var min_count := 2
+	var max_count := 3
+	if cell_count == 2:
+		min_count = 3
+		max_count = 5
+	elif cell_count == 3:
+		min_count = 4
+		max_count = 6
+	elif cell_count == 4:
+		min_count = 5
+		max_count = 7
+	elif cell_count >= 5:
+		min_count = 6
+		max_count = 8
+	if room_kind == "challenge":
+		max_count += 1
+	var floor_bonus: int = clamp(int(floor(float(max(floor_number - 1, 0)) / 3.0)), 0, 2)
+	return clamp(rng.randi_range(min_count, max_count) + floor_bonus, min_count, max_count + floor_bonus)
+
+
 func _make_prop_placement(position: Vector2, prop_kind: String):
 	var placement = DESTRUCTIBLE_PROP_PLACEMENT_SCRIPT.new()
 	placement.position = position
 	placement.prop_kind = prop_kind
 	match prop_kind:
-		"barrel":
-			placement.size = Vector2(42.0, 42.0)
-			placement.max_health = 2
-			placement.score_value = 1
-			placement.drop_kind = "minor"
 		"chest":
 			placement.size = Vector2(54.0, 42.0)
 			placement.max_health = 5
@@ -664,7 +679,7 @@ func _make_prop_placement(position: Vector2, prop_kind: String):
 			placement.size = Vector2(48.0, 48.0)
 			placement.max_health = 3
 			placement.score_value = 1
-			placement.drop_kind = "none"
+			placement.drop_kind = "minor"
 	return placement
 
 

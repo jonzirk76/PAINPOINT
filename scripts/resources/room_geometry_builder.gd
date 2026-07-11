@@ -227,13 +227,21 @@ static func get_spawn_position(cells: Array[Vector2i]) -> Vector2:
 
 
 static func get_door_clear_rect(cells: Array[Vector2i], local_cell: Vector2i, direction: String) -> Rect2:
-	var entry := get_entry_position(cells, local_cell, direction)
+	var cell_rect := get_cell_rect(cells, local_cell)
+	var opening := get_opening_rect(cells, local_cell, direction)
+	var clear_width: float = max(OPENING_WIDTH - WALL_TILE_SIZE, WALL_TILE_SIZE * 2.0)
+	var clear_depth: float = WALL_TILE_SIZE * 3.0
+	var center := opening.get_center()
 	match direction:
-		"north", "south":
-			return Rect2(entry - Vector2(90.0, 110.0), Vector2(180.0, 220.0))
-		"east", "west":
-			return Rect2(entry - Vector2(110.0, 90.0), Vector2(220.0, 180.0))
-	return Rect2(entry - Vector2(150.0, 150.0), Vector2(300.0, 300.0))
+		"north":
+			return Rect2(Vector2(center.x - clear_width * 0.5, cell_rect.position.y + WALL_THICKNESS), Vector2(clear_width, clear_depth))
+		"south":
+			return Rect2(Vector2(center.x - clear_width * 0.5, cell_rect.position.y + cell_rect.size.y - WALL_THICKNESS - clear_depth), Vector2(clear_width, clear_depth))
+		"east":
+			return Rect2(Vector2(cell_rect.position.x + cell_rect.size.x - WALL_THICKNESS - clear_depth, center.y - clear_width * 0.5), Vector2(clear_depth, clear_width))
+		"west":
+			return Rect2(Vector2(cell_rect.position.x + WALL_THICKNESS, center.y - clear_width * 0.5), Vector2(clear_depth, clear_width))
+	return Rect2(cell_rect.get_center() - Vector2(150.0, 150.0), Vector2(300.0, 300.0))
 
 
 static func find_contact_edge(source_cells: Array[Vector2i], source_anchor: Vector2i, target_cells: Array[Vector2i], target_anchor: Vector2i, direction: String) -> Dictionary:
