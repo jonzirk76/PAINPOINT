@@ -40,12 +40,13 @@ func _ready() -> void:
 	_select_random_background()
 	visible = false
 	set_process(false)
+	_clear_title_text()
 	_update_progress_bar()
 	_update_continue_prompt()
 
 
 func begin_loading(title: String = "LOADING", message: String = "", initial_progress: float = 0.0) -> void:
-	title_label.text = title
+	_clear_title_text()
 	status_label.text = message
 	progress = initial_progress
 	_continue_enabled = false
@@ -66,10 +67,9 @@ func set_progress(value: float, message: String = "") -> void:
 func finish_loading(message: String = "READY", wait_for_continue: bool = false) -> void:
 	progress = 1.0
 	status_label.text = message
-	_continue_enabled = wait_for_continue
-	if not wait_for_continue:
-		visible = false
-		set_process(false)
+	_continue_enabled = true
+	visible = true
+	set_process(true)
 	_update_continue_prompt()
 
 
@@ -105,9 +105,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_A:
 		accept_event()
+		hide_loading()
 		continue_requested.emit()
 	elif event is InputEventKey and event.pressed and not event.echo and (event.keycode == KEY_ENTER or event.keycode == KEY_SPACE):
 		accept_event()
+		hide_loading()
 		continue_requested.emit()
 
 
@@ -186,3 +188,8 @@ func _update_progress_bar() -> void:
 func _update_continue_prompt() -> void:
 	if continue_label != null:
 		continue_label.visible = _continue_enabled
+
+
+func _clear_title_text() -> void:
+	if title_label != null:
+		title_label.text = ""

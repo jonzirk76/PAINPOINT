@@ -261,6 +261,8 @@ func _connect_manager_signals() -> void:
 	_connect_once(upgrade_manager, &"permanent_upgrades_changed", _on_permanent_upgrades_changed)
 	_connect_once(upgrade_manager, &"overdrive_changed", _on_overdrive_changed)
 	_connect_once(room_manager, &"door_entered", _on_room_door_entered)
+	if loading_screen != null:
+		_connect_once(loading_screen, &"continue_requested", _on_loading_continue_requested)
 
 
 func _connect_once(source: Object, signal_name: StringName, target: Callable) -> void:
@@ -2272,7 +2274,15 @@ func _set_loading_progress(progress: float, message: String = "") -> void:
 
 func _finish_loading_screen(message: String = "READY") -> void:
 	if loading_screen != null and loading_screen.has_method("finish_loading"):
-		loading_screen.call("finish_loading", message, false)
+		loading_screen.call("finish_loading", message, true)
+	if _status == "RUNNING" or _status == "DUNGEON":
+		_set_all_enabled(false)
+
+
+func _on_loading_continue_requested() -> void:
+	if _status == "RUNNING" or _status == "DUNGEON":
+		_set_all_enabled(true)
+		_update_hud()
 
 
 func _update_camera() -> void:
