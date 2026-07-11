@@ -5,10 +5,12 @@ signal continue_requested
 
 @export var background_texture_directory: String = "res://art/loading_screens"
 @export var background_textures: Array[Texture2D] = []
+@export var progress_fill_speed: float = 1.8
 @export var progress: float = 0.0:
 	set(value):
 		progress = clamp(value, 0.0, 1.0)
-		_update_progress_bar()
+		if visible:
+			set_process(true)
 
 @onready var title_label: Label = $TitleLabel
 @onready var status_label: Label = $StatusLabel
@@ -19,6 +21,7 @@ signal continue_requested
 
 var _continue_enabled: bool = false
 var _background_index: int = 0
+var _displayed_progress: float = 0.0
 var _resolved_background_textures: Array[Texture2D] = []
 var _rng := RandomNumberGenerator.new()
 var _backgrounds: Array[Dictionary] = [
@@ -44,13 +47,16 @@ func _ready() -> void:
 
 
 func begin_loading(title: String = "LOADING", message: String = "", initial_progress: float = 0.0) -> void:
+	var was_visible := visible
 	_clear_title_text()
 	status_label.text = message
 	progress = initial_progress
 	_continue_enabled = false
-	_select_random_background()
+	if not was_visible:
+		_displayed_progress = 0.0
+		_select_random_background()
 	visible = true
-	set_process(false)
+	set_process(true)
 	_update_continue_prompt()
 	queue_redraw()
 
@@ -66,7 +72,7 @@ func finish_loading(message: String = "READY", wait_for_continue: bool = false) 
 	status_label.text = message
 	_continue_enabled = true
 	visible = true
-	set_process(false)
+	set_process(true)
 	_update_continue_prompt()
 
 
@@ -76,7 +82,7 @@ func show_continue(message: String = "PRESS A TO CONTINUE") -> void:
 	continue_label.text = message
 	_continue_enabled = true
 	visible = true
-	set_process(false)
+	set_process(true)
 	_update_continue_prompt()
 
 
@@ -85,6 +91,18 @@ func hide_loading() -> void:
 	visible = false
 	set_process(false)
 	_update_continue_prompt()
+
+
+func _process(delta: float) -> void:
+	if not visible:
+		set_process(false)
+		return
+	var previous_progress := _displayed_progress
+	_displayed_progress = move_toward(_displayed_progress, progress, progress_fill_speed * delta)
+	if not is_equal_approx(previous_progress, _displayed_progress):
+		_update_progress_bar()
+	if is_equal_approx(_displayed_progress, progress):
+		set_process(false)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -168,7 +186,7 @@ func _select_random_background() -> void:
 func _update_progress_bar() -> void:
 	if loading_bar_fill == null or loading_bar_back == null:
 		return
-	var width: float = max(loading_bar_back.size.x * progress, 0.0)
+	var width: float = max(loading_bar_back.size.x * _displayed_progress, 0.0)
 	loading_bar_fill.size = Vector2(width, loading_bar_back.size.y)
 
 
