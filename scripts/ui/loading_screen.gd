@@ -35,6 +35,8 @@ var _displayed_progress: float = 0.0
 var _glow_time: float = 0.0
 var _crackle_remaining: float = 0.0
 var _crackle_interval_remaining: float = 0.0
+var _status_base_label_settings: LabelSettings = null
+var _continue_base_label_settings: LabelSettings = null
 var _resolved_background_textures: Array[Texture2D] = []
 var _rng := RandomNumberGenerator.new()
 var _backgrounds: Array[Dictionary] = [
@@ -54,6 +56,7 @@ func _ready() -> void:
 	_select_random_background()
 	visible = false
 	set_process(false)
+	_prepare_runtime_label_settings()
 	_clear_title_text()
 	_update_progress_bar()
 	_update_continue_prompt()
@@ -272,6 +275,11 @@ func _update_ready_glow() -> void:
 	for label in [status_label, continue_label]:
 		if label == null:
 			continue
+		if label.label_settings != null:
+			label.label_settings.font_color = font_color
+			label.label_settings.shadow_color = shadow_color
+			label.label_settings.shadow_size = outline_size
+			label.label_settings.shadow_offset = Vector2.ZERO
 		label.add_theme_color_override("font_color", font_color)
 		label.add_theme_color_override("font_shadow_color", shadow_color)
 		label.add_theme_constant_override("shadow_offset_x", 0)
@@ -280,6 +288,8 @@ func _update_ready_glow() -> void:
 
 
 func _clear_ready_glow() -> void:
+	_restore_label_settings(status_label, _status_base_label_settings)
+	_restore_label_settings(continue_label, _continue_base_label_settings)
 	for label in [status_label, continue_label]:
 		if label == null:
 			continue
@@ -288,6 +298,26 @@ func _clear_ready_glow() -> void:
 		label.remove_theme_constant_override("shadow_offset_x")
 		label.remove_theme_constant_override("shadow_offset_y")
 		label.remove_theme_constant_override("shadow_outline_size")
+
+
+func _prepare_runtime_label_settings() -> void:
+	_status_base_label_settings = _duplicate_label_settings(status_label)
+	_continue_base_label_settings = _duplicate_label_settings(continue_label)
+
+
+func _duplicate_label_settings(label: Label) -> LabelSettings:
+	if label == null or label.label_settings == null:
+		return null
+	var settings: LabelSettings = label.label_settings.duplicate(true)
+	label.label_settings = settings
+	return settings.duplicate(true)
+
+
+func _restore_label_settings(label: Label, base_settings: LabelSettings) -> void:
+	if label == null or base_settings == null:
+		return
+	var settings: LabelSettings = base_settings.duplicate(true)
+	label.label_settings = settings
 
 
 func _update_continue_prompt() -> void:
