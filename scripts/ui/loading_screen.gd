@@ -3,7 +3,6 @@ class_name LoadingScreen
 
 signal continue_requested
 
-@export var background_cycle_seconds: float = 1.8
 @export var background_texture_directory: String = "res://art/loading_screens"
 @export var background_textures: Array[Texture2D] = []
 @export var progress: float = 0.0:
@@ -19,7 +18,6 @@ signal continue_requested
 @onready var loading_bar_fill: ColorRect = $LoadingBarOverlay/LoadingBarBack/LoadingBarFill
 
 var _continue_enabled: bool = false
-var _cycle_remaining: float = 0.0
 var _background_index: int = 0
 var _resolved_background_textures: Array[Texture2D] = []
 var _rng := RandomNumberGenerator.new()
@@ -50,10 +48,9 @@ func begin_loading(title: String = "LOADING", message: String = "", initial_prog
 	status_label.text = message
 	progress = initial_progress
 	_continue_enabled = false
-	_cycle_remaining = 0.0
 	_select_random_background()
 	visible = true
-	set_process(true)
+	set_process(false)
 	_update_continue_prompt()
 	queue_redraw()
 
@@ -69,7 +66,7 @@ func finish_loading(message: String = "READY", wait_for_continue: bool = false) 
 	status_label.text = message
 	_continue_enabled = true
 	visible = true
-	set_process(true)
+	set_process(false)
 	_update_continue_prompt()
 
 
@@ -79,7 +76,7 @@ func show_continue(message: String = "PRESS A TO CONTINUE") -> void:
 	continue_label.text = message
 	_continue_enabled = true
 	visible = true
-	set_process(true)
+	set_process(false)
 	_update_continue_prompt()
 
 
@@ -88,16 +85,6 @@ func hide_loading() -> void:
 	visible = false
 	set_process(false)
 	_update_continue_prompt()
-
-
-func _process(delta: float) -> void:
-	if not visible:
-		return
-	_cycle_remaining -= delta
-	if _cycle_remaining <= 0.0:
-		_cycle_remaining = max(background_cycle_seconds, 0.1)
-		_select_random_background()
-		queue_redraw()
 
 
 func _unhandled_input(event: InputEvent) -> void:
