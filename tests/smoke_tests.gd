@@ -2493,6 +2493,21 @@ func _test_room_piece_resources(failures: Array[String]) -> void:
 	fallback_piece.room_kind = "combat"
 	if not fallback_piece.has_connector("north") or not fallback_piece.has_connector("west"):
 		failures.append("Room piece connector fallbacks should protect dungeon generation when serialized connector fields are omitted.")
+	var builder = load("res://scripts/resources/room_geometry_builder.gd")
+	var corner_cells: Array[Vector2i] = [Vector2i.ZERO]
+	var multi_open_edges := {
+		"north": {"source_cell": Vector2i.ZERO, "target_cell": Vector2i.ZERO},
+		"east": {"source_cell": Vector2i.ZERO, "target_cell": Vector2i.ZERO}
+	}
+	var multi_open_tiles: Array[Rect2] = builder.build_wall_tile_rects(corner_cells, multi_open_edges)
+	var north_east_corner := Rect2(Vector2(
+		builder.CELL_SIZE.x * 0.5 - builder.WALL_TILE_SIZE,
+		-builder.CELL_SIZE.y * 0.5
+	), Vector2(builder.WALL_TILE_SIZE, builder.WALL_TILE_SIZE))
+	if not _rect_list_has_rect(multi_open_tiles, north_east_corner):
+		failures.append("Room shell generation should preserve exterior corner wall tiles when one cell has adjacent openings.")
+	if _rect_list_count_rect(multi_open_tiles, north_east_corner) != 1:
+		failures.append("Room shell generation should not duplicate exterior corner wall tiles shared by adjacent wall edges.")
 
 
 func _test_room_interior_generator_determinism_and_budget(failures: Array[String]) -> void:
@@ -2832,6 +2847,22 @@ func _rect_signature(rect: Rect2) -> String:
 		int(round(rect.size.x)),
 		int(round(rect.size.y))
 	]
+
+
+func _rect_list_has_rect(rects: Array[Rect2], expected: Rect2) -> bool:
+	return _rect_list_count_rect(rects, expected) > 0
+
+
+func _rect_list_count_rect(rects: Array[Rect2], expected: Rect2) -> int:
+	var count := 0
+	for rect in rects:
+		if _rects_are_same(rect, expected):
+			count += 1
+	return count
+
+
+func _rects_are_same(first: Rect2, second: Rect2) -> bool:
+	return first.position.distance_squared_to(second.position) <= 0.25 and first.size.distance_squared_to(second.size) <= 0.25
 
 
 func _generated_room_has_non_basic_spawner(level) -> bool:

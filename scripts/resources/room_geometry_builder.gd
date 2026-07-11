@@ -82,6 +82,7 @@ static func build_wall_rects(cells: Array[Vector2i], connection_edges: Dictionar
 
 static func build_wall_tile_rects(cells: Array[Vector2i], connection_edges: Dictionary = {}) -> Array[Rect2]:
 	var walls: Array[Rect2] = []
+	var wall_lookup := {}
 	var occupied := _build_cell_lookup(cells)
 	var min_cell := get_min_cell(cells)
 	var max_cell := get_max_cell(cells)
@@ -89,7 +90,7 @@ static func build_wall_tile_rects(cells: Array[Vector2i], connection_edges: Dict
 		for y in range(min_cell.y, max_cell.y + 1):
 			var cell := Vector2i(x, y)
 			if not occupied.has(_cell_key(cell)):
-				walls.append_array(_rect_to_wall_tiles(get_cell_rect(cells, cell)))
+				_append_unique_wall_tiles(walls, wall_lookup, _rect_to_wall_tiles(get_cell_rect(cells, cell)))
 	for cell in cells:
 		for direction in DIRECTIONS:
 			var neighbor: Vector2i = cell + DIRECTION_OFFSETS.get(direction, Vector2i.ZERO)
@@ -99,7 +100,8 @@ static func build_wall_tile_rects(cells: Array[Vector2i], connection_edges: Dict
 			if _connection_uses_cell_edge(connection_edges, direction, cell):
 				opening = get_opening_rect(cells, cell, direction)
 			for wall_rect in _build_edge_wall_rects(cells, cell, direction, opening):
-				walls.append(wall_rect)
+				_append_unique_wall_tile(walls, wall_lookup, wall_rect)
+	_append_unique_wall_tiles(walls, wall_lookup, _build_exterior_corner_wall_tiles(cells, connection_edges, occupied))
 	return walls
 
 
@@ -289,6 +291,30 @@ static func _build_edge_wall_rects(cells: Array[Vector2i], local_cell: Vector2i,
 	return rects
 
 
+static func _build_exterior_corner_wall_tiles(cells: Array[Vector2i], connection_edges: Dictionary, occupied: Dictionary) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	for cell in cells:
+		var cell_rect := get_cell_rect(cells, cell)
+		var corner_specs := [
+			{"directions": ["north", "west"], "position": cell_rect.position},
+			{"directions": ["north", "east"], "position": Vector2(cell_rect.position.x + cell_rect.size.x - WALL_TILE_SIZE, cell_rect.position.y)},
+			{"directions": ["south", "east"], "position": cell_rect.position + cell_rect.size - Vector2(WALL_TILE_SIZE, WALL_TILE_SIZE)},
+			{"directions": ["south", "west"], "position": Vector2(cell_rect.position.x, cell_rect.position.y + cell_rect.size.y - WALL_TILE_SIZE)}
+		]
+		for spec in corner_specs:
+			var first_direction := String(spec["directions"][0])
+			var second_direction := String(spec["directions"][1])
+			if occupied.has(_cell_key(cell + DIRECTION_OFFSETS[first_direction])) or occupied.has(_cell_key(cell + DIRECTION_OFFSETS[second_direction])):
+				continue
+			var tile := Rect2(spec["position"], Vector2(WALL_TILE_SIZE, WALL_TILE_SIZE))
+			if _tile_is_inside_connection_opening(tile, cells, cell, first_direction, connection_edges):
+				continue
+			if _tile_is_inside_connection_opening(tile, cells, cell, second_direction, connection_edges):
+				continue
+			rects.append(tile)
+	return rects
+
+
 static func _rect_to_wall_tiles(rect: Rect2) -> Array[Rect2]:
 	var tiles: Array[Rect2] = []
 	var snapped_rect := snap_rect_to_tile_grid(rect)
@@ -305,6 +331,34 @@ static func _tile_is_inside_opening(tile: Rect2, opening: Rect2) -> bool:
 	if opening.size == Vector2.ZERO:
 		return false
 	return opening.has_point(tile.get_center())
+
+
+static func _tile_is_inside_connection_opening(tile: Rect2, cells: Array[Vector2i], local_cell: Vector2i, direction: String, connection_edges: Dictionary) -> bool:
+	if not _connection_uses_cell_edge(connection_edges, direction, local_cell):
+		return false
+	return _tile_is_inside_opening(tile, get_opening_rect(cells, local_cell, direction))
+
+
+static func _append_unique_wall_tiles(walls: Array[Rect2], wall_lookup: Dictionary, tiles: Array[Rect2]) -> void:
+	for tile in tiles:
+		_append_unique_wall_tile(walls, wall_lookup, tile)
+
+
+static func _append_unique_wall_tile(walls: Array[Rect2], wall_lookup: Dictionary, tile: Rect2) -> void:
+	var key := _rect_tile_key(tile)
+	if wall_lookup.has(key):
+		return
+	wall_lookup[key] = true
+	walls.append(tile)
+
+
+static func _rect_tile_key(rect: Rect2) -> String:
+	return "%d,%d,%d,%d" % [
+		int(round(rect.position.x)),
+		int(round(rect.position.y)),
+		int(round(rect.size.x)),
+		int(round(rect.size.y))
+	]
 
 
 static func _connection_uses_cell_edge(connection_edges: Dictionary, direction: String, local_cell: Vector2i) -> bool:
