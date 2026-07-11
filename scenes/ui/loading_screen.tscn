@@ -26,6 +26,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_loading")
+ready_glow_speed = 0.5
 
 [node name="Vignette" type="ColorRect" parent="."]
 layout_mode = 1
@@ -38,6 +39,7 @@ mouse_filter = 2
 color = Color(0, 0, 0, 0.22)
 
 [node name="TextureRect" type="TextureRect" parent="Vignette"]
+modulate = Color(0.6742817, 0.6742817, 0.6742817, 1)
 layout_mode = 0
 offset_right = 1672.0
 offset_bottom = 941.0
