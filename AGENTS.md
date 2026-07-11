@@ -56,6 +56,11 @@ This project is a Godot 4.x GDScript top-down arena shooter. Keep the architectu
 - For editor-native work, propose the node architecture, scene hierarchy, key inspector values, and signal/data flow. Do not churn through script-heavy substitutes unless the user asks.
 - Only script or directly edit `.tscn` scene layout when the user explicitly asks, or when the change is small, low-risk, and easier to review as text.
 - Gameplay or visual values likely to need user feel-tuning should be exposed through Godot `@export` variables or Resource fields so the user can adjust them in the inspector.
+- When adding or changing inspector-tunable exported properties, put a Godot doc comment immediately above the property starting with `## [Description]` so the inspector tooltip explains what the property modifies. Example:
+  ```gdscript
+  ## Controls how quickly the ready prompt glow pulses in the loading screen.
+  @export var ready_glow_speed: float = 1.8
+  ```
 
 ## Smoke Test Policy
 
