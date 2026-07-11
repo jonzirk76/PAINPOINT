@@ -7,6 +7,15 @@ signal continue_requested
 @export var background_textures: Array[Texture2D] = []
 @export var progress_fill_speed: float = 1.8
 @export var ready_glow_speed: float = 1.8
+@export var ready_glow_base_color: Color = Color(0.72, 0.9, 0.95, 1.0)
+@export var ready_glow_peak_color: Color = Color(1.0, 1.0, 1.0, 1.0)
+@export_range(0.0, 1.0, 0.01) var ready_glow_min_mix: float = 0.32
+@export_range(0.0, 1.0, 0.01) var ready_glow_max_mix: float = 0.8
+@export var ready_glow_shadow_color: Color = Color(0.2, 0.9, 1.0, 1.0)
+@export_range(0.0, 1.0, 0.01) var ready_glow_shadow_min_alpha: float = 0.22
+@export_range(0.0, 1.0, 0.01) var ready_glow_shadow_max_alpha: float = 0.78
+@export_range(0, 32, 1) var ready_glow_shadow_min_outline: int = 6
+@export_range(0, 32, 1) var ready_glow_shadow_max_outline: int = 14
 @export var progress: float = 0.0:
 	set(value):
 		progress = clamp(value, 0.0, 1.0)
@@ -255,8 +264,11 @@ func _clear_loading_crackle() -> void:
 
 func _update_ready_glow() -> void:
 	var pulse: float = 0.5 + 0.5 * sin(_glow_time * TAU * ready_glow_speed)
-	var font_color := Color(0.72, 0.9, 0.95, 1.0).lerp(Color(1.0, 1.0, 1.0, 1.0), 0.32 + pulse * 0.48)
-	var shadow_color := Color(0.2, 0.9, 1.0, 0.22 + pulse * 0.56)
+	var glow_mix: float = lerp(ready_glow_min_mix, ready_glow_max_mix, pulse)
+	var font_color := ready_glow_base_color.lerp(ready_glow_peak_color, glow_mix)
+	var shadow_alpha: float = lerp(ready_glow_shadow_min_alpha, ready_glow_shadow_max_alpha, pulse)
+	var shadow_color := Color(ready_glow_shadow_color.r, ready_glow_shadow_color.g, ready_glow_shadow_color.b, shadow_alpha)
+	var outline_size: int = roundi(lerp(float(ready_glow_shadow_min_outline), float(ready_glow_shadow_max_outline), pulse))
 	for label in [status_label, continue_label]:
 		if label == null:
 			continue
@@ -264,7 +276,7 @@ func _update_ready_glow() -> void:
 		label.add_theme_color_override("font_shadow_color", shadow_color)
 		label.add_theme_constant_override("shadow_offset_x", 0)
 		label.add_theme_constant_override("shadow_offset_y", 0)
-		label.add_theme_constant_override("shadow_outline_size", 6 + roundi(pulse * 8.0))
+		label.add_theme_constant_override("shadow_outline_size", outline_size)
 
 
 func _clear_ready_glow() -> void:
