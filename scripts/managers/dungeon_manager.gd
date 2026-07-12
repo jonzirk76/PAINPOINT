@@ -70,6 +70,7 @@ var _occupied_cells: Dictionary = {}
 var _interior_generator = ROOM_INTERIOR_GENERATOR_SCRIPT.new()
 var _large_room_count: int = 0
 var _crossroads_placed: bool = false
+var _piece_variant_cache: Dictionary = {}
 
 
 func initialize(_context: Dictionary) -> void:
@@ -295,8 +296,9 @@ func _generate_layout() -> void:
 	_place_room("start", START_PIECE, Vector2i.ZERO, true)
 	var path_room_ids := _build_boss_path(rng)
 	_try_place_required_branch("treasure_1", TREASURE_PIECE, path_room_ids, rng)
-	if not _try_place_connected_any_direction("start", "challenge_1", CHALLENGE_PIECE, rng):
-		_try_place_required_branch("challenge_1", CHALLENGE_PIECE, path_room_ids, rng)
+	var challenge_piece = _choose_room_piece_variant(CHALLENGE_PIECE, rng)
+	if not _try_place_connected_any_direction("start", "challenge_1", challenge_piece, rng):
+		_try_place_required_branch("challenge_1", challenge_piece, path_room_ids, rng)
 	_fill_optional_branches(path_room_ids, rng)
 	_generate_room_interiors()
 	current_room_id = "start"
@@ -321,7 +323,7 @@ func _build_boss_path(rng: RandomNumberGenerator) -> Array[String]:
 		var room_id := "path_%d" % (index + 1)
 		var piece = _choose_combat_piece(rng, index)
 		if not _try_place_connected_from_candidates(current_id, _get_path_candidate_directions(path_direction, rng), room_id, piece, rng):
-			piece = WIDE_PIECE
+			piece = _choose_room_piece_variant(WIDE_PIECE, rng)
 			if not _try_place_connected_from_candidates(current_id, _get_path_candidate_directions(path_direction, rng), room_id, piece, rng):
 				break
 		path_room_ids.append(room_id)
@@ -389,19 +391,35 @@ func _try_place_connected(parent_id: String, direction: String, room_id: String,
 	var child_edges := _get_piece_exposed_edges(piece, opposite)
 	_shuffle_edge_candidates(parent_edges, rng)
 	_shuffle_edge_candidates(child_edges, rng)
+	var best_candidates: Array[Dictionary] = []
+	var best_score := -1
 	for parent_edge in parent_edges:
 		var parent_cell: Vector2i = parent_edge.get("cell", Vector2i.ZERO)
 		for child_edge in child_edges:
 			var child_cell: Vector2i = child_edge.get("cell", Vector2i.ZERO)
 			var candidate_anchor: Vector2i = Vector2i(parent_state["anchor"]) + parent_cell + DIRECTION_OFFSETS[direction] - child_cell
 			if _can_place_connected(piece, candidate_anchor, parent_id, direction):
-				_place_room(room_id, piece, candidate_anchor)
-				_connect_rooms(parent_id, direction, room_id, {
-					"source_cell": parent_cell,
-					"target_cell": child_cell
-				})
-				return true
-	return false
+				var score := _get_place_density_score(piece, candidate_anchor, parent_id, direction)
+				if score > best_score:
+					best_score = score
+					best_candidates.clear()
+				if score == best_score:
+					best_candidates.append({
+						"anchor": candidate_anchor,
+						"source_cell": parent_cell,
+						"target_cell": child_cell
+					})
+	if best_candidates.is_empty():
+		return false
+	var selected: Dictionary = best_candidates[0]
+	if rng != null and best_candidates.size() > 1:
+		selected = best_candidates[rng.randi_range(0, best_candidates.size() - 1)]
+	_place_room(room_id, piece, Vector2i(selected["anchor"]))
+	_connect_rooms(parent_id, direction, room_id, {
+		"source_cell": Vector2i(selected["source_cell"]),
+		"target_cell": Vector2i(selected["target_cell"])
+	})
+	return true
 
 
 func _try_place_connected_any_direction(parent_id: String, room_id: String, piece, rng: RandomNumberGenerator) -> bool:
@@ -439,17 +457,155 @@ func _shuffle_edge_candidates(edges: Array[Dictionary], rng: RandomNumberGenerat
 
 func _choose_combat_piece(rng: RandomNumberGenerator, path_index: int):
 	var size := _choose_combat_room_size(rng, true)
-	var pieces: Array = COMBAT_PIECES_BY_SIZE.get(size, [WIDE_PIECE])
+	var pieces: Array = _get_room_piece_variants(COMBAT_PIECES_BY_SIZE.get(size, [WIDE_PIECE]))
 	var index: int = (rng.randi_range(0, pieces.size() - 1) + floor_number + path_index) % pieces.size()
 	return pieces[index]
 
 
 func _choose_branch_piece(rng: RandomNumberGenerator, branch_index: int):
 	if floor_number >= 3 and branch_index % 4 == 0:
-		return CHALLENGE_PIECE
+		return _choose_room_piece_variant(CHALLENGE_PIECE, rng)
 	var size := _choose_combat_room_size(rng, false)
-	var pieces: Array = COMBAT_PIECES_BY_SIZE.get(size, [WIDE_PIECE])
+	var pieces: Array = _get_room_piece_variants(COMBAT_PIECES_BY_SIZE.get(size, [WIDE_PIECE]))
 	return pieces[rng.randi_range(0, pieces.size() - 1)]
+
+
+func _choose_room_piece_variant(piece, rng: RandomNumberGenerator):
+	var variants := _get_room_piece_variants([piece])
+	return variants[rng.randi_range(0, variants.size() - 1)]
+
+
+func _get_room_piece_variants(pieces: Array) -> Array:
+	var variants: Array = []
+	for piece in pieces:
+		var cache_key := _get_piece_variant_cache_key(piece)
+		if not _piece_variant_cache.has(cache_key):
+			_piece_variant_cache[cache_key] = _build_room_piece_variants(piece)
+		variants.append_array(Array(_piece_variant_cache[cache_key]))
+	return variants
+
+
+func _build_room_piece_variants(piece) -> Array:
+	var variants: Array = []
+	var seen := {}
+	for variant_data in _get_room_piece_variant_data(piece):
+		var footprint: Array[Vector2i] = []
+		for cell in variant_data["footprint"]:
+			footprint.append(cell)
+		var connector_directions: PackedStringArray = variant_data["connector_directions"]
+		var key := "%s:%s:%s" % [String(piece.id), _footprint_key(footprint), _connector_key(connector_directions)]
+		if seen.has(key):
+			continue
+		seen[key] = true
+		if int(variant_data["transform_index"]) == 0:
+			variants.append(piece)
+		else:
+			var variant = piece.duplicate(true)
+			variant.footprint_cells = footprint
+			variant.connector_directions = connector_directions
+			variants.append(variant)
+	return variants
+
+
+func _get_piece_variant_cache_key(piece) -> String:
+	return "%s:%s:%s:%s" % [
+		String(piece.resource_path),
+		String(piece.id),
+		_footprint_key(piece.footprint_cells),
+		_connector_key(piece.get_connector_directions())
+	]
+
+
+func _get_room_piece_variant_data(piece) -> Array:
+	var variants: Array = []
+	var seen := {}
+	for transform_index in range(8):
+		var transformed: Array[Vector2i] = []
+		for cell in piece.footprint_cells:
+			transformed.append(_transform_footprint_cell(cell, transform_index))
+		transformed = _normalize_footprint_cells(transformed)
+		var transformed_connectors := _transform_connector_directions(piece.get_connector_directions(), transform_index)
+		var key := "%s:%s" % [_footprint_key(transformed), _connector_key(transformed_connectors)]
+		if seen.has(key):
+			continue
+		seen[key] = true
+		variants.append({
+			"footprint": transformed,
+			"connector_directions": transformed_connectors,
+			"transform_index": transform_index
+		})
+	return variants
+
+
+func _transform_footprint_cell(cell: Vector2i, transform_index: int) -> Vector2i:
+	match transform_index:
+		0:
+			return Vector2i(cell.x, cell.y)
+		1:
+			return Vector2i(-cell.y, cell.x)
+		2:
+			return Vector2i(-cell.x, -cell.y)
+		3:
+			return Vector2i(cell.y, -cell.x)
+		4:
+			return Vector2i(-cell.x, cell.y)
+		5:
+			return Vector2i(cell.y, cell.x)
+		6:
+			return Vector2i(cell.x, -cell.y)
+		_:
+			return Vector2i(-cell.y, -cell.x)
+
+
+func _transform_connector_directions(connector_directions: PackedStringArray, transform_index: int) -> PackedStringArray:
+	var directions: Array[String] = []
+	for direction in connector_directions:
+		var offset: Vector2i = DIRECTION_OFFSETS.get(String(direction), Vector2i.ZERO)
+		var transformed_offset := _transform_footprint_cell(offset, transform_index)
+		var transformed_direction := _direction_from_offset(transformed_offset)
+		if transformed_direction.is_empty() or directions.has(transformed_direction):
+			continue
+		directions.append(transformed_direction)
+	directions.sort()
+	return PackedStringArray(directions)
+
+
+func _direction_from_offset(offset: Vector2i) -> String:
+	for direction_key in DIRECTION_OFFSETS.keys():
+		if DIRECTION_OFFSETS[direction_key] == offset:
+			return String(direction_key)
+	return ""
+
+
+func _normalize_footprint_cells(cells: Array[Vector2i]) -> Array[Vector2i]:
+	var min_cell := cells[0]
+	for cell in cells:
+		min_cell.x = min(min_cell.x, cell.x)
+		min_cell.y = min(min_cell.y, cell.y)
+	var normalized: Array[Vector2i] = []
+	for cell in cells:
+		normalized.append(cell - min_cell)
+	normalized.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		if a.y == b.y:
+			return a.x < b.x
+		return a.y < b.y
+	)
+	return normalized
+
+
+func _footprint_key(cells: Array) -> String:
+	var parts: Array[String] = []
+	for cell in cells:
+		parts.append("%d,%d" % [cell.x, cell.y])
+	return ";".join(parts)
+
+
+func _connector_key(connector_directions: PackedStringArray) -> String:
+	var directions: Array[String] = []
+	for direction in connector_directions:
+		directions.append(String(direction))
+	directions.sort()
+	return ",".join(directions)
 
 
 func _choose_combat_room_size(rng: RandomNumberGenerator, is_path_room: bool) -> int:
@@ -569,13 +725,16 @@ func _can_place(piece, anchor: Vector2i) -> bool:
 	return true
 
 
-func _can_place_connected(piece, anchor: Vector2i, parent_id: String, parent_to_child_direction: String) -> bool:
+func _can_place_connected(piece, anchor: Vector2i, _parent_id: String, _parent_to_child_direction: String) -> bool:
 	if not _can_place(piece, anchor):
 		return false
-	var expected_child_to_parent_direction := String(OPPOSITE_DIRECTIONS.get(parent_to_child_direction, ""))
-	if expected_child_to_parent_direction.is_empty():
-		return false
-	var parent_contact_count := 0
+	return true
+
+
+func _get_place_density_score(piece, anchor: Vector2i, parent_id: String, parent_to_child_direction: String) -> int:
+	var child_to_parent_direction := String(OPPOSITE_DIRECTIONS.get(parent_to_child_direction, ""))
+	var score := 0
+	var counted := {}
 	for local_cell in piece.footprint_cells:
 		var world_cell: Vector2i = anchor + local_cell
 		for direction_key in DIRECTION_OFFSETS.keys():
@@ -584,14 +743,14 @@ func _can_place_connected(piece, anchor: Vector2i, parent_id: String, parent_to_
 			var neighbor_id := String(_occupied_cells.get(_cell_key(neighbor_cell), ""))
 			if neighbor_id.is_empty():
 				continue
-			if neighbor_id != parent_id:
-				return false
-			if direction != expected_child_to_parent_direction:
-				return false
-			parent_contact_count += 1
-			if parent_contact_count > 1:
-				return false
-	return parent_contact_count == 1
+			if neighbor_id == parent_id and direction == child_to_parent_direction:
+				continue
+			var contact_key := "%s:%s:%s" % [neighbor_id, _cell_key(world_cell), _cell_key(neighbor_cell)]
+			if counted.has(contact_key):
+				continue
+			counted[contact_key] = true
+			score += 1
+	return score
 
 
 func _cell_key(cell: Vector2i) -> String:

@@ -2488,11 +2488,16 @@ func _test_room_piece_resources(failures: Array[String]) -> void:
 				failures.append("Boss room max active enemies should allow the boss encounter.")
 	if combat_piece_count < 8:
 		failures.append("Dungeon solver should have at least eight combat room pieces to vary floor sizes and shapes.")
+	_validate_room_piece_geometry_rules(failures)
+	_validate_room_piece_runtime_variants(failures)
 	var fallback_piece = load("res://scripts/resources/room_piece_definition.gd").new()
 	fallback_piece.id = "combat_wide"
 	fallback_piece.room_kind = "combat"
 	if not fallback_piece.has_connector("north") or not fallback_piece.has_connector("west"):
 		failures.append("Room piece connector fallbacks should protect dungeon generation when serialized connector fields are omitted.")
+
+
+func _validate_room_piece_geometry_rules(failures: Array[String]) -> void:
 	var builder = load("res://scripts/resources/room_geometry_builder.gd")
 	var corner_cells: Array[Vector2i] = [Vector2i.ZERO]
 	var multi_open_edges := {
@@ -2536,6 +2541,58 @@ func _test_room_piece_resources(failures: Array[String]) -> void:
 	var east_edges: Array = builder.get_exposed_edges(l_cells, "east")
 	if west_edges.size() != 2 or east_edges.size() != 2:
 		failures.append("Room geometry should expose cell-specific connector edges for non-rectangular footprints.")
+
+
+func _validate_room_piece_runtime_variants(failures: Array[String]) -> void:
+	var dungeon_manager = load("res://scripts/managers/dungeon_manager.gd").new()
+	var l_piece = load("res://resources/rooms/combat_l_room.tres")
+	var l_keys := _get_room_piece_variant_footprint_keys(dungeon_manager, l_piece)
+	for key in [
+		"0,0;0,1;1,0",
+		"0,0;1,0;1,1",
+		"0,1;1,0;1,1",
+		"0,0;0,1;1,1"
+	]:
+		if not l_keys.has(key):
+			failures.append("Runtime L-room variants should include footprint rotation/reflection %s." % key)
+	var z_piece = load("res://resources/rooms/challenge_zigzag.tres")
+	var z_keys := _get_room_piece_variant_footprint_keys(dungeon_manager, z_piece)
+	for key in [
+		"0,0;1,0;1,1",
+		"0,1;1,0;1,1"
+	]:
+		if not z_keys.has(key):
+			failures.append("Runtime zigzag variants should include both upper and lower missing-cell orientations.")
+	var saw_south_connector := false
+	for variant in dungeon_manager._get_room_piece_variants([z_piece]):
+		if variant.has_connector("south"):
+			saw_south_connector = true
+			break
+	if not saw_south_connector:
+		failures.append("Runtime zigzag variants should transform connector directions with rotated footprints.")
+	dungeon_manager.free()
+
+
+func _get_room_piece_variant_footprint_keys(dungeon_manager, piece) -> Dictionary:
+	var keys := {}
+	for variant in dungeon_manager._get_room_piece_variants([piece]):
+		keys[_footprint_key_for_test(variant.footprint_cells)] = true
+	return keys
+
+
+func _footprint_key_for_test(cells: Array) -> String:
+	var sorted_cells: Array[Vector2i] = []
+	for cell in cells:
+		sorted_cells.append(cell)
+	sorted_cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		if a.y == b.y:
+			return a.x < b.x
+		return a.y < b.y
+	)
+	var parts: Array[String] = []
+	for cell in sorted_cells:
+		parts.append("%d,%d" % [cell.x, cell.y])
+	return ";".join(parts)
 
 
 func _test_room_interior_generator_determinism_and_budget(failures: Array[String]) -> void:
@@ -3292,7 +3349,39 @@ func _validate_dungeon_physical_door_adjacency(rooms_by_id: Dictionary, failures
 		for local_cell in room_info["footprint_cells"]:
 			var world_cell: Vector2i = anchor + local_cell
 			occupied[_cell_key_for_test(world_cell)] = String(room_id)
-	var contact_counts: Dictionary = {}
+	for room_id in rooms_by_id.keys():
+		var room_info: Dictionary = rooms_by_id[room_id]
+		var connections: Dictionary = room_info.get("connections", {})
+		var connection_edges: Dictionary = room_info.get("connection_edges", {})
+		for direction_key in connections.keys():
+			var key := "%s|%s" % [room_id, String(direction_key)]
+			var direction := String(direction_key)
+			var target_id := String(connections[direction_key])
+			if not connection_edges.has(direction) or not rooms_by_id.has(target_id):
+				failures.append("Dungeon layout logical doorway should store selected cell edge metadata %s: %s" % [key, label])
+				continue
+			var edge: Dictionary = connection_edges[direction]
+			var target_info: Dictionary = rooms_by_id[target_id]
+			var source_world: Vector2i = Vector2i(room_info["anchor"]) + edge.get("source_cell", Vector2i.ZERO)
+			var target_world: Vector2i = Vector2i(target_info["anchor"]) + edge.get("target_cell", Vector2i.ZERO)
+			if source_world + DUNGEON_DIRECTION_OFFSETS[direction] != target_world:
+				failures.append("Dungeon layout selected cell edge should match physical adjacency %s: %s" % [key, label])
+			if String(occupied.get(_cell_key_for_test(source_world), "")) != String(room_id) or String(occupied.get(_cell_key_for_test(target_world), "")) != target_id:
+				failures.append("Dungeon layout selected cell edge should reference occupied cells %s: %s" % [key, label])
+
+
+func _count_dungeon_incidental_contacts(manager) -> int:
+	var rooms_by_id: Dictionary = {}
+	var occupied: Dictionary = {}
+	for room_info in manager.get_minimap_rooms():
+		var room_id := String(room_info["id"])
+		rooms_by_id[room_id] = room_info
+		var anchor: Vector2i = room_info["anchor"]
+		for local_cell in room_info["footprint_cells"]:
+			var world_cell: Vector2i = anchor + local_cell
+			occupied[_cell_key_for_test(world_cell)] = room_id
+	var counted := {}
+	var contact_count := 0
 	for room_id in rooms_by_id.keys():
 		var room_info: Dictionary = rooms_by_id[room_id]
 		var anchor: Vector2i = room_info["anchor"]
@@ -3305,33 +3394,17 @@ func _validate_dungeon_physical_door_adjacency(rooms_by_id: Dictionary, failures
 				var neighbor_id := String(occupied.get(_cell_key_for_test(neighbor_cell), ""))
 				if neighbor_id.is_empty() or neighbor_id == String(room_id):
 					continue
-				var expected_neighbor := String(connections.get(direction, ""))
-				if expected_neighbor != neighbor_id:
-					failures.append("Dungeon layout has an unintended physical doorway %s.%s touching %s: %s" % [room_id, direction, neighbor_id, label])
+				if String(connections.get(direction, "")) == neighbor_id:
 					continue
-				var key := "%s|%s" % [room_id, direction]
-				contact_counts[key] = int(contact_counts.get(key, 0)) + 1
-				if int(contact_counts[key]) > 1:
-					failures.append("Dungeon layout should expose only one physical doorway for %s.%s: %s" % [room_id, direction, label])
-	for room_id in rooms_by_id.keys():
-		var room_info: Dictionary = rooms_by_id[room_id]
-		var connections: Dictionary = room_info.get("connections", {})
-		var connection_edges: Dictionary = room_info.get("connection_edges", {})
-		for direction_key in connections.keys():
-			var key := "%s|%s" % [room_id, String(direction_key)]
-			if int(contact_counts.get(key, 0)) != 1:
-				failures.append("Dungeon layout logical doorway should have exactly one physical edge %s: %s" % [key, label])
-			var direction := String(direction_key)
-			var target_id := String(connections[direction_key])
-			if not connection_edges.has(direction) or not rooms_by_id.has(target_id):
-				failures.append("Dungeon layout logical doorway should store selected cell edge metadata %s: %s" % [key, label])
-				continue
-			var edge: Dictionary = connection_edges[direction]
-			var target_info: Dictionary = rooms_by_id[target_id]
-			var source_world: Vector2i = Vector2i(room_info["anchor"]) + edge.get("source_cell", Vector2i.ZERO)
-			var target_world: Vector2i = Vector2i(target_info["anchor"]) + edge.get("target_cell", Vector2i.ZERO)
-			if source_world + DUNGEON_DIRECTION_OFFSETS[direction] != target_world:
-				failures.append("Dungeon layout selected cell edge should match physical adjacency %s: %s" % [key, label])
+				var cell_key_a := "%s:%s" % [String(room_id), _cell_key_for_test(world_cell)]
+				var cell_key_b := "%s:%s" % [neighbor_id, _cell_key_for_test(neighbor_cell)]
+				var contact_key := "%s|%s" % [cell_key_a, cell_key_b]
+				var reverse_contact_key := "%s|%s" % [cell_key_b, cell_key_a]
+				if counted.has(contact_key) or counted.has(reverse_contact_key):
+					continue
+				counted[contact_key] = true
+				contact_count += 1
+	return contact_count
 
 
 func _cell_key_for_test(cell: Vector2i) -> String:
@@ -3374,10 +3447,15 @@ func _test_dungeon_layout_solver(failures: Array[String]) -> void:
 	for seed in [116, 490, 887, 1115]:
 		manager.reset_run(1, seed)
 		_validate_dungeon_layout_integrity(manager, failures, "reported branch repro seed %d" % seed)
+	var found_incidental_contact := false
 	for floor in range(1, 6):
 		for seed in range(1, 61):
 			manager.reset_run(floor, seed)
 			_validate_dungeon_layout_integrity(manager, failures, "floor %d seed %d" % [floor, seed])
+			if _count_dungeon_incidental_contacts(manager) > 0:
+				found_incidental_contact = true
+	if not found_incidental_contact:
+		failures.append("Dungeon layout solver should allow dense tesselation through incidental room adjacency.")
 	manager.free()
 
 
