@@ -2609,6 +2609,8 @@ func _test_room_interior_generator_determinism_and_budget(failures: Array[String
 			failures.append("Generated room blockers should stay aligned to the canonical tile grid.")
 		if not _level_door_openings_are_unblocked(sampled_room, connections):
 			failures.append("Generated exterior wall growth should not block connected door openings.")
+		if not _level_generated_blockers_stay_inside_footprint(sampled_room):
+			failures.append("Generated room blockers should stay inside the canonical footprint envelope.")
 		if _get_blocker_tile_count(sampled_room) >= 12:
 			complex_room_count += 1
 		if _has_contiguous_blocker_group(_get_level_meta_rects(sampled_room, "wall_tile_rects", sampled_room.wall_rects), 4):
@@ -2938,6 +2940,54 @@ func _level_blockers_are_tile_aligned(level) -> bool:
 		if not _rect_is_tile_aligned(rect, tile_size):
 			return false
 	return true
+
+
+func _level_generated_blockers_stay_inside_footprint(level) -> bool:
+	if level == null or not level.has_meta("footprint_cells"):
+		return false
+	for rect in _get_level_meta_rects(level, "wall_tile_rects", level.wall_rects):
+		if not _rect_fits_level_footprint(level, rect):
+			return false
+	for rect in _get_level_meta_rects(level, "void_tile_rects", level.void_rects):
+		if not _rect_fits_level_footprint(level, rect):
+			return false
+	for placement in level.destructible_prop_placements:
+		if placement == null:
+			continue
+		var prop_rect := Rect2(placement.position - placement.size * 0.5, placement.size)
+		if not _rect_fits_level_footprint(level, prop_rect):
+			return false
+	for placement in level.spawner_placements:
+		if placement != null and not _point_is_in_level_footprint(level, placement.position):
+			return false
+	return true
+
+
+func _rect_fits_level_footprint(level, rect: Rect2) -> bool:
+	var inset: float = min(1.0, min(rect.size.x, rect.size.y) * 0.25)
+	var points := [
+		rect.position + Vector2(inset, inset),
+		rect.position + Vector2(rect.size.x - inset, inset),
+		rect.position + rect.size - Vector2(inset, inset),
+		rect.position + Vector2(inset, rect.size.y - inset),
+		rect.get_center()
+	]
+	for point in points:
+		if not _point_is_in_level_footprint(level, point):
+			return false
+	return true
+
+
+func _point_is_in_level_footprint(level, point: Vector2) -> bool:
+	var builder = load("res://scripts/resources/room_geometry_builder.gd")
+	var cells: Array[Vector2i] = []
+	for cell in level.get_meta("footprint_cells"):
+		cells.append(cell)
+	for cell in cells:
+		var rect: Rect2 = builder.get_cell_rect(cells, cell)
+		if point.x >= rect.position.x - 0.5 and point.y >= rect.position.y - 0.5 and point.x <= rect.position.x + rect.size.x + 0.5 and point.y <= rect.position.y + rect.size.y + 0.5:
+			return true
+	return false
 
 
 func _level_door_openings_are_unblocked(level, connections: Dictionary) -> bool:

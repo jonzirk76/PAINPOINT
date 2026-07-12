@@ -559,6 +559,8 @@ func _rect_at(center: Vector2, cells: Vector2) -> Rect2:
 
 
 func _rect_fits_arena(rect: Rect2, level) -> bool:
+	if not _rect_fits_level_envelope(rect, level):
+		return false
 	var points := [
 		rect.position,
 		rect.position + Vector2(rect.size.x, 0.0),
@@ -797,14 +799,26 @@ func _get_room_spawn_position(level) -> Vector2:
 
 
 func _apply_wall_tiles(level, wall_tiles: Array[Rect2]) -> void:
+	wall_tiles = _filter_rects_to_level_envelope(level, wall_tiles)
 	level.set_meta("wall_tile_rects", wall_tiles)
 	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(wall_tiles)
 
 
 func _apply_void_rects(level, void_rects: Array[Rect2]) -> void:
 	var void_tiles := ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(void_rects)
+	void_tiles = _filter_rects_to_level_envelope(level, void_tiles)
 	level.set_meta("void_tile_rects", void_tiles)
 	level.void_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(void_tiles)
+
+
+func _filter_rects_to_level_envelope(level, rects: Array[Rect2]) -> Array[Rect2]:
+	if level == null or not level.has_meta("footprint_cells"):
+		return rects.duplicate()
+	var filtered: Array[Rect2] = []
+	for rect in rects:
+		if _rect_fits_level_envelope(rect, level):
+			filtered.append(rect)
+	return filtered
 
 
 func _get_level_wall_tiles(level) -> Array[Rect2]:
@@ -1042,12 +1056,45 @@ func _prop_rect(placement) -> Rect2:
 
 
 func _point_is_clear(level, point: Vector2, blockers: Array[Rect2], clearance: float) -> bool:
+	if not _point_is_in_level_envelope(level, point):
+		return false
 	if not ArenaGeometry.contains_point(point, level.arena_bounds, int(level.arena_shape)):
 		return false
 	for blocker in blockers:
 		if blocker.grow(clearance).has_point(point):
 			return false
 	return true
+
+
+func _rect_fits_level_envelope(rect: Rect2, level) -> bool:
+	if level == null or not level.has_meta("footprint_cells"):
+		return true
+	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
+		return false
+	var inset: float = min(1.0, min(rect.size.x, rect.size.y) * 0.25)
+	var points := [
+		rect.position + Vector2(inset, inset),
+		rect.position + Vector2(rect.size.x - inset, inset),
+		rect.position + rect.size - Vector2(inset, inset),
+		rect.position + Vector2(inset, rect.size.y - inset),
+		rect.get_center()
+	]
+	for point in points:
+		if not _point_is_in_level_envelope(level, point):
+			return false
+	return true
+
+
+func _point_is_in_level_envelope(level, point: Vector2) -> bool:
+	if level == null or not level.has_meta("footprint_cells"):
+		return true
+	var epsilon := 0.5
+	var cells: Array[Vector2i] = _get_level_footprint_cells(level)
+	for cell in cells:
+		var cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(cells, cell)
+		if point.x >= cell_rect.position.x - epsilon and point.y >= cell_rect.position.y - epsilon and point.x <= cell_rect.position.x + cell_rect.size.x + epsilon and point.y <= cell_rect.position.y + cell_rect.size.y + epsilon:
+			return true
+	return false
 
 
 func _get_door_entry_position(bounds: Rect2, direction: String) -> Vector2:
