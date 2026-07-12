@@ -89,19 +89,15 @@ static func build_wall_tile_rects(cells: Array[Vector2i], connection_edges: Dict
 	for x in range(min_cell.x, max_cell.x + 1):
 		for y in range(min_cell.y, max_cell.y + 1):
 			var cell := Vector2i(x, y)
+			var cell_rect := get_cell_rect(cells, cell)
 			if not occupied.has(_cell_key(cell)):
 				_append_unique_wall_tiles(walls, wall_lookup, _rect_to_wall_tiles(get_cell_rect(cells, cell)))
-	for cell in cells:
-		for direction in DIRECTIONS:
-			var neighbor: Vector2i = cell + DIRECTION_OFFSETS.get(direction, Vector2i.ZERO)
-			if occupied.has(_cell_key(neighbor)):
 				continue
-			var opening := Rect2()
-			if _connection_uses_cell_edge(connection_edges, direction, cell):
-				opening = get_opening_rect(cells, cell, direction)
-			for wall_rect in _build_edge_wall_rects(cells, cell, direction, opening):
-				_append_unique_wall_tile(walls, wall_lookup, wall_rect)
-	_append_unique_wall_tiles(walls, wall_lookup, _build_exterior_corner_wall_tiles(cells, connection_edges, occupied))
+			for tile_x in range(CELL_TILE_COLUMNS):
+				for tile_y in range(CELL_TILE_ROWS):
+					var tile := Rect2(cell_rect.position + Vector2(float(tile_x) * WALL_TILE_SIZE, float(tile_y) * WALL_TILE_SIZE), Vector2(WALL_TILE_SIZE, WALL_TILE_SIZE))
+					if _occupied_cell_tile_is_wall(cells, cell, tile, tile_x, tile_y, occupied, connection_edges):
+						_append_unique_wall_tile(walls, wall_lookup, tile)
 	return walls
 
 
@@ -262,59 +258,22 @@ static func find_contact_edge(source_cells: Array[Vector2i], source_anchor: Vect
 	return {}
 
 
-static func _build_edge_wall_rects(cells: Array[Vector2i], local_cell: Vector2i, direction: String, opening: Rect2) -> Array[Rect2]:
-	var rects: Array[Rect2] = []
-	var cell_rect := get_cell_rect(cells, local_cell)
-	var tile_count_x: int = CELL_TILE_COLUMNS
-	var tile_count_y: int = CELL_TILE_ROWS
-	match direction:
-		"north":
-			for index in range(tile_count_x):
-				var tile := Rect2(cell_rect.position + Vector2(float(index) * WALL_TILE_SIZE, 0.0), Vector2(WALL_TILE_SIZE, WALL_TILE_SIZE))
-				if not _tile_is_inside_opening(tile, opening):
-					rects.append(tile)
-		"south":
-			for index in range(tile_count_x):
-				var tile := Rect2(Vector2(cell_rect.position.x + float(index) * WALL_TILE_SIZE, cell_rect.position.y + cell_rect.size.y - WALL_TILE_SIZE), Vector2(WALL_TILE_SIZE, WALL_TILE_SIZE))
-				if not _tile_is_inside_opening(tile, opening):
-					rects.append(tile)
-		"east":
-			for index in range(tile_count_y):
-				var tile := Rect2(Vector2(cell_rect.position.x + cell_rect.size.x - WALL_TILE_SIZE, cell_rect.position.y + float(index) * WALL_TILE_SIZE), Vector2(WALL_TILE_SIZE, WALL_TILE_SIZE))
-				if not _tile_is_inside_opening(tile, opening):
-					rects.append(tile)
-		"west":
-			for index in range(tile_count_y):
-				var tile := Rect2(cell_rect.position + Vector2(0.0, float(index) * WALL_TILE_SIZE), Vector2(WALL_TILE_SIZE, WALL_TILE_SIZE))
-				if not _tile_is_inside_opening(tile, opening):
-					rects.append(tile)
-	return rects
-
-
-static func _build_exterior_corner_wall_tiles(cells: Array[Vector2i], connection_edges: Dictionary, occupied: Dictionary) -> Array[Rect2]:
-	var rects: Array[Rect2] = []
-	for cell in cells:
-		var cell_rect := get_cell_rect(cells, cell)
-		var corner_specs := [
-			{"directions": ["north", "west"], "position": cell_rect.position},
-			{"directions": ["north", "east"], "position": Vector2(cell_rect.position.x + cell_rect.size.x - WALL_TILE_SIZE, cell_rect.position.y)},
-			{"directions": ["south", "east"], "position": cell_rect.position + cell_rect.size - Vector2(WALL_TILE_SIZE, WALL_TILE_SIZE)},
-			{"directions": ["south", "west"], "position": Vector2(cell_rect.position.x, cell_rect.position.y + cell_rect.size.y - WALL_TILE_SIZE)}
-		]
-		for spec in corner_specs:
-			var first_direction := String(spec["directions"][0])
-			var second_direction := String(spec["directions"][1])
-			var first_neighbor_occupied := occupied.has(_cell_key(cell + DIRECTION_OFFSETS[first_direction]))
-			var second_neighbor_occupied := occupied.has(_cell_key(cell + DIRECTION_OFFSETS[second_direction]))
-			if first_neighbor_occupied and second_neighbor_occupied:
-				continue
-			var tile := Rect2(spec["position"], Vector2(WALL_TILE_SIZE, WALL_TILE_SIZE))
-			if _tile_is_inside_connection_opening(tile, cells, cell, first_direction, connection_edges):
-				continue
-			if _tile_is_inside_connection_opening(tile, cells, cell, second_direction, connection_edges):
-				continue
-			rects.append(tile)
-	return rects
+static func _occupied_cell_tile_is_wall(cells: Array[Vector2i], local_cell: Vector2i, tile: Rect2, tile_x: int, tile_y: int, occupied: Dictionary, connection_edges: Dictionary) -> bool:
+	var edge_directions: Array[String] = []
+	if tile_y == 0 and not occupied.has(_cell_key(local_cell + DIRECTION_OFFSETS["north"])):
+		edge_directions.append("north")
+	if tile_y == CELL_TILE_ROWS - 1 and not occupied.has(_cell_key(local_cell + DIRECTION_OFFSETS["south"])):
+		edge_directions.append("south")
+	if tile_x == 0 and not occupied.has(_cell_key(local_cell + DIRECTION_OFFSETS["west"])):
+		edge_directions.append("west")
+	if tile_x == CELL_TILE_COLUMNS - 1 and not occupied.has(_cell_key(local_cell + DIRECTION_OFFSETS["east"])):
+		edge_directions.append("east")
+	if edge_directions.is_empty():
+		return false
+	for direction in edge_directions:
+		if _tile_is_inside_connection_opening(tile, cells, local_cell, direction, connection_edges):
+			return false
+	return true
 
 
 static func _rect_to_wall_tiles(rect: Rect2) -> Array[Rect2]:
