@@ -25,6 +25,7 @@ var _contact_timers: Dictionary = {}
 var _arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 var _arena_shape: int = 0
 var _wall_rects: Array[Rect2] = []
+var _level_wall_rects: Array[Rect2] = []
 var _void_rects: Array[Rect2] = []
 var _boss_add_timer: float = 0.0
 
@@ -54,8 +55,17 @@ func set_arena_definition(level_definition) -> void:
 		return
 	_arena_bounds = level_definition.arena_bounds
 	_arena_shape = int(level_definition.arena_shape)
-	_wall_rects = level_definition.wall_rects
+	_level_wall_rects = level_definition.wall_rects
+	_wall_rects = _level_wall_rects.duplicate()
 	_void_rects = level_definition.void_rects
+	for enemy in _enemies:
+		if is_instance_valid(enemy):
+			enemy.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects)
+
+
+func set_dynamic_wall_rects(extra_wall_rects: Array[Rect2]) -> void:
+	_wall_rects = _level_wall_rects.duplicate()
+	_wall_rects.append_array(extra_wall_rects)
 	for enemy in _enemies:
 		if is_instance_valid(enemy):
 			enemy.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects)
@@ -90,7 +100,7 @@ func spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary = {})
 	var enemy = enemy_scene.instantiate()
 	var selected_profile = profile if profile != null else default_enemy_profile
 	enemy.initialize(selected_profile)
-	enemy.global_position = ArenaGeometry.constrain_point(spawn_position, _arena_bounds, _arena_shape)
+	enemy.global_position = _constrain_spawn_position(spawn_position, float(enemy.body_radius))
 	enemy.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects)
 	if bool(spawn_flags.get("boss_add", false)):
 		enemy.set_meta("boss_add", true)
@@ -302,4 +312,11 @@ func _get_boss_add_count() -> int:
 func _get_boss_add_spawn_position(boss, index: int, count: int) -> Vector2:
 	var radius: float = float(boss.body_radius) + 100.0
 	var angle: float = TAU * float(index) / float(max(count, 1)) + float(Time.get_ticks_msec() % 1000) * 0.001
-	return ArenaGeometry.constrain_point(boss.global_position + Vector2.RIGHT.rotated(angle) * radius, _arena_bounds, _arena_shape)
+	return _constrain_spawn_position(boss.global_position + Vector2.RIGHT.rotated(angle) * radius, 24.0)
+
+
+func _constrain_spawn_position(position: Vector2, clearance: float) -> Vector2:
+	var blockers: Array[Rect2] = []
+	blockers.append_array(_wall_rects)
+	blockers.append_array(_void_rects)
+	return ArenaGeometry.constrain_point_to_playable(position, _arena_bounds, _arena_shape, blockers, clearance)

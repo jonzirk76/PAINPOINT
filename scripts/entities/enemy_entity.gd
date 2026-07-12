@@ -142,7 +142,7 @@ func _physics_process(delta: float) -> void:
 		velocity = _knockback_velocity
 		_knockback_velocity = _knockback_velocity.move_toward(Vector2.ZERO, 420.0 * delta)
 		move_and_slide()
-		global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
+		global_position = _constrain_to_playable(global_position)
 		queue_redraw()
 		if _death_elapsed >= _death_duration:
 			death_animation_finished.emit(self)
@@ -172,7 +172,7 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 	if (behavior_kind == "shooter" or behavior_kind == "boss") and get_slide_collision_count() > 0:
 		_strafe_sign *= -1.0
-	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
+	global_position = _constrain_to_playable(global_position)
 	if velocity.length_squared() > 1.0 or behavior_kind == "shooter" or behavior_kind == "boss" or _hit_flash_remaining > 0.0 or _knockback_velocity.length_squared() > 1.0 or is_projectile_shield_active() or _projectile_shield_block_flash_remaining > 0.0:
 		queue_redraw()
 
@@ -197,7 +197,7 @@ func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: A
 			void_rects.append(void_rect)
 	_rebuild_path_blocker_cache()
 	_invalidate_path_cache()
-	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
+	global_position = _constrain_to_playable(global_position)
 
 
 func take_damage(packet) -> bool:
@@ -284,6 +284,10 @@ func _rebuild_path_blocker_cache() -> void:
 	_path_blocker_rects.clear()
 	_path_blocker_rects.append_array(wall_rects)
 	_path_blocker_rects.append_array(void_rects)
+
+
+func _constrain_to_playable(position: Vector2) -> Vector2:
+	return ArenaGeometry.constrain_point_to_playable(position, arena_bounds, arena_shape, _path_blocker_rects, body_radius)
 
 
 func _invalidate_path_cache() -> void:

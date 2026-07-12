@@ -53,6 +53,9 @@ var _defer_spawn_feedback: bool = false
 var _spawn_feedback_queued: bool = false
 var _arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 var _arena_shape: int = 0
+var _wall_rects: Array[Rect2] = []
+var _level_wall_rects: Array[Rect2] = []
+var _void_rects: Array[Rect2] = []
 
 
 func initialize(context: Dictionary) -> void:
@@ -64,7 +67,7 @@ func reset_run() -> void:
 		player.queue_free()
 	player = player_scene.instantiate()
 	player.global_position = spawn_position
-	player.set_arena_definition(_arena_bounds, _arena_shape)
+	player.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects)
 	if _player_layer != null:
 		_player_layer.add_child(player)
 	else:
@@ -288,7 +291,7 @@ func play_perfect_parry_response(effect_radius: float, perfect_radius: float) ->
 func set_arena_bounds(bounds: Rect2) -> void:
 	_arena_bounds = bounds
 	if _has_player():
-		player.set_arena_definition(_arena_bounds, _arena_shape)
+		player.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects)
 
 
 func set_arena_definition(level_definition) -> void:
@@ -296,8 +299,18 @@ func set_arena_definition(level_definition) -> void:
 		return
 	_arena_bounds = level_definition.arena_bounds
 	_arena_shape = int(level_definition.arena_shape)
+	_level_wall_rects = level_definition.wall_rects
+	_wall_rects = _level_wall_rects.duplicate()
+	_void_rects = level_definition.void_rects
 	if _has_player():
-		player.set_arena_definition(_arena_bounds, _arena_shape)
+		player.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects)
+
+
+func set_dynamic_wall_rects(extra_wall_rects: Array[Rect2]) -> void:
+	_wall_rects = _level_wall_rects.duplicate()
+	_wall_rects.append_array(extra_wall_rects)
+	if _has_player():
+		player.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects)
 
 
 func set_player_position(position: Vector2) -> void:

@@ -5,6 +5,7 @@ class_name EffectsManager
 @export var explosion_scene: PackedScene = preload("res://scenes/entities/explosion_effect.tscn")
 @export var parry_absorb_scene: PackedScene = preload("res://scenes/entities/parry_absorb_effect.tscn")
 @export var projectile_impact_scene: PackedScene = preload("res://scenes/entities/projectile_impact_effect.tscn")
+@export var muzzle_flash_scene: PackedScene = preload("res://scenes/entities/muzzle_flash_effect.tscn")
 @export var max_active_effects: int = 80
 
 var enabled: bool = false
@@ -72,6 +73,21 @@ func play_projectile_impact(spawn_position: Vector2, direction: Vector2, radius:
 	else:
 		add_child(effect)
 	effect.initialize(spawn_position, direction, radius, blocked)
+	effect.expired.connect(_on_effect_expired)
+	_effects.append(effect)
+
+
+func play_muzzle_flash(spawn_position: Vector2, direction: Vector2, radius: float = 16.0) -> void:
+	if not enabled:
+		return
+	_trim_effects()
+	var effect = muzzle_flash_scene.instantiate()
+	_configure_effect_process_mode(effect)
+	if _effect_layer != null:
+		_effect_layer.add_child(effect)
+	else:
+		add_child(effect)
+	effect.initialize(spawn_position, direction, radius)
 	effect.expired.connect(_on_effect_expired)
 	_effects.append(effect)
 

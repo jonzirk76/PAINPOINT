@@ -67,6 +67,14 @@ func get_door_count() -> int:
 	return _doors.size()
 
 
+func get_gate_blocker_rects() -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	for door in _doors:
+		if is_instance_valid(door) and door.has_method("is_gate_blocking") and bool(door.is_gate_blocking()):
+			rects.append(door.get_gate_blocker_rect())
+	return rects
+
+
 func _on_door_entered(door) -> void:
 	if not enabled or door == null or not is_instance_valid(door):
 		return

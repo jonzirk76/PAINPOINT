@@ -10,6 +10,7 @@ const ENTITY_SCRIPT_PATHS := [
 	"res://scripts/entities/explosion_effect.gd",
 	"res://scripts/entities/parry_absorb_effect.gd",
 	"res://scripts/entities/projectile_impact_effect.gd",
+	"res://scripts/entities/muzzle_flash_effect.gd",
 	"res://scripts/entities/door_entity.gd",
 	"res://scripts/entities/destructible_prop_entity.gd",
 	"res://scripts/entities/floor_exit_portal_entity.gd"
@@ -34,6 +35,7 @@ const SCRIPT_PATHS := [
 	"res://scripts/entities/explosion_effect.gd",
 	"res://scripts/entities/parry_absorb_effect.gd",
 	"res://scripts/entities/projectile_impact_effect.gd",
+	"res://scripts/entities/muzzle_flash_effect.gd",
 	"res://scripts/entities/door_entity.gd",
 	"res://scripts/entities/destructible_prop_entity.gd",
 	"res://scripts/entities/floor_exit_portal_entity.gd",
@@ -105,6 +107,7 @@ const SFX_PATHS := [
 	"res://audio/parry_ready.wav",
 	"res://audio/perfect_parry_follow_up.wav",
 	"res://audio/player_bullet_shot.wav",
+	"res://audio/player_damage.wav",
 	"res://audio/rocket_explosion.wav",
 	"res://audio/room_entry.wav"
 ]

@@ -17,6 +17,8 @@ const PLAYER_RESTING_PISTOL_LEFT_TEXTURE := preload("res://art/characters/player
 @export var body_radius: float = 17.0
 @export var arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 @export var arena_shape: int = 0
+@export var wall_rects: Array[Rect2] = []
+@export var void_rects: Array[Rect2] = []
 @export var shoot_pose_hold_seconds: float = 0.42
 
 var health: int = max_health
@@ -99,7 +101,7 @@ func _physics_process(delta: float) -> void:
 	velocity = move_vector * speed + _knockback_velocity
 	_knockback_velocity = _knockback_velocity.move_toward(Vector2.ZERO, 720.0 * delta)
 	move_and_slide()
-	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
+	global_position = _constrain_to_playable(global_position)
 
 
 func set_move_vector(vector: Vector2) -> void:
@@ -136,18 +138,34 @@ func set_speed_multiplier(multiplier: float) -> void:
 
 func set_arena_bounds(bounds: Rect2) -> void:
 	arena_bounds = bounds
-	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
+	global_position = _constrain_to_playable(global_position)
 
 
-func set_arena_definition(bounds: Rect2, shape: int) -> void:
+func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: Array = []) -> void:
 	arena_bounds = bounds
 	arena_shape = shape
-	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
+	wall_rects.clear()
+	for wall in walls:
+		if wall is Rect2:
+			wall_rects.append(wall)
+	void_rects.clear()
+	for void_rect in voids:
+		if void_rect is Rect2:
+			void_rects.append(void_rect)
+	global_position = _constrain_to_playable(global_position)
 
 
 func get_fire_origin() -> Vector2:
-	var desired_origin := global_position + aim_direction * (body_radius + 8.0)
-	return ArenaGeometry.constrain_point(desired_origin, arena_bounds, arena_shape)
+	var desired_origin := global_position + aim_direction * max(body_radius * 0.55, 8.0)
+	return _constrain_to_playable(desired_origin, 2.0)
+
+
+func _constrain_to_playable(position: Vector2, clearance_override: float = -1.0) -> Vector2:
+	var blockers: Array[Rect2] = []
+	blockers.append_array(wall_rects)
+	blockers.append_array(void_rects)
+	var clearance := body_radius if clearance_override < 0.0 else clearance_override
+	return ArenaGeometry.constrain_point_to_playable(position, arena_bounds, arena_shape, blockers, clearance)
 
 
 func take_damage(amount: int) -> void:

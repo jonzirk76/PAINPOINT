@@ -72,6 +72,30 @@ static func constrain_point(point: Vector2, arena_bounds: Rect2, arena_shape: in
 	return get_closest_point_on_polygon(point, polygon)
 
 
+static func constrain_point_to_playable(point: Vector2, arena_bounds: Rect2, arena_shape: int, blocker_rects: Array, clearance: float = 0.0) -> Vector2:
+	var constrained := constrain_point(point, arena_bounds, arena_shape)
+	if _is_clear_of_rects(constrained, blocker_rects, clearance):
+		return constrained
+	var search_step: float = max(clearance, 16.0)
+	var best_point := constrained
+	var best_distance := INF
+	for radius_index in range(1, 9):
+		var radius := search_step * float(radius_index)
+		var sample_count := 8 + radius_index * 4
+		for sample_index in range(sample_count):
+			var angle := TAU * float(sample_index) / float(sample_count)
+			var candidate := constrain_point(constrained + Vector2.RIGHT.rotated(angle) * radius, arena_bounds, arena_shape)
+			if not _is_clear_of_rects(candidate, blocker_rects, clearance):
+				continue
+			var distance := candidate.distance_squared_to(point)
+			if distance < best_distance:
+				best_distance = distance
+				best_point = candidate
+	if best_distance < INF:
+		return best_point
+	return constrained
+
+
 static func is_point_in_polygon(point: Vector2, polygon: PackedVector2Array) -> bool:
 	var count := polygon.size()
 	if count < 3:
@@ -123,3 +147,13 @@ static func _is_point_on_segment(point: Vector2, start: Vector2, end: Vector2) -
 		return false
 	var dot := to_point.dot(segment)
 	return dot >= -EDGE_EPSILON and dot <= segment.length_squared() + EDGE_EPSILON
+
+
+static func _is_clear_of_rects(point: Vector2, rects: Array, clearance: float) -> bool:
+	for rect in rects:
+		if not (rect is Rect2):
+			continue
+		var blocker: Rect2 = rect
+		if blocker.grow(clearance).has_point(point):
+			return false
+	return true

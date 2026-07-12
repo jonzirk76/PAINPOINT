@@ -69,6 +69,11 @@ func is_gate_blocking() -> bool:
 	return _gate_body.collision_layer != 0 and not _gate_collision_shape.disabled
 
 
+func get_gate_blocker_rect() -> Rect2:
+	var size := visual_size if visual_size != Vector2.ZERO else door_size
+	return Rect2(global_position + visual_offset - size * 0.5, size)
+
+
 func _configure_collision_identity() -> void:
 	collision_layer = 0
 	collision_mask = 1

@@ -63,6 +63,7 @@ var _minigun_elapsed: float = 0.0
 var _minigun_next_shot_remaining: float = 0.0
 var _minigun_base_direction: Vector2 = Vector2.RIGHT
 var _recoil_velocity: Vector2 = Vector2.ZERO
+var _crowd_separation_velocity: Vector2 = Vector2.ZERO
 
 
 func _init() -> void:
@@ -79,7 +80,7 @@ func _ready() -> void:
 
 func _configure_collision_identity() -> void:
 	collision_layer = 16
-	collision_mask = 96
+	collision_mask = 112
 	add_to_group("spawners")
 
 
@@ -115,12 +116,13 @@ func _physics_process(_delta: float) -> void:
 		intent_velocity *= 0.45
 	if _minigun_remaining > 0.0:
 		intent_velocity = Vector2.ZERO
-	velocity = intent_velocity + _recoil_velocity
+	velocity = intent_velocity + _recoil_velocity + _crowd_separation_velocity
 	move_and_slide()
 	if get_slide_collision_count() > 0:
 		_strafe_sign *= -1.0
-	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
+	global_position = _constrain_to_playable(global_position)
 	_recoil_velocity = _recoil_velocity.move_toward(Vector2.ZERO, 360.0 * _delta)
+	_crowd_separation_velocity = _crowd_separation_velocity.move_toward(Vector2.ZERO, 760.0 * _delta)
 	if velocity.length_squared() > 1.0 or _special_telegraph_remaining > 0.0 or _minigun_remaining > 0.0:
 		queue_redraw()
 
@@ -181,6 +183,7 @@ func initialize_from_profile(profile) -> void:
 	_special_telegraph_remaining = 0.0
 	_minigun_remaining = 0.0
 	_recoil_velocity = Vector2.ZERO
+	_crowd_separation_velocity = Vector2.ZERO
 
 
 func set_target_position(position: Vector2) -> void:
@@ -199,7 +202,7 @@ func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: A
 	for void_rect in voids:
 		if void_rect is Rect2:
 			void_rects.append(void_rect)
-	global_position = ArenaGeometry.constrain_point(global_position, arena_bounds, arena_shape)
+	global_position = _constrain_to_playable(global_position)
 
 
 func take_damage(packet) -> bool:
@@ -254,6 +257,20 @@ func _should_reduce_shield_pierce_damage(packet) -> bool:
 	if packet == null or not is_projectile_shield_active():
 		return false
 	return bool(packet.pierces_projectile_shields) and String(packet.projectile_kind) != "hostile"
+
+
+func apply_crowd_separation(push_vector: Vector2) -> void:
+	if _is_destroyed or push_vector.length_squared() <= 0.001:
+		return
+	_crowd_separation_velocity += push_vector
+	_crowd_separation_velocity = _crowd_separation_velocity.limit_length(120.0)
+
+
+func _constrain_to_playable(position: Vector2) -> Vector2:
+	var blockers: Array[Rect2] = []
+	blockers.append_array(wall_rects)
+	blockers.append_array(void_rects)
+	return ArenaGeometry.constrain_point_to_playable(position, arena_bounds, arena_shape, blockers, body_radius)
 
 
 func _draw() -> void:

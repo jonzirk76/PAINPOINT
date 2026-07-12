@@ -22,6 +22,10 @@ signal hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: 
 @export var spawn_interval_floor_step: float = 0.08
 @export var minimum_floor_spawn_interval_multiplier: float = 0.72
 @export var minimum_scaled_spawn_interval: float = 1.15
+## Controls how strongly spawner structures push away from overlapping spawner structures.
+@export var spawner_separation_force: float = 92.0
+## Adds extra spacing between spawner body radii when resolving spawner overlap.
+@export var spawner_separation_padding: float = 16.0
 
 const SPAWNER_PLACEMENT_SCRIPT := preload("res://scripts/resources/spawner_placement.gd")
 
@@ -33,6 +37,7 @@ var _level_definition = null
 var _arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 var _arena_shape: int = 0
 var _wall_rects: Array[Rect2] = []
+var _level_wall_rects: Array[Rect2] = []
 var _void_rects: Array[Rect2] = []
 var _player_provider: Callable
 var _initial_spawns_pending: bool = false
@@ -85,8 +90,17 @@ func set_arena_definition(level_definition) -> void:
 		return
 	_arena_bounds = level_definition.arena_bounds
 	_arena_shape = int(level_definition.arena_shape)
-	_wall_rects = level_definition.wall_rects
+	_level_wall_rects = level_definition.wall_rects
+	_wall_rects = _level_wall_rects.duplicate()
 	_void_rects = level_definition.void_rects
+	for spawner in _spawners:
+		if is_instance_valid(spawner) and spawner.has_method("set_arena_definition"):
+			spawner.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects)
+
+
+func set_dynamic_wall_rects(extra_wall_rects: Array[Rect2]) -> void:
+	_wall_rects = _level_wall_rects.duplicate()
+	_wall_rects.append_array(extra_wall_rects)
 	for spawner in _spawners:
 		if is_instance_valid(spawner) and spawner.has_method("set_arena_definition"):
 			spawner.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects)
@@ -97,6 +111,8 @@ func _process(delta: float) -> void:
 	for spawner in _spawners:
 		if is_instance_valid(spawner):
 			spawner.set_target_position(player_position)
+	if enabled:
+		_apply_spawner_separation()
 	if not enabled or not _initial_spawns_pending:
 		return
 	_initial_spawn_delay_remaining = max(_initial_spawn_delay_remaining - delta, 0.0)
@@ -114,14 +130,14 @@ func _spawn_spawner(placement, index: int) -> void:
 		spawn_position = placement.position
 		warmup = placement.warmup_seconds
 	var spawner = spawner_scene.instantiate()
-	spawner.global_position = ArenaGeometry.constrain_point(spawn_position, _arena_bounds, _arena_shape)
-	spawner.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects)
 	spawner.warmup_seconds = warmup
 	if profile != null and spawner.has_method("initialize_from_profile"):
 		spawner.initialize_from_profile(profile)
 		spawner.spawn_interval = _scale_spawn_interval_for_floor(float(spawner.spawn_interval))
 	else:
 		spawner.initialize(_get_spawner_health(), _get_spawn_interval(), _get_spawner_radius())
+	spawner.global_position = _constrain_spawn_position(spawn_position, float(spawner.body_radius))
+	spawner.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects)
 	spawner.spawn_ready.connect(_on_spawner_spawn_ready)
 	spawner.health_depleted.connect(_on_spawner_health_depleted)
 	spawner.shot_ready.connect(_on_spawner_shot_ready)
@@ -335,7 +351,7 @@ func _get_biased_spawn_position(spawner, spawn_index: int, spawn_count: int, bas
 			side_step = sign * floor(float(attempt + 1) * 0.5) * 0.24
 		var distance: float = max(base_distance + radial_stagger + floor(float(attempt) / 4.0) * 18.0, float(spawner.body_radius) + 28.0)
 		var angle: float = bias_direction.angle() + fan_offset + side_step
-		var candidate: Vector2 = ArenaGeometry.constrain_point(spawner.global_position + Vector2.RIGHT.rotated(angle) * distance, _arena_bounds, _arena_shape)
+		var candidate: Vector2 = _constrain_spawn_position(spawner.global_position + Vector2.RIGHT.rotated(angle) * distance, 24.0)
 		if _position_is_clear_of_walls(candidate):
 			return candidate
 	return spawner.global_position
@@ -373,6 +389,48 @@ func _position_is_clear_of_walls(position: Vector2) -> bool:
 		if void_rect.grow(24.0).has_point(position):
 			return false
 	return true
+
+
+func _constrain_spawn_position(position: Vector2, clearance: float) -> Vector2:
+	var blockers: Array[Rect2] = []
+	blockers.append_array(_wall_rects)
+	blockers.append_array(_void_rects)
+	return ArenaGeometry.constrain_point_to_playable(position, _arena_bounds, _arena_shape, blockers, clearance)
+
+
+func _apply_spawner_separation() -> void:
+	if spawner_separation_force <= 0.0 or _spawners.size() < 2:
+		return
+	var valid_spawners: Array = []
+	var pushes: Array[Vector2] = []
+	for spawner in _spawners:
+		if is_instance_valid(spawner) and spawner.has_method("apply_crowd_separation"):
+			valid_spawners.append(spawner)
+			pushes.append(Vector2.ZERO)
+	for first_index in range(valid_spawners.size()):
+		for second_index in range(first_index + 1, valid_spawners.size()):
+			_apply_spawner_separation_pair(first_index, second_index, valid_spawners, pushes)
+	for index in range(valid_spawners.size()):
+		if pushes[index].length_squared() > 0.001:
+			valid_spawners[index].apply_crowd_separation(pushes[index])
+
+
+func _apply_spawner_separation_pair(first_index: int, second_index: int, valid_spawners: Array, pushes: Array[Vector2]) -> void:
+	var first = valid_spawners[first_index]
+	var second = valid_spawners[second_index]
+	var separation: Vector2 = first.global_position - second.global_position
+	var desired_distance: float = float(first.body_radius) + float(second.body_radius) + spawner_separation_padding
+	var distance_squared: float = separation.length_squared()
+	if distance_squared > desired_distance * desired_distance:
+		return
+	var direction: Vector2 = Vector2.RIGHT.rotated(float((first.get_instance_id() + second.get_instance_id()) % 628) * 0.01)
+	var distance := 0.0
+	if distance_squared > 0.001:
+		distance = sqrt(distance_squared)
+		direction = separation / distance
+	var strength: float = (1.0 - clamp(distance / desired_distance, 0.0, 1.0)) * spawner_separation_force
+	pushes[first_index] += direction * strength
+	pushes[second_index] -= direction * strength
 
 
 func _should_apply_pressure_damage(target: Node, packet) -> bool:

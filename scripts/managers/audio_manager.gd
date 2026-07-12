@@ -13,8 +13,13 @@ const ITEM_PICK_UP := preload("res://audio/item_pick_up.wav")
 const FLOOR_START := preload("res://audio/floor_start.wav")
 const ROOM_ENTRY := preload("res://audio/room_entry.wav")
 const GAME_OVER := preload("res://audio/game_over.wav")
+const PLAYER_DAMAGE := preload("res://audio/player_damage.wav")
 
 @export var max_active_players: int = 24
+## Controls the center pitch used when the player takes damage.
+@export var player_damage_pitch_center: float = 1.0
+## Controls the random pitch range above and below the player damage pitch center.
+@export var player_damage_pitch_variation: float = 0.08
 
 var enabled: bool = false
 var _rng := RandomNumberGenerator.new()
@@ -88,6 +93,13 @@ func play_room_entry() -> void:
 
 func play_game_over() -> void:
 	_play(GAME_OVER, 0.97, 1.03, -3.0, true)
+
+
+func play_player_damage() -> void:
+	var variation := max(player_damage_pitch_variation, 0.0)
+	var pitch_min := max(player_damage_pitch_center - variation, 0.05)
+	var pitch_max := max(player_damage_pitch_center + variation, pitch_min)
+	_play(PLAYER_DAMAGE, pitch_min, pitch_max, -5.0)
 
 
 func _play(stream: AudioStream, pitch_min: float, pitch_max: float, volume_db: float, force: bool = false) -> void:

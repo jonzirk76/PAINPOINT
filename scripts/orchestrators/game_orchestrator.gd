@@ -815,6 +815,7 @@ func _on_input_overdrive_changed(is_held: bool) -> void:
 
 func _on_player_shoot_requested(origin: Vector2, direction: Vector2) -> void:
 	audio_manager.play_player_shot()
+	effects_manager.play_muzzle_flash(origin, direction, 16.0)
 	var shot_modifiers: Dictionary = upgrade_manager.get_modifiers()
 	projectile_manager.fire(origin, direction, shot_modifiers)
 	upgrade_manager.consume_overdrive_shot()
@@ -822,6 +823,7 @@ func _on_player_shoot_requested(origin: Vector2, direction: Vector2) -> void:
 
 func _on_player_super_shot_requested(origin: Vector2, direction: Vector2, charge_ratio: float) -> void:
 	audio_manager.play_player_shot()
+	effects_manager.play_muzzle_flash(origin, direction, 22.0)
 	projectile_manager.fire_super_shot(origin, direction, charge_ratio)
 
 
@@ -1043,6 +1045,7 @@ func _on_destructible_prop_destroyed(prop, score_value: int, drop_kind: String) 
 func _on_player_health_changed(old_value: int, new_value: int) -> void:
 	if new_value < old_value:
 		_trigger_character_hud_damage_feedback()
+		audio_manager.play_player_damage()
 	_last_health = new_value
 	_last_max_health = player_manager.get_player_max_health()
 	_update_hud()
@@ -2039,10 +2042,12 @@ func _check_level_clear() -> void:
 	if _is_dungeon_run:
 		if _is_main_loop_run and dungeon_manager.is_current_boss_room() and _floor_exit_portal_active():
 			room_manager.set_doors_unlocked(false)
+			_sync_gate_blockers_into_actors()
 			_update_hud()
 			return
 		dungeon_manager.mark_current_room_cleared()
 		room_manager.set_doors_unlocked(true)
+		_sync_gate_blockers_into_actors()
 		_maybe_spawn_current_room_reward_choices()
 		if dungeon_manager.is_current_boss_room() and not _is_main_loop_run:
 			_status = "WON"
@@ -2157,12 +2162,14 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool) -> 
 		spawner_manager.reset_run(level_definition)
 	destructible_manager.reset_run(level_definition)
 	room_manager.load_room(level_definition, dungeon_manager.get_current_door_infos(), room_is_cleared)
+	_sync_gate_blockers_into_actors()
 	_set_all_enabled(true)
 	if not room_is_cleared and level_definition.boss_profile != null:
 		enemy_manager.spawn_enemy(level_definition.boss_profile, level_definition.boss_spawn_position)
 		if _is_main_loop_run and dungeon_manager.is_current_boss_room():
 			_show_boss_exit_portal_preview(level_definition)
 	room_manager.set_doors_unlocked(room_is_cleared)
+	_sync_gate_blockers_into_actors()
 	_is_loading_room = false
 	if should_update_loading_screen:
 		_set_loading_progress(0.95, "Entering room")
@@ -2172,6 +2179,15 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool) -> 
 	_update_hud()
 	if should_update_loading_screen:
 		_finish_loading_screen()
+
+
+func _sync_gate_blockers_into_actors() -> void:
+	var gate_blockers: Array[Rect2] = []
+	if room_manager != null and room_manager.has_method("get_gate_blocker_rects"):
+		gate_blockers = room_manager.get_gate_blocker_rects()
+	player_manager.set_dynamic_wall_rects(gate_blockers)
+	enemy_manager.set_dynamic_wall_rects(gate_blockers)
+	spawner_manager.set_dynamic_wall_rects(gate_blockers)
 
 
 func _get_room_entry_position(level_definition, entry_direction: String) -> Vector2:

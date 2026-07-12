@@ -123,18 +123,61 @@ func _draw_room(info: Dictionary, origin: Vector2, pitch: float, viewport: Rect2
 	if is_current:
 		room_color = Color(0.36, 0.82, 1.0, 1.0)
 	var anchor: Vector2i = info["anchor"]
+	var occupied := {}
 	for local_cell in info["footprint_cells"]:
 		var cell: Vector2i = anchor + local_cell
-		var rect := Rect2(origin + Vector2(cell) * pitch, Vector2(cell_size, cell_size))
+		occupied[_cell_key(cell)] = true
+	for local_cell in info["footprint_cells"]:
+		var cell: Vector2i = anchor + local_cell
+		var rect := _get_room_cell_mass_rect(cell, occupied, origin, pitch)
 		if not rect.intersects(viewport):
 			continue
 		draw_rect(rect, room_color, true)
-		draw_rect(rect, Color(0.07, 0.08, 0.1, 1.0), false, 1.5)
+	_draw_room_outline(occupied, origin, pitch, viewport)
 	if is_current:
 		var center := _get_current_marker_center(info, origin, pitch)
 		if viewport.has_point(center):
 			draw_circle(center, 5.5, Color(1.0, 0.96, 0.34, 1.0))
 			draw_arc(center, 8.5, 0.0, TAU, 24, Color(0.04, 0.05, 0.06, 1.0), 2.0)
+
+
+func _draw_room_outline(occupied: Dictionary, origin: Vector2, pitch: float, viewport: Rect2) -> void:
+	for key in occupied.keys():
+		var cell := _cell_from_key(String(key))
+		var rect := Rect2(origin + Vector2(cell) * pitch, Vector2(cell_size, cell_size))
+		var left := rect.position.x
+		var top := rect.position.y
+		var right := rect.position.x + rect.size.x
+		var bottom := rect.position.y + rect.size.y
+		if not occupied.has(_cell_key(cell + Vector2i(0, -1))):
+			_draw_clipped_room_edge(Vector2(left, top), Vector2(right, top), viewport)
+		if not occupied.has(_cell_key(cell + Vector2i(1, 0))):
+			_draw_clipped_room_edge(Vector2(right, top), Vector2(right, bottom), viewport)
+		if not occupied.has(_cell_key(cell + Vector2i(0, 1))):
+			_draw_clipped_room_edge(Vector2(left, bottom), Vector2(right, bottom), viewport)
+		if not occupied.has(_cell_key(cell + Vector2i(-1, 0))):
+			_draw_clipped_room_edge(Vector2(left, top), Vector2(left, bottom), viewport)
+
+
+func _get_room_cell_mass_rect(cell: Vector2i, occupied: Dictionary, origin: Vector2, pitch: float) -> Rect2:
+	var rect := Rect2(origin + Vector2(cell) * pitch, Vector2(cell_size, cell_size))
+	if occupied.has(_cell_key(cell + Vector2i(1, 0))):
+		rect.size.x += cell_gap
+	if occupied.has(_cell_key(cell + Vector2i(-1, 0))):
+		rect.position.x -= cell_gap
+		rect.size.x += cell_gap
+	if occupied.has(_cell_key(cell + Vector2i(0, 1))):
+		rect.size.y += cell_gap
+	if occupied.has(_cell_key(cell + Vector2i(0, -1))):
+		rect.position.y -= cell_gap
+		rect.size.y += cell_gap
+	return rect
+
+
+func _draw_clipped_room_edge(from_point: Vector2, to_point: Vector2, viewport: Rect2) -> void:
+	if not _segment_rect(from_point, to_point).grow(2.0).intersects(viewport):
+		return
+	draw_line(from_point, to_point, Color(0.07, 0.08, 0.1, 1.0), 1.5)
 
 
 func _get_room_color(kind: String, cleared: bool) -> Color:
@@ -193,6 +236,17 @@ func _room_contains_world_cell(info: Dictionary, world_cell: Vector2i) -> bool:
 		if anchor + local_cell == world_cell:
 			return true
 	return false
+
+
+func _cell_key(cell: Vector2i) -> String:
+	return "%d,%d" % [cell.x, cell.y]
+
+
+func _cell_from_key(key: String) -> Vector2i:
+	var parts := key.split(",")
+	if parts.size() < 2:
+		return Vector2i.ZERO
+	return Vector2i(int(parts[0]), int(parts[1]))
 
 
 func _segment_rect(from_point: Vector2, to_point: Vector2) -> Rect2:
