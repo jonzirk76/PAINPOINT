@@ -156,7 +156,8 @@ func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: A
 
 
 func get_fire_origin() -> Vector2:
-	var desired_origin := global_position + aim_direction * max(body_radius * 0.55, 8.0)
+	var muzzle_offset: float = max(body_radius * 0.55, 8.0)
+	var desired_origin: Vector2 = global_position + aim_direction * muzzle_offset
 	return _constrain_to_playable(desired_origin, 2.0)
 
 
@@ -164,7 +165,7 @@ func _constrain_to_playable(position: Vector2, clearance_override: float = -1.0)
 	var blockers: Array[Rect2] = []
 	blockers.append_array(wall_rects)
 	blockers.append_array(void_rects)
-	var clearance := body_radius if clearance_override < 0.0 else clearance_override
+	var clearance: float = body_radius if clearance_override < 0.0 else clearance_override
 	return ArenaGeometry.constrain_point_to_playable(position, arena_bounds, arena_shape, blockers, clearance)
 
 

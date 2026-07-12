@@ -96,9 +96,9 @@ func play_game_over() -> void:
 
 
 func play_player_damage() -> void:
-	var variation := max(player_damage_pitch_variation, 0.0)
-	var pitch_min := max(player_damage_pitch_center - variation, 0.05)
-	var pitch_max := max(player_damage_pitch_center + variation, pitch_min)
+	var variation: float = max(player_damage_pitch_variation, 0.0)
+	var pitch_min: float = max(player_damage_pitch_center - variation, 0.05)
+	var pitch_max: float = max(player_damage_pitch_center + variation, pitch_min)
 	_play(PLAYER_DAMAGE, pitch_min, pitch_max, -5.0)
 
 
