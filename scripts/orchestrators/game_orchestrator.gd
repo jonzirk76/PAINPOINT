@@ -116,6 +116,8 @@ var _boss_clear_pending_status: String = ""
 var _floor_exit_portal = null
 var _rewarded_room_ids: Dictionary = {}
 var _reward_prompt_text: String = ""
+var _last_minimap_player_cell: Vector2i = Vector2i.ZERO
+var _has_last_minimap_player_cell: bool = false
 var _ammo_refill_flash_remaining: float = 0.0
 var _ammo_refill_flash_duration: float = 0.48
 var _ammo_refill_perfect_flash_remaining: float = 0.0
@@ -210,6 +212,8 @@ func _process(delta: float) -> void:
 		_update_hud()
 	if _is_gameplay_running():
 		_update_camera()
+		if _is_dungeon_run:
+			_update_minimap_player_cell_if_changed()
 
 
 func _connect_manager_signals() -> void:
@@ -2252,12 +2256,40 @@ func _update_minimap() -> void:
 		return
 	if _is_dungeon_run and (_status == "DUNGEON" or _status == "DOWN" or _status == "WON" or _status == "FLOOR_CLEARED" or _status == "BOSS_CLEARING"):
 		if dungeon_minimap.has_method("set_map"):
-			dungeon_minimap.call("set_map", dungeon_manager.get_minimap_rooms(), dungeon_manager.current_room_id)
+			var player_cell = null
+			var player_cell_info := _get_current_minimap_player_cell()
+			if bool(player_cell_info.get("ok", false)):
+				player_cell = player_cell_info.get("cell", Vector2i.ZERO)
+				_last_minimap_player_cell = player_cell
+				_has_last_minimap_player_cell = true
+			else:
+				_has_last_minimap_player_cell = false
+			dungeon_minimap.call("set_map", dungeon_manager.get_minimap_rooms(), dungeon_manager.current_room_id, player_cell)
 	else:
 		_clear_minimap()
 
 
+func _update_minimap_player_cell_if_changed() -> void:
+	if dungeon_minimap == null:
+		return
+	var player_cell_info := _get_current_minimap_player_cell()
+	var has_cell := bool(player_cell_info.get("ok", false))
+	var cell: Vector2i = player_cell_info.get("cell", Vector2i.ZERO)
+	if has_cell != _has_last_minimap_player_cell or (has_cell and cell != _last_minimap_player_cell):
+		_update_minimap()
+
+
+func _get_current_minimap_player_cell() -> Dictionary:
+	if not _is_dungeon_run or dungeon_manager == null or player_manager == null:
+		return {"ok": false, "cell": Vector2i.ZERO}
+	var player = _get_player_ref()
+	if player == null or not is_instance_valid(player):
+		return {"ok": false, "cell": Vector2i.ZERO}
+	return dungeon_manager.get_current_world_cell_for_position(player_manager.get_player_position())
+
+
 func _clear_minimap() -> void:
+	_has_last_minimap_player_cell = false
 	if dungeon_minimap != null and dungeon_minimap.has_method("clear_map"):
 		dungeon_minimap.call("clear_map")
 

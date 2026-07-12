@@ -7,11 +7,16 @@ class_name DungeonMinimap
 
 var rooms: Array = []
 var current_room_id: String = ""
+var current_player_cell: Vector2i = Vector2i.ZERO
+var has_current_player_cell: bool = false
 
 
-func set_map(room_infos: Array, current_id: String) -> void:
+func set_map(room_infos: Array, current_id: String, player_cell = null) -> void:
 	rooms = room_infos
 	current_room_id = current_id
+	has_current_player_cell = typeof(player_cell) == TYPE_VECTOR2I
+	if has_current_player_cell:
+		current_player_cell = player_cell
 	visible = not rooms.is_empty()
 	queue_redraw()
 
@@ -19,6 +24,7 @@ func set_map(room_infos: Array, current_id: String) -> void:
 func clear_map() -> void:
 	rooms.clear()
 	current_room_id = ""
+	has_current_player_cell = false
 	visible = false
 	queue_redraw()
 
@@ -76,8 +82,8 @@ func _draw_connections(visible_rooms: Array, origin: Vector2, pitch: float) -> v
 		visible_ids[String(info["id"])] = true
 	for info in visible_rooms:
 		var from_id := String(info["id"])
-		var from_center := _get_room_center(info, origin, pitch)
 		var connections: Dictionary = info["connections"]
+		var connection_edges: Dictionary = info.get("connection_edges", {})
 		for direction in connections.keys():
 			var to_id := String(connections[direction])
 			if not visible_ids.has(to_id) or from_id > to_id:
@@ -85,7 +91,10 @@ func _draw_connections(visible_rooms: Array, origin: Vector2, pitch: float) -> v
 			var target_info = _find_room_info(visible_rooms, to_id)
 			if target_info.is_empty():
 				continue
-			draw_line(from_center, _get_room_center(target_info, origin, pitch), Color(0.46, 0.56, 0.62, 0.95), 4.0)
+			var edge: Dictionary = connection_edges.get(direction, {})
+			var from_center := _get_connection_cell_center(info, edge.get("source_cell", null), origin, pitch)
+			var to_center := _get_connection_cell_center(target_info, edge.get("target_cell", null), origin, pitch)
+			draw_line(from_center, to_center, Color(0.46, 0.56, 0.62, 0.95), 4.0)
 
 
 func _draw_room(info: Dictionary, origin: Vector2, pitch: float) -> void:
@@ -100,7 +109,7 @@ func _draw_room(info: Dictionary, origin: Vector2, pitch: float) -> void:
 		draw_rect(rect, room_color, true)
 		draw_rect(rect, Color(0.07, 0.08, 0.1, 1.0), false, 1.5)
 	if is_current:
-		var center := _get_room_center(info, origin, pitch)
+		var center := _get_current_marker_center(info, origin, pitch)
 		draw_circle(center, 5.5, Color(1.0, 0.96, 0.34, 1.0))
 		draw_arc(center, 8.5, 0.0, TAU, 24, Color(0.04, 0.05, 0.06, 1.0), 2.0)
 
@@ -138,6 +147,29 @@ func _get_room_center(info: Dictionary, origin: Vector2, pitch: float) -> Vector
 			max_cell.y = max(max_cell.y, cell.y)
 	var center_cell := (Vector2(min_cell) + Vector2(max_cell) + Vector2.ONE) * 0.5
 	return origin + center_cell * pitch - Vector2(cell_gap, cell_gap) * 0.5
+
+
+func _get_current_marker_center(info: Dictionary, origin: Vector2, pitch: float) -> Vector2:
+	if has_current_player_cell and _room_contains_world_cell(info, current_player_cell):
+		return origin + Vector2(current_player_cell) * pitch + Vector2(cell_size, cell_size) * 0.5
+	return _get_room_center(info, origin, pitch)
+
+
+func _get_connection_cell_center(info: Dictionary, local_cell, origin: Vector2, pitch: float) -> Vector2:
+	if typeof(local_cell) != TYPE_VECTOR2I:
+		return _get_room_center(info, origin, pitch)
+	var world_cell: Vector2i = info["anchor"] + local_cell
+	if not _room_contains_world_cell(info, world_cell):
+		return _get_room_center(info, origin, pitch)
+	return origin + Vector2(world_cell) * pitch + Vector2(cell_size, cell_size) * 0.5
+
+
+func _room_contains_world_cell(info: Dictionary, world_cell: Vector2i) -> bool:
+	var anchor: Vector2i = info["anchor"]
+	for local_cell in info["footprint_cells"]:
+		if anchor + local_cell == world_cell:
+			return true
+	return false
 
 
 func _find_room_info(visible_rooms: Array, room_id: String) -> Dictionary:

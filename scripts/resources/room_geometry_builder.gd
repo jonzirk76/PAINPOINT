@@ -80,6 +80,23 @@ static func build_wall_rects(cells: Array[Vector2i], connection_edges: Dictionar
 	return merge_wall_tiles(build_wall_tile_rects(cells, connection_edges))
 
 
+static func get_exposed_edges(cells: Array[Vector2i], facing_direction: String = "") -> Array[Dictionary]:
+	var occupied := _build_cell_lookup(cells)
+	var edges: Array[Dictionary] = []
+	for cell in cells:
+		for direction in DIRECTIONS:
+			if not facing_direction.is_empty() and direction != facing_direction:
+				continue
+			var neighbor: Vector2i = cell + DIRECTION_OFFSETS[direction]
+			if occupied.has(_cell_key(neighbor)):
+				continue
+			edges.append({
+				"cell": cell,
+				"direction": direction
+			})
+	return edges
+
+
 static func build_wall_tile_rects(cells: Array[Vector2i], connection_edges: Dictionary = {}) -> Array[Rect2]:
 	var walls: Array[Rect2] = []
 	var wall_lookup := {}

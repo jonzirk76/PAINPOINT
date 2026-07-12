@@ -2532,6 +2532,10 @@ func _test_room_piece_resources(failures: Array[String]) -> void:
 	), Vector2(builder.WALL_TILE_SIZE, builder.WALL_TILE_SIZE))
 	if not _rect_list_has_rect(mirrored_l_tiles, mirrored_l_miter_tile):
 		failures.append("L-shaped room shell generation should add diagonal miter tiles at unified envelope turns.")
+	var west_edges: Array = builder.get_exposed_edges(l_cells, "west")
+	var east_edges: Array = builder.get_exposed_edges(l_cells, "east")
+	if west_edges.size() != 2 or east_edges.size() != 2:
+		failures.append("Room geometry should expose cell-specific connector edges for non-rectangular footprints.")
 
 
 func _test_room_interior_generator_determinism_and_budget(failures: Array[String]) -> void:
@@ -3312,10 +3316,22 @@ func _validate_dungeon_physical_door_adjacency(rooms_by_id: Dictionary, failures
 	for room_id in rooms_by_id.keys():
 		var room_info: Dictionary = rooms_by_id[room_id]
 		var connections: Dictionary = room_info.get("connections", {})
+		var connection_edges: Dictionary = room_info.get("connection_edges", {})
 		for direction_key in connections.keys():
 			var key := "%s|%s" % [room_id, String(direction_key)]
 			if int(contact_counts.get(key, 0)) != 1:
 				failures.append("Dungeon layout logical doorway should have exactly one physical edge %s: %s" % [key, label])
+			var direction := String(direction_key)
+			var target_id := String(connections[direction_key])
+			if not connection_edges.has(direction) or not rooms_by_id.has(target_id):
+				failures.append("Dungeon layout logical doorway should store selected cell edge metadata %s: %s" % [key, label])
+				continue
+			var edge: Dictionary = connection_edges[direction]
+			var target_info: Dictionary = rooms_by_id[target_id]
+			var source_world: Vector2i = Vector2i(room_info["anchor"]) + edge.get("source_cell", Vector2i.ZERO)
+			var target_world: Vector2i = Vector2i(target_info["anchor"]) + edge.get("target_cell", Vector2i.ZERO)
+			if source_world + DUNGEON_DIRECTION_OFFSETS[direction] != target_world:
+				failures.append("Dungeon layout selected cell edge should match physical adjacency %s: %s" % [key, label])
 
 
 func _cell_key_for_test(cell: Vector2i) -> String:

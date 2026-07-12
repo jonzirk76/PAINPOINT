@@ -153,6 +153,26 @@ func get_current_spawn_position() -> Vector2:
 	return ROOM_GEOMETRY_BUILDER.get_spawn_position(state["piece"].footprint_cells)
 
 
+func get_current_world_cell_for_position(position: Vector2) -> Dictionary:
+	var state := get_current_room_state()
+	if state.is_empty():
+		return {"ok": false, "cell": Vector2i.ZERO}
+	var piece = state["piece"]
+	var anchor: Vector2i = state["anchor"]
+	var best_cell := Vector2i.ZERO
+	var best_distance := INF
+	for local_cell in piece.footprint_cells:
+		var cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(piece.footprint_cells, local_cell)
+		var world_cell: Vector2i = anchor + local_cell
+		if cell_rect.has_point(position):
+			return {"ok": true, "cell": world_cell}
+		var distance := cell_rect.get_center().distance_squared_to(position)
+		if distance < best_distance:
+			best_distance = distance
+			best_cell = world_cell
+	return {"ok": true, "cell": best_cell}
+
+
 func is_current_room_cleared() -> bool:
 	var state := get_current_room_state()
 	return not state.is_empty() and bool(state["cleared"])
@@ -205,6 +225,7 @@ func get_minimap_rooms() -> Array:
 			"anchor": state["anchor"],
 			"footprint_cells": piece.footprint_cells.duplicate(),
 			"connections": Dictionary(state["connections"]).duplicate(),
+			"connection_edges": Dictionary(state["connection_edges"]).duplicate(),
 			"cleared": bool(state["cleared"]),
 			"revealed": bool(state["revealed"])
 		})
@@ -299,17 +320,17 @@ func _build_boss_path(rng: RandomNumberGenerator) -> Array[String]:
 	for index in range(path_room_count):
 		var room_id := "path_%d" % (index + 1)
 		var piece = _choose_combat_piece(rng, index)
-		if not _try_place_connected_from_candidates(current_id, _get_path_candidate_directions(path_direction, rng), room_id, piece):
+		if not _try_place_connected_from_candidates(current_id, _get_path_candidate_directions(path_direction, rng), room_id, piece, rng):
 			piece = WIDE_PIECE
-			if not _try_place_connected_from_candidates(current_id, _get_path_candidate_directions(path_direction, rng), room_id, piece):
+			if not _try_place_connected_from_candidates(current_id, _get_path_candidate_directions(path_direction, rng), room_id, piece, rng):
 				break
 		path_room_ids.append(room_id)
 		current_id = room_id
-	if not _try_place_connected(current_id, path_direction, "boss", BOSS_PIECE):
+	if not _try_place_connected(current_id, path_direction, "boss", BOSS_PIECE, rng):
 		for room_id in path_room_ids.duplicate():
 			if room_id == "start":
 				continue
-			if _try_place_connected(room_id, path_direction, "boss", BOSS_PIECE):
+			if _try_place_connected(room_id, path_direction, "boss", BOSS_PIECE, rng):
 				break
 	return path_room_ids
 
@@ -319,7 +340,7 @@ func _try_place_required_branch(room_id: String, piece, parent_ids: Array[String
 		var parent_id := parent_ids[rng.randi_range(0, parent_ids.size() - 1)]
 		var directions := _shuffled_cardinal_directions(rng)
 		for direction in directions:
-			if _try_place_connected(parent_id, direction, room_id, piece):
+			if _try_place_connected(parent_id, direction, room_id, piece, rng):
 				return true
 	return false
 
@@ -337,7 +358,7 @@ func _fill_optional_branches(path_room_ids: Array[String], rng: RandomNumberGene
 		var piece = _choose_branch_piece(rng, branch_index)
 		var room_id := "branch_%d" % branch_index
 		for direction in _shuffled_cardinal_directions(rng):
-			if _try_place_connected(parent_id, direction, room_id, piece):
+			if _try_place_connected(parent_id, direction, room_id, piece, rng):
 				branch_index += 1
 				break
 
@@ -353,7 +374,7 @@ func _get_branch_parent_ids(path_room_ids: Array[String]) -> Array[String]:
 	return parent_ids
 
 
-func _try_place_connected(parent_id: String, direction: String, room_id: String, piece) -> bool:
+func _try_place_connected(parent_id: String, direction: String, room_id: String, piece, rng: RandomNumberGenerator = null) -> bool:
 	if not _rooms.has(parent_id) or _rooms.has(room_id):
 		return false
 	var parent_state: Dictionary = _rooms[parent_id]
@@ -364,23 +385,32 @@ func _try_place_connected(parent_id: String, direction: String, room_id: String,
 		return false
 	if not _piece_allows_connector(parent_piece, direction) or not _piece_allows_connector(piece, opposite):
 		return false
-	var base_anchor := _get_adjacent_anchor(parent_state, piece, direction)
-	for offset in _get_solver_offsets(direction):
-		var candidate_anchor := base_anchor + offset
-		if _can_place_connected(piece, candidate_anchor, parent_id, direction):
-			_place_room(room_id, piece, candidate_anchor)
-			_connect_rooms(parent_id, direction, room_id)
-			return true
+	var parent_edges := _get_piece_exposed_edges(parent_piece, direction)
+	var child_edges := _get_piece_exposed_edges(piece, opposite)
+	_shuffle_edge_candidates(parent_edges, rng)
+	_shuffle_edge_candidates(child_edges, rng)
+	for parent_edge in parent_edges:
+		var parent_cell: Vector2i = parent_edge.get("cell", Vector2i.ZERO)
+		for child_edge in child_edges:
+			var child_cell: Vector2i = child_edge.get("cell", Vector2i.ZERO)
+			var candidate_anchor: Vector2i = Vector2i(parent_state["anchor"]) + parent_cell + DIRECTION_OFFSETS[direction] - child_cell
+			if _can_place_connected(piece, candidate_anchor, parent_id, direction):
+				_place_room(room_id, piece, candidate_anchor)
+				_connect_rooms(parent_id, direction, room_id, {
+					"source_cell": parent_cell,
+					"target_cell": child_cell
+				})
+				return true
 	return false
 
 
 func _try_place_connected_any_direction(parent_id: String, room_id: String, piece, rng: RandomNumberGenerator) -> bool:
-	return _try_place_connected_from_candidates(parent_id, _shuffled_cardinal_directions(rng), room_id, piece)
+	return _try_place_connected_from_candidates(parent_id, _shuffled_cardinal_directions(rng), room_id, piece, rng)
 
 
-func _try_place_connected_from_candidates(parent_id: String, directions: Array[String], room_id: String, piece) -> bool:
+func _try_place_connected_from_candidates(parent_id: String, directions: Array[String], room_id: String, piece, rng: RandomNumberGenerator) -> bool:
 	for direction in directions:
-		if _try_place_connected(parent_id, direction, room_id, piece):
+		if _try_place_connected(parent_id, direction, room_id, piece, rng):
 			return true
 	return false
 
@@ -389,6 +419,22 @@ func _piece_allows_connector(piece, direction: String) -> bool:
 	if piece.has_connector(direction):
 		return true
 	return String(piece.room_kind) == "boss" and DIRECTION_OFFSETS.has(direction)
+
+
+func _get_piece_exposed_edges(piece, direction: String) -> Array[Dictionary]:
+	if not _piece_allows_connector(piece, direction):
+		return []
+	return ROOM_GEOMETRY_BUILDER.get_exposed_edges(piece.footprint_cells, direction)
+
+
+func _shuffle_edge_candidates(edges: Array[Dictionary], rng: RandomNumberGenerator) -> void:
+	if rng == null:
+		return
+	for index in range(edges.size() - 1, 0, -1):
+		var swap_index := rng.randi_range(0, index)
+		var value := edges[index]
+		edges[index] = edges[swap_index]
+		edges[swap_index] = value
 
 
 func _choose_combat_piece(rng: RandomNumberGenerator, path_index: int):
@@ -484,7 +530,7 @@ func _place_room(room_id: String, piece, anchor: Vector2i, cleared_override: boo
 		_occupied_cells[_cell_key(world_cell)] = room_id
 
 
-func _connect_rooms(from_id: String, direction: String, to_id: String) -> void:
+func _connect_rooms(from_id: String, direction: String, to_id: String, contact: Dictionary = {}) -> void:
 	var opposite := String(OPPOSITE_DIRECTIONS.get(direction, ""))
 	var from_state: Dictionary = _rooms[from_id]
 	var to_state: Dictionary = _rooms[to_id]
@@ -494,13 +540,14 @@ func _connect_rooms(from_id: String, direction: String, to_id: String) -> void:
 	var to_edges: Dictionary = to_state["connection_edges"]
 	from_connections[direction] = to_id
 	to_connections[opposite] = from_id
-	var contact := ROOM_GEOMETRY_BUILDER.find_contact_edge(
-		from_state["piece"].footprint_cells,
-		from_state["anchor"],
-		to_state["piece"].footprint_cells,
-		to_state["anchor"],
-		direction
-	)
+	if contact.is_empty():
+		contact = ROOM_GEOMETRY_BUILDER.find_contact_edge(
+			from_state["piece"].footprint_cells,
+			from_state["anchor"],
+			to_state["piece"].footprint_cells,
+			to_state["anchor"],
+			direction
+		)
 	from_edges[direction] = contact
 	to_edges[opposite] = {
 		"source_cell": contact.get("target_cell", Vector2i.ZERO),
@@ -512,36 +559,6 @@ func _connect_rooms(from_id: String, direction: String, to_id: String) -> void:
 	to_state["connection_edges"] = to_edges
 	_rooms[from_id] = from_state
 	_rooms[to_id] = to_state
-
-
-func _get_adjacent_anchor(parent_state: Dictionary, child_piece, direction: String) -> Vector2i:
-	var parent_anchor: Vector2i = parent_state["anchor"]
-	var parent_piece = parent_state["piece"]
-	var parent_min: Vector2i = parent_piece.get_min_cell()
-	var parent_max: Vector2i = parent_piece.get_max_cell()
-	var child_min: Vector2i = child_piece.get_min_cell()
-	var child_max: Vector2i = child_piece.get_max_cell()
-	match direction:
-		"east":
-			return Vector2i(parent_anchor.x + parent_max.x + 1 - child_min.x, parent_anchor.y + parent_min.y - child_min.y)
-		"west":
-			return Vector2i(parent_anchor.x + parent_min.x - 1 - child_max.x, parent_anchor.y + parent_min.y - child_min.y)
-		"south":
-			return Vector2i(parent_anchor.x + parent_min.x - child_min.x, parent_anchor.y + parent_max.y + 1 - child_min.y)
-		"north":
-			return Vector2i(parent_anchor.x + parent_min.x - child_min.x, parent_anchor.y + parent_min.y - 1 - child_max.y)
-	return parent_anchor
-
-
-func _get_solver_offsets(direction: String) -> Array[Vector2i]:
-	var scalar_offsets := [0, -1, 1, -2, 2, -3, 3]
-	var offsets: Array[Vector2i] = []
-	for offset in scalar_offsets:
-		if direction == "east" or direction == "west":
-			offsets.append(Vector2i(0, offset))
-		else:
-			offsets.append(Vector2i(offset, 0))
-	return offsets
 
 
 func _can_place(piece, anchor: Vector2i) -> bool:
