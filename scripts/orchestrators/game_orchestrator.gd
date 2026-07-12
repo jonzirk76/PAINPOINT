@@ -118,6 +118,7 @@ var _rewarded_room_ids: Dictionary = {}
 var _reward_prompt_text: String = ""
 var _last_minimap_player_cell: Vector2i = Vector2i.ZERO
 var _has_last_minimap_player_cell: bool = false
+var _minimap_player_cell_check_remaining: float = 0.0
 var _ammo_refill_flash_remaining: float = 0.0
 var _ammo_refill_flash_duration: float = 0.48
 var _ammo_refill_perfect_flash_remaining: float = 0.0
@@ -166,6 +167,7 @@ const METER_SEGMENT_EJECT_OFFSET := Vector2(12.0, -16.0)
 const AMMO_SEGMENT_REFILL_STEP_SECONDS := 0.06
 const AMMO_SEGMENT_REFILL_MIN_SECONDS := 0.22
 const AMMO_SEGMENT_REFILL_MAX_SECONDS := 0.72
+const MINIMAP_PLAYER_CELL_CHECK_SECONDS := 0.1
 
 
 func _ready() -> void:
@@ -213,7 +215,10 @@ func _process(delta: float) -> void:
 	if _is_gameplay_running():
 		_update_camera()
 		if _is_dungeon_run:
-			_update_minimap_player_cell_if_changed()
+			_minimap_player_cell_check_remaining -= delta
+			if _minimap_player_cell_check_remaining <= 0.0:
+				_minimap_player_cell_check_remaining = MINIMAP_PLAYER_CELL_CHECK_SECONDS
+				_update_minimap_player_cell_if_changed()
 
 
 func _connect_manager_signals() -> void:
@@ -2290,6 +2295,7 @@ func _get_current_minimap_player_cell() -> Dictionary:
 
 func _clear_minimap() -> void:
 	_has_last_minimap_player_cell = false
+	_minimap_player_cell_check_remaining = 0.0
 	if dungeon_minimap != null and dungeon_minimap.has_method("clear_map"):
 		dungeon_minimap.call("clear_map")
 
