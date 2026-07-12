@@ -130,9 +130,10 @@ func _draw_room(info: Dictionary, origin: Vector2, pitch: float, viewport: Rect2
 	for local_cell in info["footprint_cells"]:
 		var cell: Vector2i = anchor + local_cell
 		var rect := _get_room_cell_mass_rect(cell, occupied, origin, pitch)
-		if not rect.intersects(viewport):
+		var clipped_rect := rect.intersection(viewport)
+		if not clipped_rect.has_area():
 			continue
-		draw_rect(rect, room_color, true)
+		draw_rect(clipped_rect, room_color, true)
 	_draw_room_outline(occupied, origin, pitch, viewport)
 	if is_current:
 		var center := _get_current_marker_center(info, origin, pitch)
@@ -144,7 +145,7 @@ func _draw_room(info: Dictionary, origin: Vector2, pitch: float, viewport: Rect2
 func _draw_room_outline(occupied: Dictionary, origin: Vector2, pitch: float, viewport: Rect2) -> void:
 	for key in occupied.keys():
 		var cell := _cell_from_key(String(key))
-		var rect := Rect2(origin + Vector2(cell) * pitch, Vector2(cell_size, cell_size))
+		var rect := _get_room_cell_mass_rect(cell, occupied, origin, pitch)
 		var left := rect.position.x
 		var top := rect.position.y
 		var right := rect.position.x + rect.size.x
@@ -160,24 +161,27 @@ func _draw_room_outline(occupied: Dictionary, origin: Vector2, pitch: float, vie
 
 
 func _get_room_cell_mass_rect(cell: Vector2i, occupied: Dictionary, origin: Vector2, pitch: float) -> Rect2:
-	var rect := Rect2(origin + Vector2(cell) * pitch, Vector2(cell_size, cell_size))
-	if occupied.has(_cell_key(cell + Vector2i(1, 0))):
-		rect.size.x += cell_gap
-	if occupied.has(_cell_key(cell + Vector2i(-1, 0))):
-		rect.position.x -= cell_gap
-		rect.size.x += cell_gap
-	if occupied.has(_cell_key(cell + Vector2i(0, 1))):
-		rect.size.y += cell_gap
-	if occupied.has(_cell_key(cell + Vector2i(0, -1))):
-		rect.position.y -= cell_gap
-		rect.size.y += cell_gap
-	return rect
+	return Rect2(origin + Vector2(cell) * pitch - Vector2(cell_gap, cell_gap) * 0.5, Vector2(pitch, pitch))
 
 
 func _draw_clipped_room_edge(from_point: Vector2, to_point: Vector2, viewport: Rect2) -> void:
 	if not _segment_rect(from_point, to_point).grow(2.0).intersects(viewport):
 		return
-	draw_line(from_point, to_point, Color(0.07, 0.08, 0.1, 1.0), 1.5)
+	var start := from_point
+	var end := to_point
+	if abs(from_point.y - to_point.y) <= 0.001:
+		if from_point.y < viewport.position.y or from_point.y > viewport.position.y + viewport.size.y:
+			return
+		start.x = clamp(start.x, viewport.position.x, viewport.position.x + viewport.size.x)
+		end.x = clamp(end.x, viewport.position.x, viewport.position.x + viewport.size.x)
+	elif abs(from_point.x - to_point.x) <= 0.001:
+		if from_point.x < viewport.position.x or from_point.x > viewport.position.x + viewport.size.x:
+			return
+		start.y = clamp(start.y, viewport.position.y, viewport.position.y + viewport.size.y)
+		end.y = clamp(end.y, viewport.position.y, viewport.position.y + viewport.size.y)
+	if start.distance_squared_to(end) <= 0.001:
+		return
+	draw_line(start, end, Color(0.07, 0.08, 0.1, 1.0), 1.5)
 
 
 func _get_room_color(kind: String, cleared: bool) -> Color:
