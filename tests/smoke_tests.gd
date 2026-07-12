@@ -2518,6 +2518,20 @@ func _test_room_piece_resources(failures: Array[String]) -> void:
 		failures.append("L-shaped room shell generation should preserve boundary turn corner wall tiles.")
 	if _rect_list_count_rect(l_tiles, l_boundary_turn_corner) != 1:
 		failures.append("L-shaped room shell generation should not duplicate boundary turn corner wall tiles.")
+	var absent_cell_fill_tile := Rect2(Vector2(
+		0.0,
+		0.0
+	), Vector2(builder.WALL_TILE_SIZE, builder.WALL_TILE_SIZE))
+	if _rect_list_has_rect(l_tiles, absent_cell_fill_tile):
+		failures.append("L-shaped room shell generation should derive the exterior envelope without filling absent bounding-box cells.")
+	var mirrored_l_cells: Array[Vector2i] = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(1, 1)]
+	var mirrored_l_tiles: Array[Rect2] = builder.build_wall_tile_rects(mirrored_l_cells, {})
+	var mirrored_l_miter_tile := Rect2(Vector2(
+		0.0,
+		-builder.WALL_TILE_SIZE
+	), Vector2(builder.WALL_TILE_SIZE, builder.WALL_TILE_SIZE))
+	if not _rect_list_has_rect(mirrored_l_tiles, mirrored_l_miter_tile):
+		failures.append("L-shaped room shell generation should add diagonal miter tiles at unified envelope turns.")
 
 
 func _test_room_interior_generator_determinism_and_budget(failures: Array[String]) -> void:
