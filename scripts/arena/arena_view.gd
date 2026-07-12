@@ -38,6 +38,7 @@ func configure(level_definition) -> void:
 		_void_draw_rects = void_rects.duplicate()
 	_footprint_cells = _get_meta_cells(level_definition, "footprint_cells")
 	_connection_edges = Dictionary(level_definition.get_meta("connection_edges")) if level_definition.has_meta("connection_edges") else {}
+	_debug_dump_generated_room_geometry(level_definition)
 	_rebuild_blocker_bodies()
 	queue_redraw()
 
@@ -55,6 +56,29 @@ func _draw() -> void:
 	_draw_walls()
 	if not _uses_canonical_wall_tiles:
 		draw_polyline(_closed_points(polygon), Color(0.52, 0.58, 0.62), 4.0, true)
+
+
+# ==================================================================================================
+# TEMP DEBUG: Generated room geometry dump.
+# Remove this block after the room-shell corner issue is diagnosed.
+# ==================================================================================================
+func _debug_dump_generated_room_geometry(level_definition) -> void:
+	if not _uses_canonical_wall_tiles:
+		return
+	print("--- ROOM GEOMETRY DUMP ---")
+	print("id=", level_definition.id)
+	print("arena_bounds=", arena_bounds)
+	print("footprint_cells=", _footprint_cells)
+	print("connection_edges=", _connection_edges)
+	print("wall_tiles=", _wall_tile_rects.size())
+	print("wall_draw_rects=", _wall_draw_rects.size())
+	for rect in _wall_tile_rects:
+		if rect.position.x > arena_bounds.position.x + arena_bounds.size.x - 240.0:
+			print("right_edge_tile=", rect)
+	for rect in _wall_draw_rects:
+		if rect.position.x + rect.size.x > arena_bounds.position.x + arena_bounds.size.x - 240.0:
+			print("right_edge_draw=", rect)
+	print("--- END ROOM GEOMETRY DUMP ---")
 
 
 func _draw_clipped_grid(polygon: PackedVector2Array) -> void:
@@ -288,13 +312,13 @@ func _draw_shell_edge_segments(rect: Rect2, cell: Vector2i, direction: String, o
 		opening = ROOM_GEOMETRY_BUILDER.get_opening_rect(_footprint_cells, cell, direction)
 	match direction:
 		"north":
-			_draw_horizontal_shell_segments(rect.position.y, rect.position.x, rect.position.x + rect.size.x, opening, outline_color, outline_width)
+			_draw_horizontal_shell_segments(rect.position.y + ROOM_GEOMETRY_BUILDER.WALL_THICKNESS, rect.position.x, rect.position.x + rect.size.x, opening, outline_color, outline_width)
 		"south":
-			_draw_horizontal_shell_segments(rect.position.y + rect.size.y, rect.position.x, rect.position.x + rect.size.x, opening, outline_color, outline_width)
+			_draw_horizontal_shell_segments(rect.position.y + rect.size.y - ROOM_GEOMETRY_BUILDER.WALL_THICKNESS, rect.position.x, rect.position.x + rect.size.x, opening, outline_color, outline_width)
 		"east":
-			_draw_vertical_shell_segments(rect.position.x + rect.size.x, rect.position.y, rect.position.y + rect.size.y, opening, outline_color, outline_width)
+			_draw_vertical_shell_segments(rect.position.x + rect.size.x - ROOM_GEOMETRY_BUILDER.WALL_THICKNESS, rect.position.y, rect.position.y + rect.size.y, opening, outline_color, outline_width)
 		"west":
-			_draw_vertical_shell_segments(rect.position.x, rect.position.y, rect.position.y + rect.size.y, opening, outline_color, outline_width)
+			_draw_vertical_shell_segments(rect.position.x + ROOM_GEOMETRY_BUILDER.WALL_THICKNESS, rect.position.y, rect.position.y + rect.size.y, opening, outline_color, outline_width)
 
 
 func _draw_horizontal_shell_segments(y: float, left: float, right: float, opening: Rect2, outline_color: Color, outline_width: float) -> void:
