@@ -270,10 +270,13 @@ static func _occupied_cell_tile_is_wall(cells: Array[Vector2i], local_cell: Vect
 		edge_directions.append("east")
 	if edge_directions.is_empty():
 		return false
+	var has_opening_edge := false
 	for direction in edge_directions:
 		if _tile_is_inside_connection_opening(tile, cells, local_cell, direction, connection_edges):
-			return false
-	return true
+			has_opening_edge = true
+		else:
+			return true
+	return not has_opening_edge
 
 
 static func _rect_to_wall_tiles(rect: Rect2) -> Array[Rect2]:
