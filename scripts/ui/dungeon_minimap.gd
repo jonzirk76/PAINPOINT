@@ -11,6 +11,10 @@ var current_player_cell: Vector2i = Vector2i.ZERO
 var has_current_player_cell: bool = false
 
 
+func _ready() -> void:
+	clip_contents = true
+
+
 func set_map(room_infos: Array, current_id: String, player_cell = null) -> void:
 	rooms = room_infos
 	current_room_id = current_id
@@ -39,11 +43,25 @@ func _draw() -> void:
 		return
 	var bounds := _get_cell_bounds(visible_rooms)
 	var pitch := cell_size + cell_gap
-	var map_size := Vector2(float(bounds.size.x) * pitch - cell_gap, float(bounds.size.y) * pitch - cell_gap)
-	var origin := (size - map_size) * 0.5 - Vector2(bounds.position) * pitch
-	_draw_connections(visible_rooms, origin, pitch)
+	var viewport := _get_map_viewport()
+	var origin := _get_map_origin(bounds, pitch, viewport)
+	_draw_connections(visible_rooms, origin, pitch, viewport)
 	for info in visible_rooms:
-		_draw_room(info, origin, pitch)
+		_draw_room(info, origin, pitch, viewport)
+
+
+func _get_map_viewport() -> Rect2:
+	var inset: float = min(padding, min(size.x, size.y) * 0.25)
+	var viewport_size := Vector2(max(size.x - inset * 2.0, 1.0), max(size.y - inset * 2.0, 1.0))
+	return Rect2(Vector2(inset, inset), viewport_size)
+
+
+func _get_map_origin(bounds: Rect2i, pitch: float, viewport: Rect2) -> Vector2:
+	if has_current_player_cell:
+		var player_center := Vector2(current_player_cell) * pitch + Vector2(cell_size, cell_size) * 0.5
+		return viewport.get_center() - player_center
+	var map_size := Vector2(float(bounds.size.x) * pitch - cell_gap, float(bounds.size.y) * pitch - cell_gap)
+	return viewport.get_center() - map_size * 0.5 - Vector2(bounds.position) * pitch
 
 
 func _get_visible_rooms() -> Array:
@@ -76,7 +94,7 @@ func _get_cell_bounds(visible_rooms: Array) -> Rect2i:
 	return Rect2i(min_cell, max_cell - min_cell + Vector2i.ONE)
 
 
-func _draw_connections(visible_rooms: Array, origin: Vector2, pitch: float) -> void:
+func _draw_connections(visible_rooms: Array, origin: Vector2, pitch: float, viewport: Rect2) -> void:
 	var visible_ids := {}
 	for info in visible_rooms:
 		visible_ids[String(info["id"])] = true
@@ -94,10 +112,12 @@ func _draw_connections(visible_rooms: Array, origin: Vector2, pitch: float) -> v
 			var edge: Dictionary = connection_edges.get(direction, {})
 			var from_center := _get_connection_cell_center(info, edge.get("source_cell", null), origin, pitch)
 			var to_center := _get_connection_cell_center(target_info, edge.get("target_cell", null), origin, pitch)
+			if not _segment_rect(from_center, to_center).grow(6.0).intersects(viewport):
+				continue
 			draw_line(from_center, to_center, Color(0.46, 0.56, 0.62, 0.95), 4.0)
 
 
-func _draw_room(info: Dictionary, origin: Vector2, pitch: float) -> void:
+func _draw_room(info: Dictionary, origin: Vector2, pitch: float, viewport: Rect2) -> void:
 	var room_color := _get_room_color(String(info.get("kind", "combat")), bool(info.get("cleared", false)))
 	var is_current := String(info["id"]) == current_room_id
 	if is_current:
@@ -106,12 +126,15 @@ func _draw_room(info: Dictionary, origin: Vector2, pitch: float) -> void:
 	for local_cell in info["footprint_cells"]:
 		var cell: Vector2i = anchor + local_cell
 		var rect := Rect2(origin + Vector2(cell) * pitch, Vector2(cell_size, cell_size))
+		if not rect.intersects(viewport):
+			continue
 		draw_rect(rect, room_color, true)
 		draw_rect(rect, Color(0.07, 0.08, 0.1, 1.0), false, 1.5)
 	if is_current:
 		var center := _get_current_marker_center(info, origin, pitch)
-		draw_circle(center, 5.5, Color(1.0, 0.96, 0.34, 1.0))
-		draw_arc(center, 8.5, 0.0, TAU, 24, Color(0.04, 0.05, 0.06, 1.0), 2.0)
+		if viewport.has_point(center):
+			draw_circle(center, 5.5, Color(1.0, 0.96, 0.34, 1.0))
+			draw_arc(center, 8.5, 0.0, TAU, 24, Color(0.04, 0.05, 0.06, 1.0), 2.0)
 
 
 func _get_room_color(kind: String, cleared: bool) -> Color:
@@ -170,6 +193,14 @@ func _room_contains_world_cell(info: Dictionary, world_cell: Vector2i) -> bool:
 		if anchor + local_cell == world_cell:
 			return true
 	return false
+
+
+func _segment_rect(from_point: Vector2, to_point: Vector2) -> Rect2:
+	var left: float = min(from_point.x, to_point.x)
+	var top: float = min(from_point.y, to_point.y)
+	var right: float = max(from_point.x, to_point.x)
+	var bottom: float = max(from_point.y, to_point.y)
+	return Rect2(Vector2(left, top), Vector2(max(right - left, 1.0), max(bottom - top, 1.0)))
 
 
 func _find_room_info(visible_rooms: Array, room_id: String) -> Dictionary:
