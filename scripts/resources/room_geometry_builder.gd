@@ -98,6 +98,7 @@ static func build_wall_tile_rects(cells: Array[Vector2i], connection_edges: Dict
 					var tile := Rect2(cell_rect.position + Vector2(float(tile_x) * WALL_TILE_SIZE, float(tile_y) * WALL_TILE_SIZE), Vector2(WALL_TILE_SIZE, WALL_TILE_SIZE))
 					if _occupied_cell_tile_is_wall(cells, cell, tile, tile_x, tile_y, occupied, connection_edges):
 						_append_unique_wall_tile(walls, wall_lookup, tile)
+	_append_boundary_turn_cap_tiles(walls, wall_lookup, cells, occupied, connection_edges)
 	return walls
 
 
@@ -277,6 +278,26 @@ static func _occupied_cell_tile_is_wall(cells: Array[Vector2i], local_cell: Vect
 		else:
 			return true
 	return not has_opening_edge
+
+
+static func _append_boundary_turn_cap_tiles(walls: Array[Rect2], wall_lookup: Dictionary, cells: Array[Vector2i], occupied: Dictionary, connection_edges: Dictionary) -> void:
+	for cell in cells:
+		var cell_rect := get_cell_rect(cells, cell)
+		_append_boundary_corner_tile(walls, wall_lookup, cells, occupied, connection_edges, cell, cell_rect, "north", "west", Vector2i(0, 0))
+		_append_boundary_corner_tile(walls, wall_lookup, cells, occupied, connection_edges, cell, cell_rect, "north", "east", Vector2i(CELL_TILE_COLUMNS - 1, 0))
+		_append_boundary_corner_tile(walls, wall_lookup, cells, occupied, connection_edges, cell, cell_rect, "south", "east", Vector2i(CELL_TILE_COLUMNS - 1, CELL_TILE_ROWS - 1))
+		_append_boundary_corner_tile(walls, wall_lookup, cells, occupied, connection_edges, cell, cell_rect, "south", "west", Vector2i(0, CELL_TILE_ROWS - 1))
+
+
+static func _append_boundary_corner_tile(walls: Array[Rect2], wall_lookup: Dictionary, cells: Array[Vector2i], occupied: Dictionary, connection_edges: Dictionary, cell: Vector2i, cell_rect: Rect2, first_direction: String, second_direction: String, tile_index: Vector2i) -> void:
+	var first_neighbor: Vector2i = cell + DIRECTION_OFFSETS[first_direction]
+	var second_neighbor: Vector2i = cell + DIRECTION_OFFSETS[second_direction]
+	if occupied.has(_cell_key(first_neighbor)) or occupied.has(_cell_key(second_neighbor)):
+		return
+	var tile := Rect2(cell_rect.position + Vector2(float(tile_index.x) * WALL_TILE_SIZE, float(tile_index.y) * WALL_TILE_SIZE), Vector2(WALL_TILE_SIZE, WALL_TILE_SIZE))
+	if _tile_is_inside_connection_opening(tile, cells, cell, first_direction, connection_edges) and _tile_is_inside_connection_opening(tile, cells, cell, second_direction, connection_edges):
+		return
+	_append_unique_wall_tile(walls, wall_lookup, tile)
 
 
 static func _rect_to_wall_tiles(rect: Rect2) -> Array[Rect2]:

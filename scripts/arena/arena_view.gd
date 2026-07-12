@@ -17,6 +17,7 @@ var _void_tile_rects: Array[Rect2] = []
 var _wall_draw_rects: Array[Rect2] = []
 var _void_draw_rects: Array[Rect2] = []
 var _footprint_cells: Array[Vector2i] = []
+var _connection_edges: Dictionary = {}
 
 
 func configure(level_definition) -> void:
@@ -36,6 +37,7 @@ func configure(level_definition) -> void:
 		_wall_draw_rects = wall_rects.duplicate()
 		_void_draw_rects = void_rects.duplicate()
 	_footprint_cells = _get_meta_cells(level_definition, "footprint_cells")
+	_connection_edges = Dictionary(level_definition.get_meta("connection_edges")) if level_definition.has_meta("connection_edges") else {}
 	_rebuild_blocker_bodies()
 	queue_redraw()
 
@@ -230,6 +232,7 @@ func _rebuild_blocker_bodies() -> void:
 func _draw_walls() -> void:
 	if _uses_canonical_wall_tiles:
 		_draw_tile_mass(_wall_tile_rects, _wall_draw_rects, Color(0.11, 0.12, 0.14), Color(0.65, 0.72, 0.76), 3.0)
+		_draw_footprint_shell_outline(Color(0.65, 0.72, 0.76), 3.0)
 	else:
 		for rect in _wall_draw_rects:
 			draw_rect(rect, Color(0.11, 0.12, 0.14), true)
@@ -264,6 +267,65 @@ func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_co
 			draw_line(Vector2(left, top), Vector2(left, bottom), outline_color, outline_width)
 		if not lookup.has(_tile_key(cell + Vector2i(1, 0))):
 			draw_line(Vector2(right, top), Vector2(right, bottom), outline_color, outline_width)
+
+
+func _draw_footprint_shell_outline(outline_color: Color, outline_width: float) -> void:
+	var occupied := {}
+	for cell in _footprint_cells:
+		occupied[_tile_key(cell)] = true
+	for cell in _footprint_cells:
+		var rect := _cell_rect(cell)
+		for direction in ROOM_GEOMETRY_BUILDER.DIRECTIONS:
+			var neighbor: Vector2i = cell + ROOM_GEOMETRY_BUILDER.DIRECTION_OFFSETS[direction]
+			if occupied.has(_tile_key(neighbor)):
+				continue
+			_draw_shell_edge_segments(rect, cell, direction, outline_color, outline_width)
+
+
+func _draw_shell_edge_segments(rect: Rect2, cell: Vector2i, direction: String, outline_color: Color, outline_width: float) -> void:
+	var opening := Rect2()
+	if _connection_uses_cell_edge(direction, cell):
+		opening = ROOM_GEOMETRY_BUILDER.get_opening_rect(_footprint_cells, cell, direction)
+	match direction:
+		"north":
+			_draw_horizontal_shell_segments(rect.position.y, rect.position.x, rect.position.x + rect.size.x, opening, outline_color, outline_width)
+		"south":
+			_draw_horizontal_shell_segments(rect.position.y + rect.size.y, rect.position.x, rect.position.x + rect.size.x, opening, outline_color, outline_width)
+		"east":
+			_draw_vertical_shell_segments(rect.position.x + rect.size.x, rect.position.y, rect.position.y + rect.size.y, opening, outline_color, outline_width)
+		"west":
+			_draw_vertical_shell_segments(rect.position.x, rect.position.y, rect.position.y + rect.size.y, opening, outline_color, outline_width)
+
+
+func _draw_horizontal_shell_segments(y: float, left: float, right: float, opening: Rect2, outline_color: Color, outline_width: float) -> void:
+	if opening.size == Vector2.ZERO:
+		draw_line(Vector2(left, y), Vector2(right, y), outline_color, outline_width)
+		return
+	var opening_left: float = clamp(opening.position.x, left, right)
+	var opening_right: float = clamp(opening.position.x + opening.size.x, left, right)
+	if opening_left > left + 0.5:
+		draw_line(Vector2(left, y), Vector2(opening_left, y), outline_color, outline_width)
+	if opening_right < right - 0.5:
+		draw_line(Vector2(opening_right, y), Vector2(right, y), outline_color, outline_width)
+
+
+func _draw_vertical_shell_segments(x: float, top: float, bottom: float, opening: Rect2, outline_color: Color, outline_width: float) -> void:
+	if opening.size == Vector2.ZERO:
+		draw_line(Vector2(x, top), Vector2(x, bottom), outline_color, outline_width)
+		return
+	var opening_top: float = clamp(opening.position.y, top, bottom)
+	var opening_bottom: float = clamp(opening.position.y + opening.size.y, top, bottom)
+	if opening_top > top + 0.5:
+		draw_line(Vector2(x, top), Vector2(x, opening_top), outline_color, outline_width)
+	if opening_bottom < bottom - 0.5:
+		draw_line(Vector2(x, opening_bottom), Vector2(x, bottom), outline_color, outline_width)
+
+
+func _connection_uses_cell_edge(direction: String, cell: Vector2i) -> bool:
+	if not _connection_edges.has(direction):
+		return false
+	var edge := Dictionary(_connection_edges[direction])
+	return edge.has("source_cell") and edge["source_cell"] == cell
 
 
 func _build_tile_lookup(tile_rects: Array[Rect2]) -> Dictionary:
