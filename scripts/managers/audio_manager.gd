@@ -17,7 +17,7 @@ const PLAYER_DAMAGE := preload("res://audio/player_damage.wav")
 
 @export var max_active_players: int = 24
 ## Controls the center pitch used when the player takes damage.
-@export var player_damage_pitch_center: float = 1.0
+@export var player_damage_pitch_center: float = 1.1
 ## Controls the random pitch range above and below the player damage pitch center.
 @export var player_damage_pitch_variation: float = 0.08
 
