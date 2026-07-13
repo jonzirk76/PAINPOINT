@@ -218,6 +218,8 @@ static func _is_clear_in_rect_union(point: Vector2, rects: Array, clearance: flo
 	var radius: float = max(clearance, 0.0)
 	if radius <= EDGE_EPSILON:
 		return true
+	if _has_single_rect_clearance(point, rects, radius):
+		return true
 	for index in range(8):
 		var sample_point: Vector2 = point + Vector2.RIGHT.rotated(TAU * float(index) / 8.0) * radius
 		if not _is_point_in_rect_union(sample_point, rects):
@@ -230,6 +232,16 @@ static func _is_point_in_rect_union(point: Vector2, rects: Array) -> bool:
 		if not (rect is Rect2):
 			continue
 		if _rect_has_point_inclusive(rect, point):
+			return true
+	return false
+
+
+static func _has_single_rect_clearance(point: Vector2, rects: Array, clearance: float) -> bool:
+	for rect in rects:
+		if not (rect is Rect2):
+			continue
+		var inset_rect: Rect2 = _inset_rect(rect, clearance)
+		if _rect_has_point_inclusive(inset_rect, point):
 			return true
 	return false
 
@@ -251,6 +263,11 @@ static func _closest_point_in_rect_union(point: Vector2, rects: Array) -> Vector
 static func _rect_has_point_inclusive(rect: Rect2, point: Vector2) -> bool:
 	var end: Vector2 = rect.position + rect.size
 	return point.x >= rect.position.x - EDGE_EPSILON and point.x <= end.x + EDGE_EPSILON and point.y >= rect.position.y - EDGE_EPSILON and point.y <= end.y + EDGE_EPSILON
+
+
+static func _inset_rect(rect: Rect2, inset: float) -> Rect2:
+	var safe_inset: float = min(max(inset, 0.0), min(rect.size.x, rect.size.y) * 0.45)
+	return Rect2(rect.position + Vector2(safe_inset, safe_inset), Vector2(max(rect.size.x - safe_inset * 2.0, 1.0), max(rect.size.y - safe_inset * 2.0, 1.0)))
 
 
 static func _closest_point_on_rect(point: Vector2, rect: Rect2) -> Vector2:

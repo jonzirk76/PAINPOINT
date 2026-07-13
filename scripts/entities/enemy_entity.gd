@@ -730,9 +730,6 @@ func _get_path_steering_target(final_target: Vector2) -> Vector2:
 	var clearance: float = body_radius + 10.0
 	if _can_reuse_path_cache(final_target):
 		return _cached_steering_target
-	if not _path_blocks_segment(global_position, final_target, clearance):
-		_store_path_cache(final_target, final_target)
-		return final_target
 	var blocking_wall := _get_blocking_wall_rect(global_position, final_target, clearance)
 	if blocking_wall.size == Vector2.ZERO:
 		_store_path_cache(final_target, final_target)
