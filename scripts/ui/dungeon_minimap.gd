@@ -50,6 +50,8 @@ func _draw() -> void:
 	for info in visible_rooms:
 		_draw_room_fill(info, origin, pitch, draw_bounds)
 	for info in visible_rooms:
+		_draw_special_room_logo(info, origin, pitch, draw_bounds)
+	for info in visible_rooms:
 		_draw_room_details(info, origin, pitch, draw_bounds)
 	_draw_connection_doors(visible_rooms, origin, pitch, draw_bounds)
 
@@ -175,6 +177,113 @@ func _draw_room_details(info: Dictionary, origin: Vector2, pitch: float, viewpor
 		if viewport.has_point(center):
 			draw_circle(center, 5.5, Color(1.0, 0.96, 0.34, 1.0))
 			draw_arc(center, 8.5, 0.0, TAU, 24, Color(0.04, 0.05, 0.06, 1.0), 2.0)
+
+
+func _draw_special_room_logo(info: Dictionary, origin: Vector2, pitch: float, viewport: Rect2) -> void:
+	var kind := String(info.get("kind", "combat"))
+	if kind != "treasure" and kind != "challenge" and kind != "boss":
+		return
+	var center: Vector2 = _get_special_logo_center(info, origin, pitch)
+	if not viewport.grow(8.0).has_point(center):
+		return
+	var marker_size: float = clamp(cell_size * 0.72, 12.0, 20.0)
+	var accent_color: Color = _get_special_logo_color(kind)
+	draw_circle(center, marker_size * 0.58, Color(0.015, 0.018, 0.02, 0.82))
+	draw_arc(center, marker_size * 0.58, 0.0, TAU, 24, accent_color, 1.8)
+	draw_set_transform(center)
+	match kind:
+		"treasure":
+			_draw_treasure_logo(marker_size, accent_color)
+		"challenge":
+			_draw_challenge_logo(marker_size, accent_color)
+		"boss":
+			_draw_boss_logo(marker_size, accent_color)
+	draw_set_transform(Vector2.ZERO)
+
+
+func _get_special_logo_center(info: Dictionary, origin: Vector2, pitch: float) -> Vector2:
+	if String(info.get("kind", "")) == "challenge":
+		var reward_cell: Vector2i = _get_challenge_reward_world_cell(info)
+		return origin + Vector2(reward_cell) * pitch + Vector2(pitch, pitch) * 0.5 - Vector2(cell_gap, cell_gap) * 0.5
+	return _get_room_center(info, origin, pitch)
+
+
+func _get_challenge_reward_world_cell(info: Dictionary) -> Vector2i:
+	var anchor: Vector2i = info["anchor"]
+	var local_cell: Vector2i = _get_center_weighted_local_cell(info)
+	return anchor + local_cell
+
+
+func _get_center_weighted_local_cell(info: Dictionary) -> Vector2i:
+	var cells: Array = info["footprint_cells"]
+	if cells.is_empty():
+		return Vector2i.ZERO
+	var min_cell: Vector2i = cells[0]
+	var max_cell: Vector2i = cells[0]
+	for cell in cells:
+		var local_cell: Vector2i = cell
+		min_cell.x = min(min_cell.x, local_cell.x)
+		min_cell.y = min(min_cell.y, local_cell.y)
+		max_cell.x = max(max_cell.x, local_cell.x)
+		max_cell.y = max(max_cell.y, local_cell.y)
+	var target: Vector2 = (Vector2(min_cell) + Vector2(max_cell) + Vector2.ONE) * 0.5
+	var best_cell: Vector2i = cells[0]
+	var best_distance: float = INF
+	for cell in cells:
+		var local_cell: Vector2i = cell
+		var center: Vector2 = Vector2(local_cell) + Vector2(0.5, 0.5)
+		var distance: float = center.distance_squared_to(target)
+		if distance < best_distance:
+			best_distance = distance
+			best_cell = local_cell
+	return best_cell
+
+
+func _get_special_logo_color(kind: String) -> Color:
+	match kind:
+		"treasure":
+			return Color(1.0, 0.82, 0.18, 1.0)
+		"challenge":
+			return Color(1.0, 0.28, 0.18, 1.0)
+		"boss":
+			return Color(0.78, 0.34, 1.0, 1.0)
+	return Color(0.84, 0.94, 1.0, 1.0)
+
+
+func _draw_treasure_logo(marker_size: float, accent_color: Color) -> void:
+	var half: float = marker_size * 0.28
+	var diamond := PackedVector2Array([
+		Vector2(0.0, -half),
+		Vector2(half, 0.0),
+		Vector2(0.0, half),
+		Vector2(-half, 0.0)
+	])
+	draw_colored_polygon(diamond, accent_color)
+	draw_polyline(diamond, Color(1.0, 1.0, 0.75, 1.0), 1.5, true)
+
+
+func _draw_challenge_logo(marker_size: float, accent_color: Color) -> void:
+	var arm: float = marker_size * 0.36
+	draw_line(Vector2(-arm, -arm), Vector2(arm, arm), accent_color, 2.2)
+	draw_line(Vector2(arm, -arm), Vector2(-arm, arm), Color(1.0, 0.78, 0.36, 1.0), 2.2)
+	draw_circle(Vector2.ZERO, marker_size * 0.12, Color(0.12, 0.02, 0.02, 1.0))
+
+
+func _draw_boss_logo(marker_size: float, accent_color: Color) -> void:
+	var crown_width: float = marker_size * 0.62
+	var crown_height: float = marker_size * 0.42
+	var base_y: float = crown_height * 0.35
+	var crown := PackedVector2Array([
+		Vector2(-crown_width * 0.5, base_y),
+		Vector2(-crown_width * 0.42, -crown_height * 0.15),
+		Vector2(-crown_width * 0.2, crown_height * 0.02),
+		Vector2(0.0, -crown_height * 0.5),
+		Vector2(crown_width * 0.2, crown_height * 0.02),
+		Vector2(crown_width * 0.42, -crown_height * 0.15),
+		Vector2(crown_width * 0.5, base_y)
+	])
+	draw_colored_polygon(crown, accent_color)
+	draw_line(Vector2(-crown_width * 0.5, base_y), Vector2(crown_width * 0.5, base_y), Color(1.0, 0.78, 1.0, 1.0), 1.6)
 
 
 func _get_occupied_cells(info: Dictionary) -> Dictionary:
