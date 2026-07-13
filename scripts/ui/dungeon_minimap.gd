@@ -51,6 +51,7 @@ func _draw() -> void:
 		_draw_room_fill(info, origin, pitch, draw_bounds)
 	for info in visible_rooms:
 		_draw_room_details(info, origin, pitch, draw_bounds)
+	_draw_connection_doors(visible_rooms, origin, pitch, draw_bounds)
 
 
 func _get_map_viewport() -> Rect2:
@@ -118,6 +119,36 @@ func _draw_connections(visible_rooms: Array, origin: Vector2, pitch: float, view
 			if not _segment_rect(from_center, to_center).grow(6.0).intersects(viewport):
 				continue
 			draw_line(from_center, to_center, Color(0.96, 0.9, 0.28, 1.0), max(7.0, cell_gap + 5.0))
+
+
+func _draw_connection_doors(visible_rooms: Array, origin: Vector2, pitch: float, viewport: Rect2) -> void:
+	var visible_ids := {}
+	for info in visible_rooms:
+		visible_ids[String(info["id"])] = true
+	for info in visible_rooms:
+		var from_id := String(info["id"])
+		var connections: Dictionary = info["connections"]
+		var connection_edges: Dictionary = info.get("connection_edges", {})
+		for direction in connections.keys():
+			var to_id := String(connections[direction])
+			if not visible_ids.has(to_id) or from_id > to_id:
+				continue
+			var target_info = _find_room_info(visible_rooms, to_id)
+			if target_info.is_empty():
+				continue
+			var edge: Dictionary = connection_edges.get(direction, {})
+			var from_center: Vector2 = _get_connection_cell_center(info, edge.get("source_cell", null), origin, pitch)
+			var to_center: Vector2 = _get_connection_cell_center(target_info, edge.get("target_cell", null), origin, pitch)
+			var midpoint: Vector2 = (from_center + to_center) * 0.5
+			if not viewport.grow(6.0).has_point(midpoint):
+				continue
+			var connection_vector: Vector2 = to_center - from_center
+			var door_half_length: float = max(5.0, cell_size * 0.26)
+			var door_width: float = max(3.0, cell_gap + 1.0)
+			if abs(connection_vector.x) >= abs(connection_vector.y):
+				draw_line(midpoint + Vector2(0.0, -door_half_length), midpoint + Vector2(0.0, door_half_length), Color(1.0, 0.96, 0.28, 1.0), door_width)
+			else:
+				draw_line(midpoint + Vector2(-door_half_length, 0.0), midpoint + Vector2(door_half_length, 0.0), Color(1.0, 0.96, 0.28, 1.0), door_width)
 
 
 func _draw_room_fill(info: Dictionary, origin: Vector2, pitch: float, viewport: Rect2) -> void:
