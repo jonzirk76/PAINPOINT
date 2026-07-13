@@ -39,6 +39,7 @@ var _arena_shape: int = 0
 var _wall_rects: Array[Rect2] = []
 var _level_wall_rects: Array[Rect2] = []
 var _void_rects: Array[Rect2] = []
+var _playable_rects: Array[Rect2] = []
 var _player_provider: Callable
 var _initial_spawns_pending: bool = false
 var _initial_spawn_delay_remaining: float = 0.0
@@ -93,9 +94,10 @@ func set_arena_definition(level_definition) -> void:
 	_level_wall_rects = level_definition.wall_rects
 	_wall_rects = _level_wall_rects.duplicate()
 	_void_rects = level_definition.void_rects
+	_playable_rects = _get_playable_rects(level_definition)
 	for spawner in _spawners:
 		if is_instance_valid(spawner) and spawner.has_method("set_arena_definition"):
-			spawner.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects)
+			spawner.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
 
 
 func set_dynamic_wall_rects(extra_wall_rects: Array[Rect2]) -> void:
@@ -103,7 +105,7 @@ func set_dynamic_wall_rects(extra_wall_rects: Array[Rect2]) -> void:
 	_wall_rects.append_array(extra_wall_rects)
 	for spawner in _spawners:
 		if is_instance_valid(spawner) and spawner.has_method("set_arena_definition"):
-			spawner.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects)
+			spawner.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
 
 
 func _process(delta: float) -> void:
@@ -137,7 +139,7 @@ func _spawn_spawner(placement, index: int) -> void:
 	else:
 		spawner.initialize(_get_spawner_health(), _get_spawn_interval(), _get_spawner_radius())
 	spawner.global_position = _constrain_spawn_position(spawn_position, float(spawner.body_radius))
-	spawner.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects)
+	spawner.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
 	spawner.spawn_ready.connect(_on_spawner_spawn_ready)
 	spawner.health_depleted.connect(_on_spawner_health_depleted)
 	spawner.shot_ready.connect(_on_spawner_shot_ready)
@@ -395,7 +397,15 @@ func _constrain_spawn_position(position: Vector2, clearance: float) -> Vector2:
 	var blockers: Array[Rect2] = []
 	blockers.append_array(_wall_rects)
 	blockers.append_array(_void_rects)
-	return ArenaGeometry.constrain_point_to_playable(position, _arena_bounds, _arena_shape, blockers, clearance)
+	return ArenaGeometry.constrain_point_to_playable_regions(position, _arena_bounds, _arena_shape, _playable_rects, blockers, clearance)
+
+
+func _get_playable_rects(level_definition) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if level_definition == null or not level_definition.has_meta("footprint_cells"):
+		return rects
+	rects.append_array(ArenaGeometry.get_footprint_cell_rects(level_definition.arena_bounds, level_definition.get_meta("footprint_cells")))
+	return rects
 
 
 func _apply_spawner_separation() -> void:

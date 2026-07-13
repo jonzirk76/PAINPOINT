@@ -48,6 +48,7 @@ const PATH_CACHE_SELF_MOVE_SQUARED := 36.0 * 36.0
 @export var boss_minigun_sweep_degrees: float = 82.0
 
 var health: int = max_health
+var playable_rects: Array[Rect2] = []
 var target_position: Vector2 = Vector2.ZERO
 var _knockback_velocity: Vector2 = Vector2.ZERO
 var _crowd_separation_velocity: Vector2 = Vector2.ZERO
@@ -184,7 +185,7 @@ func set_target_position(position: Vector2) -> void:
 		queue_redraw()
 
 
-func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: Array = []) -> void:
+func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: Array = [], playable_regions: Array = []) -> void:
 	arena_bounds = bounds
 	arena_shape = shape
 	wall_rects.clear()
@@ -195,6 +196,10 @@ func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: A
 	for void_rect in voids:
 		if void_rect is Rect2:
 			void_rects.append(void_rect)
+	playable_rects.clear()
+	for playable_rect in playable_regions:
+		if playable_rect is Rect2:
+			playable_rects.append(playable_rect)
 	_rebuild_path_blocker_cache()
 	_invalidate_path_cache()
 	global_position = _constrain_to_playable(global_position)
@@ -287,7 +292,7 @@ func _rebuild_path_blocker_cache() -> void:
 
 
 func _constrain_to_playable(position: Vector2) -> Vector2:
-	return ArenaGeometry.constrain_point_to_playable(position, arena_bounds, arena_shape, _path_blocker_rects, body_radius)
+	return ArenaGeometry.constrain_point_to_playable_regions(position, arena_bounds, arena_shape, playable_rects, _path_blocker_rects, body_radius)
 
 
 func _invalidate_path_cache() -> void:

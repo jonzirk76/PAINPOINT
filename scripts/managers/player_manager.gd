@@ -56,6 +56,7 @@ var _arena_shape: int = 0
 var _wall_rects: Array[Rect2] = []
 var _level_wall_rects: Array[Rect2] = []
 var _void_rects: Array[Rect2] = []
+var _playable_rects: Array[Rect2] = []
 
 
 func initialize(context: Dictionary) -> void:
@@ -67,7 +68,7 @@ func reset_run() -> void:
 		player.queue_free()
 	player = player_scene.instantiate()
 	player.global_position = spawn_position
-	player.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects)
+	player.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
 	if _player_layer != null:
 		_player_layer.add_child(player)
 	else:
@@ -290,8 +291,9 @@ func play_perfect_parry_response(effect_radius: float, perfect_radius: float) ->
 
 func set_arena_bounds(bounds: Rect2) -> void:
 	_arena_bounds = bounds
+	_playable_rects.clear()
 	if _has_player():
-		player.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects)
+		player.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
 
 
 func set_arena_definition(level_definition) -> void:
@@ -302,21 +304,25 @@ func set_arena_definition(level_definition) -> void:
 	_level_wall_rects = level_definition.wall_rects
 	_wall_rects = _level_wall_rects.duplicate()
 	_void_rects = level_definition.void_rects
+	_playable_rects = _get_playable_rects(level_definition)
 	if _has_player():
-		player.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects)
+		player.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
 
 
 func set_dynamic_wall_rects(extra_wall_rects: Array[Rect2]) -> void:
 	_wall_rects = _level_wall_rects.duplicate()
 	_wall_rects.append_array(extra_wall_rects)
 	if _has_player():
-		player.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects)
+		player.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
 
 
 func set_player_position(position: Vector2) -> void:
 	if not _has_player():
 		return
-	player.global_position = ArenaGeometry.constrain_point(position, _arena_bounds, _arena_shape)
+	var blockers: Array[Rect2] = []
+	blockers.append_array(_wall_rects)
+	blockers.append_array(_void_rects)
+	player.global_position = ArenaGeometry.constrain_point_to_playable_regions(position, _arena_bounds, _arena_shape, _playable_rects, blockers, float(player.body_radius))
 	player.set_move_vector(Vector2.ZERO)
 
 
@@ -395,6 +401,14 @@ func get_super_charge_ratio() -> float:
 
 func _has_player() -> bool:
 	return player != null and is_instance_valid(player)
+
+
+func _get_playable_rects(level_definition) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if level_definition == null or not level_definition.has_meta("footprint_cells"):
+		return rects
+	rects.append_array(ArenaGeometry.get_footprint_cell_rects(level_definition.arena_bounds, level_definition.get_meta("footprint_cells")))
+	return rects
 
 
 func _on_player_health_changed(old_value: int, new_value: int) -> void:

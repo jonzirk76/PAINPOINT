@@ -22,6 +22,7 @@ const PLAYER_RESTING_PISTOL_LEFT_TEXTURE := preload("res://art/characters/player
 @export var shoot_pose_hold_seconds: float = 0.42
 
 var health: int = max_health
+var playable_rects: Array[Rect2] = []
 var move_vector: Vector2 = Vector2.ZERO
 var aim_direction: Vector2 = Vector2.RIGHT
 var invulnerable_remaining: float = 0.0
@@ -141,7 +142,7 @@ func set_arena_bounds(bounds: Rect2) -> void:
 	global_position = _constrain_to_playable(global_position)
 
 
-func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: Array = []) -> void:
+func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: Array = [], playable_regions: Array = []) -> void:
 	arena_bounds = bounds
 	arena_shape = shape
 	wall_rects.clear()
@@ -152,6 +153,10 @@ func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: A
 	for void_rect in voids:
 		if void_rect is Rect2:
 			void_rects.append(void_rect)
+	playable_rects.clear()
+	for playable_rect in playable_regions:
+		if playable_rect is Rect2:
+			playable_rects.append(playable_rect)
 	global_position = _constrain_to_playable(global_position)
 
 
@@ -166,7 +171,7 @@ func _constrain_to_playable(position: Vector2, clearance_override: float = -1.0)
 	blockers.append_array(wall_rects)
 	blockers.append_array(void_rects)
 	var clearance: float = body_radius if clearance_override < 0.0 else clearance_override
-	return ArenaGeometry.constrain_point_to_playable(position, arena_bounds, arena_shape, blockers, clearance)
+	return ArenaGeometry.constrain_point_to_playable_regions(position, arena_bounds, arena_shape, playable_rects, blockers, clearance)
 
 
 func take_damage(amount: int) -> void:

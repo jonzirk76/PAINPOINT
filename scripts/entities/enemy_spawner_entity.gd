@@ -44,6 +44,7 @@ signal shot_ready(spawner, origin: Vector2, direction: Vector2, shot_config: Dic
 @export var void_rects: Array[Rect2] = []
 
 var health: int = max_health
+var playable_rects: Array[Rect2] = []
 var enemy_profile: Resource = null
 var target_position: Vector2 = Vector2.ZERO
 var _timer: float = 0.0
@@ -191,7 +192,7 @@ func set_target_position(position: Vector2) -> void:
 	queue_redraw()
 
 
-func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: Array = []) -> void:
+func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: Array = [], playable_regions: Array = []) -> void:
 	arena_bounds = bounds
 	arena_shape = shape
 	wall_rects.clear()
@@ -202,6 +203,10 @@ func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: A
 	for void_rect in voids:
 		if void_rect is Rect2:
 			void_rects.append(void_rect)
+	playable_rects.clear()
+	for playable_rect in playable_regions:
+		if playable_rect is Rect2:
+			playable_rects.append(playable_rect)
 	global_position = _constrain_to_playable(global_position)
 
 
@@ -270,7 +275,7 @@ func _constrain_to_playable(position: Vector2) -> Vector2:
 	var blockers: Array[Rect2] = []
 	blockers.append_array(wall_rects)
 	blockers.append_array(void_rects)
-	return ArenaGeometry.constrain_point_to_playable(position, arena_bounds, arena_shape, blockers, body_radius)
+	return ArenaGeometry.constrain_point_to_playable_regions(position, arena_bounds, arena_shape, playable_rects, blockers, body_radius)
 
 
 func _draw() -> void:

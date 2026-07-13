@@ -73,27 +73,54 @@ static func constrain_point(point: Vector2, arena_bounds: Rect2, arena_shape: in
 
 
 static func constrain_point_to_playable(point: Vector2, arena_bounds: Rect2, arena_shape: int, blocker_rects: Array, clearance: float = 0.0) -> Vector2:
-	var constrained := constrain_point(point, arena_bounds, arena_shape)
+	return constrain_point_to_playable_regions(point, arena_bounds, arena_shape, [], blocker_rects, clearance)
+
+
+static func constrain_point_to_playable_regions(point: Vector2, arena_bounds: Rect2, arena_shape: int, playable_rects: Array, blocker_rects: Array, clearance: float = 0.0) -> Vector2:
+	var constrained: Vector2 = _constrain_point_to_regions(point, arena_bounds, arena_shape, playable_rects, clearance)
 	if _is_clear_of_rects(constrained, blocker_rects, clearance):
 		return constrained
 	var search_step: float = max(clearance, 16.0)
-	var best_point := constrained
-	var best_distance := INF
+	var best_point: Vector2 = constrained
+	var best_distance: float = INF
 	for radius_index in range(1, 9):
-		var radius := search_step * float(radius_index)
-		var sample_count := 8 + radius_index * 4
+		var radius: float = search_step * float(radius_index)
+		var sample_count: int = 8 + radius_index * 4
 		for sample_index in range(sample_count):
-			var angle := TAU * float(sample_index) / float(sample_count)
-			var candidate := constrain_point(constrained + Vector2.RIGHT.rotated(angle) * radius, arena_bounds, arena_shape)
+			var angle: float = TAU * float(sample_index) / float(sample_count)
+			var candidate: Vector2 = _constrain_point_to_regions(constrained + Vector2.RIGHT.rotated(angle) * radius, arena_bounds, arena_shape, playable_rects, clearance)
 			if not _is_clear_of_rects(candidate, blocker_rects, clearance):
 				continue
-			var distance := candidate.distance_squared_to(point)
+			var distance: float = candidate.distance_squared_to(point)
 			if distance < best_distance:
 				best_distance = distance
 				best_point = candidate
 	if best_distance < INF:
 		return best_point
 	return constrained
+
+
+static func get_footprint_cell_rects(arena_bounds: Rect2, cells: Array) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if cells.is_empty():
+		return rects
+	var min_cell: Vector2i = cells[0]
+	var max_cell: Vector2i = cells[0]
+	for cell in cells:
+		if not (cell is Vector2i):
+			continue
+		min_cell.x = min(min_cell.x, cell.x)
+		min_cell.y = min(min_cell.y, cell.y)
+		max_cell.x = max(max_cell.x, cell.x)
+		max_cell.y = max(max_cell.y, cell.y)
+	var grid_size: Vector2 = Vector2(max(max_cell.x - min_cell.x + 1, 1), max(max_cell.y - min_cell.y + 1, 1))
+	var cell_size: Vector2 = Vector2(arena_bounds.size.x / grid_size.x, arena_bounds.size.y / grid_size.y)
+	for cell in cells:
+		if not (cell is Vector2i):
+			continue
+		var offset: Vector2 = Vector2(float(cell.x - min_cell.x), float(cell.y - min_cell.y)) * cell_size
+		rects.append(Rect2(arena_bounds.position + offset, cell_size))
+	return rects
 
 
 static func is_point_in_polygon(point: Vector2, polygon: PackedVector2Array) -> bool:
@@ -157,3 +184,43 @@ static func _is_clear_of_rects(point: Vector2, rects: Array, clearance: float) -
 		if blocker.grow(clearance).has_point(point):
 			return false
 	return true
+
+
+static func _constrain_point_to_regions(point: Vector2, arena_bounds: Rect2, arena_shape: int, playable_rects: Array, clearance: float) -> Vector2:
+	if playable_rects.is_empty():
+		return constrain_point(point, arena_bounds, arena_shape)
+	if _is_in_rect_regions(point, playable_rects, clearance):
+		return point
+	var closest: Vector2 = point
+	var closest_distance: float = INF
+	for rect in playable_rects:
+		if not (rect is Rect2):
+			continue
+		var region: Rect2 = _inset_rect_for_clearance(rect, clearance)
+		var candidate: Vector2 = _closest_point_on_rect(point, region)
+		var distance: float = candidate.distance_squared_to(point)
+		if distance < closest_distance:
+			closest_distance = distance
+			closest = candidate
+	return closest if closest_distance < INF else constrain_point(point, arena_bounds, arena_shape)
+
+
+static func _is_in_rect_regions(point: Vector2, rects: Array, clearance: float) -> bool:
+	for rect in rects:
+		if not (rect is Rect2):
+			continue
+		if _inset_rect_for_clearance(rect, clearance).has_point(point):
+			return true
+	return false
+
+
+static func _inset_rect_for_clearance(rect: Rect2, clearance: float) -> Rect2:
+	var inset: float = min(max(clearance, 0.0), min(rect.size.x, rect.size.y) * 0.45)
+	return Rect2(rect.position + Vector2(inset, inset), Vector2(max(rect.size.x - inset * 2.0, 1.0), max(rect.size.y - inset * 2.0, 1.0)))
+
+
+static func _closest_point_on_rect(point: Vector2, rect: Rect2) -> Vector2:
+	return Vector2(
+		clamp(point.x, rect.position.x, rect.position.x + rect.size.x),
+		clamp(point.y, rect.position.y, rect.position.y + rect.size.y)
+	)

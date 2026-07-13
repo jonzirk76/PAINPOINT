@@ -44,10 +44,13 @@ func _draw() -> void:
 	var bounds := _get_cell_bounds(visible_rooms)
 	var pitch := cell_size + cell_gap
 	var viewport := _get_map_viewport()
+	var draw_bounds := Rect2(Vector2.ZERO, size)
 	var origin := _get_map_origin(bounds, pitch, viewport)
-	_draw_connections(visible_rooms, origin, pitch, viewport)
 	for info in visible_rooms:
-		_draw_room(info, origin, pitch, viewport)
+		_draw_room_fill(info, origin, pitch, draw_bounds)
+	_draw_connections(visible_rooms, origin, pitch, draw_bounds)
+	for info in visible_rooms:
+		_draw_room_details(info, origin, pitch, draw_bounds)
 
 
 func _get_map_viewport() -> Rect2:
@@ -110,36 +113,46 @@ func _draw_connections(visible_rooms: Array, origin: Vector2, pitch: float, view
 			if target_info.is_empty():
 				continue
 			var edge: Dictionary = connection_edges.get(direction, {})
-			var from_center := _get_connection_cell_center(info, edge.get("source_cell", null), origin, pitch)
-			var to_center := _get_connection_cell_center(target_info, edge.get("target_cell", null), origin, pitch)
+			var from_center: Vector2 = _get_connection_cell_center(info, edge.get("source_cell", null), origin, pitch)
+			var to_center: Vector2 = _get_connection_cell_center(target_info, edge.get("target_cell", null), origin, pitch)
 			if not _segment_rect(from_center, to_center).grow(6.0).intersects(viewport):
 				continue
-			draw_line(from_center, to_center, Color(0.46, 0.56, 0.62, 0.95), 4.0)
+			draw_line(from_center, to_center, Color(0.36, 0.46, 0.52, 0.92), max(4.0, cell_gap + 3.0))
 
 
-func _draw_room(info: Dictionary, origin: Vector2, pitch: float, viewport: Rect2) -> void:
+func _draw_room_fill(info: Dictionary, origin: Vector2, pitch: float, viewport: Rect2) -> void:
 	var room_color := _get_room_color(String(info.get("kind", "combat")), bool(info.get("cleared", false)))
 	var is_current := String(info["id"]) == current_room_id
 	if is_current:
 		room_color = Color(0.36, 0.82, 1.0, 1.0)
-	var anchor: Vector2i = info["anchor"]
-	var occupied := {}
-	for local_cell in info["footprint_cells"]:
-		var cell: Vector2i = anchor + local_cell
-		occupied[_cell_key(cell)] = true
-	for local_cell in info["footprint_cells"]:
-		var cell: Vector2i = anchor + local_cell
+	var occupied := _get_occupied_cells(info)
+	for key in occupied.keys():
+		var cell := _cell_from_key(String(key))
 		var rect := _get_room_cell_mass_rect(cell, occupied, origin, pitch)
 		var clipped_rect := rect.intersection(viewport)
 		if not clipped_rect.has_area():
 			continue
 		draw_rect(clipped_rect, room_color, true)
+
+
+func _draw_room_details(info: Dictionary, origin: Vector2, pitch: float, viewport: Rect2) -> void:
+	var occupied := _get_occupied_cells(info)
 	_draw_room_outline(occupied, origin, pitch, viewport)
+	var is_current := String(info["id"]) == current_room_id
 	if is_current:
 		var center := _get_current_marker_center(info, origin, pitch)
 		if viewport.has_point(center):
 			draw_circle(center, 5.5, Color(1.0, 0.96, 0.34, 1.0))
 			draw_arc(center, 8.5, 0.0, TAU, 24, Color(0.04, 0.05, 0.06, 1.0), 2.0)
+
+
+func _get_occupied_cells(info: Dictionary) -> Dictionary:
+	var anchor: Vector2i = info["anchor"]
+	var occupied := {}
+	for local_cell in info["footprint_cells"]:
+		var cell: Vector2i = anchor + local_cell
+		occupied[_cell_key(cell)] = true
+	return occupied
 
 
 func _draw_room_outline(occupied: Dictionary, origin: Vector2, pitch: float, viewport: Rect2) -> void:
@@ -231,7 +244,7 @@ func _get_connection_cell_center(info: Dictionary, local_cell, origin: Vector2, 
 	var world_cell: Vector2i = info["anchor"] + local_cell
 	if not _room_contains_world_cell(info, world_cell):
 		return _get_room_center(info, origin, pitch)
-	return origin + Vector2(world_cell) * pitch + Vector2(cell_size, cell_size) * 0.5
+	return origin + Vector2(world_cell) * pitch + Vector2(pitch, pitch) * 0.5 - Vector2(cell_gap, cell_gap) * 0.5
 
 
 func _room_contains_world_cell(info: Dictionary, world_cell: Vector2i) -> bool:
