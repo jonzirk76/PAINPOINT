@@ -46,9 +46,9 @@ func _draw() -> void:
 	var viewport := _get_map_viewport()
 	var draw_bounds := Rect2(Vector2.ZERO, size)
 	var origin := _get_map_origin(bounds, pitch, viewport)
+	_draw_connections(visible_rooms, origin, pitch, draw_bounds)
 	for info in visible_rooms:
 		_draw_room_fill(info, origin, pitch, draw_bounds)
-	_draw_connections(visible_rooms, origin, pitch, draw_bounds)
 	for info in visible_rooms:
 		_draw_room_details(info, origin, pitch, draw_bounds)
 
@@ -117,7 +117,7 @@ func _draw_connections(visible_rooms: Array, origin: Vector2, pitch: float, view
 			var to_center: Vector2 = _get_connection_cell_center(target_info, edge.get("target_cell", null), origin, pitch)
 			if not _segment_rect(from_center, to_center).grow(6.0).intersects(viewport):
 				continue
-			draw_line(from_center, to_center, Color(0.36, 0.46, 0.52, 0.92), max(4.0, cell_gap + 3.0))
+			draw_line(from_center, to_center, Color(0.96, 0.9, 0.28, 1.0), max(7.0, cell_gap + 5.0))
 
 
 func _draw_room_fill(info: Dictionary, origin: Vector2, pitch: float, viewport: Rect2) -> void:
