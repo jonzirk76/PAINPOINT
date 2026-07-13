@@ -191,25 +191,8 @@ static func _constrain_point_to_regions(point: Vector2, arena_bounds: Rect2, are
 		return constrain_point(point, arena_bounds, arena_shape)
 	if _is_clear_in_rect_union(point, playable_rects, clearance):
 		return point
-	var closest: Vector2 = _closest_point_in_rect_union(point, playable_rects)
-	if _is_clear_in_rect_union(closest, playable_rects, clearance):
-		return closest
-	var best_point: Vector2 = closest
-	var best_distance: float = INF
-	var search_step: float = max(clearance * 0.5, 8.0)
-	for radius_index in range(1, 13):
-		var radius: float = search_step * float(radius_index)
-		var sample_count: int = 12 + radius_index * 4
-		for sample_index in range(sample_count):
-			var angle: float = TAU * float(sample_index) / float(sample_count)
-			var candidate: Vector2 = _closest_point_in_rect_union(closest + Vector2.RIGHT.rotated(angle) * radius, playable_rects)
-			if not _is_clear_in_rect_union(candidate, playable_rects, clearance):
-				continue
-			var distance: float = candidate.distance_squared_to(point)
-			if distance < best_distance:
-				best_distance = distance
-				best_point = candidate
-	return best_point
+	var constrained: Vector2 = point if _is_point_in_rect_union(point, playable_rects) else _closest_point_in_rect_union(point, playable_rects)
+	return _push_point_clear_of_rect_union(constrained, playable_rects, clearance)
 
 
 static func _is_clear_in_rect_union(point: Vector2, rects: Array, clearance: float) -> bool:
@@ -244,6 +227,35 @@ static func _has_single_rect_clearance(point: Vector2, rects: Array, clearance: 
 		if _rect_has_point_inclusive(inset_rect, point):
 			return true
 	return false
+
+
+static func _push_point_clear_of_rect_union(point: Vector2, rects: Array, clearance: float) -> Vector2:
+	var current: Vector2 = point
+	var radius: float = max(clearance, 0.0)
+	for _iteration in range(6):
+		if _is_clear_in_rect_union(current, rects, radius):
+			return current
+		var correction: Vector2 = Vector2.ZERO
+		var correction_count: int = 0
+		if not _is_point_in_rect_union(current, rects):
+			correction += _closest_point_in_rect_union(current, rects) - current
+			correction_count += 1
+		if radius > EDGE_EPSILON:
+			for index in range(8):
+				var sample_point: Vector2 = current + Vector2.RIGHT.rotated(TAU * float(index) / 8.0) * radius
+				if _is_point_in_rect_union(sample_point, rects):
+					continue
+				correction += _closest_point_in_rect_union(sample_point, rects) - sample_point
+				correction_count += 1
+		if correction_count <= 0:
+			return current
+		var step: Vector2 = correction / float(correction_count)
+		if step.length_squared() <= 0.001:
+			return current
+		current += step.limit_length(max(radius * 0.65, 4.0))
+		if not _is_point_in_rect_union(current, rects):
+			current = _closest_point_in_rect_union(current, rects)
+	return current
 
 
 static func _closest_point_in_rect_union(point: Vector2, rects: Array) -> Vector2:
