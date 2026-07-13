@@ -167,11 +167,8 @@ func get_fire_origin() -> Vector2:
 
 
 func _constrain_to_playable(position: Vector2, clearance_override: float = -1.0) -> Vector2:
-	var blockers: Array[Rect2] = []
-	blockers.append_array(wall_rects)
-	blockers.append_array(void_rects)
 	var clearance: float = body_radius if clearance_override < 0.0 else clearance_override
-	return ArenaGeometry.constrain_point_to_playable_regions(position, arena_bounds, arena_shape, playable_rects, blockers, clearance)
+	return ArenaGeometry.constrain_point_to_playable_regions(position, arena_bounds, arena_shape, playable_rects, [], clearance)
 
 
 func take_damage(amount: int) -> void:

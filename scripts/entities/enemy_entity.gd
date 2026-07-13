@@ -292,7 +292,7 @@ func _rebuild_path_blocker_cache() -> void:
 
 
 func _constrain_to_playable(position: Vector2) -> Vector2:
-	return ArenaGeometry.constrain_point_to_playable_regions(position, arena_bounds, arena_shape, playable_rects, _path_blocker_rects, body_radius)
+	return ArenaGeometry.constrain_point_to_playable_regions(position, arena_bounds, arena_shape, playable_rects, [], body_radius)
 
 
 func _invalidate_path_cache() -> void:

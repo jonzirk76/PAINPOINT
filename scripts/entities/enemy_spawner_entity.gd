@@ -272,10 +272,7 @@ func apply_crowd_separation(push_vector: Vector2) -> void:
 
 
 func _constrain_to_playable(position: Vector2) -> Vector2:
-	var blockers: Array[Rect2] = []
-	blockers.append_array(wall_rects)
-	blockers.append_array(void_rects)
-	return ArenaGeometry.constrain_point_to_playable_regions(position, arena_bounds, arena_shape, playable_rects, blockers, body_radius)
+	return ArenaGeometry.constrain_point_to_playable_regions(position, arena_bounds, arena_shape, playable_rects, [], body_radius)
 
 
 func _draw() -> void:
