@@ -93,6 +93,31 @@ func rehydrate_current_room_permanent_pickups() -> void:
 	pickup_count_changed.emit(_pickups.size())
 
 
+func rehydrate_floor_permanent_pickups() -> void:
+	if _current_floor <= 0:
+		return
+	var floor_prefix := "%d:" % _current_floor
+	for room_key in _persistent_permanent_pickups.keys():
+		if not String(room_key).begins_with(floor_prefix):
+			continue
+		var saved_pickups: Array = _persistent_permanent_pickups.get(room_key, [])
+		for saved in saved_pickups:
+			var data: Dictionary = Dictionary(saved)
+			_spawn_pickup_from_persistent_data(data)
+	pickup_count_changed.emit(_pickups.size())
+
+
+func offset_active_pickups(offset: Vector2) -> void:
+	if offset == Vector2.ZERO:
+		return
+	for pickup in _pickups:
+		if not is_instance_valid(pickup):
+			continue
+		pickup.global_position += offset
+		_update_persistent_pickup_position(pickup)
+	pickup_count_changed.emit(_pickups.size())
+
+
 func set_enabled(value: bool) -> void:
 	enabled = value
 
@@ -331,23 +356,40 @@ func _clear_persistent_pickup(pickup) -> void:
 	if pickup == null or not pickup.has_meta("persistent_pickup_id"):
 		return
 	var persistent_id := String(pickup.get_meta("persistent_pickup_id"))
-	var room_key := _get_current_room_persistent_key()
-	var saved_pickups := _get_persistent_room_pickups(room_key)
-	for index in range(saved_pickups.size() - 1, -1, -1):
-		var data := Dictionary(saved_pickups[index])
-		if String(data.get("id", "")) == persistent_id:
-			saved_pickups.remove_at(index)
-	_persistent_permanent_pickups[room_key] = saved_pickups
+	for room_key in _persistent_permanent_pickups.keys():
+		var saved_pickups: Array = _get_persistent_room_pickups(String(room_key))
+		for index in range(saved_pickups.size() - 1, -1, -1):
+			var data: Dictionary = Dictionary(saved_pickups[index])
+			if String(data.get("id", "")) == persistent_id:
+				saved_pickups.remove_at(index)
+		_persistent_permanent_pickups[String(room_key)] = saved_pickups
 
 
 func _clear_persistent_choice_group(choice_group_id: String) -> void:
-	var room_key := _get_current_room_persistent_key()
-	var saved_pickups := _get_persistent_room_pickups(room_key)
-	for index in range(saved_pickups.size() - 1, -1, -1):
-		var data := Dictionary(saved_pickups[index])
-		if String(data.get("choice_group_id", "")) == choice_group_id:
-			saved_pickups.remove_at(index)
-	_persistent_permanent_pickups[room_key] = saved_pickups
+	for room_key in _persistent_permanent_pickups.keys():
+		var saved_pickups: Array = _get_persistent_room_pickups(String(room_key))
+		for index in range(saved_pickups.size() - 1, -1, -1):
+			var data: Dictionary = Dictionary(saved_pickups[index])
+			if String(data.get("choice_group_id", "")) == choice_group_id:
+				saved_pickups.remove_at(index)
+		_persistent_permanent_pickups[String(room_key)] = saved_pickups
+
+
+func _update_persistent_pickup_position(pickup) -> void:
+	if pickup == null or not pickup.has_meta("persistent_pickup_id"):
+		return
+	var persistent_id := String(pickup.get_meta("persistent_pickup_id"))
+	for room_key in _persistent_permanent_pickups.keys():
+		var saved_pickups: Array = _get_persistent_room_pickups(String(room_key))
+		var changed: bool = false
+		for index in range(saved_pickups.size()):
+			var data: Dictionary = Dictionary(saved_pickups[index])
+			if String(data.get("id", "")) == persistent_id:
+				data["position"] = pickup.global_position
+				saved_pickups[index] = data
+				changed = true
+		if changed:
+			_persistent_permanent_pickups[String(room_key)] = saved_pickups
 
 
 func _get_persistent_room_pickups(room_key: String) -> Array:

@@ -9,18 +9,29 @@ var rooms: Array = []
 var current_room_id: String = ""
 var current_player_cell: Vector2i = Vector2i.ZERO
 var has_current_player_cell: bool = false
+var current_player_position: Vector2 = Vector2.ZERO
+var has_current_player_position: bool = false
 
 
 func _ready() -> void:
 	clip_contents = true
 
 
-func set_map(room_infos: Array, current_id: String, player_cell = null) -> void:
+func set_map(room_infos: Array, current_id: String, player_location = null) -> void:
 	rooms = room_infos
 	current_room_id = current_id
-	has_current_player_cell = typeof(player_cell) == TYPE_VECTOR2I
-	if has_current_player_cell:
-		current_player_cell = player_cell
+	has_current_player_cell = false
+	has_current_player_position = false
+	if typeof(player_location) == TYPE_VECTOR2:
+		current_player_position = player_location
+		current_player_cell = Vector2i(floori(current_player_position.x), floori(current_player_position.y))
+		has_current_player_position = true
+		has_current_player_cell = true
+	elif typeof(player_location) == TYPE_VECTOR2I:
+		current_player_cell = player_location
+		has_current_player_cell = true
+	if has_current_player_cell and not has_current_player_position:
+		current_player_position = Vector2(current_player_cell) + Vector2(0.5, 0.5)
 	visible = not rooms.is_empty()
 	queue_redraw()
 
@@ -29,6 +40,7 @@ func clear_map() -> void:
 	rooms.clear()
 	current_room_id = ""
 	has_current_player_cell = false
+	has_current_player_position = false
 	visible = false
 	queue_redraw()
 
@@ -55,6 +67,7 @@ func _draw() -> void:
 		_draw_room_details(info, origin, pitch, draw_bounds)
 	_draw_connection_doors(visible_rooms, origin, pitch, draw_bounds)
 	_draw_unexplored_connection_doors(visible_rooms, origin, pitch, draw_bounds)
+	_draw_player_marker(origin, pitch, draw_bounds)
 
 
 func _get_map_viewport() -> Rect2:
@@ -64,9 +77,8 @@ func _get_map_viewport() -> Rect2:
 
 
 func _get_map_origin(bounds: Rect2i, pitch: float, viewport: Rect2) -> Vector2:
-	if has_current_player_cell:
-		var player_center := Vector2(current_player_cell) * pitch + Vector2(cell_size, cell_size) * 0.5
-		return viewport.get_center() - player_center
+	if has_current_player_position or has_current_player_cell:
+		return viewport.get_center() - _get_player_marker_center(Vector2.ZERO, pitch)
 	var map_size := Vector2(float(bounds.size.x) * pitch - cell_gap, float(bounds.size.y) * pitch - cell_gap)
 	return viewport.get_center() - map_size * 0.5 - Vector2(bounds.position) * pitch
 
@@ -176,6 +188,16 @@ func _draw_unexplored_connection_doors(visible_rooms: Array, origin: Vector2, pi
 			draw_line(midpoint - tangent * door_half_length, midpoint + tangent * door_half_length, Color(0.2, 1.0, 0.92, 1.0), door_width)
 
 
+func _draw_player_marker(origin: Vector2, pitch: float, viewport: Rect2) -> void:
+	if not has_current_player_position and not has_current_player_cell:
+		return
+	var center: Vector2 = _get_player_marker_center(origin, pitch)
+	if not viewport.grow(10.0).has_point(center):
+		return
+	draw_circle(center, 5.5, Color(1.0, 0.96, 0.34, 1.0))
+	draw_arc(center, 8.5, 0.0, TAU, 24, Color(0.04, 0.05, 0.06, 1.0), 2.0)
+
+
 func _draw_room_fill(info: Dictionary, origin: Vector2, pitch: float, viewport: Rect2) -> void:
 	var room_color := _get_room_color(String(info.get("kind", "combat")), bool(info.get("cleared", false)))
 	var is_current := String(info["id"]) == current_room_id
@@ -194,12 +216,6 @@ func _draw_room_fill(info: Dictionary, origin: Vector2, pitch: float, viewport: 
 func _draw_room_details(info: Dictionary, origin: Vector2, pitch: float, viewport: Rect2) -> void:
 	var occupied := _get_occupied_cells(info)
 	_draw_room_outline(occupied, origin, pitch, viewport)
-	var is_current := String(info["id"]) == current_room_id
-	if is_current:
-		var center := _get_current_marker_center(info, origin, pitch)
-		if viewport.has_point(center):
-			draw_circle(center, 5.5, Color(1.0, 0.96, 0.34, 1.0))
-			draw_arc(center, 8.5, 0.0, TAU, 24, Color(0.04, 0.05, 0.06, 1.0), 2.0)
 
 
 func _draw_special_room_logo(info: Dictionary, origin: Vector2, pitch: float, viewport: Rect2) -> void:
@@ -395,10 +411,12 @@ func _get_room_center(info: Dictionary, origin: Vector2, pitch: float) -> Vector
 	return origin + center_cell * pitch - Vector2(cell_gap, cell_gap) * 0.5
 
 
-func _get_current_marker_center(info: Dictionary, origin: Vector2, pitch: float) -> Vector2:
-	if has_current_player_cell and _room_contains_world_cell(info, current_player_cell):
-		return origin + Vector2(current_player_cell) * pitch + Vector2(cell_size, cell_size) * 0.5
-	return _get_room_center(info, origin, pitch)
+func _get_player_marker_center(origin: Vector2, pitch: float) -> Vector2:
+	if has_current_player_position:
+		var marker_cell := Vector2(floor(current_player_position.x), floor(current_player_position.y))
+		var marker_fraction := current_player_position - marker_cell
+		return origin + marker_cell * pitch + Vector2(marker_fraction.x * cell_size, marker_fraction.y * cell_size)
+	return origin + Vector2(current_player_cell) * pitch + Vector2(cell_size, cell_size) * 0.5
 
 
 func _get_connection_cell_center(info: Dictionary, local_cell, origin: Vector2, pitch: float) -> Vector2:

@@ -351,6 +351,39 @@ func get_cleared_floor_world_cell_for_position(position: Vector2) -> Dictionary:
 	return {"ok": true, "cell": best_cell}
 
 
+func get_cleared_floor_minimap_position_for_position(position: Vector2) -> Dictionary:
+	var cleared_room_ids: Array[String] = _get_cleared_floor_room_ids()
+	if cleared_room_ids.is_empty():
+		return {"ok": false, "cell": Vector2i.ZERO, "position": Vector2.ZERO, "room_id": ""}
+	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(cleared_room_ids)
+	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(cleared_room_ids)
+	var best_cell: Vector2i = Vector2i.ZERO
+	var best_position: Vector2 = Vector2.ZERO
+	var best_room_id: String = ""
+	var best_distance: float = INF
+	for room_id in cleared_room_ids:
+		var state: Dictionary = _rooms[room_id]
+		var piece: Resource = state["piece"]
+		var anchor: Vector2i = state["anchor"]
+		var offset: Vector2 = _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
+		for local_cell in piece.footprint_cells:
+			var cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(piece.footprint_cells, local_cell)
+			var translated_rect: Rect2 = _translated_rect(cell_rect, offset)
+			var world_cell: Vector2i = anchor + local_cell
+			var cell_fraction: Vector2 = _get_rect_fraction(translated_rect, position)
+			var minimap_position: Vector2 = Vector2(world_cell) + cell_fraction
+			if translated_rect.has_point(position):
+				return {"ok": true, "cell": world_cell, "position": minimap_position, "room_id": room_id}
+			var closest_point: Vector2 = _get_closest_point_in_rect(position, translated_rect)
+			var distance: float = closest_point.distance_squared_to(position)
+			if distance < best_distance:
+				best_distance = distance
+				best_cell = world_cell
+				best_position = minimap_position
+				best_room_id = room_id
+	return {"ok": true, "cell": best_cell, "position": best_position, "room_id": best_room_id}
+
+
 func get_minimap_rooms() -> Array:
 	var room_infos: Array = []
 	for room_id in _room_order:
@@ -460,6 +493,22 @@ func _get_room_to_cleared_floor_offset(state: Dictionary, min_world_cell: Vector
 
 func _translated_rect(rect: Rect2, offset: Vector2) -> Rect2:
 	return Rect2(rect.position + offset, rect.size)
+
+
+func _get_rect_fraction(rect: Rect2, position: Vector2) -> Vector2:
+	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
+		return Vector2(0.5, 0.5)
+	return Vector2(
+		clamp((position.x - rect.position.x) / rect.size.x, 0.0, 1.0),
+		clamp((position.y - rect.position.y) / rect.size.y, 0.0, 1.0)
+	)
+
+
+func _get_closest_point_in_rect(position: Vector2, rect: Rect2) -> Vector2:
+	return Vector2(
+		clamp(position.x, rect.position.x, rect.position.x + rect.size.x),
+		clamp(position.y, rect.position.y, rect.position.y + rect.size.y)
+	)
 
 
 func _get_room_kind(room_id: String) -> String:

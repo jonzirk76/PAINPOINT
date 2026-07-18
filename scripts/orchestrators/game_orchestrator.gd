@@ -125,6 +125,9 @@ var _rewarded_room_ids: Dictionary = {}
 var _reward_prompt_text: String = ""
 var _last_minimap_player_cell: Vector2i = Vector2i.ZERO
 var _has_last_minimap_player_cell: bool = false
+var _last_minimap_player_position: Vector2 = Vector2.ZERO
+var _has_last_minimap_player_position: bool = false
+var _last_minimap_room_id: String = ""
 var _minimap_player_cell_check_remaining: float = 0.0
 var _ammo_refill_flash_remaining: float = 0.0
 var _ammo_refill_flash_duration: float = 0.48
@@ -1788,7 +1791,24 @@ func _enter_uncleared_room_from_cleared_floor(entry_direction: String, target_ro
 	audio_manager.play_room_entry()
 
 
-func _load_cleared_floor_map(player_position: Vector2) -> bool:
+func _enter_cleared_floor_map_after_current_room_clear() -> bool:
+	if player_manager == null or dungeon_manager == null:
+		return false
+	var room_id: String = dungeon_manager.current_room_id
+	if room_id.is_empty():
+		return false
+	var player_room_position: Vector2 = player_manager.get_player_position()
+	var player_floor_position: Vector2 = dungeon_manager.get_cleared_floor_position_for_room_position(room_id, player_room_position)
+	var pickup_offset: Vector2 = player_floor_position - player_room_position
+	var reward_room_position: Vector2 = dungeon_manager.get_current_spawn_position()
+	var reward_floor_position: Vector2 = dungeon_manager.get_cleared_floor_position_for_room_position(room_id, reward_room_position)
+	if not _load_cleared_floor_map(player_floor_position, true, pickup_offset):
+		return false
+	_maybe_spawn_current_room_reward_choices(reward_floor_position)
+	return true
+
+
+func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = false, pickup_offset: Vector2 = Vector2.ZERO) -> bool:
 	var level_definition = dungeon_manager.get_cleared_floor_level_definition()
 	if level_definition == null:
 		return false
@@ -1806,7 +1826,12 @@ func _load_cleared_floor_map(player_position: Vector2) -> bool:
 	_clear_boss_health_hud()
 	spawner_manager.clear_spawners()
 	destructible_manager.clear_destructibles()
-	item_manager.clear_pickups()
+	item_manager.set_room_context(dungeon_manager.floor_number, dungeon_manager.current_room_id)
+	if preserve_pickups:
+		item_manager.offset_active_pickups(pickup_offset)
+	else:
+		item_manager.clear_pickups()
+		item_manager.rehydrate_floor_permanent_pickups()
 	effects_manager.reset_run()
 	room_manager.load_room(level_definition, dungeon_manager.get_cleared_floor_door_infos(), true)
 	room_manager.set_doors_unlocked(true)
@@ -2515,7 +2540,7 @@ func _get_attribute_text() -> String:
 	]
 
 
-func _maybe_spawn_current_room_reward_choices() -> void:
+func _maybe_spawn_current_room_reward_choices(preferred_position: Vector2 = Vector2.INF) -> void:
 	if not _is_dungeon_run:
 		return
 	var state: Dictionary = dungeon_manager.get_current_room_state()
@@ -2531,7 +2556,9 @@ func _maybe_spawn_current_room_reward_choices() -> void:
 		return
 	_rewarded_room_ids[reward_key] = true
 	var reward_position := Vector2.ZERO
-	if _current_level != null:
+	if preferred_position != Vector2.INF and _current_level != null:
+		reward_position = _find_safe_room_position(preferred_position, _current_level)
+	elif _current_level != null:
 		reward_position = _find_safe_room_position(dungeon_manager.get_current_spawn_position(), _current_level)
 	if room_kind == "treasure":
 		item_manager.spawn_treasure_reward_choices(reward_position)
@@ -2573,6 +2600,9 @@ func _check_level_clear() -> void:
 			_update_hud()
 			return
 		dungeon_manager.mark_current_room_cleared()
+		if not dungeon_manager.is_current_boss_room() and _enter_cleared_floor_map_after_current_room_clear():
+			_update_hud()
+			return
 		room_manager.set_doors_unlocked(true)
 		_sync_gate_blockers_into_actors()
 		_maybe_spawn_current_room_reward_choices()
@@ -2810,15 +2840,30 @@ func _update_minimap() -> void:
 		return
 	if _is_dungeon_run and (_status == "DUNGEON" or _status == "DOWN" or _status == "WON" or _status == "FLOOR_CLEARED" or _status == "BOSS_CLEARING"):
 		if dungeon_minimap.has_method("set_map"):
-			var player_cell = null
-			var player_cell_info := _get_current_minimap_player_cell()
-			if bool(player_cell_info.get("ok", false)):
-				player_cell = player_cell_info.get("cell", Vector2i.ZERO)
+			var minimap_current_room_id: String = dungeon_manager.current_room_id
+			var player_location: Variant = null
+			var player_location_info := _get_current_minimap_player_location()
+			if bool(player_location_info.get("ok", false)):
+				var location_room_id: String = String(player_location_info.get("room_id", ""))
+				if _is_cleared_floor_map_active and not location_room_id.is_empty():
+					minimap_current_room_id = location_room_id
+				if player_location_info.has("position"):
+					var continuous_position: Vector2 = player_location_info.get("position", Vector2.ZERO)
+					player_location = continuous_position
+					_last_minimap_player_position = continuous_position
+					_has_last_minimap_player_position = true
+				else:
+					_has_last_minimap_player_position = false
+				var player_cell: Vector2i = player_location_info.get("cell", Vector2i.ZERO)
+				if player_location == null:
+					player_location = player_cell
 				_last_minimap_player_cell = player_cell
 				_has_last_minimap_player_cell = true
 			else:
 				_has_last_minimap_player_cell = false
-			dungeon_minimap.call("set_map", dungeon_manager.get_minimap_rooms(), dungeon_manager.current_room_id, player_cell)
+				_has_last_minimap_player_position = false
+			_last_minimap_room_id = minimap_current_room_id
+			dungeon_minimap.call("set_map", dungeon_manager.get_minimap_rooms(), minimap_current_room_id, player_location)
 	else:
 		_clear_minimap()
 
@@ -2826,26 +2871,45 @@ func _update_minimap() -> void:
 func _update_minimap_player_cell_if_changed() -> void:
 	if dungeon_minimap == null:
 		return
-	var player_cell_info := _get_current_minimap_player_cell()
-	var has_cell := bool(player_cell_info.get("ok", false))
-	var cell: Vector2i = player_cell_info.get("cell", Vector2i.ZERO)
-	if has_cell != _has_last_minimap_player_cell or (has_cell and cell != _last_minimap_player_cell):
+	var player_location_info := _get_current_minimap_player_location()
+	var has_location: bool = bool(player_location_info.get("ok", false))
+	if has_location != _has_last_minimap_player_cell:
 		_update_minimap()
+		return
+	if not has_location:
+		return
+	var location_room_id: String = dungeon_manager.current_room_id
+	var player_room_id: String = String(player_location_info.get("room_id", ""))
+	if _is_cleared_floor_map_active and not player_room_id.is_empty():
+		location_room_id = player_room_id
+	if location_room_id != _last_minimap_room_id:
+		_update_minimap()
+		return
+	var cell: Vector2i = player_location_info.get("cell", Vector2i.ZERO)
+	if cell != _last_minimap_player_cell:
+		_update_minimap()
+		return
+	if player_location_info.has("position"):
+		var continuous_position: Vector2 = player_location_info.get("position", Vector2.ZERO)
+		if not _has_last_minimap_player_position or continuous_position.distance_squared_to(_last_minimap_player_position) > 0.0004:
+			_update_minimap()
 
 
-func _get_current_minimap_player_cell() -> Dictionary:
+func _get_current_minimap_player_location() -> Dictionary:
 	if not _is_dungeon_run or dungeon_manager == null or player_manager == null:
 		return {"ok": false, "cell": Vector2i.ZERO}
 	var player = _get_player_ref()
 	if player == null or not is_instance_valid(player):
 		return {"ok": false, "cell": Vector2i.ZERO}
 	if _is_cleared_floor_map_active:
-		return dungeon_manager.get_cleared_floor_world_cell_for_position(player_manager.get_player_position())
+		return dungeon_manager.get_cleared_floor_minimap_position_for_position(player_manager.get_player_position())
 	return dungeon_manager.get_current_world_cell_for_position(player_manager.get_player_position())
 
 
 func _clear_minimap() -> void:
 	_has_last_minimap_player_cell = false
+	_has_last_minimap_player_position = false
+	_last_minimap_room_id = ""
 	_minimap_player_cell_check_remaining = 0.0
 	if dungeon_minimap != null and dungeon_minimap.has_method("clear_map"):
 		dungeon_minimap.call("clear_map")
