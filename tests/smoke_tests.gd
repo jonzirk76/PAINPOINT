@@ -56,6 +56,8 @@ const SCRIPT_PATHS := [
 	"res://scripts/ui/loading_screen.gd",
 	"res://scripts/ui/circular_portrait.gd",
 	"res://scripts/orchestrators/game_orchestrator.gd",
+	"res://scripts/resources/agent_boss_program.gd",
+	"res://scripts/resources/agent_boss_generator.gd",
 	"res://scripts/resources/damage_packet.gd",
 	"res://scripts/resources/enemy_profile.gd",
 	"res://scripts/resources/upgrade_effect.gd",
@@ -222,7 +224,7 @@ func _init() -> void:
 	_test_dungeon_run_seed(failures)
 	_test_dungeon_layout_solver(failures)
 	_test_room_manager_doors(failures)
-	_test_first_boss_profile_and_spread(failures)
+	_test_agent_boss_generation_and_behavior(failures)
 	_test_boss_add_replenishment(failures)
 	_test_boss_test_level_select(failures)
 	_test_orchestrator_dungeon_start_and_boss(failures)
@@ -2483,11 +2485,15 @@ func _test_room_piece_resources(failures: Array[String]) -> void:
 		if piece.room_kind == "challenge" and level.get_spawner_count() < 5:
 			failures.append("Challenge room piece should carry at least five spawners: %s" % path)
 		if piece.room_kind == "boss":
+			if piece.footprint_cells.size() != 1 or level.arena_bounds.size != Vector2(1280.0, 720.0):
+				failures.append("Boss room shell should be a true one-cell arena.")
 			if level.get_spawner_count() != 0:
 				failures.append("Boss room shell should not include interior spawner structures.")
 			if level.boss_profile == null:
 				failures.append("Boss room shell should carry a boss profile.")
-			if level.max_active_enemies <= 1:
+			if not bool(level.generate_agent_boss):
+				failures.append("Boss room shell should request procedural agent boss generation.")
+			if level.max_active_enemies < 1:
 				failures.append("Boss room max active enemies should allow the boss encounter.")
 	if combat_piece_count < 8:
 		failures.append("Dungeon solver should have at least eight combat room pieces to vary floor sizes and shapes.")
@@ -2655,10 +2661,12 @@ func _test_room_interior_generator_determinism_and_budget(failures: Array[String
 		failures.append("Generated boss rooms should not carry interior spawner structures.")
 	if boss.boss_profile == null:
 		failures.append("Generated boss rooms should preserve the boss profile.")
-	if _get_blocker_tile_count(boss) < 4:
-		failures.append("Generated boss rooms should include readable procedural arena blockers.")
-	if not _has_rotational_blocker_pair(boss.wall_rects, boss.arena_bounds.get_center()) and not _has_rotational_blocker_pair(boss.void_rects, boss.arena_bounds.get_center()):
-		failures.append("Generated boss rooms should bias toward symmetric blocker placement.")
+	if boss.arena_bounds.size != Vector2(1280.0, 720.0):
+		failures.append("Generated boss rooms should use a true one-cell arena.")
+	if not bool(boss.generate_agent_boss):
+		failures.append("Generated boss rooms should request procedural agent boss generation.")
+	if not boss.void_rects.is_empty() or _level_has_interior_blocker(boss):
+		failures.append("Generated boss rooms should not include interior blockers.")
 	var boss_result: Dictionary = generator.validate_level(boss, {"west": "path_3"}, "boss")
 	if not bool(boss_result.get("ok", false)):
 		failures.append("Generated boss room failed its own validation: %s" % String(boss_result.get("reason", "")))
@@ -2991,6 +2999,23 @@ func _get_blocker_tile_count(level) -> int:
 	if level == null:
 		return 0
 	return _get_level_meta_rects(level, "wall_tile_rects", level.wall_rects).size() + _get_level_meta_rects(level, "void_tile_rects", level.void_rects).size()
+
+
+func _level_has_interior_blocker(level) -> bool:
+	if level == null:
+		return false
+	for rect in _get_level_meta_rects(level, "wall_tile_rects", level.wall_rects):
+		if not _rect_touches_arena_edge(rect, level.arena_bounds):
+			return true
+	for rect in _get_level_meta_rects(level, "void_tile_rects", level.void_rects):
+		if not _rect_touches_arena_edge(rect, level.arena_bounds):
+			return true
+	return false
+
+
+func _rect_touches_arena_edge(rect: Rect2, bounds: Rect2) -> bool:
+	var epsilon := 1.0
+	return abs(rect.position.x - bounds.position.x) <= epsilon or abs(rect.position.y - bounds.position.y) <= epsilon or abs(rect.position.x + rect.size.x - (bounds.position.x + bounds.size.x)) <= epsilon or abs(rect.position.y + rect.size.y - (bounds.position.y + bounds.size.y)) <= epsilon
 
 
 func _level_blockers_are_tile_aligned(level) -> bool:
@@ -3579,77 +3604,82 @@ func _test_room_manager_doors(failures: Array[String]) -> void:
 	door_layer.free()
 
 
-func _test_first_boss_profile_and_spread(failures: Array[String]) -> void:
-	var boss_profile = load("res://resources/enemies/first_boss_enemy.tres")
-	if boss_profile == null:
-		failures.append("First boss profile failed to load.")
+func _test_agent_boss_generation_and_behavior(failures: Array[String]) -> void:
+	var generator = load("res://scripts/resources/agent_boss_generator.gd")
+	var base_profile = load("res://resources/enemies/first_boss_enemy.tres")
+	if generator == null or base_profile == null:
+		failures.append("Agent boss resources failed to load.")
 		return
-	if boss_profile.behavior_kind != "boss" or boss_profile.max_health < 80:
-		failures.append("First boss profile should use boss behavior and tuned boss-scale health.")
-	if boss_profile.shot_projectile_count < 3 or boss_profile.shot_spread_degrees <= 0.0:
-		failures.append("First boss profile should fire a visible spread pattern.")
-	var boss = load("res://scenes/entities/enemy_entity.tscn").instantiate()
-	var shot_configs: Array[Dictionary] = []
-	var shot_directions: Array[Vector2] = []
-	boss.initialize(boss_profile)
-	boss.shot_ready.connect(func(_enemy, _origin, direction, shot_config) -> void:
-		shot_configs.append(shot_config)
-		shot_directions.append(direction)
-	)
-	boss._shot_cooldown_remaining = 0.0
-	boss._try_emit_shot(Vector2.RIGHT * 360.0)
-	if shot_configs.is_empty():
-		failures.append("Boss enemy did not emit a hostile shot request.")
-	elif int(shot_configs[0].get("projectile_count", 1)) < 3:
-		failures.append("Boss hostile shot request did not include spread projectile count.")
-	var normal_shot_count := shot_configs.size()
-	boss._boss_special_timer = 0.0
-	boss._update_boss_special(0.05, Vector2.RIGHT * 360.0)
-	if boss._boss_special_telegraph_remaining <= 0.0:
-		failures.append("Boss special attacks should enter a visible telegraph before firing.")
-	boss._update_boss_special(boss.boss_special_telegraph_seconds + 0.05, Vector2.RIGHT * 360.0)
-	var latest_special: Dictionary = shot_configs[shot_configs.size() - 1] if shot_configs.size() > 0 else {}
-	if shot_configs.size() <= normal_shot_count or String(latest_special.get("kind", "")) != "hostile_minigun" or int(latest_special.get("projectile_count", 0)) != 1:
-		failures.append("Boss should start a telegraphed minigun stream with individual shots.")
-	var first_minigun_direction: Vector2 = shot_directions[shot_directions.size() - 1] if shot_directions.size() > 0 else Vector2.ZERO
-	var minigun_count := shot_configs.size()
-	boss._update_boss_special(boss.boss_minigun_shot_interval + 0.02, Vector2.RIGHT * 360.0)
-	var second_minigun_direction: Vector2 = shot_directions[shot_directions.size() - 1] if shot_directions.size() > 0 else Vector2.ZERO
-	if shot_configs.size() <= minigun_count or second_minigun_direction.distance_to(first_minigun_direction) <= 0.001:
-		failures.append("Boss minigun should emit rapid individual shots in a sweeping motion.")
-	boss._update_boss_special(boss.boss_minigun_duration + 0.1, Vector2.RIGHT * 360.0)
-	minigun_count = shot_configs.size()
-	boss._boss_special_timer = 0.0
-	boss._update_boss_special(0.05, Vector2.RIGHT * 360.0)
-	boss._update_boss_special(boss.boss_special_telegraph_seconds + 0.05, Vector2.RIGHT * 360.0)
-	latest_special = shot_configs[shot_configs.size() - 1] if shot_configs.size() > 0 else {}
-	if shot_configs.size() <= minigun_count or String(latest_special.get("kind", "")) != "rocket" or float(latest_special.get("knockback", 0.0)) <= 0.0:
-		failures.append("Boss should alternate into a telegraphed rocket special with knockback.")
-	elif not bool(latest_special.get("exact_lifetime", false)) or not latest_special.has("target_position") or float(latest_special.get("speed", 0.0)) < 600.0:
-		failures.append("Boss rocket should be a fast targeted projectile that detonates at the player's launch-time position.")
-	elif float(latest_special.get("explosion_radius", 0.0)) < 68.0 or float(latest_special.get("explosion_radius", 0.0)) > 80.0:
-		failures.append("Boss rocket AOE should stay small enough to reward continuous movement.")
-	boss.free()
+	var first_profile = generator.generate_profile(base_profile, 123456, 3, "boss_room")
+	var repeated_profile = generator.generate_profile(base_profile, 123456, 3, "boss_room")
+	var different_profile = generator.generate_profile(base_profile, 123457, 3, "boss_room")
+	if first_profile.agent_program == null:
+		failures.append("Generated boss profile should carry an agent program.")
+		return
+	var program = first_profile.agent_program
+	var repeated_program = repeated_profile.agent_program
+	if program.normal_movement_verb != repeated_program.normal_movement_verb or program.special_movement_verb != repeated_program.special_movement_verb or program.special_attack_verb != repeated_program.special_attack_verb:
+		failures.append("Agent boss generation should be deterministic for seed/floor/level id.")
+	if program.generation_seed == different_profile.agent_program.generation_seed:
+		failures.append("Agent boss generation should vary its deterministic seed when the run seed changes.")
+	if not ["strafe", "push_forward", "zig_zag", "pull_back"].has(String(program.normal_movement_verb)):
+		failures.append("Generated agent boss picked an unknown normal movement verb.")
+	if not ["teleport_los", "dash_chain", "charge"].has(String(program.special_movement_verb)):
+		failures.append("Generated agent boss picked an unknown special movement verb.")
+	if not ["small_fast_bullet", "rocket", "minigun_sweep_twice", "spiral_clockwise", "spiral_counter_clockwise"].has(String(program.special_attack_verb)):
+		failures.append("Generated agent boss picked an unknown special attack verb.")
+	if not is_equal_approx(float(program.slow_action_weight), 0.4) or not is_equal_approx(float(program.normal_action_weight), 0.4) or not is_equal_approx(float(program.special_action_weight), 0.2):
+		failures.append("Agent boss default action weights should stay at 40/40/20.")
 
-	var projectile_layer := Node2D.new()
-	var projectile_manager = load("res://scripts/managers/projectile_manager.gd").new()
-	root.add_child(projectile_layer)
-	root.add_child(projectile_manager)
-	projectile_manager.initialize({
-		"projectile_layer": projectile_layer
-	})
-	projectile_manager.set_enabled(true)
-	projectile_manager.fire_hostile(Vector2.ZERO, Vector2.RIGHT, {
-		"speed": boss_profile.projectile_speed,
-		"damage": boss_profile.projectile_damage,
-		"radius": boss_profile.projectile_radius,
-		"projectile_count": boss_profile.shot_projectile_count,
-		"spread_angle_degrees": boss_profile.shot_spread_degrees
-	})
-	if projectile_manager._projectiles.size() != boss_profile.shot_projectile_count:
-		failures.append("ProjectileManager did not expand boss hostile spread into multiple projectiles.")
-	projectile_manager.free()
-	projectile_layer.free()
+	var boss = load("res://scenes/entities/enemy_entity.tscn").instantiate()
+	boss.initialize(first_profile)
+	boss.set_arena_definition(Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0)), 0, [], [], [])
+	if not boss._is_agent_boss():
+		failures.append("Generated profile should enable agent boss behavior.")
+	var shot_configs: Array[Dictionary] = []
+	boss.shot_ready.connect(func(_enemy, _origin, _direction, shot_config) -> void:
+		shot_configs.append(shot_config)
+	)
+	boss._agent_next_shot_remaining = 0.0
+	boss._try_emit_agent_standard_shot(Vector2.RIGHT * 300.0, 0.4, 390.0, 1, 4.7)
+	if shot_configs.is_empty() or String(shot_configs[0].get("kind", "")) != "hostile" or int(shot_configs[0].get("projectile_count", 0)) != 1:
+		failures.append("Agent slow/normal shots should emit single hostile shot configs.")
+	for attack_verb in ["small_fast_bullet", "rocket", "minigun_sweep_twice", "spiral_clockwise"]:
+		boss.agent_program.special_attack_verb = attack_verb
+		boss._emit_agent_special_attack(Vector2.RIGHT * 360.0)
+		if attack_verb == "minigun_sweep_twice" or attack_verb == "spiral_clockwise":
+			boss._update_agent_special_stream(0.08)
+	var saw_rocket := false
+	var saw_minigun := false
+	var saw_spiral := false
+	for config in shot_configs:
+		saw_rocket = saw_rocket or String(config.get("kind", "")) == "rocket"
+		saw_minigun = saw_minigun or String(config.get("kind", "")) == "hostile_minigun"
+		saw_spiral = saw_spiral or String(config.get("kind", "")) == "hostile_spiral"
+	if not saw_rocket or not saw_minigun or not saw_spiral:
+		failures.append("Agent specials should emit rocket, double-sweep minigun, and spiral shot configs.")
+	boss.free()
+	_test_agent_push_pull_pathing(failures, first_profile)
+
+
+func _test_agent_push_pull_pathing(failures: Array[String], base_agent_profile) -> void:
+	var wall_rect := Rect2(Vector2(90.0, -90.0), Vector2(160.0, 180.0))
+	for verb in ["push_forward", "pull_back"]:
+		var profile = base_agent_profile.duplicate(true)
+		profile.agent_program.normal_movement_verb = verb
+		profile.agent_program.normal_tactical_distance = 260.0
+		var boss = load("res://scenes/entities/enemy_entity.tscn").instantiate()
+		boss.initialize(profile)
+		boss.global_position = Vector2.ZERO
+		boss.set_arena_definition(Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0)), 0, [wall_rect], [], [])
+		var to_target := Vector2.RIGHT * 360.0 if verb == "push_forward" else Vector2.LEFT * 360.0
+		boss.target_position = boss.global_position + to_target
+		var velocity: Vector2 = boss._get_agent_normal_velocity(to_target)
+		if velocity.length_squared() <= 0.001:
+			failures.append("Agent %s should pick a fallback lane when the direct lane is blocked." % verb)
+		elif velocity.normalized().dot(Vector2.RIGHT) > 0.84:
+			failures.append("Agent %s should not keep driving directly into a wall-blocked lane." % verb)
+		boss.free()
 
 
 func _test_boss_add_replenishment(failures: Array[String]) -> void:
@@ -3687,6 +3717,13 @@ func _test_boss_add_replenishment(failures: Array[String]) -> void:
 	manager._physics_process(manager.boss_add_replenish_interval + 0.1)
 	if manager._get_boss_add_count() != 3:
 		failures.append("Boss should replenish shooter adds back to three.")
+	manager.reset_run()
+	var generator = load("res://scripts/resources/agent_boss_generator.gd")
+	var agent_profile = generator.generate_profile(load("res://resources/enemies/first_boss_enemy.tres"), 3333, 1, "agent_add_test")
+	manager.spawn_enemy(agent_profile, Vector2.ZERO)
+	manager._physics_process(manager.boss_add_replenish_interval + 0.1)
+	if manager._get_boss_add_count() != 0:
+		failures.append("Procedural agent bosses should not summon boss adds.")
 	manager.free()
 	enemy_layer.free()
 
@@ -3715,8 +3752,10 @@ func _test_boss_test_level_select(failures: Array[String]) -> void:
 	for enemy in main.enemy_manager._enemies:
 		if is_instance_valid(enemy) and enemy.behavior_kind == "boss":
 			boss_found = true
+			if enemy.agent_program == null:
+				failures.append("Boss test chamber should spawn a generated agent boss.")
 	if not boss_found:
-		failures.append("Boss test chamber should spawn the first boss enemy.")
+		failures.append("Boss test chamber should spawn a boss enemy.")
 	main.free()
 
 
@@ -3765,8 +3804,10 @@ func _test_orchestrator_dungeon_start_and_boss(failures: Array[String]) -> void:
 		for enemy in main.enemy_manager._enemies:
 			if is_instance_valid(enemy) and enemy.behavior_kind == "boss":
 				boss_found = true
+				if enemy.agent_program == null:
+					failures.append("Boss room should spawn a generated agent boss.")
 		if not boss_found:
-			failures.append("Boss room should spawn the first boss enemy.")
+			failures.append("Boss room should spawn a boss enemy.")
 	if main.spawner_manager.get_spawner_count() != 0:
 		failures.append("Generated dungeon boss room should not spawn interior spawner structures.")
 	if main.dungeon_manager.get_revealed_room_count() < boss_path.size():

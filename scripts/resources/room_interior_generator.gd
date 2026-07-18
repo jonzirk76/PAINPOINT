@@ -27,18 +27,11 @@ func generate(piece, room_id: String, floor_number: int, floor_seed: int, connec
 	var rng := RandomNumberGenerator.new()
 	rng.seed = _compute_room_seed(room_id, floor_number, floor_seed, String(piece.id))
 	if room_kind == "boss":
-		for attempt in range(MAX_ATTEMPTS):
-			var level = _make_base_level(piece, room_id, floor_number, effective_connection_edges)
-			var shell_wall_tiles: Array[Rect2] = _get_level_wall_tiles(level)
-			var blockers: Dictionary = _build_boss_obstacles(level, connections, rng, floor_number, attempt)
-			var boss_wall_tiles: Array[Rect2] = shell_wall_tiles.duplicate()
-			boss_wall_tiles.append_array(ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(blockers["walls"]))
-			_apply_wall_tiles(level, boss_wall_tiles)
-			_apply_void_rects(level, blockers["voids"])
-			level.max_active_enemies = 1
-			var result: Dictionary = validate_level(level, connections, room_kind)
-			if bool(result.get("ok", false)):
-				return level
+		var level = _make_base_level(piece, room_id, floor_number, effective_connection_edges)
+		level.max_active_enemies = 1
+		var result: Dictionary = validate_level(level, connections, room_kind)
+		if bool(result.get("ok", false)):
+			return level
 		var fallback_boss = _make_base_level(piece, room_id, floor_number, effective_connection_edges)
 		_apply_fallback_boss_interior(fallback_boss)
 		return fallback_boss
@@ -78,7 +71,7 @@ func validate_level(level, connections: Dictionary, room_kind: String) -> Dictio
 			return {"ok": false, "reason": "missing_boss_profile"}
 		if connections.size() != 1:
 			return {"ok": false, "reason": "boss_entrance_count"}
-		if level.arena_bounds.size.x < 1200.0 or level.arena_bounds.size.y < 760.0:
+		if level.arena_bounds.size.x < 1200.0 or level.arena_bounds.size.y < 680.0:
 			return {"ok": false, "reason": "boss_arena_small"}
 		clear_points.append(level.boss_spawn_position)
 	for direction_key in connections.keys():
@@ -971,20 +964,11 @@ func _apply_fallback_interior(level, room_kind: String, floor_number: int, rng: 
 
 
 func _apply_fallback_boss_interior(level) -> void:
-	var bounds: Rect2 = level.arena_bounds
-	var center := bounds.get_center()
-	var fallback_walls: Array[Rect2] = [
-		_rect_at(center + Vector2(0.0, -bounds.size.y * 0.24), Vector2(2, 1)),
-		_rect_at(center + Vector2(0.0, bounds.size.y * 0.24), Vector2(2, 1)),
-		_rect_at(center + Vector2(-bounds.size.x * 0.28, 0.0), Vector2(1, 2)),
-		_rect_at(center + Vector2(bounds.size.x * 0.28, 0.0), Vector2(1, 2))
-	]
 	var fallback_voids: Array[Rect2] = []
 	var empty_spawners: Array[Resource] = []
 	var empty_positions: Array[Vector2] = []
 	var shell_wall_tiles: Array[Rect2] = _get_level_wall_tiles(level)
 	var fallback_wall_tiles := shell_wall_tiles.duplicate()
-	fallback_wall_tiles.append_array(ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(fallback_walls))
 	_apply_wall_tiles(level, fallback_wall_tiles)
 	_apply_void_rects(level, fallback_voids)
 	level.spawner_placements = empty_spawners

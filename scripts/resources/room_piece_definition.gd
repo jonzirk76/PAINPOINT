@@ -32,6 +32,8 @@ const CONNECTOR_FALLBACKS := {
 @export var destructible_prop_placements: Array[Resource] = []
 @export var max_active_enemies: int = 12
 @export var boss_profile: Resource = null
+## Generates a procedural agent boss from boss_profile when this room piece becomes a boss room.
+@export var generate_agent_boss: bool = false
 @export var boss_spawn_position: Vector2 = Vector2.ZERO
 
 
@@ -51,6 +53,7 @@ func create_level_definition():
 	level.void_rects = empty_voids
 	level.max_active_enemies = max_active_enemies
 	level.boss_profile = boss_profile
+	level.generate_agent_boss = generate_agent_boss
 	level.boss_spawn_position = boss_spawn_position
 	level.set_meta("footprint_cells", footprint_cells.duplicate())
 	level.set_meta("connection_edges", {})

@@ -11,6 +11,7 @@ const LEVELS := [
 	preload("res://resources/levels/boss_test_chamber.tres")
 ]
 const FLOOR_EXIT_PORTAL_SCENE := preload("res://scenes/entities/floor_exit_portal_entity.tscn")
+const AGENT_BOSS_GENERATOR := preload("res://scripts/resources/agent_boss_generator.gd")
 
 @onready var input_manager = $Managers/InputManager
 @onready var player_manager = $Managers/PlayerManager
@@ -534,7 +535,7 @@ func _start_level(level_definition) -> void:
 	_set_all_enabled(true)
 	_set_loading_progress(0.9, "Starting encounter")
 	if level_definition.boss_profile != null:
-		enemy_manager.spawn_enemy(level_definition.boss_profile, level_definition.boss_spawn_position)
+		_spawn_level_boss(level_definition)
 	_queue_loading_floor_start_feedback()
 	_status = "RUNNING"
 	_on_upgrade_changed(upgrade_manager.get_modifiers(), upgrade_manager.get_active_effects())
@@ -997,6 +998,21 @@ func _on_player_damage_resolved(amount: int) -> void:
 
 func _on_spawn_requested(spawn_position: Vector2, profile) -> void:
 	enemy_manager.spawn_enemy(profile, spawn_position, {"birth": true})
+
+
+func _spawn_level_boss(level_definition):
+	if level_definition == null or level_definition.boss_profile == null:
+		return null
+	var boss_profile = _get_level_boss_profile(level_definition)
+	return enemy_manager.spawn_enemy(boss_profile, level_definition.boss_spawn_position)
+
+
+func _get_level_boss_profile(level_definition):
+	if level_definition == null or level_definition.boss_profile == null:
+		return null
+	if not bool(level_definition.get("generate_agent_boss")):
+		return level_definition.boss_profile
+	return AGENT_BOSS_GENERATOR.generate_profile(level_definition.boss_profile, _run_seed, int(level_definition.floor_number), String(level_definition.id))
 
 
 func _on_hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: Dictionary) -> void:
@@ -2165,7 +2181,7 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool) -> 
 	_sync_gate_blockers_into_actors()
 	_set_all_enabled(true)
 	if not room_is_cleared and level_definition.boss_profile != null:
-		enemy_manager.spawn_enemy(level_definition.boss_profile, level_definition.boss_spawn_position)
+		_spawn_level_boss(level_definition)
 		if _is_main_loop_run and dungeon_manager.is_current_boss_room():
 			_show_boss_exit_portal_preview(level_definition)
 	room_manager.set_doors_unlocked(room_is_cleared)

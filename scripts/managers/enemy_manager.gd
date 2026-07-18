@@ -281,6 +281,9 @@ func _update_boss_adds(delta: float) -> void:
 	if boss == null:
 		_boss_add_timer = 0.0
 		return
+	if boss.get("agent_program") != null:
+		_boss_add_timer = 0.0
+		return
 	var current_adds := _get_boss_add_count()
 	if current_adds >= boss_add_target_count:
 		_boss_add_timer = min(_boss_add_timer, boss_add_replenish_interval)
