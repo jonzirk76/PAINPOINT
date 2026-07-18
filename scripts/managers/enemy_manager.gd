@@ -2,6 +2,7 @@ extends Node
 class_name EnemyManager
 
 signal enemy_defeated(enemy, score_value: int)
+signal enemy_health_changed(enemy, old_value: int, new_value: int)
 signal enemy_count_changed(count: int)
 signal player_contact_requested(enemy, player, damage: int)
 signal hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: Dictionary)
@@ -114,6 +115,7 @@ func spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary = {})
 		add_child(enemy)
 	if bool(spawn_flags.get("birth", false)) and enemy.has_method("play_birth_animation"):
 		enemy.play_birth_animation(float(spawn_flags.get("birth_duration", 0.36)))
+	enemy.health_changed.connect(_on_enemy_health_changed)
 	enemy.health_depleted.connect(_on_enemy_health_depleted)
 	enemy.shot_ready.connect(_on_enemy_shot_ready)
 	_enemies.append(enemy)
@@ -180,6 +182,12 @@ func _on_enemy_health_depleted(enemy) -> void:
 	_contact_timers.erase(enemy.get_instance_id())
 	enemy_defeated.emit(enemy, enemy.score_value)
 	enemy_count_changed.emit(_enemies.size())
+
+
+func _on_enemy_health_changed(enemy, old_value: int, new_value: int) -> void:
+	if not _enemies.has(enemy):
+		return
+	enemy_health_changed.emit(enemy, old_value, new_value)
 
 
 func _on_enemy_shot_ready(_enemy, origin: Vector2, direction: Vector2, shot_config: Dictionary) -> void:

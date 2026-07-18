@@ -151,6 +151,23 @@ var _perfect_parry_slowmo_until_msec: int = 0
 var _perfect_parry_slowmo_restore_scale: float = 1.0
 var _agent_debug_panel: ColorRect = null
 var _agent_debug_label: Label = null
+var _boss_health_panel: Control = null
+var _boss_health_label: Label = null
+var _boss_health_bar_back: ColorRect = null
+var _boss_health_fill: ColorRect = null
+var _boss_health_tick_layer: Control = null
+var _boss_alert_overlay: ColorRect = null
+var _boss_alert_label: Label = null
+var _active_boss: EnemyEntity = null
+var _last_boss_health: int = 0
+var _last_boss_max_health: int = 0
+var _boss_health_display_count: int = 0
+var _boss_health_reveal_remaining: float = 0.0
+var _boss_health_reveal_duration: float = 0.0
+var _boss_alert_remaining: float = 0.0
+var _boss_alert_duration: float = 0.0
+var _boss_alert_flash_count: int = 2
+var _boss_health_hide_remaining: float = 0.0
 
 const DUNGEON_OPTION_COUNT := 2
 const BOSS_CLEAR_DELAY_SECONDS := 0.85
@@ -168,6 +185,13 @@ const METER_SEGMENT_MIN_WIDTH := 0.45
 const METER_SEGMENT_SKEW_DEGREES := 10.0
 const METER_SEGMENT_EJECT_SECONDS := 0.28
 const METER_SEGMENT_EJECT_OFFSET := Vector2(12.0, -16.0)
+const BOSS_METER_SEGMENT_EJECT_OFFSET := Vector2(20.0, -30.0)
+const BOSS_HEALTH_BAR_WIDTH := 840.0
+const BOSS_HEALTH_BAR_HEIGHT := 28.0
+const BOSS_HEALTH_HIDE_SECONDS := 1.05
+const BOSS_ALERT_DEFAULT_SECONDS := 1.65
+const BOSS_ALERT_HEALTH_FILL_SECONDS := 1.15
+const BOSS_ALERT_DEFAULT_FLASH_COUNT := 2
 const AMMO_SEGMENT_REFILL_STEP_SECONDS := 0.06
 const AMMO_SEGMENT_REFILL_MIN_SECONDS := 0.22
 const AMMO_SEGMENT_REFILL_MAX_SECONDS := 0.72
@@ -179,6 +203,7 @@ func _ready() -> void:
 	_super_crackle_rng.randomize()
 	_capture_hud_authoring_state()
 	_ensure_agent_debug_panel()
+	_ensure_boss_health_hud()
 	_configure_pause_process_modes()
 	_set_tree_paused(false)
 	_connect_manager_signals()
@@ -217,6 +242,8 @@ func _process(delta: float) -> void:
 		hud_feedback_changed = true
 	if hud_feedback_changed:
 		_update_hud()
+	if _update_boss_health_feedback(delta):
+		_update_boss_health_panel()
 	if _is_gameplay_running():
 		_update_camera()
 		if _is_dungeon_run:
@@ -259,6 +286,7 @@ func _connect_manager_signals() -> void:
 	_connect_once(combat_manager, &"explosion_requested", _on_explosion_requested)
 
 	_connect_once(enemy_manager, &"enemy_defeated", _on_enemy_defeated)
+	_connect_once(enemy_manager, &"enemy_health_changed", _on_enemy_health_changed)
 	_connect_once(enemy_manager, &"enemy_count_changed", spawner_manager.set_enemy_count)
 	_connect_once(enemy_manager, &"enemy_count_changed", _on_enemy_count_changed)
 	_connect_once(enemy_manager, &"player_contact_requested", _on_player_contact_requested)
@@ -420,6 +448,259 @@ func _update_agent_debug_panel(level_definition, boss) -> void:
 		float(program.body_radius)
 	]
 	_set_agent_debug_panel_visible(true)
+
+
+func _ensure_boss_health_hud() -> void:
+	if _boss_health_panel != null and is_instance_valid(_boss_health_panel):
+		return
+	var ui_layer: CanvasLayer = get_node_or_null("UI") as CanvasLayer
+	if ui_layer == null:
+		return
+	if _boss_alert_overlay == null or not is_instance_valid(_boss_alert_overlay):
+		var overlay: ColorRect = ColorRect.new()
+		overlay.name = "BossAlertOverlay"
+		overlay.visible = false
+		overlay.color = Color(1.0, 0.04, 0.02, 0.0)
+		overlay.anchor_left = 0.0
+		overlay.anchor_right = 1.0
+		overlay.anchor_top = 0.0
+		overlay.anchor_bottom = 1.0
+		overlay.offset_left = 0.0
+		overlay.offset_right = 0.0
+		overlay.offset_top = 0.0
+		overlay.offset_bottom = 0.0
+		overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		overlay.z_index = -10
+		ui_layer.add_child(overlay)
+		ui_layer.move_child(overlay, 0)
+		var alert_label: Label = Label.new()
+		alert_label.name = "BossAlertLabel"
+		alert_label.text = "ALERT"
+		alert_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		alert_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		alert_label.anchor_left = 0.0
+		alert_label.anchor_right = 1.0
+		alert_label.anchor_top = 0.0
+		alert_label.anchor_bottom = 1.0
+		alert_label.offset_left = 0.0
+		alert_label.offset_right = 0.0
+		alert_label.offset_top = -24.0
+		alert_label.offset_bottom = 0.0
+		alert_label.add_theme_font_size_override("font_size", 58)
+		alert_label.add_theme_color_override("font_color", Color(1.0, 0.68, 0.56, 0.0))
+		alert_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		overlay.add_child(alert_label)
+		_boss_alert_overlay = overlay
+		_boss_alert_label = alert_label
+	var panel: Control = Control.new()
+	panel.name = "BossHealthPanel"
+	panel.visible = false
+	panel.anchor_left = 0.5
+	panel.anchor_right = 0.5
+	panel.anchor_top = 1.0
+	panel.anchor_bottom = 1.0
+	panel.offset_left = -BOSS_HEALTH_BAR_WIDTH * 0.5
+	panel.offset_right = BOSS_HEALTH_BAR_WIDTH * 0.5
+	panel.offset_top = -86.0
+	panel.offset_bottom = -22.0
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui_layer.add_child(panel)
+	var name_label: Label = Label.new()
+	name_label.name = "BossNameLabel"
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	name_label.offset_left = 0.0
+	name_label.offset_right = BOSS_HEALTH_BAR_WIDTH
+	name_label.offset_top = 0.0
+	name_label.offset_bottom = 28.0
+	name_label.add_theme_font_size_override("font_size", 24)
+	name_label.add_theme_color_override("font_color", Color(1.0, 0.78, 0.46, 1.0))
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(name_label)
+	var bar_back: ColorRect = ColorRect.new()
+	bar_back.name = "BossHealthBarBack"
+	bar_back.color = Color(0.08, 0.008, 0.006, 0.92)
+	bar_back.offset_left = 0.0
+	bar_back.offset_right = BOSS_HEALTH_BAR_WIDTH
+	bar_back.offset_top = 32.0
+	bar_back.offset_bottom = 32.0 + BOSS_HEALTH_BAR_HEIGHT
+	bar_back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(bar_back)
+	var fill: ColorRect = ColorRect.new()
+	fill.name = "BossHealthBarFill"
+	fill.color = Color(1.0, 0.18, 0.08, 1.0)
+	fill.offset_left = 0.0
+	fill.offset_right = BOSS_HEALTH_BAR_WIDTH
+	fill.offset_top = 0.0
+	fill.offset_bottom = BOSS_HEALTH_BAR_HEIGHT
+	fill.visible = false
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar_back.add_child(fill)
+	var tick_layer: Control = Control.new()
+	tick_layer.name = "BossHealthTickLayer"
+	tick_layer.offset_left = 0.0
+	tick_layer.offset_right = BOSS_HEALTH_BAR_WIDTH
+	tick_layer.offset_top = 0.0
+	tick_layer.offset_bottom = BOSS_HEALTH_BAR_HEIGHT
+	tick_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar_back.add_child(tick_layer)
+	_boss_health_panel = panel
+	_boss_health_label = name_label
+	_boss_health_bar_back = bar_back
+	_boss_health_fill = fill
+	_boss_health_tick_layer = tick_layer
+
+
+func _clear_boss_health_hud() -> void:
+	_active_boss = null
+	_last_boss_health = 0
+	_last_boss_max_health = 0
+	_boss_health_display_count = 0
+	_boss_health_reveal_remaining = 0.0
+	_boss_health_reveal_duration = 0.0
+	_boss_alert_remaining = 0.0
+	_boss_alert_duration = 0.0
+	_boss_health_hide_remaining = 0.0
+	if _boss_health_tick_layer != null and is_instance_valid(_boss_health_tick_layer):
+		_meter_active_segment_counts.erase(_boss_health_tick_layer.get_instance_id())
+		for child in _boss_health_tick_layer.get_children():
+			child.free()
+	if _boss_health_panel != null and is_instance_valid(_boss_health_panel):
+		_boss_health_panel.visible = false
+	if _boss_alert_overlay != null and is_instance_valid(_boss_alert_overlay):
+		_boss_alert_overlay.visible = false
+
+
+func _track_level_boss(boss: EnemyEntity) -> void:
+	_ensure_boss_health_hud()
+	if boss == null or not is_instance_valid(boss):
+		_clear_boss_health_hud()
+		return
+	_active_boss = boss
+	_last_boss_max_health = max(int(boss.max_health), 1)
+	_last_boss_health = clampi(int(boss.health), 0, _last_boss_max_health)
+	_boss_health_display_count = _last_boss_health
+	_boss_health_hide_remaining = 0.0
+	if boss.agent_program != null:
+		_start_agent_boss_presentation(boss)
+	else:
+		_boss_health_reveal_remaining = 0.0
+		_boss_health_reveal_duration = 0.0
+		_boss_alert_remaining = 0.0
+		_boss_alert_duration = 0.0
+	_update_boss_health_panel()
+
+
+func _start_agent_boss_presentation(boss: EnemyEntity) -> void:
+	var program: AgentBossProgram = boss.agent_program as AgentBossProgram
+	var intro_seconds: float = BOSS_ALERT_DEFAULT_SECONDS
+	var fill_seconds: float = BOSS_ALERT_HEALTH_FILL_SECONDS
+	_boss_alert_flash_count = BOSS_ALERT_DEFAULT_FLASH_COUNT
+	if program != null:
+		intro_seconds = max(float(program.intro_seconds), 0.0)
+		fill_seconds = max(float(program.intro_health_fill_seconds), 0.05)
+		_boss_alert_flash_count = max(int(program.intro_alert_flash_count), 1)
+	_boss_health_display_count = 0
+	_boss_health_reveal_duration = max(fill_seconds, 0.05)
+	_boss_health_reveal_remaining = _boss_health_reveal_duration
+	_boss_alert_duration = max(intro_seconds, 0.05)
+	_boss_alert_remaining = _boss_alert_duration
+	if boss.has_method("start_agent_boss_intro"):
+		boss.start_agent_boss_intro(intro_seconds)
+	_update_boss_alert_overlay()
+
+
+func _update_boss_health_feedback(delta: float) -> bool:
+	var changed: bool = false
+	if _boss_health_reveal_remaining > 0.0:
+		var previous_display_count: int = _boss_health_display_count
+		_boss_health_reveal_remaining = max(_boss_health_reveal_remaining - delta, 0.0)
+		var progress: float = 1.0 - clamp(_boss_health_reveal_remaining / max(_boss_health_reveal_duration, 0.001), 0.0, 1.0)
+		_boss_health_display_count = clampi(ceili(float(_last_boss_max_health) * progress), 0, _last_boss_health)
+		if _boss_health_reveal_remaining <= 0.0:
+			_boss_health_display_count = _last_boss_health
+		changed = changed or previous_display_count != _boss_health_display_count or _boss_health_reveal_remaining > 0.0
+	if _boss_alert_remaining > 0.0:
+		_boss_alert_remaining = max(_boss_alert_remaining - delta, 0.0)
+		_update_boss_alert_overlay()
+		changed = true
+	elif _boss_alert_overlay != null and is_instance_valid(_boss_alert_overlay) and _boss_alert_overlay.visible:
+		_boss_alert_overlay.visible = false
+		changed = true
+	if _boss_health_hide_remaining > 0.0:
+		_boss_health_hide_remaining = max(_boss_health_hide_remaining - delta, 0.0)
+		if _boss_health_hide_remaining <= 0.0:
+			_clear_boss_health_hud()
+		changed = true
+	return changed
+
+
+func _update_boss_alert_overlay() -> void:
+	if _boss_alert_overlay == null or not is_instance_valid(_boss_alert_overlay):
+		return
+	if _boss_alert_remaining <= 0.0 or _boss_alert_duration <= 0.0:
+		_boss_alert_overlay.visible = false
+		return
+	var elapsed: float = _boss_alert_duration - _boss_alert_remaining
+	var progress: float = clamp(elapsed / _boss_alert_duration, 0.0, 1.0)
+	var pulse: float = max(sin(progress * TAU * float(max(_boss_alert_flash_count, 1))), 0.0)
+	var alpha: float = pow(pulse, 1.45) * 0.28
+	_boss_alert_overlay.visible = alpha > 0.01
+	_boss_alert_overlay.color = Color(1.0, 0.04, 0.02, alpha)
+	if _boss_alert_label != null and is_instance_valid(_boss_alert_label):
+		_boss_alert_label.add_theme_color_override("font_color", Color(1.0, 0.68, 0.56, alpha * 2.5))
+
+
+func _update_boss_health_panel() -> void:
+	_ensure_boss_health_hud()
+	if _boss_health_panel == null or _boss_health_tick_layer == null:
+		return
+	if _last_boss_max_health <= 0 or (_active_boss == null and _boss_health_hide_remaining <= 0.0):
+		_boss_health_panel.visible = false
+		return
+	var visible_health: int = clampi(_boss_health_display_count if _boss_health_reveal_remaining > 0.0 else _last_boss_health, 0, _last_boss_max_health)
+	var health_ratio: float = clamp(float(visible_health) / float(max(_last_boss_max_health, 1)), 0.0, 1.0)
+	var fill_rect: Rect2 = _get_meter_full_rect(_boss_health_fill, _boss_health_bar_back, BOSS_HEALTH_BAR_WIDTH)
+	if _boss_health_fill != null:
+		_set_meter_fill_width(_boss_health_fill, fill_rect.size.x * health_ratio)
+		_boss_health_fill.visible = false
+	if _boss_health_label != null:
+		_boss_health_label.text = _get_boss_display_name()
+	_update_meter_segments(
+		_boss_health_tick_layer,
+		_last_boss_max_health,
+		visible_health,
+		fill_rect,
+		_get_boss_health_meter_color(health_ratio),
+		"BossHealthSegment",
+		_get_boss_health_reveal_flash_config(),
+		BOSS_METER_SEGMENT_EJECT_OFFSET
+	)
+	_boss_health_panel.visible = true
+
+
+func _get_boss_health_reveal_flash_config() -> Dictionary:
+	if _boss_health_reveal_remaining <= 0.0 or _boss_health_reveal_duration <= 0.0:
+		return {}
+	var end_index: int = clampi(_boss_health_display_count, 0, _last_boss_max_health)
+	return {
+		"start": max(end_index - 5, 0),
+		"end": end_index,
+		"remaining": _boss_health_reveal_remaining,
+		"duration": _boss_health_reveal_duration
+	}
+
+
+func _get_boss_health_meter_color(health_ratio: float) -> Color:
+	var low: Color = Color(1.0, 0.08, 0.04, 1.0)
+	var high: Color = Color(1.0, 0.56, 0.16, 1.0)
+	return low.lerp(high, clamp(health_ratio, 0.0, 1.0))
+
+
+func _get_boss_display_name() -> String:
+	if _active_boss != null and is_instance_valid(_active_boss) and _active_boss.agent_program != null:
+		return String(_active_boss.agent_program.personality_verb).to_upper()
+	return "BOSS"
 
 
 func _capture_character_hud_base_state() -> void:
@@ -587,6 +868,7 @@ func _start_level(level_definition) -> void:
 	if win_panel != null:
 		win_panel.visible = false
 	_set_agent_debug_panel_visible(false)
+	_clear_boss_health_hud()
 	_set_character_hud_visible(true)
 	room_manager.reset_run()
 	_clear_minimap()
@@ -661,6 +943,7 @@ func _start_dungeon_run() -> void:
 	_set_loading_progress(0.18, "Preparing start room")
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
+	_clear_boss_health_hud()
 	spawner_manager.clear_spawners()
 	destructible_manager.clear_destructibles()
 	item_manager.clear_pickups()
@@ -790,6 +1073,7 @@ func _enter_level_select() -> void:
 	_clear_gameplay()
 	_clear_minimap()
 	_set_agent_debug_panel_visible(false)
+	_clear_boss_health_hud()
 	if gameplay_camera != null:
 		gameplay_camera.global_position = Vector2.ZERO
 	_set_character_hud_visible(false)
@@ -806,6 +1090,7 @@ func _enter_level_select() -> void:
 func _clear_gameplay() -> void:
 	_clear_floor_exit_portal()
 	_set_agent_debug_panel_visible(false)
+	_clear_boss_health_hud()
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
 	spawner_manager.clear_spawners()
@@ -1093,6 +1378,7 @@ func _spawn_level_boss(level_definition):
 		return null
 	var boss_profile: EnemyProfile = _get_level_boss_profile(level_definition) as EnemyProfile
 	var boss: EnemyEntity = enemy_manager.spawn_enemy(boss_profile, level_definition.boss_spawn_position) as EnemyEntity
+	_track_level_boss(boss)
 	_update_agent_debug_panel(level_definition, boss)
 	return boss
 
@@ -1124,6 +1410,13 @@ func _on_enemy_defeated(_enemy, score_value: int) -> void:
 	player_manager.add_super_meter(player_manager.super_meter_enemy_kill_gain)
 	if _enemy != null and is_instance_valid(_enemy):
 		if _enemy.behavior_kind == "boss":
+			if _active_boss == _enemy:
+				_last_boss_health = 0
+				_boss_health_display_count = 0
+				_boss_health_reveal_remaining = 0.0
+				_boss_alert_remaining = 0.0
+				_boss_health_hide_remaining = BOSS_HEALTH_HIDE_SECONDS
+				_update_boss_health_panel()
 			_run_boss_kills += 1
 			if _is_main_loop_run:
 				_score += _get_boss_floor_bonus()
@@ -1136,6 +1429,16 @@ func _on_enemy_defeated(_enemy, score_value: int) -> void:
 		item_manager.roll_enemy_drop(_enemy.global_position)
 	_update_hud()
 	_check_level_clear()
+
+
+func _on_enemy_health_changed(enemy, _old_value: int, new_value: int) -> void:
+	if enemy == null or not is_instance_valid(enemy) or enemy != _active_boss:
+		return
+	_last_boss_max_health = max(int(enemy.max_health), 1)
+	_last_boss_health = clampi(new_value, 0, _last_boss_max_health)
+	if _boss_health_reveal_remaining <= 0.0:
+		_boss_health_display_count = _last_boss_health
+	_update_boss_health_panel()
 
 
 func _on_spawner_destroyed(_spawner, score_value: int) -> void:
@@ -1626,11 +1929,11 @@ func _get_health_meter_color(health_ratio: float) -> Color:
 	return orange.lerp(green, clamp((health_ratio - 0.5) / 0.5, 0.0, 1.0))
 
 
-func _update_meter_segments(layer: Control, segment_count: int, active_count: int, fill_rect: Rect2, fill_color: Color, segment_prefix: String, refill_flash_config: Dictionary = {}) -> void:
+func _update_meter_segments(layer: Control, segment_count: int, active_count: int, fill_rect: Rect2, fill_color: Color, segment_prefix: String, refill_flash_config: Dictionary = {}, ejection_offset: Vector2 = METER_SEGMENT_EJECT_OFFSET) -> void:
 	var layer_key := layer.get_instance_id()
 	var previous_active_count: int = int(_meter_active_segment_counts.get(layer_key, -1))
 	if previous_active_count > active_count:
-		_spawn_meter_segment_ejections(layer, segment_count, active_count, previous_active_count, fill_rect, fill_color, segment_prefix)
+		_spawn_meter_segment_ejections(layer, segment_count, active_count, previous_active_count, fill_rect, fill_color, segment_prefix, ejection_offset)
 	_meter_active_segment_counts[layer_key] = active_count
 	for child in layer.get_children():
 		if bool(child.get_meta("meter_active_segment", false)):
@@ -1683,7 +1986,7 @@ func _get_meter_segment_flash_strength(index: int, refill_flash_config: Dictiona
 	return clamp(1.0 - distance * 1.45, 0.0, 1.0)
 
 
-func _spawn_meter_segment_ejections(layer: Control, segment_count: int, active_count: int, previous_active_count: int, fill_rect: Rect2, fill_color: Color, segment_prefix: String) -> void:
+func _spawn_meter_segment_ejections(layer: Control, segment_count: int, active_count: int, previous_active_count: int, fill_rect: Rect2, fill_color: Color, segment_prefix: String, ejection_offset: Vector2 = METER_SEGMENT_EJECT_OFFSET) -> void:
 	if segment_count <= 0:
 		return
 	var segment_height: float = fill_rect.size.y
@@ -1708,7 +2011,7 @@ func _spawn_meter_segment_ejections(layer: Control, segment_count: int, active_c
 			continue
 		var tween := create_tween()
 		tween.set_parallel(true)
-		tween.tween_property(segment, "position", segment.position + METER_SEGMENT_EJECT_OFFSET, METER_SEGMENT_EJECT_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.tween_property(segment, "position", segment.position + ejection_offset, METER_SEGMENT_EJECT_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		tween.tween_property(segment, "modulate:a", 0.0, METER_SEGMENT_EJECT_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		tween.finished.connect(func() -> void:
 			if is_instance_valid(segment):
@@ -2259,6 +2562,7 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool) -> 
 		_set_loading_progress(0.54, "Clearing previous room")
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
+	_clear_boss_health_hud()
 	spawner_manager.clear_spawners()
 	destructible_manager.clear_destructibles()
 	item_manager.clear_pickups()
