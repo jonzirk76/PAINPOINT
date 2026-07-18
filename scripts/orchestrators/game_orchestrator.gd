@@ -233,7 +233,6 @@ const ROOM_ENTRY_COMPLETE_DISTANCE := 96.0
 const ROOM_ENTRY_CAMERA_DISTANCE := 8.0
 const ROOM_ENTRY_AUTO_WALK_ARRIVE_DISTANCE := 14.0
 const ROOM_ENTRY_AUTO_WALK_TIMEOUT := 2.4
-const ROOM_ENTRY_INSIDE_NUDGE_DISTANCE := 96.0
 
 
 func _ready() -> void:
@@ -1943,9 +1942,11 @@ func _begin_uncleared_room_entry_transition_from_cleared_floor(entry_direction: 
 	if target_room_id.is_empty():
 		return
 	var player_floor_position: Vector2 = player_manager.get_player_position()
-	var target_entry_position: Vector2 = dungeon_manager.get_room_entry_position(target_room_id, entry_direction)
+	var target_entry_position: Vector2 = dungeon_manager.get_room_entry_clear_position(target_room_id, entry_direction)
 	if not dungeon_manager.enter_room(target_room_id):
 		return
+	if target_entry_position == Vector2.INF:
+		target_entry_position = dungeon_manager.get_current_entry_position(entry_direction)
 	if target_entry_position == Vector2.INF:
 		target_entry_position = dungeon_manager.get_current_spawn_position()
 	var target_floor_entry_position: Vector2 = dungeon_manager.get_full_floor_position_for_room_position(target_room_id, target_entry_position)
@@ -2059,15 +2060,13 @@ func _preload_current_treasure_reward_choices() -> void:
 func _get_room_entry_transition_player_target_position(level_definition) -> Vector2:
 	if level_definition == null or dungeon_manager == null:
 		return Vector2.INF
-	var entry_position: Vector2 = dungeon_manager.get_current_entry_position(_entry_transition_entry_direction)
+	var entry_position: Vector2 = dungeon_manager.get_current_entry_clear_position(_entry_transition_entry_direction)
+	if entry_position == Vector2.INF:
+		entry_position = dungeon_manager.get_current_entry_position(_entry_transition_entry_direction)
 	if entry_position == Vector2.INF:
 		entry_position = dungeon_manager.get_current_spawn_position()
 	var floor_entry_position: Vector2 = dungeon_manager.get_full_floor_position_for_room_position(dungeon_manager.current_room_id, entry_position)
-	var inward_direction: Vector2 = _get_direction_vector(_entry_transition_entry_direction)
-	var preferred_position: Vector2 = floor_entry_position
-	if inward_direction.length_squared() > 0.001:
-		preferred_position += inward_direction.normalized() * ROOM_ENTRY_INSIDE_NUDGE_DISTANCE
-	return _find_safe_room_position(preferred_position, level_definition)
+	return _find_safe_room_position(floor_entry_position, level_definition)
 
 
 func _enter_cleared_floor_map_after_current_room_clear() -> bool:
@@ -3147,7 +3146,9 @@ func _sync_gate_blockers_into_actors() -> void:
 
 
 func _get_room_entry_position(level_definition, entry_direction: String) -> Vector2:
-	var derived_entry: Vector2 = dungeon_manager.get_current_entry_position(entry_direction)
+	var derived_entry: Vector2 = dungeon_manager.get_current_entry_clear_position(entry_direction)
+	if derived_entry == Vector2.INF:
+		derived_entry = dungeon_manager.get_current_entry_position(entry_direction)
 	if derived_entry != Vector2.INF:
 		var floor_entry: Vector2 = dungeon_manager.get_full_floor_position_for_room_position(dungeon_manager.current_room_id, derived_entry)
 		return _find_safe_room_position(floor_entry, level_definition)

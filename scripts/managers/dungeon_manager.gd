@@ -158,6 +158,10 @@ func get_current_entry_position(entry_direction: String) -> Vector2:
 	return get_room_entry_position(current_room_id, entry_direction)
 
 
+func get_current_entry_clear_position(entry_direction: String) -> Vector2:
+	return get_room_entry_clear_position(current_room_id, entry_direction)
+
+
 func get_room_entry_position(room_id: String, entry_direction: String) -> Vector2:
 	if room_id.is_empty() or not _rooms.has(room_id):
 		return Vector2.INF
@@ -172,6 +176,22 @@ func get_room_entry_position(room_id: String, entry_direction: String) -> Vector
 		return Vector2.INF
 	var source_cell: Vector2i = edge.get("source_cell", Vector2i.ZERO)
 	return ROOM_GEOMETRY_BUILDER.get_entry_position(state["piece"].footprint_cells, source_cell, entry_edge_direction)
+
+
+func get_room_entry_clear_position(room_id: String, entry_direction: String) -> Vector2:
+	if room_id.is_empty() or not _rooms.has(room_id):
+		return Vector2.INF
+	var state: Dictionary = _rooms[room_id]
+	if state.is_empty() or entry_direction.is_empty():
+		return Vector2.INF
+	var entry_edge_direction := String(OPPOSITE_DIRECTIONS.get(entry_direction, ""))
+	if entry_edge_direction.is_empty():
+		return Vector2.INF
+	var edge := Dictionary(Dictionary(state.get("connection_edges", {})).get(entry_edge_direction, {}))
+	if edge.is_empty():
+		return Vector2.INF
+	var source_cell: Vector2i = edge.get("source_cell", Vector2i.ZERO)
+	return ROOM_GEOMETRY_BUILDER.get_door_clear_rect(state["piece"].footprint_cells, source_cell, entry_edge_direction).get_center()
 
 
 func get_current_spawn_position() -> Vector2:
@@ -630,19 +650,36 @@ func _get_full_floor_fog_rects(active_room_id: String, room_ids: Array[String]) 
 	if room_ids.is_empty():
 		return fog_rects
 	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(room_ids)
+	if floor_cells.is_empty():
+		return fog_rects
 	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(room_ids)
-	for room_id in room_ids:
-		if _room_is_visible_on_full_floor(room_id, active_room_id):
+	var visible_cell_lookup: Dictionary = _get_full_floor_visible_cell_lookup(active_room_id, room_ids, min_world_cell)
+	var min_floor_cell: Vector2i = ROOM_GEOMETRY_BUILDER.get_min_cell(floor_cells)
+	var max_floor_cell: Vector2i = ROOM_GEOMETRY_BUILDER.get_max_cell(floor_cells)
+	var fog_padding_cells := 1
+	for y: int in range(min_floor_cell.y - fog_padding_cells, max_floor_cell.y + fog_padding_cells + 1):
+		for x: int in range(min_floor_cell.x - fog_padding_cells, max_floor_cell.x + fog_padding_cells + 1):
+			var floor_cell := Vector2i(x, y)
+			if visible_cell_lookup.has(_cell_key(floor_cell)):
+				continue
+			fog_rects.append(ROOM_GEOMETRY_BUILDER.get_cell_rect(floor_cells, floor_cell))
+	return fog_rects
+
+
+func _get_full_floor_visible_cell_lookup(active_room_id: String, room_ids: Array[String], min_world_cell: Vector2i) -> Dictionary:
+	var lookup: Dictionary = {}
+	for room_id: String in room_ids:
+		if not _room_is_visible_on_full_floor(room_id, active_room_id):
 			continue
 		var state: Dictionary = _rooms[room_id]
 		var piece: RoomPieceDefinition = state["piece"] as RoomPieceDefinition
 		if piece == null:
 			continue
-		var offset: Vector2 = _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
-		for local_cell in piece.footprint_cells:
-			var cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(piece.footprint_cells, local_cell)
-			fog_rects.append(_translated_rect(cell_rect, offset))
-	return fog_rects
+		var anchor: Vector2i = state["anchor"]
+		for local_cell: Vector2i in piece.footprint_cells:
+			var floor_cell: Vector2i = anchor + local_cell - min_world_cell
+			lookup[_cell_key(floor_cell)] = true
+	return lookup
 
 
 func _apply_active_room_contents_to_full_floor_level(level: LevelDefinition, active_room_id: String, room_ids: Array[String]) -> void:
