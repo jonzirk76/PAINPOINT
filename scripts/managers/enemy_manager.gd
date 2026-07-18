@@ -63,6 +63,16 @@ func set_enabled(value: bool) -> void:
 	enabled = value
 
 
+func set_entities_active(value: bool) -> void:
+	for enemy_node in _enemies:
+		var enemy: EnemyEntity = enemy_node as EnemyEntity
+		if enemy == null or not is_instance_valid(enemy):
+			continue
+		enemy.set_physics_process(value)
+		if not value:
+			enemy.velocity = Vector2.ZERO
+
+
 func set_arena_definition(level_definition) -> void:
 	if level_definition == null:
 		return
@@ -111,7 +121,8 @@ func _physics_process(delta: float) -> void:
 
 
 func spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary = {}):
-	if not enabled:
+	var allow_when_disabled: bool = bool(spawn_flags.get("allow_when_disabled", false))
+	if not enabled and not allow_when_disabled:
 		return null
 	var enemy = enemy_scene.instantiate()
 	var selected_profile = profile if profile != null else default_enemy_profile
@@ -130,6 +141,9 @@ func spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary = {})
 	enemy.health_depleted.connect(_on_enemy_health_depleted)
 	enemy.shot_ready.connect(_on_enemy_shot_ready)
 	_enemies.append(enemy)
+	if bool(spawn_flags.get("inactive", false)):
+		enemy.velocity = Vector2.ZERO
+		enemy.set_physics_process(false)
 	enemy_count_changed.emit(_enemies.size())
 	return enemy
 

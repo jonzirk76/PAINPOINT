@@ -397,7 +397,6 @@ func _get_floor_minimap_position_for_position(position: Vector2, cleared_room_id
 		return {"ok": false, "cell": Vector2i.ZERO, "position": Vector2.ZERO, "room_id": ""}
 	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(cleared_room_ids)
 	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(cleared_room_ids)
-	var disputed: bool = _position_is_in_cleared_floor_disputed_area(position, floor_cells)
 	var best_cell: Vector2i = Vector2i.ZERO
 	var best_position: Vector2 = Vector2.ZERO
 	var best_room_id: String = ""
@@ -414,7 +413,7 @@ func _get_floor_minimap_position_for_position(position: Vector2, cleared_room_id
 			var cell_fraction: Vector2 = _get_rect_fraction(translated_rect, position)
 			var minimap_position: Vector2 = Vector2(world_cell) + cell_fraction
 			if translated_rect.has_point(position):
-				return {"ok": true, "cell": world_cell, "position": minimap_position, "room_id": room_id, "disputed": disputed}
+				return {"ok": true, "cell": world_cell, "position": minimap_position, "room_id": room_id}
 			var closest_point: Vector2 = _get_closest_point_in_rect(position, translated_rect)
 			var distance: float = closest_point.distance_squared_to(position)
 			if distance < best_distance:
@@ -422,7 +421,7 @@ func _get_floor_minimap_position_for_position(position: Vector2, cleared_room_id
 				best_cell = world_cell
 				best_position = minimap_position
 				best_room_id = room_id
-	return {"ok": true, "cell": best_cell, "position": best_position, "room_id": best_room_id, "disputed": disputed}
+	return {"ok": true, "cell": best_cell, "position": best_position, "room_id": best_room_id}
 
 
 func get_minimap_rooms() -> Array:
@@ -753,26 +752,6 @@ func _get_closest_point_in_rect(position: Vector2, rect: Rect2) -> Vector2:
 		clamp(position.x, rect.position.x, rect.position.x + rect.size.x),
 		clamp(position.y, rect.position.y, rect.position.y + rect.size.y)
 	)
-
-
-func _position_is_in_cleared_floor_disputed_area(position: Vector2, floor_cells: Array[Vector2i]) -> bool:
-	var floor_lookup: Dictionary = {}
-	for local_cell in floor_cells:
-		floor_lookup[_cell_key(local_cell)] = true
-	var band: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
-	for local_cell in floor_cells:
-		var cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(floor_cells, local_cell)
-		if not cell_rect.grow(band).has_point(position):
-			continue
-		if abs(position.x - cell_rect.position.x) <= band and floor_lookup.has(_cell_key(local_cell + Vector2i(-1, 0))):
-			return true
-		if abs(position.x - (cell_rect.position.x + cell_rect.size.x)) <= band and floor_lookup.has(_cell_key(local_cell + Vector2i(1, 0))):
-			return true
-		if abs(position.y - cell_rect.position.y) <= band and floor_lookup.has(_cell_key(local_cell + Vector2i(0, -1))):
-			return true
-		if abs(position.y - (cell_rect.position.y + cell_rect.size.y)) <= band and floor_lookup.has(_cell_key(local_cell + Vector2i(0, 1))):
-			return true
-	return false
 
 
 func _get_room_kind(room_id: String) -> String:

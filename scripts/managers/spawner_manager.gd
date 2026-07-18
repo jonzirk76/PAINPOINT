@@ -45,6 +45,7 @@ var _playable_rects: Array[Rect2] = []
 var _player_provider: Callable
 var _initial_spawns_pending: bool = false
 var _initial_spawn_delay_remaining: float = 0.0
+var _preloaded_initial_spawn_activation_pending: bool = false
 
 
 func initialize(context: Dictionary) -> void:
@@ -62,6 +63,7 @@ func reset_run(level_definition = null) -> void:
 		_spawn_spawner(placements[index], index)
 	_initial_spawns_pending = not _spawners.is_empty()
 	_initial_spawn_delay_remaining = 0.0
+	_preloaded_initial_spawn_activation_pending = false
 	spawner_count_changed.emit(_spawners.size())
 
 
@@ -72,6 +74,7 @@ func clear_spawners() -> void:
 	_spawners.clear()
 	_initial_spawns_pending = false
 	_initial_spawn_delay_remaining = 0.0
+	_preloaded_initial_spawn_activation_pending = false
 	spawner_count_changed.emit(0)
 
 
@@ -80,12 +83,42 @@ func set_enabled(value: bool) -> void:
 	for spawner in _spawners:
 		if is_instance_valid(spawner):
 			spawner.set_enabled(value)
-	if enabled and _initial_spawns_pending:
+	if enabled and _preloaded_initial_spawn_activation_pending:
+		_activate_preloaded_initial_spawn_sequence()
+	elif enabled and _initial_spawns_pending:
 		_begin_initial_spawn_sequence()
 
 
 func set_enemy_count(count: int) -> void:
 	_current_enemy_count = count
+
+
+func consume_initial_spawn_requests() -> Array[Dictionary]:
+	var requests: Array[Dictionary] = []
+	if not _initial_spawns_pending or initial_spawn_batch_multiplier <= 0:
+		_initial_spawns_pending = false
+		_initial_spawn_delay_remaining = 0.0
+		return requests
+	var projected_enemy_count: int = _current_enemy_count
+	for spawner_index in range(_spawners.size()):
+		var spawner: EnemySpawnerEntity = _spawners[spawner_index] as EnemySpawnerEntity
+		if spawner == null or not is_instance_valid(spawner):
+			continue
+		var profile: Resource = spawner.enemy_profile if spawner.enemy_profile != null else default_enemy_profile
+		var spawn_count: int = _get_initial_spawn_batch_count(spawner)
+		for spawn_index in range(spawn_count):
+			if projected_enemy_count >= max_active_enemies:
+				_initial_spawns_pending = false
+				_initial_spawn_delay_remaining = 0.0
+				_preloaded_initial_spawn_activation_pending = not requests.is_empty()
+				return requests
+			var spawn_position: Vector2 = _get_initial_spawn_position(spawner, spawner_index, spawn_index, spawn_count)
+			requests.append({"position": spawn_position, "profile": profile})
+			projected_enemy_count += 1
+	_initial_spawns_pending = false
+	_initial_spawn_delay_remaining = 0.0
+	_preloaded_initial_spawn_activation_pending = not requests.is_empty()
+	return requests
 
 
 func set_arena_definition(level_definition) -> void:
@@ -185,6 +218,19 @@ func _begin_initial_spawn_sequence() -> void:
 	if _initial_spawn_delay_remaining <= 0.0:
 		_initial_spawns_pending = false
 		_emit_initial_spawn_requests()
+
+
+func _activate_preloaded_initial_spawn_sequence() -> void:
+	_preloaded_initial_spawn_activation_pending = false
+	for spawner_node in _spawners:
+		var spawner: EnemySpawnerEntity = spawner_node as EnemySpawnerEntity
+		if spawner == null or not is_instance_valid(spawner):
+			continue
+		var shield_after_spawn: float = float(spawner.projectile_shield_after_spawn_seconds)
+		if spawner.has_method("activate_projectile_shield"):
+			spawner.activate_projectile_shield(shield_after_spawn)
+		if spawner.has_method("delay_next_spawn_until"):
+			spawner.delay_next_spawn_until(float(spawner.spawn_interval))
 
 
 func _emit_initial_spawn_requests() -> void:

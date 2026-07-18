@@ -610,7 +610,7 @@ func _track_level_boss(boss: EnemyEntity) -> void:
 	_boss_health_display_count = _last_boss_health
 	_boss_health_hide_remaining = 0.0
 	if boss.agent_program != null:
-		if _loading_screen_is_visible():
+		if _loading_screen_is_visible() or _is_room_entry_transition_active:
 			_pending_agent_boss_presentation = boss
 			if boss.has_method("prepare_agent_boss_intro"):
 				boss.prepare_agent_boss_intro()
@@ -1178,6 +1178,15 @@ func _set_all_enabled(value: bool) -> void:
 	audio_manager.set_enabled(value)
 
 
+func _set_room_combat_active(value: bool) -> void:
+	projectile_manager.set_enabled(value)
+	enemy_manager.set_enabled(value)
+	enemy_manager.set_entities_active(value)
+	spawner_manager.set_enabled(value)
+	destructible_manager.set_enabled(value)
+	combat_manager.set_enabled(value)
+
+
 func _set_cleared_floor_map_active(value: bool) -> void:
 	_is_cleared_floor_map_active = value
 	if value and _is_room_entry_transition_active:
@@ -1454,11 +1463,11 @@ func _on_spawn_requested(spawn_position: Vector2, profile) -> void:
 	enemy_manager.spawn_enemy(profile, spawn_position, {"birth": true})
 
 
-func _spawn_level_boss(level_definition):
+func _spawn_level_boss(level_definition, spawn_flags: Dictionary = {}):
 	if level_definition == null or level_definition.boss_profile == null:
 		return null
 	var boss_profile: EnemyProfile = _get_level_boss_profile(level_definition) as EnemyProfile
-	var boss: EnemyEntity = enemy_manager.spawn_enemy(boss_profile, level_definition.boss_spawn_position) as EnemyEntity
+	var boss: EnemyEntity = enemy_manager.spawn_enemy(boss_profile, level_definition.boss_spawn_position, spawn_flags) as EnemyEntity
 	_track_level_boss(boss)
 	_update_agent_debug_panel(level_definition, boss)
 	return boss
@@ -1867,7 +1876,7 @@ func _begin_uncleared_room_entry_transition_from_cleared_floor(entry_direction: 
 
 
 func _load_room_entry_transition(player_position: Vector2) -> bool:
-	var level_definition = dungeon_manager.get_current_full_floor_level_definition(false)
+	var level_definition = dungeon_manager.get_current_full_floor_level_definition(true)
 	if level_definition == null:
 		return false
 	_is_loading_room = true
@@ -1885,8 +1894,20 @@ func _load_room_entry_transition(player_position: Vector2) -> bool:
 	spawner_manager.clear_spawners()
 	destructible_manager.clear_destructibles()
 	item_manager.set_room_context(dungeon_manager.floor_number, dungeon_manager.current_room_id)
-	room_manager.load_room(level_definition, [], true)
-	room_manager.set_doors_unlocked(true)
+	var room_is_cleared: bool = dungeon_manager.is_current_room_cleared()
+	if not room_is_cleared:
+		spawner_manager.reset_run(level_definition)
+	destructible_manager.reset_run(level_definition)
+	room_manager.load_room(level_definition, dungeon_manager.get_full_floor_current_door_infos(), room_is_cleared)
+	_sync_gate_blockers_into_actors()
+	if not room_is_cleared:
+		_preload_pending_initial_spawner_enemies()
+	if not room_is_cleared and level_definition.boss_profile != null:
+		_spawn_level_boss(level_definition, {"inactive": true, "allow_when_disabled": true})
+		if _is_main_loop_run and dungeon_manager.is_current_boss_room():
+			_show_boss_exit_portal_preview(level_definition)
+	_set_room_combat_active(false)
+	room_manager.set_doors_unlocked(room_is_cleared)
 	_set_cleared_floor_map_active(false)
 	player_manager.set_player_position(player_position)
 	_sync_gate_blockers_into_actors()
@@ -1894,6 +1915,14 @@ func _load_room_entry_transition(player_position: Vector2) -> bool:
 	_update_minimap()
 	_update_hud()
 	return true
+
+
+func _preload_pending_initial_spawner_enemies() -> void:
+	var spawn_requests: Array[Dictionary] = spawner_manager.consume_initial_spawn_requests()
+	for spawn_request in spawn_requests:
+		var spawn_position: Vector2 = spawn_request.get("position", Vector2.ZERO)
+		var profile: Resource = spawn_request.get("profile", null) as Resource
+		enemy_manager.spawn_enemy(profile, spawn_position, {"inactive": true, "allow_when_disabled": true})
 
 
 func _enter_cleared_floor_map_after_current_room_clear() -> bool:
@@ -2848,9 +2877,17 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool, ove
 	destructible_manager.reset_run(level_definition)
 	room_manager.load_room(level_definition, dungeon_manager.get_full_floor_current_door_infos(), room_is_cleared)
 	_sync_gate_blockers_into_actors()
-	_set_all_enabled(true)
+	if should_update_loading_screen and not room_is_cleared:
+		_preload_pending_initial_spawner_enemies()
+	if should_update_loading_screen:
+		_set_room_combat_active(false)
+	else:
+		_set_all_enabled(true)
 	if not room_is_cleared and level_definition.boss_profile != null:
-		_spawn_level_boss(level_definition)
+		var boss_spawn_flags: Dictionary = {}
+		if should_update_loading_screen:
+			boss_spawn_flags = {"inactive": true, "allow_when_disabled": true}
+		_spawn_level_boss(level_definition, boss_spawn_flags)
 		if _is_main_loop_run and dungeon_manager.is_current_boss_room():
 			_show_boss_exit_portal_preview(level_definition)
 	room_manager.set_doors_unlocked(room_is_cleared)
@@ -2975,12 +3012,6 @@ func _update_minimap() -> void:
 			var player_location: Variant = null
 			var player_location_info := _get_current_minimap_player_location()
 			if bool(player_location_info.get("ok", false)):
-				var is_disputed: bool = bool(player_location_info.get("disputed", false))
-				if is_disputed and _has_last_minimap_player_cell:
-					minimap_current_room_id = _last_minimap_room_id if not _last_minimap_room_id.is_empty() else minimap_current_room_id
-					player_location = _last_minimap_player_position if _has_last_minimap_player_position else _last_minimap_player_cell
-					dungeon_minimap.call("set_map", dungeon_manager.get_minimap_rooms(), minimap_current_room_id, player_location)
-					return
 				var location_room_id: String = String(player_location_info.get("room_id", ""))
 				if (_is_cleared_floor_map_active or _is_room_entry_transition_active) and not location_room_id.is_empty():
 					minimap_current_room_id = location_room_id
@@ -3014,8 +3045,6 @@ func _update_minimap_player_cell_if_changed() -> void:
 		_update_minimap()
 		return
 	if not has_location:
-		return
-	if bool(player_location_info.get("disputed", false)):
 		return
 	var location_room_id: String = dungeon_manager.current_room_id
 	var player_room_id: String = String(player_location_info.get("room_id", ""))
@@ -3079,11 +3108,13 @@ func _finish_loading_screen(message: String = "READY") -> void:
 		loading_screen.call("finish_loading", message, true)
 	if _status == "RUNNING" or _status == "DUNGEON":
 		_set_all_enabled(false)
+		enemy_manager.set_entities_active(false)
 
 
 func _on_loading_continue_requested() -> void:
 	if _status == "RUNNING" or _status == "DUNGEON":
 		_set_all_enabled(true)
+		enemy_manager.set_entities_active(true)
 		_start_pending_agent_boss_presentation()
 		_play_loading_completion_feedback()
 		_update_hud()
@@ -3121,11 +3152,17 @@ func _update_room_entry_transition(_delta: float) -> void:
 func _finish_room_entry_transition() -> void:
 	if _entry_transition_target_room_id.is_empty():
 		return
-	var entry_direction: String = _entry_transition_entry_direction
-	var player_floor_position: Vector2 = player_manager.get_player_position()
+	var room_is_cleared: bool = dungeon_manager.is_current_room_cleared()
 	_set_room_entry_transition_active(false)
 	_set_cleared_floor_map_active(false)
-	_load_dungeon_current_room(entry_direction, false, player_floor_position)
+	_set_room_combat_active(true)
+	room_manager.set_doors_unlocked(room_is_cleared)
+	_sync_gate_blockers_into_actors()
+	_start_pending_agent_boss_presentation()
+	_update_camera()
+	_update_minimap()
+	_check_level_clear()
+	_update_hud()
 
 
 func _update_camera(delta: float = 0.0) -> void:
