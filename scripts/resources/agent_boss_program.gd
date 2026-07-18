@@ -124,6 +124,8 @@ const SPECIAL_ATTACK_PINWHEEL_BURST := "pinwheel_burst"
 @export var high_explosive_cooldown_seconds: float = 6.7
 ## Controls how long high-explosive moves visibly wind up before launching or placing.
 @export var high_explosive_windup_seconds: float = 0.42
+## Multiplies the shared high-explosive windup when the selected move is rocket.
+@export var high_explosive_rocket_windup_multiplier: float = 2.0
 ## Controls high-explosive rocket projectile speed.
 @export var high_explosive_rocket_speed: float = 640.0
 ## Controls high-explosive rocket blast radius.

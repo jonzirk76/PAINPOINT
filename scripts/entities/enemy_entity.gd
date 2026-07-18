@@ -1084,6 +1084,8 @@ func _start_agent_high_explosive_windup(to_target: Vector2) -> void:
 	var direction: Vector2 = _get_target_direction(to_target)
 	_agent_high_explosive_windup_kind = _get_agent_high_explosive_verb()
 	_agent_high_explosive_windup_duration = max(float(agent_program.high_explosive_windup_seconds), 0.08)
+	if _agent_high_explosive_windup_kind == AgentBossProgram.HIGH_EXPLOSIVE_ROCKET:
+		_agent_high_explosive_windup_duration *= max(float(agent_program.high_explosive_rocket_windup_multiplier), 0.1)
 	_agent_high_explosive_windup_remaining = _agent_high_explosive_windup_duration
 	_agent_high_explosive_windup_direction = direction
 	_agent_high_explosive_windup_target = target_position
