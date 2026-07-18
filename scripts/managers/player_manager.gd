@@ -35,6 +35,7 @@ var _player_layer: Node = null
 var _fire_cooldown_remaining: float = 0.0
 var _fire_cooldown_multiplier: float = 1.0
 var _move_speed_multiplier: float = 1.0
+var _context_speed_multiplier: float = 1.0
 var _damage_cooldown_remaining: float = 0.0
 var _last_invulnerability_remaining: float = -1.0
 var _parry_cooldown_remaining: float = 0.0
@@ -86,6 +87,7 @@ func reset_run() -> void:
 	_parry_chain_grace_remaining = 0.0
 	_last_parry_chain_count = -1
 	_last_parry_chain_grace_remaining = -1.0
+	_context_speed_multiplier = 1.0
 	_super_meter = 0.0
 	_super_is_charging = false
 	_super_charge_elapsed = 0.0
@@ -110,6 +112,7 @@ func clear_player() -> void:
 	_active_parry_cooldown_duration = parry_cooldown_seconds
 	_parry_chain_count = 0
 	_parry_chain_grace_remaining = 0.0
+	_context_speed_multiplier = 1.0
 	_super_meter = 0.0
 	_super_is_charging = false
 	_super_charge_elapsed = 0.0
@@ -281,6 +284,11 @@ func apply_healing(amount: int) -> void:
 func set_weapon_modifiers(modifiers: Dictionary) -> void:
 	_fire_cooldown_multiplier = float(modifiers.get("fire_cooldown_multiplier", 1.0))
 	_move_speed_multiplier = float(modifiers.get("move_speed_multiplier", 1.0))
+	_sync_player_speed()
+
+
+func set_context_speed_multiplier(multiplier: float) -> void:
+	_context_speed_multiplier = max(multiplier, 0.1)
 	_sync_player_speed()
 
 
@@ -490,7 +498,7 @@ func _sync_player_speed() -> void:
 	if not _has_player():
 		return
 	var charge_multiplier := super_charge_speed_multiplier if _super_is_charging else 1.0
-	player.set_speed_multiplier(_move_speed_multiplier * clamp(charge_multiplier, 0.1, 1.0))
+	player.set_speed_multiplier(_move_speed_multiplier * _context_speed_multiplier * clamp(charge_multiplier, 0.1, 1.0))
 
 
 func _sync_super_meter_state() -> void:

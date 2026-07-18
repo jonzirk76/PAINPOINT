@@ -69,6 +69,9 @@ const BOLD_PIXELS_FONT := preload("res://art/fonts/BoldPixels.ttf")
 @onready var win_prompt_label: Label = $UI/WinPanel/WinPromptLabel
 @onready var loading_screen: Control = $UI/LoadingScreen
 
+## Multiplies player movement speed while walking through the composed cleared-floor traversal map.
+@export var cleared_floor_speed_multiplier: float = 1.45
+
 var _score: int = 0
 var _last_health: int = 0
 var _last_max_health: int = 0
@@ -97,6 +100,7 @@ var _selected_level_index: int = 0
 var _current_level = null
 var _is_dungeon_run: bool = false
 var _is_main_loop_run: bool = false
+var _is_cleared_floor_map_active: bool = false
 var _is_loading_room: bool = false
 var _loading_transition_pending: bool = false
 var _loading_completion_floor_start_pending: bool = false
@@ -862,6 +866,7 @@ func _start_level(level_definition) -> void:
 	_begin_loading_screen("LOADING", "Preparing arena", 0.05)
 	_is_dungeon_run = false
 	_is_main_loop_run = false
+	_set_cleared_floor_map_active(false)
 	_current_level = level_definition
 	_score = 0
 	_run_seed = 0
@@ -934,6 +939,7 @@ func _start_dungeon_run() -> void:
 	_begin_loading_screen("LOADING FLOOR", "Generating dungeon", 0.05)
 	_is_dungeon_run = true
 	_is_main_loop_run = false
+	_set_cleared_floor_map_active(false)
 	_score = 0
 	_main_loop_floor = 1
 	_run_seed = _generate_run_seed()
@@ -994,6 +1000,7 @@ func _start_main_loop_run() -> void:
 	_begin_loading_screen("LOADING FLOOR", "Generating dungeon", 0.05)
 	_is_dungeon_run = true
 	_is_main_loop_run = true
+	_set_cleared_floor_map_active(false)
 	_score = 0
 	_main_loop_floor = 1
 	_run_seed = _generate_run_seed()
@@ -1055,6 +1062,7 @@ func _advance_main_loop_floor() -> void:
 	_begin_loading_screen("LOADING FLOOR", "Generating next floor", 0.05)
 	_main_loop_floor += 1
 	_status = "STARTING"
+	_set_cleared_floor_map_active(false)
 	_clear_floor_exit_portal()
 	_rewarded_room_ids.clear()
 	_reward_prompt_text = ""
@@ -1082,6 +1090,7 @@ func _enter_level_select() -> void:
 	_current_level = null
 	_is_dungeon_run = false
 	_is_main_loop_run = false
+	_set_cleared_floor_map_active(false)
 	_run_seed = 0
 	_paused_previous_status = ""
 	_loading_completion_floor_start_pending = false
@@ -1146,6 +1155,13 @@ func _set_all_enabled(value: bool) -> void:
 	dungeon_manager.set_enabled(value and _is_dungeon_run)
 	room_manager.set_enabled(value and _is_dungeon_run)
 	audio_manager.set_enabled(value)
+
+
+func _set_cleared_floor_map_active(value: bool) -> void:
+	_is_cleared_floor_map_active = value
+	if player_manager != null and player_manager.has_method("set_context_speed_multiplier"):
+		var multiplier: float = max(cleared_floor_speed_multiplier, 0.1) if value else 1.0
+		player_manager.set_context_speed_multiplier(multiplier)
 
 
 func _set_tree_paused(value: bool) -> void:
@@ -1736,12 +1752,72 @@ func _get_player_ref():
 	return player_manager.player
 
 
-func _on_room_door_entered(direction: String) -> void:
+func _on_room_door_entered(direction: String, target_room_id: String = "") -> void:
 	if not _is_dungeon_run or _status != "DUNGEON":
 		return
+	if _is_cleared_floor_map_active:
+		_enter_uncleared_room_from_cleared_floor(direction, target_room_id)
+		return
+	if not target_room_id.is_empty() and dungeon_manager.is_room_cleared(target_room_id) and dungeon_manager.is_room_revealed(target_room_id):
+		_enter_cleared_floor_map_through_cleared_room(direction, target_room_id)
+		return
 	if dungeon_manager.enter_direction(direction):
+		_set_cleared_floor_map_active(false)
 		_load_dungeon_current_room(direction, false)
 		audio_manager.play_room_entry()
+
+
+func _enter_cleared_floor_map_through_cleared_room(entry_direction: String, target_room_id: String) -> void:
+	var target_entry_position: Vector2 = dungeon_manager.get_room_entry_position(target_room_id, entry_direction)
+	if target_entry_position == Vector2.INF:
+		target_entry_position = player_manager.get_player_position()
+	if not dungeon_manager.enter_room(target_room_id):
+		return
+	var target_position: Vector2 = dungeon_manager.get_cleared_floor_position_for_room_position(target_room_id, target_entry_position)
+	if _load_cleared_floor_map(target_position):
+		audio_manager.play_room_entry()
+
+
+func _enter_uncleared_room_from_cleared_floor(entry_direction: String, target_room_id: String) -> void:
+	if target_room_id.is_empty():
+		return
+	if not dungeon_manager.enter_room(target_room_id):
+		return
+	_set_cleared_floor_map_active(false)
+	_load_dungeon_current_room(entry_direction, false)
+	audio_manager.play_room_entry()
+
+
+func _load_cleared_floor_map(player_position: Vector2) -> bool:
+	var level_definition = dungeon_manager.get_cleared_floor_level_definition()
+	if level_definition == null:
+		return false
+	_is_loading_room = true
+	_current_level = level_definition
+	_clear_floor_exit_portal()
+	if arena_view != null:
+		arena_view.configure(level_definition)
+	player_manager.set_arena_definition(level_definition)
+	projectile_manager.set_arena_definition(level_definition)
+	enemy_manager.set_arena_definition(level_definition)
+	spawner_manager.set_arena_definition(level_definition)
+	projectile_manager.reset_run()
+	enemy_manager.reset_run()
+	_clear_boss_health_hud()
+	spawner_manager.clear_spawners()
+	destructible_manager.clear_destructibles()
+	item_manager.clear_pickups()
+	effects_manager.reset_run()
+	room_manager.load_room(level_definition, dungeon_manager.get_cleared_floor_door_infos(), true)
+	room_manager.set_doors_unlocked(true)
+	_set_cleared_floor_map_active(true)
+	player_manager.set_player_position(player_position)
+	_sync_gate_blockers_into_actors()
+	_is_loading_room = false
+	_update_camera()
+	_update_minimap()
+	_update_hud()
+	return true
 
 
 func _on_pause_requested() -> void:
@@ -2486,6 +2562,8 @@ func _check_level_clear() -> void:
 		return
 	if not _is_gameplay_running():
 		return
+	if _is_cleared_floor_map_active:
+		return
 	if spawner_manager.get_spawner_count() > 0 or enemy_manager.get_enemy_count() > 0:
 		return
 	if _is_dungeon_run:
@@ -2574,6 +2652,7 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool) -> 
 	var level_definition = dungeon_manager.get_current_level_definition()
 	if level_definition == null:
 		return
+	_set_cleared_floor_map_active(false)
 	var should_update_loading_screen := _loading_screen_is_visible()
 	if should_update_loading_screen:
 		_set_loading_progress(max(float(loading_screen.get("progress")), 0.2), "Preparing room geometry")
@@ -2696,6 +2775,8 @@ func _is_gameplay_running() -> bool:
 func _get_status_label() -> String:
 	if _is_main_loop_run and _status == "DUNGEON" and _floor_exit_portal_active():
 		return "FLOOR %d EXIT OPEN" % _main_loop_floor
+	if _is_cleared_floor_map_active and _status == "DUNGEON":
+		return "FLOOR %d MAP" % _main_loop_floor if _is_main_loop_run else "DUNGEON MAP"
 	if _is_main_loop_run and _status == "DUNGEON":
 		return "FLOOR %d" % _main_loop_floor
 	if _is_main_loop_run and _status == "FLOOR_CLEARED":
@@ -2758,6 +2839,8 @@ func _get_current_minimap_player_cell() -> Dictionary:
 	var player = _get_player_ref()
 	if player == null or not is_instance_valid(player):
 		return {"ok": false, "cell": Vector2i.ZERO}
+	if _is_cleared_floor_map_active:
+		return dungeon_manager.get_cleared_floor_world_cell_for_position(player_manager.get_player_position())
 	return dungeon_manager.get_current_world_cell_for_position(player_manager.get_player_position())
 
 

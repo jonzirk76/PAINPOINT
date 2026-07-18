@@ -1,7 +1,7 @@
 extends Node
 class_name RoomManager
 
-signal door_entered(direction: String)
+signal door_entered(direction: String, target_room_id: String)
 
 @export var door_scene: PackedScene = preload("res://scenes/entities/door_entity.tscn")
 @export var door_depth: float = 28.0
@@ -78,7 +78,7 @@ func get_gate_blocker_rects() -> Array[Rect2]:
 func _on_door_entered(door) -> void:
 	if not enabled or door == null or not is_instance_valid(door):
 		return
-	door_entered.emit(door.direction)
+	door_entered.emit(door.direction, door.target_room_id)
 
 
 func _get_door_rect(bounds: Rect2, direction: String) -> Rect2:

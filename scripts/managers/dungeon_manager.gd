@@ -134,7 +134,13 @@ func get_current_door_infos() -> Array:
 
 
 func get_current_entry_position(entry_direction: String) -> Vector2:
-	var state := get_current_room_state()
+	return get_room_entry_position(current_room_id, entry_direction)
+
+
+func get_room_entry_position(room_id: String, entry_direction: String) -> Vector2:
+	if room_id.is_empty() or not _rooms.has(room_id):
+		return Vector2.INF
+	var state: Dictionary = _rooms[room_id]
 	if state.is_empty() or entry_direction.is_empty():
 		return Vector2.INF
 	var entry_edge_direction := String(OPPOSITE_DIRECTIONS.get(entry_direction, ""))
@@ -179,6 +185,20 @@ func is_current_room_cleared() -> bool:
 	return not state.is_empty() and bool(state["cleared"])
 
 
+func is_room_cleared(room_id: String) -> bool:
+	if room_id.is_empty() or not _rooms.has(room_id):
+		return false
+	var state: Dictionary = _rooms[room_id]
+	return bool(state["cleared"])
+
+
+func is_room_revealed(room_id: String) -> bool:
+	if room_id.is_empty() or not _rooms.has(room_id):
+		return false
+	var state: Dictionary = _rooms[room_id]
+	return bool(state["revealed"])
+
+
 func is_current_boss_room() -> bool:
 	var state := get_current_room_state()
 	if state.is_empty():
@@ -209,10 +229,126 @@ func enter_direction(direction: String) -> bool:
 		return false
 	var state := get_current_room_state()
 	var connections: Dictionary = state["connections"]
-	current_room_id = String(connections[direction])
+	return enter_room(String(connections[direction]))
+
+
+func enter_room(room_id: String) -> bool:
+	if not enabled or room_id.is_empty() or not _rooms.has(room_id):
+		return false
+	current_room_id = room_id
 	_reveal_room(current_room_id)
 	room_changed.emit(current_room_id)
 	return true
+
+
+func get_cleared_floor_level_definition():
+	var cleared_room_ids: Array[String] = _get_cleared_floor_room_ids()
+	if cleared_room_ids.is_empty():
+		return null
+	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(cleared_room_ids)
+	if floor_cells.is_empty():
+		return null
+	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(cleared_room_ids)
+	var level: LevelDefinition = LevelDefinition.new()
+	level.id = "cleared_floor_%d" % floor_number
+	level.display_name = "Cleared Floor %d" % floor_number
+	level.difficulty_label = "Floor %d Traversal" % floor_number
+	level.floor_number = max(floor_number, 1)
+	level.arena_shape = 0
+	level.arena_bounds = ROOM_GEOMETRY_BUILDER.get_bounds(floor_cells)
+	level.use_default_spawners = false
+	level.max_active_enemies = 0
+	var empty_spawners: Array[Resource] = []
+	var empty_props: Array[Resource] = []
+	var empty_voids: Array[Rect2] = []
+	level.spawner_placements = empty_spawners
+	level.destructible_prop_placements = empty_props
+	level.void_rects = empty_voids
+	var wall_tiles: Array[Rect2] = []
+	for room_id in cleared_room_ids:
+		var state: Dictionary = _rooms[room_id]
+		var offset: Vector2 = _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
+		var room_level = state.get("level_definition", null)
+		if room_level != null and room_level.has_meta("wall_tile_rects"):
+			for rect in room_level.get_meta("wall_tile_rects"):
+				if rect is Rect2:
+					wall_tiles.append(_translated_rect(rect, offset))
+		else:
+			var piece = state["piece"]
+			var room_wall_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_tile_rects(piece.footprint_cells, Dictionary(state.get("connection_edges", {})))
+			for rect in room_wall_tiles:
+				wall_tiles.append(_translated_rect(rect, offset))
+	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(wall_tiles)
+	level.set_meta("footprint_cells", floor_cells.duplicate())
+	level.set_meta("connection_edges", {})
+	level.set_meta("wall_tile_rects", wall_tiles)
+	level.set_meta("void_tile_rects", empty_voids)
+	return level
+
+
+func get_cleared_floor_door_infos() -> Array:
+	var cleared_room_ids: Array[String] = _get_cleared_floor_room_ids()
+	var door_infos: Array = []
+	if cleared_room_ids.is_empty():
+		return door_infos
+	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(cleared_room_ids)
+	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(cleared_room_ids)
+	for room_id in cleared_room_ids:
+		var state: Dictionary = _rooms[room_id]
+		var piece = state["piece"]
+		var connections: Dictionary = state["connections"]
+		var connection_edges: Dictionary = state.get("connection_edges", {})
+		var offset: Vector2 = _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
+		for direction in CARDINAL_DIRECTIONS:
+			if not connections.has(direction):
+				continue
+			var target_room_id := String(connections[direction])
+			if is_room_cleared(target_room_id) and is_room_revealed(target_room_id):
+				continue
+			var edge: Dictionary = connection_edges.get(direction, {})
+			var source_cell: Vector2i = edge.get("source_cell", Vector2i.ZERO)
+			var trigger_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_trigger_rect(piece.footprint_cells, source_cell, direction)
+			var opening_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_opening_rect(piece.footprint_cells, source_cell, direction)
+			door_infos.append({
+				"direction": direction,
+				"target_room_id": target_room_id,
+				"target_room_kind": _get_room_kind(target_room_id),
+				"trigger_rect": _translated_rect(trigger_rect, offset),
+				"opening_rect": _translated_rect(opening_rect, offset),
+				"source_room_id": room_id,
+				"cleared_floor_transition": true
+			})
+	return door_infos
+
+
+func get_cleared_floor_position_for_room_position(room_id: String, room_position: Vector2) -> Vector2:
+	var cleared_room_ids: Array[String] = _get_cleared_floor_room_ids()
+	if room_id.is_empty() or not _rooms.has(room_id) or cleared_room_ids.is_empty():
+		return room_position
+	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(cleared_room_ids)
+	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(cleared_room_ids)
+	var state: Dictionary = _rooms[room_id]
+	return room_position + _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
+
+
+func get_cleared_floor_world_cell_for_position(position: Vector2) -> Dictionary:
+	var cleared_room_ids: Array[String] = _get_cleared_floor_room_ids()
+	if cleared_room_ids.is_empty():
+		return {"ok": false, "cell": Vector2i.ZERO}
+	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(cleared_room_ids)
+	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(cleared_room_ids)
+	var best_cell := Vector2i.ZERO
+	var best_distance := INF
+	for local_cell in floor_cells:
+		var cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(floor_cells, local_cell)
+		var world_cell: Vector2i = min_world_cell + local_cell
+		if cell_rect.has_point(position):
+			return {"ok": true, "cell": world_cell}
+		var distance := cell_rect.get_center().distance_squared_to(position)
+		if distance < best_distance:
+			best_distance = distance
+			best_cell = world_cell
+	return {"ok": true, "cell": best_cell}
 
 
 func get_minimap_rooms() -> Array:
@@ -263,6 +399,67 @@ func get_occupied_cell_count() -> int:
 
 func get_room_ids() -> Array[String]:
 	return _room_order.duplicate()
+
+
+func _get_cleared_floor_room_ids() -> Array[String]:
+	var cleared_room_ids: Array[String] = []
+	for room_id in _room_order:
+		var state: Dictionary = _rooms[room_id]
+		if bool(state["cleared"]) and bool(state["revealed"]):
+			cleared_room_ids.append(room_id)
+	return cleared_room_ids
+
+
+func _get_cleared_floor_min_world_cell(cleared_room_ids: Array[String]) -> Vector2i:
+	var initialized := false
+	var min_cell := Vector2i.ZERO
+	for room_id in cleared_room_ids:
+		var state: Dictionary = _rooms[room_id]
+		var anchor: Vector2i = state["anchor"]
+		var piece = state["piece"]
+		for local_cell in piece.footprint_cells:
+			var world_cell: Vector2i = anchor + local_cell
+			if not initialized:
+				min_cell = world_cell
+				initialized = true
+			else:
+				min_cell.x = min(min_cell.x, world_cell.x)
+				min_cell.y = min(min_cell.y, world_cell.y)
+	return min_cell
+
+
+func _get_cleared_floor_cells(cleared_room_ids: Array[String]) -> Array[Vector2i]:
+	var floor_cells: Array[Vector2i] = []
+	if cleared_room_ids.is_empty():
+		return floor_cells
+	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(cleared_room_ids)
+	for room_id in cleared_room_ids:
+		var state: Dictionary = _rooms[room_id]
+		var anchor: Vector2i = state["anchor"]
+		var piece = state["piece"]
+		for local_cell in piece.footprint_cells:
+			floor_cells.append(anchor + local_cell - min_world_cell)
+	floor_cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		if a.y == b.y:
+			return a.x < b.x
+		return a.y < b.y
+	)
+	return floor_cells
+
+
+func _get_room_to_cleared_floor_offset(state: Dictionary, min_world_cell: Vector2i, floor_cells: Array[Vector2i]) -> Vector2:
+	if state.is_empty() or floor_cells.is_empty():
+		return Vector2.ZERO
+	var piece = state["piece"]
+	var anchor: Vector2i = state["anchor"]
+	var room_bounds: Rect2 = ROOM_GEOMETRY_BUILDER.get_bounds(piece.footprint_cells)
+	var floor_bounds: Rect2 = ROOM_GEOMETRY_BUILDER.get_bounds(floor_cells)
+	var floor_local_anchor: Vector2i = anchor - min_world_cell
+	return floor_bounds.position + Vector2(floor_local_anchor) * ROOM_GEOMETRY_BUILDER.CELL_SIZE - room_bounds.position
+
+
+func _translated_rect(rect: Rect2, offset: Vector2) -> Rect2:
+	return Rect2(rect.position + offset, rect.size)
 
 
 func _get_room_kind(room_id: String) -> String:

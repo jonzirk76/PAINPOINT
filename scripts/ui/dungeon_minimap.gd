@@ -54,6 +54,7 @@ func _draw() -> void:
 	for info in visible_rooms:
 		_draw_room_details(info, origin, pitch, draw_bounds)
 	_draw_connection_doors(visible_rooms, origin, pitch, draw_bounds)
+	_draw_unexplored_connection_doors(visible_rooms, origin, pitch, draw_bounds)
 
 
 func _get_map_viewport() -> Rect2:
@@ -151,6 +152,28 @@ func _draw_connection_doors(visible_rooms: Array, origin: Vector2, pitch: float,
 				draw_line(midpoint + Vector2(0.0, -door_half_length), midpoint + Vector2(0.0, door_half_length), Color(1.0, 0.96, 0.28, 1.0), door_width)
 			else:
 				draw_line(midpoint + Vector2(-door_half_length, 0.0), midpoint + Vector2(door_half_length, 0.0), Color(1.0, 0.96, 0.28, 1.0), door_width)
+
+
+func _draw_unexplored_connection_doors(visible_rooms: Array, origin: Vector2, pitch: float, viewport: Rect2) -> void:
+	var visible_ids := {}
+	for info in visible_rooms:
+		visible_ids[String(info["id"])] = true
+	for info in visible_rooms:
+		var connections: Dictionary = info["connections"]
+		var connection_edges: Dictionary = info.get("connection_edges", {})
+		for direction in connections.keys():
+			var to_id := String(connections[direction])
+			if visible_ids.has(to_id):
+				continue
+			var edge: Dictionary = connection_edges.get(direction, {})
+			var source_center: Vector2 = _get_connection_cell_center(info, edge.get("source_cell", null), origin, pitch)
+			var midpoint: Vector2 = source_center + _get_minimap_direction_vector(String(direction)) * (pitch * 0.5 - cell_gap * 0.5)
+			if not viewport.grow(6.0).has_point(midpoint):
+				continue
+			var tangent: Vector2 = _get_minimap_door_tangent(String(direction))
+			var door_half_length: float = max(4.0, cell_size * 0.2)
+			var door_width: float = max(2.5, cell_gap + 0.5)
+			draw_line(midpoint - tangent * door_half_length, midpoint + tangent * door_half_length, Color(0.2, 1.0, 0.92, 1.0), door_width)
 
 
 func _draw_room_fill(info: Dictionary, origin: Vector2, pitch: float, viewport: Rect2) -> void:
@@ -393,6 +416,28 @@ func _room_contains_world_cell(info: Dictionary, world_cell: Vector2i) -> bool:
 		if anchor + local_cell == world_cell:
 			return true
 	return false
+
+
+func _get_minimap_direction_vector(direction: String) -> Vector2:
+	match direction:
+		"north":
+			return Vector2.UP
+		"south":
+			return Vector2.DOWN
+		"east":
+			return Vector2.RIGHT
+		"west":
+			return Vector2.LEFT
+	return Vector2.ZERO
+
+
+func _get_minimap_door_tangent(direction: String) -> Vector2:
+	match direction:
+		"north", "south":
+			return Vector2.RIGHT
+		"east", "west":
+			return Vector2.DOWN
+	return Vector2.RIGHT
 
 
 func _cell_key(cell: Vector2i) -> String:
