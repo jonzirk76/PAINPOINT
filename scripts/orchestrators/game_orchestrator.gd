@@ -617,6 +617,7 @@ func _track_level_boss(boss: EnemyEntity) -> void:
 	if boss.agent_program != null:
 		if _loading_screen_is_visible() or _is_room_entry_transition_active:
 			_pending_agent_boss_presentation = boss
+			_prepare_agent_boss_intro_materialize(boss)
 			if boss.has_method("prepare_agent_boss_intro"):
 				boss.prepare_agent_boss_intro()
 			_boss_health_reveal_remaining = 0.0
@@ -653,6 +654,7 @@ func _start_agent_boss_presentation(boss: EnemyEntity) -> void:
 		intro_seconds = max(float(program.intro_seconds), 0.0)
 		fill_seconds = max(float(program.intro_health_fill_seconds), 0.05)
 		_boss_alert_flash_count = max(int(program.intro_alert_flash_count), 1)
+	_materialize_agent_boss_intro(boss)
 	_boss_health_display_count = 0
 	_boss_health_reveal_duration = max(fill_seconds, 0.05)
 	_boss_health_reveal_remaining = _boss_health_reveal_duration
@@ -661,6 +663,40 @@ func _start_agent_boss_presentation(boss: EnemyEntity) -> void:
 	if boss.has_method("start_agent_boss_intro"):
 		boss.start_agent_boss_intro(intro_seconds)
 	_update_boss_alert_overlay()
+
+
+func _prepare_agent_boss_intro_materialize(boss: EnemyEntity) -> void:
+	if boss == null or not is_instance_valid(boss) or boss.agent_program == null:
+		return
+	boss.visible = false
+	boss.velocity = Vector2.ZERO
+	boss.set_meta("preloaded_hidden", true)
+	boss.set_meta("preloaded_birth_duration", _get_agent_boss_intro_materialize_seconds(boss))
+	boss.set_physics_process(false)
+
+
+func _materialize_agent_boss_intro(boss: EnemyEntity) -> void:
+	if boss == null or not is_instance_valid(boss) or boss.agent_program == null:
+		return
+	var was_hidden: bool = bool(boss.get_meta("preloaded_hidden", false))
+	boss.visible = true
+	boss.set_physics_process(true)
+	if was_hidden:
+		boss.remove_meta("preloaded_hidden")
+	if boss.has_method("is_birth_animation_active") and bool(boss.is_birth_animation_active()):
+		return
+	if boss.has_method("play_birth_animation"):
+		boss.play_birth_animation(_get_agent_boss_intro_materialize_seconds(boss))
+	if boss.has_meta("preloaded_birth_duration"):
+		boss.remove_meta("preloaded_birth_duration")
+
+
+func _get_agent_boss_intro_materialize_seconds(boss: EnemyEntity) -> float:
+	if boss != null and is_instance_valid(boss):
+		var program: AgentBossProgram = boss.agent_program as AgentBossProgram
+		if program != null:
+			return max(float(program.intro_materialize_seconds), 0.08)
+	return 0.82
 
 
 func _update_boss_health_feedback(delta: float) -> bool:

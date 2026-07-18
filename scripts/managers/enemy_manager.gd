@@ -74,6 +74,8 @@ func set_entities_active(value: bool, materialize_preloaded: bool = false) -> vo
 			enemy.remove_meta("preloaded_hidden")
 			if materialize_preloaded and enemy.has_method("play_birth_animation"):
 				enemy.play_birth_animation(float(enemy.get_meta("preloaded_birth_duration", 0.42)))
+			if enemy.has_meta("preloaded_birth_duration"):
+				enemy.remove_meta("preloaded_birth_duration")
 		if not value:
 			enemy.velocity = Vector2.ZERO
 
