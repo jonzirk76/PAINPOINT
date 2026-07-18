@@ -53,7 +53,7 @@ const SPECIAL_ATTACK_PINWHEEL_BURST := "pinwheel_burst"
 ## Controls how quickly the agent drifts during slow pressure.
 @export var slow_move_speed: float = 58.0
 ## Controls how quickly the agent fires during slow pressure.
-@export var slow_shot_cooldown: float = 0.38
+@export var slow_shot_cooldown: float = 0.25
 ## Controls hostile projectile speed during slow pressure.
 @export var slow_projectile_speed: float = 390.0
 ## Controls hostile projectile radius during slow pressure.
