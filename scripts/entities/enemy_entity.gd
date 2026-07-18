@@ -22,6 +22,10 @@ const PATH_REPATH_BASE_SECONDS := 0.1
 const PATH_REPATH_STAGGER_SECONDS := 0.015
 const PATH_CACHE_TARGET_MOVE_SQUARED := 48.0 * 48.0
 const PATH_CACHE_SELF_MOVE_SQUARED := 36.0 * 36.0
+const ENEMY_COLLISION_LAYER := 2
+const AGENT_BOSS_COLLISION_LAYER := 128
+const STANDARD_ENEMY_COLLISION_MASK := 97
+const AGENT_BOSS_COLLISION_MASK := 96
 const AGENT_ACTION_SLOW := "slow_pressure"
 const AGENT_ACTION_NORMAL := "normal"
 const AGENT_ACTION_SPECIAL := "special"
@@ -98,9 +102,15 @@ var _agent_rng := RandomNumberGenerator.new()
 var _agent_action_kind: String = ""
 var _agent_action_remaining: float = 0.0
 var _agent_next_shot_remaining: float = 0.0
+var _agent_burst_interval_remaining: float = 0.0
+var _agent_burst_shots_remaining: int = 0
+var _agent_burst_base_direction: Vector2 = Vector2.RIGHT
 var _agent_action_direction: Vector2 = Vector2.RIGHT
 var _agent_tactical_target: Vector2 = Vector2.INF
 var _agent_zigzag_sign: float = 1.0
+var _agent_special_cooldown_remaining: float = 0.0
+var _agent_special_chain_count: int = 0
+var _agent_special_attack_emitted: bool = false
 var _agent_special_stage: String = ""
 var _agent_special_telegraph_remaining: float = 0.0
 var _agent_special_telegraph_duration: float = 0.58
@@ -138,8 +148,12 @@ func _ready() -> void:
 
 
 func _configure_collision_identity() -> void:
-	collision_layer = 2
-	collision_mask = 97
+	if _is_agent_boss():
+		collision_layer = AGENT_BOSS_COLLISION_LAYER
+		collision_mask = AGENT_BOSS_COLLISION_MASK
+	else:
+		collision_layer = ENEMY_COLLISION_LAYER
+		collision_mask = STANDARD_ENEMY_COLLISION_MASK
 	add_to_group("enemies")
 
 
@@ -167,6 +181,10 @@ func initialize(profile) -> void:
 	shot_projectile_count = profile.shot_projectile_count
 	shot_spread_degrees = profile.shot_spread_degrees
 	agent_program = profile.agent_program as AgentBossProgram if profile.get("agent_program") != null else null
+	if _is_agent_boss():
+		contact_damage = 0
+		contact_radius = 0.0
+		_configure_collision_identity()
 	_visual_kind = _get_visual_kind(profile)
 	health = max_health
 	_shot_cooldown_remaining = shot_cooldown * 0.65
@@ -771,7 +789,13 @@ func _configure_agent_boss_state() -> void:
 	_agent_action_kind = ""
 	_agent_action_remaining = 0.0
 	_agent_next_shot_remaining = 0.0
+	_agent_burst_interval_remaining = 0.0
+	_agent_burst_shots_remaining = 0
+	_agent_burst_base_direction = Vector2.RIGHT
 	_agent_tactical_target = Vector2.INF
+	_agent_special_cooldown_remaining = 0.0
+	_agent_special_chain_count = 0
+	_agent_special_attack_emitted = false
 	_agent_special_stage = ""
 	_agent_special_telegraph_remaining = 0.0
 	_agent_teleport_target = Vector2.INF
@@ -792,6 +816,8 @@ func _configure_agent_boss_state() -> void:
 func _update_agent_boss(delta: float, to_target: Vector2) -> Vector2:
 	if agent_program == null or health <= 0 or _is_dying:
 		return Vector2.ZERO
+	if _agent_special_cooldown_remaining > 0.0:
+		_agent_special_cooldown_remaining = max(_agent_special_cooldown_remaining - delta, 0.0)
 	if _agent_shoot_pose_remaining > 0.0:
 		_agent_shoot_pose_remaining = max(_agent_shoot_pose_remaining - delta, 0.0)
 	if _agent_charge_remaining > 0.0:
@@ -808,7 +834,7 @@ func _update_agent_boss(delta: float, to_target: Vector2) -> Vector2:
 		if _agent_special_telegraph_remaining <= 0.0:
 			_emit_agent_special_attack(to_target)
 			if _agent_stream_remaining <= 0.0:
-				_finish_agent_action()
+				_finish_agent_special_action()
 		queue_redraw()
 		return Vector2.ZERO
 	if _agent_special_stage == AGENT_SPECIAL_STAGE_MOVE and _get_agent_special_movement_verb() == AgentBossProgram.SPECIAL_MOVEMENT_DASH_CHAIN:
@@ -818,9 +844,11 @@ func _update_agent_boss(delta: float, to_target: Vector2) -> Vector2:
 	_agent_action_remaining = max(_agent_action_remaining - delta, 0.0)
 	if _agent_next_shot_remaining > 0.0:
 		_agent_next_shot_remaining = max(_agent_next_shot_remaining - delta, 0.0)
+	if _agent_burst_interval_remaining > 0.0:
+		_agent_burst_interval_remaining = max(_agent_burst_interval_remaining - delta, 0.0)
 	match _agent_action_kind:
 		AGENT_ACTION_SLOW:
-			_try_emit_agent_standard_shot(to_target, float(agent_program.slow_shot_cooldown), float(agent_program.slow_projectile_speed), projectile_damage, float(agent_program.slow_projectile_radius))
+			_update_agent_slow_pressure_shots(to_target)
 			return _get_agent_slow_velocity(to_target)
 		AGENT_ACTION_NORMAL:
 			_try_emit_agent_standard_shot(to_target, float(agent_program.normal_shot_cooldown), float(agent_program.normal_projectile_speed), projectile_damage, float(agent_program.normal_projectile_radius))
@@ -831,14 +859,17 @@ func _update_agent_boss(delta: float, to_target: Vector2) -> Vector2:
 
 
 func _start_next_agent_action(to_target: Vector2) -> void:
-	var total_weight: float = float(agent_program.get_total_action_weight()) if agent_program != null and agent_program.has_method("get_total_action_weight") else 1.0
+	var slow_weight: float = max(float(agent_program.slow_action_weight), 0.0)
+	var normal_weight: float = max(float(agent_program.normal_action_weight), 0.0)
+	var special_weight: float = max(float(agent_program.special_action_weight), 0.0) if _agent_special_cooldown_remaining <= 0.0 else 0.0
+	var total_weight: float = slow_weight + normal_weight + special_weight
 	if total_weight <= 0.0:
 		_agent_action_kind = AGENT_ACTION_NORMAL
 	else:
-		var roll := _agent_rng.randf() * total_weight
-		if roll < max(float(agent_program.slow_action_weight), 0.0):
+		var roll: float = _agent_rng.randf() * total_weight
+		if roll < slow_weight:
 			_agent_action_kind = AGENT_ACTION_SLOW
-		elif roll < max(float(agent_program.slow_action_weight), 0.0) + max(float(agent_program.normal_action_weight), 0.0):
+		elif roll < slow_weight + normal_weight:
 			_agent_action_kind = AGENT_ACTION_NORMAL
 		else:
 			_agent_action_kind = AGENT_ACTION_SPECIAL
@@ -847,14 +878,18 @@ func _start_next_agent_action(to_target: Vector2) -> void:
 	_agent_action_direction = _pick_agent_valid_direction(_get_target_direction(to_target), float(agent_program.normal_tactical_distance))
 	match _agent_action_kind:
 		AGENT_ACTION_SLOW:
+			_agent_special_chain_count = 0
 			_agent_action_remaining = max(float(agent_program.slow_action_seconds), 0.2)
 			_agent_action_direction = _pick_agent_valid_direction(Vector2.RIGHT.rotated(_agent_rng.randf() * TAU), float(agent_program.normal_tactical_distance) * 0.55)
 			_agent_next_shot_remaining = min(_agent_next_shot_remaining, 0.08)
 		AGENT_ACTION_NORMAL:
+			_agent_special_chain_count = 0
+			_clear_agent_slow_fire_state()
 			_agent_action_remaining = max(float(agent_program.normal_action_seconds), 0.25)
 			_agent_zigzag_sign *= -1.0
 			_agent_next_shot_remaining = min(_agent_next_shot_remaining, 0.18)
 		AGENT_ACTION_SPECIAL:
+			_clear_agent_slow_fire_state()
 			_agent_action_remaining = 5.0
 			_start_agent_special_movement(to_target)
 	queue_redraw()
@@ -864,6 +899,7 @@ func _finish_agent_action() -> void:
 	_agent_action_kind = ""
 	_agent_action_remaining = 0.0
 	_agent_tactical_target = Vector2.INF
+	_clear_agent_slow_fire_state()
 	_agent_special_stage = ""
 	_agent_special_telegraph_remaining = 0.0
 	_agent_teleport_target = Vector2.INF
@@ -878,6 +914,118 @@ func _finish_agent_action() -> void:
 	_agent_stream_elapsed = 0.0
 	_agent_stream_next_shot_remaining = 0.0
 	_agent_stream_wave_index = 0
+	_agent_special_attack_emitted = false
+
+
+func _finish_agent_special_action() -> void:
+	var completed_chain_count: int = clampi(_agent_special_chain_count, 1, max(int(agent_program.max_special_chain_count), 1))
+	if _agent_special_attack_emitted and _should_chain_agent_special(completed_chain_count):
+		_clear_agent_special_action_state()
+		_agent_action_kind = AGENT_ACTION_SPECIAL
+		_agent_action_remaining = 5.0
+		_start_agent_special_movement(target_position - global_position)
+		return
+	_agent_special_cooldown_remaining = _get_agent_special_cooldown_seconds(completed_chain_count)
+	_agent_special_chain_count = 0
+	_finish_agent_action()
+
+
+func _should_chain_agent_special(completed_chain_count: int) -> bool:
+	var max_chain_count: int = max(int(agent_program.max_special_chain_count), 1)
+	if completed_chain_count >= max_chain_count:
+		return false
+	var chance: float = clamp(float(agent_program.special_chain_chance) - float(completed_chain_count - 1) * float(agent_program.special_chain_chance_decay), 0.0, 1.0)
+	return _agent_rng.randf() < chance
+
+
+func _get_agent_special_cooldown_seconds(completed_chain_count: int) -> float:
+	var chain_count: int = max(completed_chain_count, 1)
+	var base_cooldown: float = max(float(agent_program.special_base_cooldown_seconds), 0.0)
+	var chain_bonus: float = max(float(agent_program.special_chain_cooldown_bonus_seconds), 0.0)
+	return base_cooldown + chain_bonus * float(chain_count - 1)
+
+
+func _clear_agent_special_action_state() -> void:
+	_agent_tactical_target = Vector2.INF
+	_agent_special_stage = ""
+	_agent_special_telegraph_remaining = 0.0
+	_agent_teleport_target = Vector2.INF
+	_agent_teleport_cast_remaining = 0.0
+	_agent_teleport_cast_duration = 0.0
+	_agent_dash_steps_remaining = 0
+	_agent_charge_remaining = 0.0
+	_agent_charge_elapsed = 0.0
+	_agent_charge_special_fired = false
+	_clear_agent_stream_state()
+	_agent_special_attack_emitted = false
+
+
+func _clear_agent_slow_fire_state() -> void:
+	_agent_burst_interval_remaining = 0.0
+	_agent_burst_shots_remaining = 0
+	_agent_burst_base_direction = Vector2.RIGHT
+
+
+func _update_agent_slow_pressure_shots(to_target: Vector2) -> void:
+	match _get_agent_slow_attack_verb():
+		AgentBossProgram.SLOW_ATTACK_SHORT_SCATTER:
+			_try_emit_agent_spread_shot(
+				to_target,
+				float(agent_program.slow_short_scatter_cooldown),
+				max(float(agent_program.slow_projectile_speed) * 0.82, 210.0),
+				projectile_damage,
+				float(agent_program.slow_projectile_radius),
+				clampi(int(agent_program.slow_short_scatter_projectile_count), 2, 8),
+				max(float(agent_program.slow_short_scatter_degrees), 4.0),
+				max(float(agent_program.slow_short_scatter_lifetime), 0.2),
+				true
+			)
+		AgentBossProgram.SLOW_ATTACK_WIDE_SCATTER:
+			_try_emit_agent_spread_shot(
+				to_target,
+				float(agent_program.slow_wide_scatter_cooldown),
+				max(float(agent_program.slow_projectile_speed) * 0.72, 180.0),
+				projectile_damage,
+				float(agent_program.slow_projectile_radius) * 0.95,
+				clampi(int(agent_program.slow_wide_scatter_projectile_count), 3, 12),
+				max(float(agent_program.slow_wide_scatter_degrees), 12.0),
+				max(float(agent_program.slow_wide_scatter_lifetime), 0.2),
+				false
+			)
+		AgentBossProgram.SLOW_ATTACK_ASSAULT_BURST:
+			_update_agent_assault_burst(to_target)
+		_:
+			_try_emit_agent_standard_shot(to_target, float(agent_program.slow_shot_cooldown), float(agent_program.slow_projectile_speed), projectile_damage, float(agent_program.slow_projectile_radius))
+
+
+func _update_agent_assault_burst(to_target: Vector2) -> void:
+	if to_target.length_squared() <= 4.0:
+		return
+	if _agent_burst_shots_remaining <= 0:
+		if _agent_next_shot_remaining > 0.0:
+			return
+		_agent_burst_shots_remaining = clampi(int(agent_program.slow_assault_burst_count), 2, 6)
+		_agent_burst_interval_remaining = 0.0
+		_agent_burst_base_direction = to_target.normalized()
+		_agent_next_shot_remaining = max(float(agent_program.slow_assault_burst_cooldown), 0.12)
+	var emitted_count := 0
+	while _agent_burst_shots_remaining > 0 and _agent_burst_interval_remaining <= 0.0 and emitted_count < 3:
+		var jitter_degrees: float = _agent_rng.randf_range(-4.5, 4.5)
+		var shot_direction: Vector2 = _agent_burst_base_direction.rotated(deg_to_rad(jitter_degrees)).normalized()
+		_emit_agent_standard_projectile(
+			shot_direction,
+			max(float(agent_program.slow_projectile_speed) * 0.9, 260.0),
+			projectile_damage,
+			float(agent_program.slow_projectile_radius) * 0.95,
+			1.0,
+			1,
+			0.0,
+			max(float(agent_program.slow_assault_burst_lifetime), 0.2),
+			"hostile_assault"
+		)
+		_agent_burst_shots_remaining -= 1
+		_agent_burst_interval_remaining += max(float(agent_program.slow_assault_burst_interval), 0.025)
+		emitted_count += 1
 
 
 func _get_agent_slow_velocity(to_target: Vector2) -> Vector2:
@@ -954,6 +1102,9 @@ func _agent_point_is_valid(point: Vector2) -> bool:
 
 
 func _start_agent_special_movement(to_target: Vector2) -> void:
+	var max_chain_count: int = max(int(agent_program.max_special_chain_count), 1)
+	_agent_special_chain_count = clampi(_agent_special_chain_count + 1, 1, max_chain_count)
+	_agent_special_attack_emitted = false
 	_agent_special_stage = AGENT_SPECIAL_STAGE_MOVE
 	_agent_dash_steps_remaining = max(int(agent_program.dash_count), 1)
 	match _get_agent_special_movement_verb():
@@ -1129,7 +1280,7 @@ func _update_agent_charge(delta: float, to_target: Vector2) -> Vector2:
 	if _agent_stream_remaining > 0.0:
 		_update_agent_special_stream(delta)
 	if _path_blocks_segment(global_position, global_position + _agent_charge_direction * 42.0, body_radius * 0.65):
-		_finish_agent_action()
+		_finish_agent_special_action()
 		return Vector2.ZERO
 	if _agent_charge_remaining <= 0.0:
 		_agent_charge_elapsed = 0.0
@@ -1137,7 +1288,7 @@ func _update_agent_charge(delta: float, to_target: Vector2) -> Vector2:
 		if _agent_stream_remaining > 0.0:
 			_agent_special_stage = AGENT_SPECIAL_STAGE_STREAM
 		else:
-			_finish_agent_action()
+			_finish_agent_special_action()
 		return Vector2.ZERO
 	return _agent_charge_direction.normalized() * max(float(agent_program.charge_speed), 100.0)
 
@@ -1152,6 +1303,7 @@ func _start_agent_special_telegraph(to_target: Vector2) -> void:
 
 
 func _emit_agent_special_attack(to_target: Vector2) -> void:
+	_agent_special_attack_emitted = true
 	match _get_agent_special_attack_verb():
 		AgentBossProgram.SPECIAL_ATTACK_MINIGUN_SWEEP_TWICE:
 			_start_agent_minigun_stream(to_target)
@@ -1300,7 +1452,7 @@ func _finish_agent_stream_or_action() -> void:
 		_clear_agent_stream_state()
 		_agent_special_stage = AGENT_SPECIAL_STAGE_MOVE
 	else:
-		_finish_agent_action()
+		_finish_agent_special_action()
 
 
 func _clear_agent_stream_state() -> void:
@@ -1438,26 +1590,56 @@ func _try_emit_agent_standard_shot(to_target: Vector2, cooldown: float, shot_spe
 	if _agent_next_shot_remaining > 0.0 or to_target.length_squared() <= 4.0:
 		return
 	var shot_direction: Vector2 = to_target.normalized()
-	var shot_origin: Vector2 = global_position + shot_direction * (body_radius + radius + 5.0)
+	if _emit_agent_standard_projectile(shot_direction, shot_speed, damage, radius, 1.0, 1, 0.0, 0.0, "hostile"):
+		_agent_next_shot_remaining = max(cooldown, 0.05)
+
+
+func _try_emit_agent_spread_shot(to_target: Vector2, cooldown: float, shot_speed: float, damage: int, radius: float, projectile_count: int, spread_degrees: float, lifetime: float, randomize_pattern: bool) -> void:
+	if _agent_next_shot_remaining > 0.0 or to_target.length_squared() <= 4.0:
+		return
+	var shot_direction: Vector2 = to_target.normalized()
+	var final_spread_degrees: float = spread_degrees
+	var final_projectile_count: int = projectile_count
+	if randomize_pattern:
+		final_spread_degrees = max(spread_degrees + _agent_rng.randf_range(-8.0, 10.0), 8.0)
+		final_projectile_count = clampi(projectile_count + _agent_rng.randi_range(-1, 1), 2, 9)
+		shot_direction = shot_direction.rotated(deg_to_rad(_agent_rng.randf_range(-final_spread_degrees * 0.12, final_spread_degrees * 0.12))).normalized()
+	if _emit_agent_standard_projectile(shot_direction, shot_speed, damage, radius, 1.0, final_projectile_count, final_spread_degrees, lifetime, "hostile_scatter"):
+		_agent_next_shot_remaining = max(cooldown, 0.05)
+
+
+func _emit_agent_standard_projectile(shot_direction: Vector2, shot_speed: float, damage: int, radius: float, damage_multiplier: float, projectile_count: int, spread_degrees: float, lifetime: float, kind: String) -> bool:
+	if shot_direction.length_squared() <= 0.001:
+		return false
+	var normalized_direction: Vector2 = shot_direction.normalized()
+	var shot_radius: float = max(radius, 1.0)
+	var shot_origin: Vector2 = global_position + normalized_direction * (body_radius + shot_radius + 5.0)
 	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
-		return
+		return false
 	if _wall_blocks_segment(global_position, target_position) or _wall_blocks_segment(global_position, shot_origin):
-		return
+		return false
 	var shot_config: Dictionary = {
-		"speed": shot_speed,
-		"damage": max(damage, 1),
-		"radius": radius,
-		"kind": "hostile",
-		"projectile_count": 1,
-		"spread_angle_degrees": 0.0
+		"speed": max(shot_speed, 1.0),
+		"damage": max(roundi(float(damage) * max(damage_multiplier, 0.1)), 1),
+		"radius": shot_radius,
+		"kind": kind,
+		"projectile_count": max(projectile_count, 1),
+		"spread_angle_degrees": max(spread_degrees, 0.0),
+		"knockback": 0.0
 	}
-	shot_ready.emit(self, shot_origin, shot_direction, shot_config)
-	_agent_next_shot_remaining = max(cooldown, 0.05)
-	_play_agent_shoot_pose(shot_direction)
+	if lifetime > 0.0:
+		shot_config["lifetime"] = lifetime
+	shot_ready.emit(self, shot_origin, normalized_direction, shot_config)
+	_play_agent_shoot_pose(normalized_direction)
+	return true
 
 
 func _get_agent_normal_movement_verb() -> String:
 	return String(agent_program.normal_movement_verb) if agent_program != null else AgentBossProgram.NORMAL_STRAFE
+
+
+func _get_agent_slow_attack_verb() -> String:
+	return String(agent_program.slow_attack_verb) if agent_program != null else AgentBossProgram.SLOW_ATTACK_FAST_SINGLE
 
 
 func _get_agent_special_movement_verb() -> String:

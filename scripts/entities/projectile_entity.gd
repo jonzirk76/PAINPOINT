@@ -4,6 +4,9 @@ class_name ProjectileEntity
 signal hit_detected(projectile, target: Node)
 signal expired(projectile)
 
+const HOSTILE_PROJECTILE_COLLISION_MASK := 33
+const PLAYER_PROJECTILE_COLLISION_MASK := 178
+
 @export var speed: float = 560.0
 @export var lifetime_seconds: float = 1.2
 @export var body_radius: float = 6.0
@@ -38,7 +41,7 @@ func _ready() -> void:
 
 func _configure_collision_identity() -> void:
 	collision_layer = 4
-	collision_mask = 33 if projectile_team == "hostile" else 50
+	collision_mask = HOSTILE_PROJECTILE_COLLISION_MASK if projectile_team == "hostile" else PLAYER_PROJECTILE_COLLISION_MASK
 	monitoring = true
 	monitorable = false
 

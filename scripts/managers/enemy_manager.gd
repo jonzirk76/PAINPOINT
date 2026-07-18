@@ -87,6 +87,8 @@ func _physics_process(delta: float) -> void:
 		_contact_timers[id] = max(float(_contact_timers.get(id, 0.0)) - delta, 0.0)
 		if enemy.has_method("is_birth_animation_active") and bool(enemy.is_birth_animation_active()):
 			continue
+		if int(enemy.contact_damage) <= 0:
+			continue
 		if player != null and is_instance_valid(player):
 			var contact_range: float = _get_effective_contact_range(enemy, player)
 			if enemy.global_position.distance_squared_to(player.global_position) <= contact_range * contact_range and float(_contact_timers[id]) <= 0.0:

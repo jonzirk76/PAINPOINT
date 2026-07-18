@@ -16,7 +16,8 @@ static func generate_profile(base_profile: Resource, run_seed: int, floor_number
 	profile.behavior_kind = EnemyProfile.BEHAVIOR_BOSS
 	profile.agent_program = program
 	profile.body_radius = program.body_radius
-	profile.contact_radius = program.contact_radius
+	profile.contact_damage = 0
+	profile.contact_radius = 0.0
 	profile.body_color = program.body_modulate
 	profile.accent_color = program.accent_color
 	profile.shot_projectile_count = 1
@@ -41,6 +42,12 @@ static func generate_program(run_seed: int, floor_number: int, level_id: String)
 		AgentBossProgram.NORMAL_PUSH_FORWARD,
 		AgentBossProgram.NORMAL_ZIG_ZAG,
 		AgentBossProgram.NORMAL_PULL_BACK
+	])
+	program.slow_attack_verb = _pick_string(rng, [
+		AgentBossProgram.SLOW_ATTACK_FAST_SINGLE,
+		AgentBossProgram.SLOW_ATTACK_SHORT_SCATTER,
+		AgentBossProgram.SLOW_ATTACK_WIDE_SCATTER,
+		AgentBossProgram.SLOW_ATTACK_ASSAULT_BURST
 	])
 	program.special_movement_verb = _pick_string(rng, [
 		AgentBossProgram.SPECIAL_MOVEMENT_TELEPORT_LOS,

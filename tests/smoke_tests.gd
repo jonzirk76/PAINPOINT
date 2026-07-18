@@ -1910,6 +1910,8 @@ func _test_projectile_hits_spawner(failures: Array[String]) -> void:
 		failures.append("Projectile collision mask does not include the spawner layer.")
 	if (projectile.collision_mask & 32) == 0:
 		failures.append("Player projectile collision mask does not include the arena wall layer.")
+	if (projectile.collision_mask & 128) == 0:
+		failures.append("Player projectile collision mask does not include the non-contact agent boss layer.")
 	projectile._handle_target_hit(spawner)
 	if hit_count[0] != 1:
 		failures.append("Projectile did not emit hit_detected for a spawner target.")
@@ -3634,36 +3636,38 @@ func _test_agent_boss_generation_and_behavior(failures: Array[String]) -> void:
 	if generator == null or base_profile == null:
 		failures.append("Agent boss resources failed to load.")
 		return
-	var first_profile = generator.generate_profile(base_profile, 123456, 3, "boss_room")
-	var repeated_profile = generator.generate_profile(base_profile, 123456, 3, "boss_room")
-	var different_profile = generator.generate_profile(base_profile, 123457, 3, "boss_room")
+	var first_profile: EnemyProfile = generator.generate_profile(base_profile, 123456, 3, "boss_room")
+	var repeated_profile: EnemyProfile = generator.generate_profile(base_profile, 123456, 3, "boss_room")
+	var different_profile: EnemyProfile = generator.generate_profile(base_profile, 123457, 3, "boss_room")
 	if first_profile.agent_program == null:
 		failures.append("Generated boss profile should carry an agent program.")
 		return
-	var program = first_profile.agent_program
-	var repeated_program = repeated_profile.agent_program
-	if program.normal_movement_verb != repeated_program.normal_movement_verb or program.special_movement_verb != repeated_program.special_movement_verb or program.special_reposition_verb != repeated_program.special_reposition_verb or program.special_attack_verb != repeated_program.special_attack_verb:
+	var program: AgentBossProgram = first_profile.agent_program
+	var repeated_program: AgentBossProgram = repeated_profile.agent_program
+	if program.normal_movement_verb != repeated_program.normal_movement_verb or program.slow_attack_verb != repeated_program.slow_attack_verb or program.special_movement_verb != repeated_program.special_movement_verb or program.special_reposition_verb != repeated_program.special_reposition_verb or program.special_attack_verb != repeated_program.special_attack_verb:
 		failures.append("Agent boss generation should be deterministic for seed/floor/level id.")
 	if program.generation_seed == different_profile.agent_program.generation_seed:
 		failures.append("Agent boss generation should vary its deterministic seed when the run seed changes.")
 	if not ["strafe", "push_forward", "zig_zag", "pull_back"].has(String(program.normal_movement_verb)):
 		failures.append("Generated agent boss picked an unknown normal movement verb.")
+	if not ["fast_single", "short_scatter", "wide_scatter", "assault_burst"].has(String(program.slow_attack_verb)):
+		failures.append("Generated agent boss picked an unknown slow pressure attack verb.")
 	if not ["teleport_los", "dash_chain", "charge"].has(String(program.special_movement_verb)):
 		failures.append("Generated agent boss picked an unknown special movement verb.")
 	if not ["approach", "retreat", "strafe"].has(String(program.special_reposition_verb)):
 		failures.append("Generated agent boss picked an unknown special reposition verb.")
 	if not ["rocket", "minigun_sweep_twice", "spiral_clockwise", "spiral_counter_clockwise", "ring_pulse_three_waves", "pinwheel_burst"].has(String(program.special_attack_verb)):
 		failures.append("Generated agent boss picked an unknown special attack verb.")
-	if not is_equal_approx(float(program.slow_action_weight), 0.45) or not is_equal_approx(float(program.normal_action_weight), 0.45) or not is_equal_approx(float(program.special_action_weight), 0.1):
-		failures.append("Agent boss default action weights should stay at 45/45/10.")
+	if not is_equal_approx(float(program.slow_action_weight), 0.33) or not is_equal_approx(float(program.normal_action_weight), 0.33) or not is_equal_approx(float(program.special_action_weight), 0.33):
+		failures.append("Agent boss default action weights should stay at 33/33/33 before special cooldown gating.")
 	var player = load("res://scenes/entities/player_entity.tscn").instantiate()
 	var player_radius: float = float(player.body_radius)
 	if float(first_profile.body_radius) < player_radius * 0.94 or float(first_profile.body_radius) > player_radius * 1.13:
 		failures.append("Generated agent boss body radius should stay in the player-sized variation range.")
 	if is_equal_approx(float(first_profile.body_radius), float(different_profile.body_radius)):
 		failures.append("Generated agent boss body radius should vary across generated loadouts.")
-	if float(first_profile.contact_radius) > float(player.body_radius) * 1.6:
-		failures.append("Generated agent boss contact radius should stay player-scaled.")
+	if int(first_profile.contact_damage) != 0 or float(first_profile.contact_radius) != 0.0:
+		failures.append("Generated agent boss profile should not deal contact damage.")
 	player.free()
 
 	var boss = load("res://scenes/entities/enemy_entity.tscn").instantiate()
@@ -3671,6 +3675,8 @@ func _test_agent_boss_generation_and_behavior(failures: Array[String]) -> void:
 	boss.set_arena_definition(Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0)), 0, [], [], [])
 	if not boss._is_agent_boss():
 		failures.append("Generated profile should enable agent boss behavior.")
+	if int(boss.contact_damage) != 0 or (int(boss.collision_mask) & 1) != 0 or (int(boss.collision_layer) & 128) == 0:
+		failures.append("Agent boss entity should not deal contact damage or hard-collide with the player body.")
 	var shot_configs: Array[Dictionary] = []
 	boss.shot_ready.connect(func(_enemy, _origin, _direction, shot_config) -> void:
 		shot_configs.append(shot_config)
@@ -3679,6 +3685,7 @@ func _test_agent_boss_generation_and_behavior(failures: Array[String]) -> void:
 	boss._try_emit_agent_standard_shot(Vector2.RIGHT * 300.0, 0.4, 390.0, 1, 4.7)
 	if shot_configs.is_empty() or String(shot_configs[0].get("kind", "")) != "hostile" or int(shot_configs[0].get("projectile_count", 0)) != 1:
 		failures.append("Agent slow/normal shots should emit single hostile shot configs.")
+	_test_agent_slow_pressure_variants(failures, boss)
 	for attack_verb in ["rocket", "minigun_sweep_twice", "spiral_clockwise", "ring_pulse_three_waves", "pinwheel_burst"]:
 		boss.agent_program.special_attack_verb = attack_verb
 		boss._emit_agent_special_attack(Vector2.RIGHT * 360.0)
@@ -3702,9 +3709,71 @@ func _test_agent_boss_generation_and_behavior(failures: Array[String]) -> void:
 	if not saw_rocket or not saw_minigun or not saw_spiral or not saw_pulse or not saw_pinwheel:
 		failures.append("Agent specials should emit rocket, double-sweep minigun, spiral, pulse, and pinwheel shot configs.")
 	boss.free()
+	_test_agent_contact_disabled(failures, first_profile)
 	_test_agent_push_pull_pathing(failures, first_profile)
 	_test_agent_special_reposition(failures, first_profile)
 	_test_agent_teleport_cast_and_charge_special(failures, first_profile)
+	_test_agent_special_cooldown_and_chain(failures, first_profile)
+
+
+func _test_agent_slow_pressure_variants(failures: Array[String], boss: EnemyEntity) -> void:
+	var emitted_kinds: Dictionary = {}
+	var scatter_projectile_count := [0]
+	var assault_shot_count := [0]
+	boss.shot_ready.connect(func(_enemy, _origin, _direction, shot_config) -> void:
+		var kind: String = String(shot_config.get("kind", ""))
+		emitted_kinds[kind] = int(emitted_kinds.get(kind, 0)) + 1
+		if kind == "hostile_scatter":
+			scatter_projectile_count[0] = max(scatter_projectile_count[0], int(shot_config.get("projectile_count", 0)))
+		if kind == "hostile_assault":
+			assault_shot_count[0] += 1
+	)
+	var slow_attack_verbs: Array[String] = ["fast_single", "short_scatter", "wide_scatter", "assault_burst"]
+	for slow_attack_verb in slow_attack_verbs:
+		boss.agent_program.slow_attack_verb = slow_attack_verb
+		boss._agent_next_shot_remaining = 0.0
+		boss._clear_agent_slow_fire_state()
+		boss._update_agent_slow_pressure_shots(Vector2.RIGHT * 320.0)
+		if slow_attack_verb == "assault_burst":
+			boss._agent_burst_interval_remaining = 0.0
+			boss._update_agent_slow_pressure_shots(Vector2.RIGHT * 320.0)
+			boss._agent_burst_interval_remaining = 0.0
+			boss._update_agent_slow_pressure_shots(Vector2.RIGHT * 320.0)
+	if int(emitted_kinds.get("hostile", 0)) <= 0:
+		failures.append("Agent slow pressure fast-single variant should emit hostile single shots.")
+	if int(emitted_kinds.get("hostile_scatter", 0)) < 2 or scatter_projectile_count[0] <= 1:
+		failures.append("Agent slow pressure scatter variants should emit multi-projectile scatter shots.")
+	if assault_shot_count[0] < 3:
+		failures.append("Agent slow pressure assault-burst variant should emit sequential automatic fire.")
+
+
+func _test_agent_contact_disabled(failures: Array[String], base_agent_profile) -> void:
+	var enemy_layer := Node2D.new()
+	var manager: EnemyManager = load("res://scripts/managers/enemy_manager.gd").new()
+	var player: PlayerEntity = load("res://scenes/entities/player_entity.tscn").instantiate() as PlayerEntity
+	var contact_count := [0]
+	root.add_child(enemy_layer)
+	root.add_child(player)
+	root.add_child(manager)
+	player.global_position = Vector2.ZERO
+	manager.initialize({
+		"enemy_layer": enemy_layer,
+		"player_position_provider": func() -> Vector2:
+			return player.global_position,
+		"player_ref_provider": func():
+			return player
+	})
+	manager.set_enabled(true)
+	manager.player_contact_requested.connect(func(_enemy, _player, _damage) -> void:
+		contact_count[0] += 1
+	)
+	manager.spawn_enemy(base_agent_profile, Vector2.ZERO)
+	manager._physics_process(0.2)
+	if contact_count[0] != 0:
+		failures.append("Agent bosses should not request player contact damage while overlapping the player.")
+	manager.free()
+	player.free()
+	enemy_layer.free()
 
 
 func _test_agent_push_pull_pathing(failures: Array[String], base_agent_profile) -> void:
@@ -3794,6 +3863,52 @@ func _test_agent_teleport_cast_and_charge_special(failures: Array[String], base_
 	if minigun_shots[0] <= 0:
 		failures.append("Agent charge should fire stream specials during movement.")
 	charge_boss.free()
+
+
+func _test_agent_special_cooldown_and_chain(failures: Array[String], base_agent_profile) -> void:
+	var cooldown_profile: EnemyProfile = base_agent_profile.duplicate(true) as EnemyProfile
+	cooldown_profile.agent_program.special_base_cooldown_seconds = 2.4
+	cooldown_profile.agent_program.special_chain_cooldown_bonus_seconds = 1.1
+	cooldown_profile.agent_program.special_chain_chance = 0.0
+	var cooldown_boss: EnemyEntity = load("res://scenes/entities/enemy_entity.tscn").instantiate() as EnemyEntity
+	cooldown_boss.initialize(cooldown_profile)
+	cooldown_boss.set_arena_definition(Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0)), 0, [], [], [])
+	cooldown_boss._agent_special_chain_count = 1
+	cooldown_boss._agent_special_attack_emitted = true
+	cooldown_boss._finish_agent_special_action()
+	if cooldown_boss._agent_special_cooldown_remaining < 2.39 or cooldown_boss._agent_special_cooldown_remaining > 2.41:
+		failures.append("Agent special should enter its base cooldown after one completed special.")
+	cooldown_boss.agent_program.slow_action_weight = 0.0
+	cooldown_boss.agent_program.normal_action_weight = 0.0
+	cooldown_boss.agent_program.special_action_weight = 0.33
+	cooldown_boss._start_next_agent_action(Vector2.RIGHT * 320.0)
+	if cooldown_boss._agent_action_kind == "special":
+		failures.append("Agent action selection should gate specials while cooldown is active.")
+	cooldown_boss.free()
+
+	var chain_profile: EnemyProfile = base_agent_profile.duplicate(true) as EnemyProfile
+	chain_profile.agent_program.special_movement_verb = "dash_chain"
+	chain_profile.agent_program.special_chain_chance = 1.0
+	chain_profile.agent_program.special_chain_chance_decay = 0.0
+	chain_profile.agent_program.max_special_chain_count = 3
+	chain_profile.agent_program.special_base_cooldown_seconds = 2.0
+	chain_profile.agent_program.special_chain_cooldown_bonus_seconds = 1.5
+	var chain_boss: EnemyEntity = load("res://scenes/entities/enemy_entity.tscn").instantiate() as EnemyEntity
+	chain_boss.initialize(chain_profile)
+	chain_boss.global_position = Vector2.ZERO
+	chain_boss.target_position = Vector2.RIGHT * 360.0
+	chain_boss.set_arena_definition(Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0)), 0, [], [], [])
+	chain_boss._agent_special_chain_count = 1
+	chain_boss._agent_special_attack_emitted = true
+	chain_boss._finish_agent_special_action()
+	if chain_boss._agent_action_kind != "special" or chain_boss._agent_special_chain_count != 2:
+		failures.append("Agent special should be able to immediately chain into a second movement plus special combo.")
+	chain_boss._agent_special_chain_count = 3
+	chain_boss._agent_special_attack_emitted = true
+	chain_boss._finish_agent_special_action()
+	if chain_boss._agent_special_cooldown_remaining < 4.99 or chain_boss._agent_special_cooldown_remaining > 5.01:
+		failures.append("Agent special chain should apply a longer cooldown after the maximum chain count.")
+	chain_boss.free()
 
 
 func _test_boss_add_replenishment(failures: Array[String]) -> void:

@@ -6,6 +6,11 @@ const NORMAL_PUSH_FORWARD := "push_forward"
 const NORMAL_ZIG_ZAG := "zig_zag"
 const NORMAL_PULL_BACK := "pull_back"
 
+const SLOW_ATTACK_FAST_SINGLE := "fast_single"
+const SLOW_ATTACK_SHORT_SCATTER := "short_scatter"
+const SLOW_ATTACK_WIDE_SCATTER := "wide_scatter"
+const SLOW_ATTACK_ASSAULT_BURST := "assault_burst"
+
 const SPECIAL_MOVEMENT_TELEPORT_LOS := "teleport_los"
 const SPECIAL_MOVEMENT_DASH_CHAIN := "dash_chain"
 const SPECIAL_MOVEMENT_CHARGE := "charge"
@@ -26,6 +31,8 @@ const SPECIAL_ATTACK_PINWHEEL_BURST := "pinwheel_burst"
 @export var generation_seed: int = 1
 ## Controls which tactical movement verb the agent uses during normal actions.
 @export_enum("strafe", "push_forward", "zig_zag", "pull_back") var normal_movement_verb: String = NORMAL_STRAFE
+## Controls which weapon pattern the agent uses during slow pressure.
+@export_enum("fast_single", "short_scatter", "wide_scatter", "assault_burst") var slow_attack_verb: String = SLOW_ATTACK_FAST_SINGLE
 ## Controls which fast movement setup the agent uses before its special attack.
 @export_enum("teleport_los", "dash_chain", "charge") var special_movement_verb: String = SPECIAL_MOVEMENT_TELEPORT_LOS
 ## Controls whether special movement approaches, retreats, or strafes around the player.
@@ -33,11 +40,11 @@ const SPECIAL_ATTACK_PINWHEEL_BURST := "pinwheel_burst"
 ## Controls which hostile special attack the agent uses after its special movement.
 @export_enum("rocket", "minigun_sweep_twice", "spiral_clockwise", "spiral_counter_clockwise", "ring_pulse_three_waves", "pinwheel_burst") var special_attack_verb: String = SPECIAL_ATTACK_RING_PULSE
 ## Weighted chance for slow pressure actions after the current action completes.
-@export var slow_action_weight: float = 0.45
+@export var slow_action_weight: float = 0.33
 ## Weighted chance for normal movement actions after the current action completes.
-@export var normal_action_weight: float = 0.45
+@export var normal_action_weight: float = 0.33
 ## Weighted chance for special movement and special attack actions after the current action completes.
-@export var special_action_weight: float = 0.1
+@export var special_action_weight: float = 0.33
 ## Controls the generated agent's collision and visual body size; defaults to the player body radius.
 @export var body_radius: float = 17.0
 ## Controls the generated agent's contact hit range; player-body overlap still adds both body radii.
@@ -58,6 +65,30 @@ const SPECIAL_ATTACK_PINWHEEL_BURST := "pinwheel_burst"
 @export var slow_projectile_speed: float = 390.0
 ## Controls hostile projectile radius during slow pressure.
 @export var slow_projectile_radius: float = 4.7
+## Controls how long short scatter slow-pressure bullets stay alive.
+@export var slow_short_scatter_lifetime: float = 0.72
+## Controls how quickly the short scatter slow-pressure pattern fires.
+@export var slow_short_scatter_cooldown: float = 0.58
+## Controls how many bullets the short scatter slow-pressure pattern fires.
+@export var slow_short_scatter_projectile_count: int = 4
+## Controls the spread width of the short scatter slow-pressure pattern.
+@export var slow_short_scatter_degrees: float = 34.0
+## Controls how long wide scatter slow-pressure bullets stay alive.
+@export var slow_wide_scatter_lifetime: float = 0.62
+## Controls how quickly the wide scatter slow-pressure pattern fires.
+@export var slow_wide_scatter_cooldown: float = 0.74
+## Controls how many bullets the wide scatter slow-pressure pattern fires.
+@export var slow_wide_scatter_projectile_count: int = 7
+## Controls the spread width of the wide scatter slow-pressure pattern.
+@export var slow_wide_scatter_degrees: float = 82.0
+## Controls how quickly the assault burst slow-pressure pattern starts another burst.
+@export var slow_assault_burst_cooldown: float = 0.82
+## Controls how many bullets are emitted by one assault burst.
+@export var slow_assault_burst_count: int = 3
+## Controls the delay between individual assault burst bullets.
+@export var slow_assault_burst_interval: float = 0.075
+## Controls how long assault burst bullets stay alive.
+@export var slow_assault_burst_lifetime: float = 1.05
 ## Controls how long the normal movement action lasts before choosing a new action.
 @export var normal_action_seconds: float = 1.7
 ## Controls how quickly the agent moves during its selected normal verb.
@@ -76,6 +107,16 @@ const SPECIAL_ATTACK_PINWHEEL_BURST := "pinwheel_burst"
 @export var special_move_distance: float = 330.0
 ## Controls how long teleport warns before the agent relocates.
 @export var teleport_cast_seconds: float = 0.42
+## Controls the normal cooldown after one special movement plus special attack.
+@export var special_base_cooldown_seconds: float = 2.8
+## Adds cooldown for each extra chained special beyond the first.
+@export var special_chain_cooldown_bonus_seconds: float = 1.65
+## Controls the chance to immediately chain another special after one completes.
+@export var special_chain_chance: float = 0.44
+## Reduces chain chance for each already completed chained special.
+@export var special_chain_chance_decay: float = 0.18
+## Controls the maximum number of special movement plus special attack combos in one chain.
+@export var max_special_chain_count: int = 3
 ## Controls how quickly dash-chain movement crosses each selected lane.
 @export var dash_speed: float = 560.0
 ## Controls how many valid dash endpoints the dash-chain verb attempts before the special.
