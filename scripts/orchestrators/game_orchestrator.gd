@@ -1187,6 +1187,19 @@ func _set_room_combat_active(value: bool) -> void:
 	combat_manager.set_enabled(value)
 
 
+func _get_opposite_direction(direction: String) -> String:
+	match direction:
+		"north":
+			return "south"
+		"south":
+			return "north"
+		"east":
+			return "west"
+		"west":
+			return "east"
+	return ""
+
+
 func _set_cleared_floor_map_active(value: bool) -> void:
 	_is_cleared_floor_map_active = value
 	if value and _is_room_entry_transition_active:
@@ -1899,6 +1912,8 @@ func _load_room_entry_transition(player_position: Vector2) -> bool:
 		spawner_manager.reset_run(level_definition)
 	destructible_manager.reset_run(level_definition)
 	room_manager.load_room(level_definition, dungeon_manager.get_full_floor_current_door_infos(), room_is_cleared)
+	if not room_is_cleared:
+		room_manager.set_only_door_unlocked(_get_opposite_direction(_entry_transition_entry_direction))
 	_sync_gate_blockers_into_actors()
 	if not room_is_cleared:
 		_preload_pending_initial_spawner_enemies()
@@ -1907,7 +1922,8 @@ func _load_room_entry_transition(player_position: Vector2) -> bool:
 		if _is_main_loop_run and dungeon_manager.is_current_boss_room():
 			_show_boss_exit_portal_preview(level_definition)
 	_set_room_combat_active(false)
-	room_manager.set_doors_unlocked(room_is_cleared)
+	if not room_is_cleared:
+		room_manager.set_only_door_unlocked(_get_opposite_direction(_entry_transition_entry_direction))
 	_set_cleared_floor_map_active(false)
 	player_manager.set_player_position(player_position)
 	_sync_gate_blockers_into_actors()

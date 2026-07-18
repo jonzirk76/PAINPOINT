@@ -63,6 +63,14 @@ func set_doors_unlocked(value: bool) -> void:
 			door.set_unlocked(value)
 
 
+func set_only_door_unlocked(unlocked_direction: String) -> void:
+	for door_node in _doors:
+		var door: DoorEntity = door_node as DoorEntity
+		if door == null or not is_instance_valid(door):
+			continue
+		door.set_unlocked(door.direction == unlocked_direction)
+
+
 func get_door_count() -> int:
 	return _doors.size()
 
