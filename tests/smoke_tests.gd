@@ -3704,6 +3704,7 @@ func _test_agent_boss_generation_and_behavior(failures: Array[String]) -> void:
 	boss.free()
 	_test_agent_push_pull_pathing(failures, first_profile)
 	_test_agent_special_reposition(failures, first_profile)
+	_test_agent_teleport_cast_and_charge_special(failures, first_profile)
 
 
 func _test_agent_push_pull_pathing(failures: Array[String], base_agent_profile) -> void:
@@ -3747,6 +3748,52 @@ func _test_agent_special_reposition(failures: Array[String], base_agent_profile)
 		elif reposition_verb == "strafe" and abs(target.y - boss.global_position.y) <= abs(target.x - boss.global_position.x):
 			failures.append("Agent strafe special reposition should prefer lateral movement.")
 		boss.free()
+
+
+func _test_agent_teleport_cast_and_charge_special(failures: Array[String], base_agent_profile) -> void:
+	var teleport_profile = base_agent_profile.duplicate(true)
+	teleport_profile.agent_program.special_movement_verb = "teleport_los"
+	teleport_profile.agent_program.special_reposition_verb = "retreat"
+	teleport_profile.agent_program.teleport_cast_seconds = 0.24
+	var teleport_boss = load("res://scenes/entities/enemy_entity.tscn").instantiate()
+	teleport_boss.initialize(teleport_profile)
+	teleport_boss.global_position = Vector2.ZERO
+	teleport_boss.target_position = Vector2.RIGHT * 360.0
+	teleport_boss.set_arena_definition(Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0)), 0, [], [], [])
+	teleport_boss._start_agent_special_movement(Vector2.RIGHT * 360.0)
+	if teleport_boss.global_position != Vector2.ZERO:
+		failures.append("Agent teleport should cast before relocating.")
+	if teleport_boss._agent_teleport_target == Vector2.INF or teleport_boss._agent_teleport_cast_remaining <= 0.0:
+		failures.append("Agent teleport should expose a visible cast destination before moving.")
+	teleport_boss._update_agent_teleport_cast(0.3, Vector2.RIGHT * 360.0)
+	if teleport_boss.global_position == Vector2.ZERO:
+		failures.append("Agent teleport should relocate after the cast completes.")
+	if teleport_boss._agent_special_stage != "telegraph":
+		failures.append("Agent teleport should transition into special telegraph after relocating.")
+	teleport_boss.free()
+
+	var charge_profile = base_agent_profile.duplicate(true)
+	charge_profile.agent_program.special_movement_verb = "charge"
+	charge_profile.agent_program.special_attack_verb = "minigun_sweep_twice"
+	charge_profile.agent_program.charge_windup_seconds = 0.05
+	charge_profile.agent_program.charge_seconds = 0.5
+	var charge_boss = load("res://scenes/entities/enemy_entity.tscn").instantiate()
+	charge_boss.initialize(charge_profile)
+	charge_boss.global_position = Vector2.ZERO
+	charge_boss.target_position = Vector2.RIGHT * 360.0
+	charge_boss.set_arena_definition(Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0)), 0, [], [], [])
+	var minigun_shots := [0]
+	charge_boss.shot_ready.connect(func(_enemy, _origin, _direction, shot_config) -> void:
+		if String(shot_config.get("kind", "")) == "hostile_minigun":
+			minigun_shots[0] += 1
+	)
+	charge_boss._start_agent_charge(Vector2.RIGHT * 360.0)
+	var charge_velocity: Vector2 = charge_boss._update_agent_charge(0.12, Vector2.RIGHT * 360.0)
+	if charge_velocity.length_squared() <= 0.001:
+		failures.append("Agent charge should keep moving while firing its special.")
+	if minigun_shots[0] <= 0:
+		failures.append("Agent charge should fire stream specials during movement.")
+	charge_boss.free()
 
 
 func _test_boss_add_replenishment(failures: Array[String]) -> void:

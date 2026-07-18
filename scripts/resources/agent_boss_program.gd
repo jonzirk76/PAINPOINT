@@ -74,6 +74,8 @@ const SPECIAL_ATTACK_PINWHEEL_BURST := "pinwheel_burst"
 @export var special_telegraph_seconds: float = 0.58
 ## Controls how far teleport and dash setup moves can travel.
 @export var special_move_distance: float = 330.0
+## Controls how long teleport warns before the agent relocates.
+@export var teleport_cast_seconds: float = 0.42
 ## Controls how quickly dash-chain movement crosses each selected lane.
 @export var dash_speed: float = 560.0
 ## Controls how many valid dash endpoints the dash-chain verb attempts before the special.

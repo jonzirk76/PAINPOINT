@@ -26,6 +26,7 @@ const AGENT_ACTION_SLOW := "slow_pressure"
 const AGENT_ACTION_NORMAL := "normal"
 const AGENT_ACTION_SPECIAL := "special"
 const AGENT_SPECIAL_STAGE_MOVE := "move"
+const AGENT_SPECIAL_STAGE_TELEPORT_CAST := "teleport_cast"
 const AGENT_SPECIAL_STAGE_TELEGRAPH := "telegraph"
 const AGENT_SPECIAL_STAGE_STREAM := "stream"
 
@@ -103,6 +104,9 @@ var _agent_zigzag_sign: float = 1.0
 var _agent_special_stage: String = ""
 var _agent_special_telegraph_remaining: float = 0.0
 var _agent_special_telegraph_duration: float = 0.58
+var _agent_teleport_target: Vector2 = Vector2.INF
+var _agent_teleport_cast_remaining: float = 0.0
+var _agent_teleport_cast_duration: float = 0.0
 var _agent_dash_target: Vector2 = Vector2.ZERO
 var _agent_dash_steps_remaining: int = 0
 var _agent_charge_direction: Vector2 = Vector2.RIGHT
@@ -380,6 +384,8 @@ func _draw() -> void:
 		_draw_enemy_character_art(draw_color)
 	if is_projectile_shield_active() or _projectile_shield_block_flash_remaining > 0.0:
 		_draw_projectile_shield()
+	if _is_agent_boss() and _agent_teleport_cast_remaining > 0.0:
+		_draw_agent_teleport_cast()
 	if _is_agent_boss() and (_agent_special_telegraph_remaining > 0.0 or _agent_charge_remaining > 0.0):
 		_draw_agent_special_telegraph()
 	elif _boss_special_telegraph_remaining > 0.0:
@@ -671,6 +677,26 @@ func _draw_agent_special_stream() -> void:
 	draw_circle(direction * (body_radius + 33.0), 4.5 + pulse * 2.0, Color(1.0, 0.82, 0.16, 0.74))
 
 
+func _draw_agent_teleport_cast() -> void:
+	if _agent_teleport_target == Vector2.INF:
+		return
+	var duration: float = max(_agent_teleport_cast_duration, 0.001)
+	var progress: float = 1.0 - clamp(_agent_teleport_cast_remaining / duration, 0.0, 1.0)
+	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.06)
+	var destination: Vector2 = _agent_teleport_target - global_position
+	var cast_color: Color = _get_agent_accent_color(0.82)
+	draw_circle(Vector2.ZERO, body_radius + 16.0 + progress * 18.0, Color(cast_color.r, cast_color.g, cast_color.b, 0.08 + pulse * 0.08))
+	draw_arc(Vector2.ZERO, body_radius + 18.0 + progress * 18.0, -PI * 0.5, -PI * 0.5 + TAU * progress, 54, cast_color, 4.0)
+	draw_line(Vector2.ZERO, destination, Color(cast_color.r, cast_color.g, cast_color.b, 0.22 + progress * 0.24), 2.0)
+	var marker_radius: float = body_radius + 18.0 + pulse * 5.0
+	draw_circle(destination, marker_radius, Color(cast_color.r, cast_color.g, cast_color.b, 0.08 + progress * 0.12))
+	draw_arc(destination, marker_radius, progress * TAU, progress * TAU + TAU * 0.86, 60, Color(1.0, 0.94, 0.35, 0.82), 4.0)
+	draw_arc(destination, marker_radius + 10.0, -progress * TAU, -progress * TAU + TAU * 0.64, 50, Color(0.42, 1.0, 1.0, 0.62), 3.0)
+	for index in range(4):
+		var direction: Vector2 = Vector2.RIGHT.rotated(TAU * float(index) / 4.0 + progress * TAU * 0.5)
+		draw_line(destination + direction * (marker_radius - 7.0), destination + direction * (marker_radius + 11.0), Color(1.0, 1.0, 0.75, 0.68), 2.4)
+
+
 func _draw_boss_special_telegraph() -> void:
 	var progress: float = 1.0 - clamp(_boss_special_telegraph_remaining / max(_boss_special_telegraph_duration, 0.001), 0.0, 1.0)
 	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.045)
@@ -748,6 +774,9 @@ func _configure_agent_boss_state() -> void:
 	_agent_tactical_target = Vector2.INF
 	_agent_special_stage = ""
 	_agent_special_telegraph_remaining = 0.0
+	_agent_teleport_target = Vector2.INF
+	_agent_teleport_cast_remaining = 0.0
+	_agent_teleport_cast_duration = 0.0
 	_agent_stream_remaining = 0.0
 	_agent_stream_elapsed = 0.0
 	_agent_stream_next_shot_remaining = 0.0
@@ -765,6 +794,11 @@ func _update_agent_boss(delta: float, to_target: Vector2) -> Vector2:
 		return Vector2.ZERO
 	if _agent_shoot_pose_remaining > 0.0:
 		_agent_shoot_pose_remaining = max(_agent_shoot_pose_remaining - delta, 0.0)
+	if _agent_charge_remaining > 0.0:
+		return _update_agent_charge(delta, to_target)
+	if _agent_special_stage == AGENT_SPECIAL_STAGE_TELEPORT_CAST:
+		_update_agent_teleport_cast(delta, to_target)
+		return Vector2.ZERO
 	if _agent_stream_remaining > 0.0:
 		_update_agent_special_stream(delta)
 		return Vector2.ZERO
@@ -777,8 +811,6 @@ func _update_agent_boss(delta: float, to_target: Vector2) -> Vector2:
 				_finish_agent_action()
 		queue_redraw()
 		return Vector2.ZERO
-	if _agent_charge_remaining > 0.0:
-		return _update_agent_charge(delta, to_target)
 	if _agent_special_stage == AGENT_SPECIAL_STAGE_MOVE and _get_agent_special_movement_verb() == AgentBossProgram.SPECIAL_MOVEMENT_DASH_CHAIN:
 		return _update_agent_dash_chain(delta, to_target)
 	if _agent_action_remaining <= 0.0 or _agent_action_kind.is_empty():
@@ -834,6 +866,9 @@ func _finish_agent_action() -> void:
 	_agent_tactical_target = Vector2.INF
 	_agent_special_stage = ""
 	_agent_special_telegraph_remaining = 0.0
+	_agent_teleport_target = Vector2.INF
+	_agent_teleport_cast_remaining = 0.0
+	_agent_teleport_cast_duration = 0.0
 	_agent_dash_steps_remaining = 0
 	_agent_charge_remaining = 0.0
 	_agent_charge_elapsed = 0.0
@@ -842,6 +877,7 @@ func _finish_agent_action() -> void:
 	_agent_stream_remaining = 0.0
 	_agent_stream_elapsed = 0.0
 	_agent_stream_next_shot_remaining = 0.0
+	_agent_stream_wave_index = 0
 
 
 func _get_agent_slow_velocity(to_target: Vector2) -> Vector2:
@@ -924,9 +960,9 @@ func _start_agent_special_movement(to_target: Vector2) -> void:
 		AgentBossProgram.SPECIAL_MOVEMENT_TELEPORT_LOS:
 			var teleport_target: Vector2 = _pick_agent_los_point(to_target)
 			if teleport_target != Vector2.INF:
-				global_position = _constrain_to_playable(teleport_target)
-				_invalidate_path_cache()
-			_start_agent_special_telegraph(to_target)
+				_start_agent_teleport_cast(teleport_target, to_target)
+			else:
+				_start_agent_special_telegraph(to_target)
 		AgentBossProgram.SPECIAL_MOVEMENT_CHARGE:
 			_start_agent_charge(to_target)
 		_:
@@ -939,6 +975,32 @@ func _update_agent_special_movement(_delta: float, to_target: Vector2) -> Vector
 	if _agent_special_stage.is_empty():
 		_start_agent_special_movement(to_target)
 	return Vector2.ZERO
+
+
+func _start_agent_teleport_cast(teleport_target: Vector2, to_target: Vector2) -> void:
+	_agent_special_stage = AGENT_SPECIAL_STAGE_TELEPORT_CAST
+	_agent_teleport_target = teleport_target
+	_agent_teleport_cast_duration = max(float(agent_program.teleport_cast_seconds), 0.08)
+	_agent_teleport_cast_remaining = _agent_teleport_cast_duration
+	_agent_aim_at_target(to_target)
+	activate_projectile_shield(_agent_teleport_cast_duration + 0.12)
+	queue_redraw()
+
+
+func _update_agent_teleport_cast(delta: float, to_target: Vector2) -> void:
+	if _agent_teleport_target == Vector2.INF:
+		_start_agent_special_telegraph(to_target)
+		return
+	_agent_teleport_cast_remaining = max(_agent_teleport_cast_remaining - delta, 0.0)
+	_agent_aim_at_target(to_target)
+	if _agent_teleport_cast_remaining > 0.0:
+		queue_redraw()
+		return
+	global_position = _constrain_to_playable(_agent_teleport_target)
+	_agent_teleport_target = Vector2.INF
+	_agent_teleport_cast_duration = 0.0
+	_invalidate_path_cache()
+	_start_agent_special_telegraph(target_position - global_position)
 
 
 func _pick_agent_los_point(to_target: Vector2) -> Vector2:
@@ -1064,11 +1126,18 @@ func _update_agent_charge(delta: float, to_target: Vector2) -> Vector2:
 	if not _agent_charge_special_fired:
 		_emit_agent_special_attack(to_target)
 		_agent_charge_special_fired = true
+	if _agent_stream_remaining > 0.0:
+		_update_agent_special_stream(delta)
 	if _path_blocks_segment(global_position, global_position + _agent_charge_direction * 42.0, body_radius * 0.65):
 		_finish_agent_action()
 		return Vector2.ZERO
 	if _agent_charge_remaining <= 0.0:
-		_finish_agent_action()
+		_agent_charge_elapsed = 0.0
+		_agent_charge_special_fired = false
+		if _agent_stream_remaining > 0.0:
+			_agent_special_stage = AGENT_SPECIAL_STAGE_STREAM
+		else:
+			_finish_agent_action()
 		return Vector2.ZERO
 	return _agent_charge_direction.normalized() * max(float(agent_program.charge_speed), 100.0)
 
@@ -1190,7 +1259,7 @@ func _update_agent_special_stream(delta: float) -> void:
 		_agent_stream_next_shot_remaining += interval
 		emitted_count += 1
 	if _agent_stream_remaining <= 0.0:
-		_finish_agent_action()
+		_finish_agent_stream_or_action()
 	queue_redraw()
 
 
@@ -1206,7 +1275,7 @@ func _update_agent_ring_pulse_stream() -> void:
 	if _agent_stream_wave_index >= wave_count:
 		_agent_stream_remaining = 0.0
 	if _agent_stream_remaining <= 0.0:
-		_finish_agent_action()
+		_finish_agent_stream_or_action()
 	queue_redraw()
 
 
@@ -1222,8 +1291,24 @@ func _update_agent_pinwheel_stream() -> void:
 	if _agent_stream_wave_index >= wave_count:
 		_agent_stream_remaining = 0.0
 	if _agent_stream_remaining <= 0.0:
-		_finish_agent_action()
+		_finish_agent_stream_or_action()
 	queue_redraw()
+
+
+func _finish_agent_stream_or_action() -> void:
+	if _agent_charge_remaining > 0.0:
+		_clear_agent_stream_state()
+		_agent_special_stage = AGENT_SPECIAL_STAGE_MOVE
+	else:
+		_finish_agent_action()
+
+
+func _clear_agent_stream_state() -> void:
+	_agent_stream_kind = ""
+	_agent_stream_remaining = 0.0
+	_agent_stream_elapsed = 0.0
+	_agent_stream_next_shot_remaining = 0.0
+	_agent_stream_wave_index = 0
 
 
 func _emit_agent_ring_pulse_wave(wave_index: int) -> void:
