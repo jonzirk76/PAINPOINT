@@ -10,11 +10,17 @@ const SPECIAL_MOVEMENT_TELEPORT_LOS := "teleport_los"
 const SPECIAL_MOVEMENT_DASH_CHAIN := "dash_chain"
 const SPECIAL_MOVEMENT_CHARGE := "charge"
 
+const SPECIAL_REPOSITION_APPROACH := "approach"
+const SPECIAL_REPOSITION_RETREAT := "retreat"
+const SPECIAL_REPOSITION_STRAFE := "strafe"
+
 const SPECIAL_ATTACK_SMALL_FAST_BULLET := "small_fast_bullet"
 const SPECIAL_ATTACK_ROCKET := "rocket"
 const SPECIAL_ATTACK_MINIGUN_SWEEP_TWICE := "minigun_sweep_twice"
 const SPECIAL_ATTACK_SPIRAL_CLOCKWISE := "spiral_clockwise"
 const SPECIAL_ATTACK_SPIRAL_COUNTER_CLOCKWISE := "spiral_counter_clockwise"
+const SPECIAL_ATTACK_RING_PULSE := "ring_pulse_three_waves"
+const SPECIAL_ATTACK_PINWHEEL_BURST := "pinwheel_burst"
 
 ## Records the deterministic seed used to build this agent loadout.
 @export var generation_seed: int = 1
@@ -22,8 +28,10 @@ const SPECIAL_ATTACK_SPIRAL_COUNTER_CLOCKWISE := "spiral_counter_clockwise"
 @export_enum("strafe", "push_forward", "zig_zag", "pull_back") var normal_movement_verb: String = NORMAL_STRAFE
 ## Controls which fast movement setup the agent uses before its special attack.
 @export_enum("teleport_los", "dash_chain", "charge") var special_movement_verb: String = SPECIAL_MOVEMENT_TELEPORT_LOS
+## Controls whether special movement approaches, retreats, or strafes around the player.
+@export_enum("approach", "retreat", "strafe") var special_reposition_verb: String = SPECIAL_REPOSITION_APPROACH
 ## Controls which hostile special attack the agent uses after its special movement.
-@export_enum("small_fast_bullet", "rocket", "minigun_sweep_twice", "spiral_clockwise", "spiral_counter_clockwise") var special_attack_verb: String = SPECIAL_ATTACK_SMALL_FAST_BULLET
+@export_enum("rocket", "minigun_sweep_twice", "spiral_clockwise", "spiral_counter_clockwise", "ring_pulse_three_waves", "pinwheel_burst") var special_attack_verb: String = SPECIAL_ATTACK_RING_PULSE
 ## Weighted chance for slow pressure actions after the current action completes.
 @export var slow_action_weight: float = 0.45
 ## Weighted chance for normal movement actions after the current action completes.
@@ -90,6 +98,22 @@ const SPECIAL_ATTACK_SPIRAL_COUNTER_CLOCKWISE := "spiral_counter_clockwise"
 @export var spiral_shot_interval: float = 0.075
 ## Controls how many rotations the spiral spray completes.
 @export var spiral_rotations: float = 1.55
+## Controls how many radial waves the ring pulse emits.
+@export var pulse_wave_count: int = 3
+## Controls how many bullets are emitted in each ring pulse wave.
+@export var pulse_shots_per_wave: int = 24
+## Controls how long the ring pulse waits between radial waves.
+@export var pulse_wave_interval: float = 0.18
+## Controls how much each ring pulse wave rotates from the previous wave.
+@export var pulse_wave_rotation_degrees: float = 7.5
+## Controls how many rotating pinwheel bursts are emitted.
+@export var pinwheel_wave_count: int = 6
+## Controls how many spokes each pinwheel burst emits.
+@export var pinwheel_spoke_count: int = 6
+## Controls how long the pinwheel waits between spoke bursts.
+@export var pinwheel_wave_interval: float = 0.11
+## Controls how far each pinwheel burst rotates from the previous burst.
+@export var pinwheel_rotation_degrees: float = 18.0
 ## Controls how long the agent keeps its guns raised after firing.
 @export var shoot_pose_hold_seconds: float = 0.42
 
@@ -100,3 +124,7 @@ func get_total_action_weight() -> float:
 
 func is_spiral_attack() -> bool:
 	return special_attack_verb == SPECIAL_ATTACK_SPIRAL_CLOCKWISE or special_attack_verb == SPECIAL_ATTACK_SPIRAL_COUNTER_CLOCKWISE
+
+
+func is_stream_or_pattern_attack() -> bool:
+	return is_spiral_attack() or special_attack_verb == SPECIAL_ATTACK_MINIGUN_SWEEP_TWICE or special_attack_verb == SPECIAL_ATTACK_RING_PULSE or special_attack_verb == SPECIAL_ATTACK_PINWHEEL_BURST

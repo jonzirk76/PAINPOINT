@@ -3,6 +3,8 @@ class_name AgentBossGenerator
 
 const PLAYER_BODY_RADIUS := 17.0
 const PLAYER_SIZED_CONTACT_RADIUS := 24.0
+const MIN_BODY_SCALE := 0.95
+const MAX_BODY_SCALE := 1.12
 
 static func generate_profile(base_profile: Resource, run_seed: int, floor_number: int, level_id: String) -> EnemyProfile:
 	var profile: EnemyProfile = EnemyProfile.new()
@@ -31,8 +33,9 @@ static func generate_program(run_seed: int, floor_number: int, level_id: String)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
 	program.generation_seed = seed
-	program.body_radius = PLAYER_BODY_RADIUS
-	program.contact_radius = PLAYER_SIZED_CONTACT_RADIUS
+	var body_scale: float = rng.randf_range(MIN_BODY_SCALE, MAX_BODY_SCALE)
+	program.body_radius = PLAYER_BODY_RADIUS * body_scale
+	program.contact_radius = max(PLAYER_SIZED_CONTACT_RADIUS * body_scale, program.body_radius + 5.0)
 	program.normal_movement_verb = _pick_string(rng, [
 		AgentBossProgram.NORMAL_STRAFE,
 		AgentBossProgram.NORMAL_PUSH_FORWARD,
@@ -44,12 +47,18 @@ static func generate_program(run_seed: int, floor_number: int, level_id: String)
 		AgentBossProgram.SPECIAL_MOVEMENT_DASH_CHAIN,
 		AgentBossProgram.SPECIAL_MOVEMENT_CHARGE
 	])
+	program.special_reposition_verb = _pick_string(rng, [
+		AgentBossProgram.SPECIAL_REPOSITION_APPROACH,
+		AgentBossProgram.SPECIAL_REPOSITION_RETREAT,
+		AgentBossProgram.SPECIAL_REPOSITION_STRAFE
+	])
 	program.special_attack_verb = _pick_string(rng, [
-		AgentBossProgram.SPECIAL_ATTACK_SMALL_FAST_BULLET,
 		AgentBossProgram.SPECIAL_ATTACK_ROCKET,
 		AgentBossProgram.SPECIAL_ATTACK_MINIGUN_SWEEP_TWICE,
 		AgentBossProgram.SPECIAL_ATTACK_SPIRAL_CLOCKWISE,
-		AgentBossProgram.SPECIAL_ATTACK_SPIRAL_COUNTER_CLOCKWISE
+		AgentBossProgram.SPECIAL_ATTACK_SPIRAL_COUNTER_CLOCKWISE,
+		AgentBossProgram.SPECIAL_ATTACK_RING_PULSE,
+		AgentBossProgram.SPECIAL_ATTACK_PINWHEEL_BURST
 	])
 	var hue := rng.randf()
 	program.body_modulate = Color.from_hsv(hue, 0.72, 0.95)

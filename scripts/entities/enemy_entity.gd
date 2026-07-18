@@ -114,6 +114,7 @@ var _agent_stream_remaining: float = 0.0
 var _agent_stream_elapsed: float = 0.0
 var _agent_stream_next_shot_remaining: float = 0.0
 var _agent_stream_base_direction: Vector2 = Vector2.RIGHT
+var _agent_stream_wave_index: int = 0
 var _agent_walk_cycle: float = 0.0
 var _agent_shoot_pose_remaining: float = 0.0
 var _agent_aim_direction: Vector2 = Vector2.RIGHT
@@ -418,7 +419,7 @@ func _draw_enemy_character_art(tint: Color) -> void:
 func _draw_agent_character_art(tint: Color) -> void:
 	_draw_agent_walk_feet(tint.a)
 	var body_tint: Color = _get_agent_body_tint(tint)
-	var visual_radius: float = body_radius * 2.05
+	var visual_radius: float = body_radius * 2.35
 	var facing: Vector2 = _get_agent_visual_facing_direction()
 	var weapon_aim: Vector2 = _agent_aim_direction.normalized()
 	if weapon_aim.length_squared() <= 0.001:
@@ -634,6 +635,14 @@ func _draw_agent_special_telegraph() -> void:
 		AgentBossProgram.SPECIAL_ATTACK_SPIRAL_CLOCKWISE, AgentBossProgram.SPECIAL_ATTACK_SPIRAL_COUNTER_CLOCKWISE:
 			draw_arc(Vector2.ZERO, body_radius + 34.0 + pulse * 4.0, progress * TAU, progress * TAU + TAU * 0.78, 56, Color(1.0, 0.9, 0.32, 0.82), 4.0)
 			draw_arc(Vector2.ZERO, body_radius + 50.0 + pulse * 4.0, -progress * TAU, -progress * TAU + TAU * 0.58, 56, Color(0.46, 1.0, 1.0, 0.68), 3.0)
+		AgentBossProgram.SPECIAL_ATTACK_RING_PULSE:
+			for index in range(3):
+				var ring_radius: float = body_radius + 30.0 + float(index) * 15.0 + pulse * 3.0
+				draw_arc(Vector2.ZERO, ring_radius, progress * TAU + float(index) * 0.24, progress * TAU + float(index) * 0.24 + TAU * 0.72, 64, Color(1.0, 0.86, 0.3, 0.72 - float(index) * 0.12), 3.2)
+		AgentBossProgram.SPECIAL_ATTACK_PINWHEEL_BURST:
+			for index in range(6):
+				var spoke: Vector2 = aim.rotated(TAU * float(index) / 6.0 + progress * TAU)
+				draw_line(Vector2.ZERO, spoke * (body_radius + 76.0), Color(0.48, 1.0, 1.0, 0.54), 2.8)
 		AgentBossProgram.SPECIAL_ATTACK_ROCKET:
 			draw_line(Vector2.ZERO, aim * (body_radius + 96.0), Color(1.0, 0.42, 0.18, 0.86), 5.0)
 			draw_arc(aim * (body_radius + 78.0), 14.0 + pulse * 6.0, 0.0, TAU, 28, Color(1.0, 0.8, 0.28, 0.8), 3.0)
@@ -648,6 +657,13 @@ func _draw_agent_special_stream() -> void:
 		var side: Vector2 = direction.orthogonal()
 		draw_line(side * -body_radius * 0.82, direction * (body_radius + 92.0), Color(1.0, 0.96, 0.42, 0.7 + pulse * 0.18), 4.0)
 		draw_line(side * body_radius * 0.82, direction * (body_radius + 76.0), Color(0.45, 1.0, 1.0, 0.42 + pulse * 0.12), 3.0)
+	elif _agent_stream_kind == AgentBossProgram.SPECIAL_ATTACK_RING_PULSE:
+		for index in range(3):
+			draw_arc(Vector2.ZERO, body_radius + 28.0 + float(index) * 16.0 + pulse * 3.0, direction.angle() + float(index) * 0.3, direction.angle() + float(index) * 0.3 + TAU * 0.82, 54, Color(1.0, 0.86, 0.28, 0.56), 3.0)
+	elif _agent_stream_kind == AgentBossProgram.SPECIAL_ATTACK_PINWHEEL_BURST:
+		for index in range(6):
+			var spoke: Vector2 = direction.rotated(TAU * float(index) / 6.0)
+			draw_line(Vector2.ZERO, spoke * (body_radius + 84.0), Color(0.45, 1.0, 1.0, 0.52 + pulse * 0.16), 3.0)
 	else:
 		var radius: float = body_radius + 36.0 + pulse * 4.0
 		draw_arc(Vector2.ZERO, radius, direction.angle(), direction.angle() + PI * 1.15, 42, Color(1.0, 0.9, 0.3, 0.72), 4.0)
@@ -735,6 +751,7 @@ func _configure_agent_boss_state() -> void:
 	_agent_stream_remaining = 0.0
 	_agent_stream_elapsed = 0.0
 	_agent_stream_next_shot_remaining = 0.0
+	_agent_stream_wave_index = 0
 	_agent_charge_remaining = 0.0
 	_agent_charge_elapsed = 0.0
 	_agent_charge_special_fired = false
@@ -925,19 +942,11 @@ func _update_agent_special_movement(_delta: float, to_target: Vector2) -> Vector
 
 
 func _pick_agent_los_point(to_target: Vector2) -> Vector2:
-	var target_direction: Vector2 = _get_target_direction(to_target)
 	var preferred_distance: float = clamp(float(agent_program.special_move_distance), 180.0, 420.0)
-	var directions: Array[Vector2] = [
-		-target_direction,
-		-target_direction.rotated(PI * 0.35),
-		-target_direction.rotated(-PI * 0.35),
-		target_direction.orthogonal(),
-		-target_direction.orthogonal(),
-		target_direction.rotated(PI * 0.72),
-		target_direction.rotated(-PI * 0.72)
-	]
+	var directions: Array[Vector2] = _get_agent_special_move_directions(to_target)
 	for direction in directions:
-		var candidate: Vector2 = target_position + direction.normalized() * preferred_distance
+		var candidate: Vector2 = global_position + direction.normalized() * preferred_distance
+		candidate = _adjust_agent_special_candidate_distance(candidate)
 		candidate = _constrain_to_playable(candidate)
 		if _agent_point_is_valid(candidate) and not _wall_blocks_segment(candidate, target_position):
 			return candidate
@@ -945,19 +954,68 @@ func _pick_agent_los_point(to_target: Vector2) -> Vector2:
 
 
 func _pick_agent_dash_target(to_target: Vector2) -> Vector2:
-	var target_direction: Vector2 = _get_target_direction(to_target)
 	var distance: float = max(float(agent_program.special_move_distance), 140.0)
-	var directions: Array[Vector2] = [
-		target_direction.orthogonal() * _agent_zigzag_sign,
-		(target_direction + target_direction.orthogonal() * _agent_zigzag_sign).normalized(),
-		(-target_direction + target_direction.orthogonal() * _agent_zigzag_sign).normalized(),
-		-target_direction
-	]
+	var directions: Array[Vector2] = _get_agent_special_move_directions(to_target)
 	for direction in directions:
 		var candidate: Vector2 = global_position + direction.normalized() * distance
 		if _agent_point_is_valid(candidate) and not _path_blocks_segment(global_position, candidate, body_radius * 0.65):
 			return candidate
 	return Vector2.INF
+
+
+func _get_agent_special_move_directions(to_target: Vector2) -> Array[Vector2]:
+	var target_direction: Vector2 = _get_target_direction(to_target)
+	var side_direction: Vector2 = target_direction.orthogonal() * _agent_zigzag_sign
+	match _get_agent_special_reposition_verb():
+		AgentBossProgram.SPECIAL_REPOSITION_RETREAT:
+			return [
+				-target_direction,
+				(-target_direction + side_direction * 0.6).normalized(),
+				(-target_direction - side_direction * 0.6).normalized(),
+				side_direction,
+				-side_direction,
+				target_direction
+			]
+		AgentBossProgram.SPECIAL_REPOSITION_STRAFE:
+			return [
+				side_direction,
+				-side_direction,
+				(side_direction - target_direction * 0.35).normalized(),
+				(-side_direction - target_direction * 0.35).normalized(),
+				-target_direction,
+				target_direction
+			]
+		_:
+			return [
+				target_direction,
+				(target_direction + side_direction * 0.6).normalized(),
+				(target_direction - side_direction * 0.6).normalized(),
+				side_direction,
+				-side_direction,
+				-target_direction
+			]
+
+
+func _adjust_agent_special_candidate_distance(candidate: Vector2) -> Vector2:
+	var from_target: Vector2 = candidate - target_position
+	var minimum_distance: float = max(body_radius * 6.0, 135.0)
+	if from_target.length_squared() >= minimum_distance * minimum_distance:
+		return candidate
+	var direction: Vector2 = from_target.normalized()
+	if direction.length_squared() <= 0.001:
+		direction = -_get_target_direction(target_position - global_position)
+	return target_position + direction * minimum_distance
+
+
+func _pick_agent_special_charge_direction(to_target: Vector2, distance: float) -> Vector2:
+	var directions: Array[Vector2] = _get_agent_special_move_directions(to_target)
+	for direction in directions:
+		if direction.length_squared() <= 0.001:
+			continue
+		var normalized_direction: Vector2 = direction.normalized()
+		if not _path_blocks_segment(global_position, global_position + normalized_direction * distance, body_radius * 0.75):
+			return normalized_direction
+	return _get_target_direction(to_target)
 
 
 func _update_agent_dash_chain(_delta: float, to_target: Vector2) -> Vector2:
@@ -980,13 +1038,13 @@ func _update_agent_dash_chain(_delta: float, to_target: Vector2) -> Vector2:
 
 
 func _start_agent_charge(to_target: Vector2) -> void:
-	var charge_direction: Vector2 = _get_target_direction(to_target)
 	var distance: float = max(float(agent_program.charge_speed) * float(agent_program.charge_seconds), 120.0)
+	var charge_direction: Vector2 = _pick_agent_special_charge_direction(to_target, distance)
 	if _path_blocks_segment(global_position, global_position + charge_direction * distance, body_radius * 0.75):
 		var setup_target: Vector2 = _pick_agent_los_point(to_target)
 		if setup_target != Vector2.INF:
 			global_position = _constrain_to_playable(setup_target)
-			charge_direction = _get_target_direction(target_position - global_position)
+			charge_direction = _pick_agent_special_charge_direction(target_position - global_position, distance)
 	_agent_charge_direction = charge_direction
 	_agent_charge_remaining = max(float(agent_program.charge_windup_seconds) + float(agent_program.charge_seconds), 0.12)
 	_agent_charge_elapsed = 0.0
@@ -1030,6 +1088,10 @@ func _emit_agent_special_attack(to_target: Vector2) -> void:
 			_start_agent_minigun_stream(to_target)
 		AgentBossProgram.SPECIAL_ATTACK_SPIRAL_CLOCKWISE, AgentBossProgram.SPECIAL_ATTACK_SPIRAL_COUNTER_CLOCKWISE:
 			_start_agent_spiral_stream(to_target)
+		AgentBossProgram.SPECIAL_ATTACK_RING_PULSE:
+			_start_agent_ring_pulse_stream(to_target)
+		AgentBossProgram.SPECIAL_ATTACK_PINWHEEL_BURST:
+			_start_agent_pinwheel_stream(to_target)
 		_:
 			_emit_agent_single_special_shot(to_target, _get_agent_special_attack_verb())
 
@@ -1064,6 +1126,7 @@ func _start_agent_minigun_stream(to_target: Vector2) -> void:
 	_agent_stream_elapsed = 0.0
 	_agent_stream_remaining = max(float(agent_program.minigun_duration), 0.16)
 	_agent_stream_next_shot_remaining = 0.0
+	_agent_stream_wave_index = 0
 	_agent_special_stage = AGENT_SPECIAL_STAGE_STREAM
 
 
@@ -1073,6 +1136,31 @@ func _start_agent_spiral_stream(to_target: Vector2) -> void:
 	_agent_stream_elapsed = 0.0
 	_agent_stream_remaining = max(float(agent_program.spiral_duration), 0.2)
 	_agent_stream_next_shot_remaining = 0.0
+	_agent_stream_wave_index = 0
+	_agent_special_stage = AGENT_SPECIAL_STAGE_STREAM
+
+
+func _start_agent_ring_pulse_stream(to_target: Vector2) -> void:
+	_agent_stream_kind = AgentBossProgram.SPECIAL_ATTACK_RING_PULSE
+	_agent_stream_base_direction = _get_target_direction(to_target)
+	_agent_stream_elapsed = 0.0
+	var wave_count: int = clampi(int(agent_program.pulse_wave_count), 1, 5)
+	var interval: float = max(float(agent_program.pulse_wave_interval), 0.05)
+	_agent_stream_remaining = max(interval * float(wave_count), interval)
+	_agent_stream_next_shot_remaining = 0.0
+	_agent_stream_wave_index = 0
+	_agent_special_stage = AGENT_SPECIAL_STAGE_STREAM
+
+
+func _start_agent_pinwheel_stream(to_target: Vector2) -> void:
+	_agent_stream_kind = AgentBossProgram.SPECIAL_ATTACK_PINWHEEL_BURST
+	_agent_stream_base_direction = _get_target_direction(to_target)
+	_agent_stream_elapsed = 0.0
+	var wave_count: int = clampi(int(agent_program.pinwheel_wave_count), 2, 10)
+	var interval: float = max(float(agent_program.pinwheel_wave_interval), 0.04)
+	_agent_stream_remaining = max(interval * float(wave_count), interval)
+	_agent_stream_next_shot_remaining = 0.0
+	_agent_stream_wave_index = 0
 	_agent_special_stage = AGENT_SPECIAL_STAGE_STREAM
 
 
@@ -1080,6 +1168,12 @@ func _update_agent_special_stream(delta: float) -> void:
 	_agent_stream_elapsed += delta
 	_agent_stream_remaining = max(_agent_stream_remaining - delta, 0.0)
 	_agent_stream_next_shot_remaining -= delta
+	if _agent_stream_kind == AgentBossProgram.SPECIAL_ATTACK_RING_PULSE:
+		_update_agent_ring_pulse_stream()
+		return
+	if _agent_stream_kind == AgentBossProgram.SPECIAL_ATTACK_PINWHEEL_BURST:
+		_update_agent_pinwheel_stream()
+		return
 	var interval: float = max(float(agent_program.minigun_shot_interval), 0.025)
 	if _agent_stream_kind != AgentBossProgram.SPECIAL_ATTACK_MINIGUN_SWEEP_TWICE:
 		interval = max(float(agent_program.spiral_shot_interval), 0.035)
@@ -1100,6 +1194,72 @@ func _update_agent_special_stream(delta: float) -> void:
 	queue_redraw()
 
 
+func _update_agent_ring_pulse_stream() -> void:
+	var interval: float = max(float(agent_program.pulse_wave_interval), 0.05)
+	var wave_count: int = clampi(int(agent_program.pulse_wave_count), 1, 5)
+	var emitted_waves := 0
+	while _agent_stream_next_shot_remaining <= 0.0 and _agent_stream_wave_index < wave_count and emitted_waves < wave_count:
+		_emit_agent_ring_pulse_wave(_agent_stream_wave_index)
+		_agent_stream_wave_index += 1
+		_agent_stream_next_shot_remaining += interval
+		emitted_waves += 1
+	if _agent_stream_wave_index >= wave_count:
+		_agent_stream_remaining = 0.0
+	if _agent_stream_remaining <= 0.0:
+		_finish_agent_action()
+	queue_redraw()
+
+
+func _update_agent_pinwheel_stream() -> void:
+	var interval: float = max(float(agent_program.pinwheel_wave_interval), 0.04)
+	var wave_count: int = clampi(int(agent_program.pinwheel_wave_count), 2, 10)
+	var emitted_waves := 0
+	while _agent_stream_next_shot_remaining <= 0.0 and _agent_stream_wave_index < wave_count and emitted_waves < wave_count:
+		_emit_agent_pinwheel_wave(_agent_stream_wave_index)
+		_agent_stream_wave_index += 1
+		_agent_stream_next_shot_remaining += interval
+		emitted_waves += 1
+	if _agent_stream_wave_index >= wave_count:
+		_agent_stream_remaining = 0.0
+	if _agent_stream_remaining <= 0.0:
+		_finish_agent_action()
+	queue_redraw()
+
+
+func _emit_agent_ring_pulse_wave(wave_index: int) -> void:
+	var shot_count: int = clampi(int(agent_program.pulse_shots_per_wave), 8, 36)
+	var step: float = TAU / float(shot_count)
+	var base_angle: float = _agent_stream_base_direction.angle() + deg_to_rad(float(agent_program.pulse_wave_rotation_degrees)) * float(wave_index)
+	if wave_index % 2 == 1:
+		base_angle += step * 0.5
+	var shot_config: Dictionary = _get_agent_special_shot_config(AgentBossProgram.SPECIAL_ATTACK_RING_PULSE)
+	for shot_index in range(shot_count):
+		var direction: Vector2 = Vector2.RIGHT.rotated(base_angle + step * float(shot_index)).normalized()
+		_emit_agent_pattern_projectile(direction, shot_config)
+	_play_agent_shoot_pose(_agent_stream_base_direction)
+
+
+func _emit_agent_pinwheel_wave(wave_index: int) -> void:
+	var spoke_count: int = clampi(int(agent_program.pinwheel_spoke_count), 3, 10)
+	var step: float = TAU / float(spoke_count)
+	var base_angle: float = _agent_stream_base_direction.angle() + deg_to_rad(float(agent_program.pinwheel_rotation_degrees)) * float(wave_index)
+	var shot_config: Dictionary = _get_agent_special_shot_config(AgentBossProgram.SPECIAL_ATTACK_PINWHEEL_BURST)
+	for spoke_index in range(spoke_count):
+		var direction: Vector2 = Vector2.RIGHT.rotated(base_angle + step * float(spoke_index)).normalized()
+		_emit_agent_pattern_projectile(direction, shot_config)
+	_play_agent_shoot_pose(_agent_stream_base_direction)
+
+
+func _emit_agent_pattern_projectile(direction: Vector2, shot_config: Dictionary) -> void:
+	if direction.length_squared() <= 0.001:
+		return
+	var radius: float = float(shot_config.get("radius", projectile_radius))
+	var shot_origin: Vector2 = global_position + direction * (body_radius + radius + 6.0)
+	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
+		shot_origin = global_position
+	shot_ready.emit(self, shot_origin, direction, shot_config.duplicate())
+
+
 func _get_agent_stream_direction() -> Vector2:
 	if _agent_stream_kind == AgentBossProgram.SPECIAL_ATTACK_MINIGUN_SWEEP_TWICE:
 		var duration: float = max(float(agent_program.minigun_duration), 0.16)
@@ -1108,6 +1268,10 @@ func _get_agent_stream_direction() -> Vector2:
 		var phase: float = progress * 2.0
 		var angle: float = lerp(start_angle, -start_angle, phase) if phase <= 1.0 else lerp(-start_angle, start_angle, phase - 1.0)
 		return _agent_stream_base_direction.rotated(angle).normalized()
+	if _agent_stream_kind == AgentBossProgram.SPECIAL_ATTACK_RING_PULSE:
+		return _agent_stream_base_direction.rotated(deg_to_rad(float(agent_program.pulse_wave_rotation_degrees)) * float(max(_agent_stream_wave_index, 0))).normalized()
+	if _agent_stream_kind == AgentBossProgram.SPECIAL_ATTACK_PINWHEEL_BURST:
+		return _agent_stream_base_direction.rotated(deg_to_rad(float(agent_program.pinwheel_rotation_degrees)) * float(max(_agent_stream_wave_index, 0))).normalized()
 	var spiral_duration: float = max(float(agent_program.spiral_duration), 0.2)
 	var spiral_progress: float = clamp(_agent_stream_elapsed / spiral_duration, 0.0, 1.0)
 	var spiral_sign: float = 1.0 if _agent_stream_kind == AgentBossProgram.SPECIAL_ATTACK_SPIRAL_COUNTER_CLOCKWISE else -1.0
@@ -1145,6 +1309,28 @@ func _get_agent_special_shot_config(attack_verb: String) -> Dictionary:
 				"damage": projectile_damage,
 				"radius": max(projectile_radius * 0.82, 5.8),
 				"kind": "hostile_spiral",
+				"projectile_count": 1,
+				"spread_angle_degrees": 0.0,
+				"lifetime": 1.45,
+				"knockback": 0.0
+			}
+		AgentBossProgram.SPECIAL_ATTACK_RING_PULSE:
+			return {
+				"speed": max(projectile_speed * 0.95, 245.0),
+				"damage": projectile_damage,
+				"radius": max(projectile_radius * 0.72, 5.0),
+				"kind": "hostile_pulse",
+				"projectile_count": 1,
+				"spread_angle_degrees": 0.0,
+				"lifetime": 1.5,
+				"knockback": 0.0
+			}
+		AgentBossProgram.SPECIAL_ATTACK_PINWHEEL_BURST:
+			return {
+				"speed": max(projectile_speed * 1.12, projectile_speed + 32.0),
+				"damage": projectile_damage,
+				"radius": max(projectile_radius * 0.76, 5.4),
+				"kind": "hostile_pinwheel",
 				"projectile_count": 1,
 				"spread_angle_degrees": 0.0,
 				"lifetime": 1.45,
@@ -1193,8 +1379,12 @@ func _get_agent_special_movement_verb() -> String:
 	return String(agent_program.special_movement_verb) if agent_program != null else AgentBossProgram.SPECIAL_MOVEMENT_TELEPORT_LOS
 
 
+func _get_agent_special_reposition_verb() -> String:
+	return String(agent_program.special_reposition_verb) if agent_program != null else AgentBossProgram.SPECIAL_REPOSITION_APPROACH
+
+
 func _get_agent_special_attack_verb() -> String:
-	return String(agent_program.special_attack_verb) if agent_program != null else AgentBossProgram.SPECIAL_ATTACK_SMALL_FAST_BULLET
+	return String(agent_program.special_attack_verb) if agent_program != null else AgentBossProgram.SPECIAL_ATTACK_RING_PULSE
 
 
 func _get_target_direction(to_target: Vector2) -> Vector2:

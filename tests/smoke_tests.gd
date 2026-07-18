@@ -3642,7 +3642,7 @@ func _test_agent_boss_generation_and_behavior(failures: Array[String]) -> void:
 		return
 	var program = first_profile.agent_program
 	var repeated_program = repeated_profile.agent_program
-	if program.normal_movement_verb != repeated_program.normal_movement_verb or program.special_movement_verb != repeated_program.special_movement_verb or program.special_attack_verb != repeated_program.special_attack_verb:
+	if program.normal_movement_verb != repeated_program.normal_movement_verb or program.special_movement_verb != repeated_program.special_movement_verb or program.special_reposition_verb != repeated_program.special_reposition_verb or program.special_attack_verb != repeated_program.special_attack_verb:
 		failures.append("Agent boss generation should be deterministic for seed/floor/level id.")
 	if program.generation_seed == different_profile.agent_program.generation_seed:
 		failures.append("Agent boss generation should vary its deterministic seed when the run seed changes.")
@@ -3650,13 +3650,18 @@ func _test_agent_boss_generation_and_behavior(failures: Array[String]) -> void:
 		failures.append("Generated agent boss picked an unknown normal movement verb.")
 	if not ["teleport_los", "dash_chain", "charge"].has(String(program.special_movement_verb)):
 		failures.append("Generated agent boss picked an unknown special movement verb.")
-	if not ["small_fast_bullet", "rocket", "minigun_sweep_twice", "spiral_clockwise", "spiral_counter_clockwise"].has(String(program.special_attack_verb)):
+	if not ["approach", "retreat", "strafe"].has(String(program.special_reposition_verb)):
+		failures.append("Generated agent boss picked an unknown special reposition verb.")
+	if not ["rocket", "minigun_sweep_twice", "spiral_clockwise", "spiral_counter_clockwise", "ring_pulse_three_waves", "pinwheel_burst"].has(String(program.special_attack_verb)):
 		failures.append("Generated agent boss picked an unknown special attack verb.")
 	if not is_equal_approx(float(program.slow_action_weight), 0.45) or not is_equal_approx(float(program.normal_action_weight), 0.45) or not is_equal_approx(float(program.special_action_weight), 0.1):
 		failures.append("Agent boss default action weights should stay at 45/45/10.")
 	var player = load("res://scenes/entities/player_entity.tscn").instantiate()
-	if not is_equal_approx(float(first_profile.body_radius), float(player.body_radius)):
-		failures.append("Generated agent boss body radius should match the player body radius.")
+	var player_radius: float = float(player.body_radius)
+	if float(first_profile.body_radius) < player_radius * 0.94 or float(first_profile.body_radius) > player_radius * 1.13:
+		failures.append("Generated agent boss body radius should stay in the player-sized variation range.")
+	if is_equal_approx(float(first_profile.body_radius), float(different_profile.body_radius)):
+		failures.append("Generated agent boss body radius should vary across generated loadouts.")
 	if float(first_profile.contact_radius) > float(player.body_radius) * 1.6:
 		failures.append("Generated agent boss contact radius should stay player-scaled.")
 	player.free()
@@ -3674,22 +3679,31 @@ func _test_agent_boss_generation_and_behavior(failures: Array[String]) -> void:
 	boss._try_emit_agent_standard_shot(Vector2.RIGHT * 300.0, 0.4, 390.0, 1, 4.7)
 	if shot_configs.is_empty() or String(shot_configs[0].get("kind", "")) != "hostile" or int(shot_configs[0].get("projectile_count", 0)) != 1:
 		failures.append("Agent slow/normal shots should emit single hostile shot configs.")
-	for attack_verb in ["small_fast_bullet", "rocket", "minigun_sweep_twice", "spiral_clockwise"]:
+	for attack_verb in ["rocket", "minigun_sweep_twice", "spiral_clockwise", "ring_pulse_three_waves", "pinwheel_burst"]:
 		boss.agent_program.special_attack_verb = attack_verb
 		boss._emit_agent_special_attack(Vector2.RIGHT * 360.0)
 		if attack_verb == "minigun_sweep_twice" or attack_verb == "spiral_clockwise":
 			boss._update_agent_special_stream(0.08)
+		elif attack_verb == "ring_pulse_three_waves":
+			boss._update_agent_special_stream(0.2)
+		elif attack_verb == "pinwheel_burst":
+			boss._update_agent_special_stream(0.12)
 	var saw_rocket := false
 	var saw_minigun := false
 	var saw_spiral := false
+	var saw_pulse := false
+	var saw_pinwheel := false
 	for config in shot_configs:
 		saw_rocket = saw_rocket or String(config.get("kind", "")) == "rocket"
 		saw_minigun = saw_minigun or String(config.get("kind", "")) == "hostile_minigun"
 		saw_spiral = saw_spiral or String(config.get("kind", "")) == "hostile_spiral"
-	if not saw_rocket or not saw_minigun or not saw_spiral:
-		failures.append("Agent specials should emit rocket, double-sweep minigun, and spiral shot configs.")
+		saw_pulse = saw_pulse or String(config.get("kind", "")) == "hostile_pulse"
+		saw_pinwheel = saw_pinwheel or String(config.get("kind", "")) == "hostile_pinwheel"
+	if not saw_rocket or not saw_minigun or not saw_spiral or not saw_pulse or not saw_pinwheel:
+		failures.append("Agent specials should emit rocket, double-sweep minigun, spiral, pulse, and pinwheel shot configs.")
 	boss.free()
 	_test_agent_push_pull_pathing(failures, first_profile)
+	_test_agent_special_reposition(failures, first_profile)
 
 
 func _test_agent_push_pull_pathing(failures: Array[String], base_agent_profile) -> void:
@@ -3709,6 +3723,29 @@ func _test_agent_push_pull_pathing(failures: Array[String], base_agent_profile) 
 			failures.append("Agent %s should pick a fallback lane when the direct lane is blocked." % verb)
 		elif velocity.normalized().dot(Vector2.RIGHT) > 0.84:
 			failures.append("Agent %s should not keep driving directly into a wall-blocked lane." % verb)
+		boss.free()
+
+
+func _test_agent_special_reposition(failures: Array[String], base_agent_profile) -> void:
+	for reposition_verb in ["approach", "retreat", "strafe"]:
+		var profile = base_agent_profile.duplicate(true)
+		profile.agent_program.special_movement_verb = "dash_chain"
+		profile.agent_program.special_reposition_verb = reposition_verb
+		profile.agent_program.special_move_distance = 260.0
+		var boss = load("res://scenes/entities/enemy_entity.tscn").instantiate()
+		boss.initialize(profile)
+		boss.global_position = Vector2.ZERO
+		boss.target_position = Vector2.RIGHT * 360.0
+		boss.set_arena_definition(Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0)), 0, [], [], [])
+		var target: Vector2 = boss._pick_agent_dash_target(Vector2.RIGHT * 360.0)
+		if target == Vector2.INF:
+			failures.append("Agent special %s reposition should find a valid dash endpoint." % reposition_verb)
+		elif reposition_verb == "approach" and target.x <= boss.global_position.x:
+			failures.append("Agent approach special reposition should prefer moving toward the player.")
+		elif reposition_verb == "retreat" and target.x >= boss.global_position.x:
+			failures.append("Agent retreat special reposition should prefer moving away from the player.")
+		elif reposition_verb == "strafe" and abs(target.y - boss.global_position.y) <= abs(target.x - boss.global_position.x):
+			failures.append("Agent strafe special reposition should prefer lateral movement.")
 		boss.free()
 
 
