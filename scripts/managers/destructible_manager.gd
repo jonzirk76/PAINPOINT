@@ -59,6 +59,19 @@ func get_nearby_destructibles(origin: Vector2, radius: float, excluded: Array[No
 	return candidates
 
 
+func get_blocker_rects() -> Array[Rect2]:
+	var blockers: Array[Rect2] = []
+	for prop in _destructibles:
+		if not is_instance_valid(prop) or not prop.is_in_group("destructible_props"):
+			continue
+		var destructible: DestructiblePropEntity = prop as DestructiblePropEntity
+		if destructible == null:
+			continue
+		var prop_size: Vector2 = destructible.prop_size
+		blockers.append(Rect2(destructible.global_position - prop_size * 0.5, prop_size))
+	return blockers
+
+
 func get_destructible_count() -> int:
 	return _destructibles.size()
 

@@ -911,6 +911,7 @@ func _start_level(level_definition) -> void:
 	enemy_manager.reset_run()
 	spawner_manager.reset_run(level_definition)
 	destructible_manager.reset_run(level_definition)
+	_sync_gate_blockers_into_actors()
 	item_manager.reset_run()
 	upgrade_manager.reset_run()
 	combat_manager.reset_run()
@@ -1482,6 +1483,7 @@ func _on_spawner_destroyed(_spawner, score_value: int) -> void:
 
 
 func _on_destructible_prop_destroyed(prop, score_value: int, drop_kind: String) -> void:
+	_sync_gate_blockers_into_actors()
 	if prop != null and is_instance_valid(prop):
 		_score += max(score_value, 0)
 		item_manager.drop_destructible_reward(prop.global_position, drop_kind)
@@ -2633,6 +2635,8 @@ func _sync_gate_blockers_into_actors() -> void:
 	var gate_blockers: Array[Rect2] = []
 	if room_manager != null and room_manager.has_method("get_gate_blocker_rects"):
 		gate_blockers = room_manager.get_gate_blocker_rects()
+	if destructible_manager != null and destructible_manager.has_method("get_blocker_rects"):
+		gate_blockers.append_array(destructible_manager.get_blocker_rects())
 	player_manager.set_dynamic_wall_rects(gate_blockers)
 	enemy_manager.set_dynamic_wall_rects(gate_blockers)
 	spawner_manager.set_dynamic_wall_rects(gate_blockers)
