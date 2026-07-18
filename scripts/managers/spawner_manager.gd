@@ -93,6 +93,44 @@ func set_enemy_count(count: int) -> void:
 	_current_enemy_count = count
 
 
+func prepare_spawners_for_preload() -> void:
+	for spawner_node in _spawners:
+		var spawner: EnemySpawnerEntity = spawner_node as EnemySpawnerEntity
+		if spawner == null or not is_instance_valid(spawner):
+			continue
+		var birth_duration: float = max(spawner_birth_animation_seconds, 0.08)
+		spawner.play_birth_animation(birth_duration)
+		spawner.visible = false
+		spawner.velocity = Vector2.ZERO
+		spawner.set_meta("preloaded_hidden", true)
+		spawner.set_meta("preloaded_birth_duration", birth_duration)
+		spawner.set_enabled(false)
+		spawner.set_process(false)
+		spawner.set_physics_process(false)
+
+
+func set_spawners_active(value: bool, materialize_preloaded: bool = false) -> void:
+	for spawner_node in _spawners:
+		var spawner: EnemySpawnerEntity = spawner_node as EnemySpawnerEntity
+		if spawner == null or not is_instance_valid(spawner):
+			continue
+		if value:
+			spawner.set_process(true)
+			spawner.set_physics_process(true)
+			if bool(spawner.get_meta("preloaded_hidden", false)):
+				spawner.visible = true
+				spawner.remove_meta("preloaded_hidden")
+				if materialize_preloaded:
+					spawner.play_birth_animation(float(spawner.get_meta("preloaded_birth_duration", max(spawner_birth_animation_seconds, 0.08))))
+				if spawner.has_meta("preloaded_birth_duration"):
+					spawner.remove_meta("preloaded_birth_duration")
+		elif bool(spawner.get_meta("preloaded_hidden", false)):
+			spawner.visible = false
+			spawner.velocity = Vector2.ZERO
+			spawner.set_process(false)
+			spawner.set_physics_process(false)
+
+
 func consume_initial_spawn_requests() -> Array[Dictionary]:
 	var requests: Array[Dictionary] = []
 	if not _initial_spawns_pending or initial_spawn_batch_multiplier <= 0:

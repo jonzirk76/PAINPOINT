@@ -1188,6 +1188,7 @@ func _set_room_combat_active(value: bool, materialize_preloaded: bool = false) -
 	enemy_manager.set_enabled(value)
 	enemy_manager.set_entities_active(value, materialize_preloaded)
 	spawner_manager.set_enabled(value)
+	spawner_manager.set_spawners_active(value, materialize_preloaded)
 	destructible_manager.set_enabled(value)
 	combat_manager.set_enabled(value)
 
@@ -1942,6 +1943,7 @@ func _load_room_entry_transition(player_position: Vector2) -> bool:
 		_preload_current_treasure_reward_choices()
 	if not room_is_cleared:
 		spawner_manager.reset_run(level_definition)
+		spawner_manager.prepare_spawners_for_preload()
 	destructible_manager.reset_run(level_definition)
 	room_manager.load_room(level_definition, dungeon_manager.get_full_floor_current_door_infos(), room_is_cleared)
 	if not room_is_cleared:
@@ -2946,6 +2948,8 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool, ove
 	var room_is_cleared: bool = dungeon_manager.is_current_room_cleared()
 	if not room_is_cleared:
 		spawner_manager.reset_run(level_definition)
+		if should_update_loading_screen:
+			spawner_manager.prepare_spawners_for_preload()
 	destructible_manager.reset_run(level_definition)
 	room_manager.load_room(level_definition, dungeon_manager.get_full_floor_current_door_infos(), room_is_cleared)
 	_sync_gate_blockers_into_actors()
@@ -3189,6 +3193,7 @@ func _on_loading_continue_requested() -> void:
 	if _status == "RUNNING" or _status == "DUNGEON":
 		_set_all_enabled(true)
 		enemy_manager.set_entities_active(true, true)
+		spawner_manager.set_spawners_active(true, true)
 		_start_pending_agent_boss_presentation()
 		_play_loading_completion_feedback()
 		_update_hud()
