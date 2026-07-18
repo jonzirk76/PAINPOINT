@@ -127,7 +127,7 @@ const SPECIAL_ATTACK_PINWHEEL_BURST := "pinwheel_burst"
 ## Multiplies the shared high-explosive windup when the selected move is rocket.
 @export var high_explosive_rocket_windup_multiplier: float = 2.0
 ## Controls high-explosive rocket projectile speed.
-@export var high_explosive_rocket_speed: float = 640.0
+@export var high_explosive_rocket_speed: float = 580.0
 ## Controls high-explosive rocket blast radius.
 @export var high_explosive_rocket_radius: float = 72.0
 ## Controls high-explosive grenade projectile speed.

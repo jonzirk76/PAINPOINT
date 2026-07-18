@@ -6,8 +6,11 @@ signal expired(projectile)
 
 const HOSTILE_PROJECTILE_COLLISION_MASK := 33
 const PLAYER_PROJECTILE_COLLISION_MASK := 178
+const ROCKET_KIND := "rocket"
 const AGENT_GRENADE_KIND := "agent_grenade"
 const AGENT_MINE_KIND := "agent_mine"
+const HE_TARGET_RETICLE_MIN_RADIUS := 26.0
+const HE_TARGET_RETICLE_MAX_RADIUS := 88.0
 
 @export var speed: float = 560.0
 @export var lifetime_seconds: float = 1.2
@@ -31,6 +34,9 @@ var _collision_shape: CollisionShape2D = null
 var _agent_mine_arming_remaining: float = 0.0
 var _agent_mine_arming_duration: float = 0.0
 var _agent_mine_target_position: Vector2 = Vector2.INF
+var _hostile_he_target_position: Vector2 = Vector2.INF
+var _hostile_he_target_radius: float = 0.0
+var _hostile_he_target_reticle_enabled: bool = false
 var _visual_rotation_offset: float = 0.0
 
 
@@ -105,13 +111,17 @@ func set_projectile_team(team: String) -> void:
 
 
 func configure_hostile_metadata(shot_config: Dictionary) -> void:
-	if String(shot_config.get("kind", "")) != AGENT_MINE_KIND:
-		return
-	_agent_mine_arming_duration = max(float(shot_config.get("arming_seconds", 0.0)), 0.0)
-	_agent_mine_arming_remaining = _agent_mine_arming_duration
+	var projectile_kind: String = String(shot_config.get("kind", ""))
 	var configured_target: Variant = shot_config.get("target_position", Vector2.INF)
-	if configured_target is Vector2:
-		_agent_mine_target_position = configured_target
+	if bool(shot_config.get("show_target_reticle", false)) and configured_target is Vector2 and _is_hostile_he_projectile_kind(projectile_kind):
+		_hostile_he_target_position = configured_target
+		_hostile_he_target_radius = clamp(float(shot_config.get("target_reticle_radius", shot_config.get("explosion_radius", body_radius * 4.0))), HE_TARGET_RETICLE_MIN_RADIUS, HE_TARGET_RETICLE_MAX_RADIUS)
+		_hostile_he_target_reticle_enabled = true
+	if projectile_kind == AGENT_MINE_KIND:
+		_agent_mine_arming_duration = max(float(shot_config.get("arming_seconds", 0.0)), 0.0)
+		_agent_mine_arming_remaining = _agent_mine_arming_duration
+		if configured_target is Vector2:
+			_agent_mine_target_position = configured_target
 	_visual_rotation_offset = float(shot_config.get("visual_rotation_offset", 0.0))
 
 
@@ -127,6 +137,10 @@ func _configure_projectile_kind_behavior() -> void:
 			else:
 				collision_mask = 1
 				speed = 0.0
+
+
+func _is_hostile_he_projectile_kind(projectile_kind: String) -> bool:
+	return projectile_kind == ROCKET_KIND or projectile_kind == AGENT_GRENADE_KIND or projectile_kind == AGENT_MINE_KIND
 
 
 func _is_agent_mine_arming() -> bool:
@@ -294,6 +308,8 @@ func _draw() -> void:
 					fill_color = Color(1.0, 0.86, 0.18)
 					streak_color = Color(0.28, 1.0, 1.0)
 	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.022 + _age * 18.0)
+	if _should_draw_hostile_he_target_reticle():
+		_draw_hostile_he_target_reticle(pulse)
 	var glow_color := Color(fill_color.r, fill_color.g, fill_color.b, 0.2 + pulse * 0.32)
 	var glow_points := _build_lemon_points(body_radius * (1.95 + pulse * 0.25), body_radius * (1.05 + pulse * 0.12))
 	var body_points := _build_lemon_points(body_radius * 1.58, body_radius * 0.82)
@@ -322,6 +338,38 @@ func _draw() -> void:
 		draw_circle(Vector2.ZERO, body_radius * (1.85 + pulse * 0.16), Color(1.0, 0.16, 0.08, 0.08))
 	if damage_packet != null and String(damage_packet.projectile_kind) == "super" and bool(damage_packet.super_full_charge):
 		draw_arc(Vector2.ZERO, body_radius * (1.92 + pulse * 0.35), 0.0, TAU, 32, Color(1.0, 1.0, 1.0, 0.54 + pulse * 0.28), 3.0)
+
+
+func _should_draw_hostile_he_target_reticle() -> bool:
+	if not _hostile_he_target_reticle_enabled or projectile_team != "hostile" or damage_packet == null:
+		return false
+	if _hostile_he_target_position == Vector2.INF:
+		return false
+	var projectile_kind: String = String(damage_packet.projectile_kind)
+	if projectile_kind == AGENT_MINE_KIND:
+		return _is_agent_mine_arming()
+	return projectile_kind == ROCKET_KIND or projectile_kind == AGENT_GRENADE_KIND
+
+
+func _draw_hostile_he_target_reticle(pulse: float) -> void:
+	var projectile_kind: String = String(damage_packet.projectile_kind) if damage_packet != null else ""
+	var target_center: Vector2 = to_local(_hostile_he_target_position)
+	var progress: float = clamp(_age / max(lifetime_seconds, 0.001), 0.0, 1.0)
+	var reticle_color: Color = Color(1.0, 0.34, 0.08, 0.78)
+	if projectile_kind == AGENT_GRENADE_KIND:
+		reticle_color = Color(1.0, 0.68, 0.14, 0.76)
+	elif projectile_kind == AGENT_MINE_KIND:
+		reticle_color = Color(1.0, 0.2, 0.08, 0.7)
+	var radius: float = clamp(_hostile_he_target_radius, HE_TARGET_RETICLE_MIN_RADIUS, HE_TARGET_RETICLE_MAX_RADIUS)
+	var inner_radius: float = max(radius * 0.42, 12.0)
+	var rotation_offset: float = progress * TAU
+	draw_circle(target_center, radius, Color(reticle_color.r, reticle_color.g, reticle_color.b, 0.04 + pulse * 0.03))
+	draw_arc(target_center, radius, -PI * 0.5, -PI * 0.5 + TAU * progress, 58, reticle_color, 3.0)
+	draw_arc(target_center, inner_radius, rotation_offset, rotation_offset + TAU * 0.52, 34, Color(1.0, 0.94, 0.28, 0.64), 2.0)
+	draw_line(target_center + Vector2.LEFT * radius, target_center + Vector2.LEFT * inner_radius, Color(1.0, 0.94, 0.28, 0.56), 2.0)
+	draw_line(target_center + Vector2.RIGHT * inner_radius, target_center + Vector2.RIGHT * radius, Color(1.0, 0.94, 0.28, 0.56), 2.0)
+	draw_line(target_center + Vector2.UP * radius, target_center + Vector2.UP * inner_radius, Color(1.0, 0.94, 0.28, 0.56), 2.0)
+	draw_line(target_center + Vector2.DOWN * inner_radius, target_center + Vector2.DOWN * radius, Color(1.0, 0.94, 0.28, 0.56), 2.0)
 
 
 func _add_collision() -> void:

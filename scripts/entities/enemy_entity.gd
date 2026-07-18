@@ -33,6 +33,8 @@ const AGENT_SPECIAL_STAGE_MOVE := "move"
 const AGENT_SPECIAL_STAGE_TELEPORT_CAST := "teleport_cast"
 const AGENT_SPECIAL_STAGE_TELEGRAPH := "telegraph"
 const AGENT_SPECIAL_STAGE_STREAM := "stream"
+const AGENT_HE_RETICLE_MIN_RADIUS := 26.0
+const AGENT_HE_RETICLE_MAX_RADIUS := 88.0
 
 @export var max_health: int = 3
 @export var speed: float = 85.0
@@ -757,15 +759,40 @@ func _draw_agent_high_explosive_windup() -> void:
 	draw_circle(Vector2.ZERO, radius, Color(explosive_color.r, explosive_color.g, explosive_color.b, 0.08 + pulse * 0.08))
 	draw_arc(Vector2.ZERO, radius, -PI * 0.5, -PI * 0.5 + TAU * progress, 48, explosive_color, 4.0)
 	draw_line(Vector2.ZERO, aim * (body_radius + 76.0), Color(1.0, 0.82, 0.22, 0.42 + progress * 0.34), 3.0)
+	if _agent_high_explosive_windup_target != Vector2.INF:
+		var target_offset: Vector2 = _agent_high_explosive_windup_target - global_position
+		var target_radius: float = _get_agent_high_explosive_reticle_radius(_agent_high_explosive_windup_kind)
+		_draw_agent_high_explosive_target_reticle(target_offset, target_radius, progress, pulse, explosive_color)
 	if _agent_high_explosive_windup_kind == AgentBossProgram.HIGH_EXPLOSIVE_MINES:
 		for index in range(3):
 			var marker_direction: Vector2 = aim.rotated((float(index) - 1.0) * 0.38)
 			draw_circle(marker_direction * (body_radius + 36.0 + progress * 18.0), 5.0 + pulse * 2.0, Color(1.0, 0.26, 0.12, 0.58))
-	else:
-		var target_offset: Vector2 = aim * 180.0
-		if _agent_high_explosive_windup_target != Vector2.INF:
-			target_offset = _agent_high_explosive_windup_target - global_position
-		draw_arc(target_offset, body_radius + 14.0 + pulse * 5.0, progress * TAU, progress * TAU + TAU * 0.78, 44, Color(1.0, 0.9, 0.24, 0.66), 3.0)
+
+
+func _get_agent_high_explosive_reticle_radius(explosive_kind: String) -> float:
+	var blast_radius: float = body_radius + 22.0
+	if agent_program != null:
+		match explosive_kind:
+			AgentBossProgram.HIGH_EXPLOSIVE_GRENADE:
+				blast_radius = max(float(agent_program.high_explosive_grenade_radius), 44.0)
+			AgentBossProgram.HIGH_EXPLOSIVE_MINES:
+				blast_radius = max(float(agent_program.high_explosive_mine_blast_radius), 38.0)
+			_:
+				blast_radius = max(float(agent_program.high_explosive_rocket_radius), 48.0)
+	return clamp(blast_radius, AGENT_HE_RETICLE_MIN_RADIUS, AGENT_HE_RETICLE_MAX_RADIUS)
+
+
+func _draw_agent_high_explosive_target_reticle(center: Vector2, reticle_radius: float, progress: float, pulse: float, reticle_color: Color) -> void:
+	var radius: float = clamp(reticle_radius, AGENT_HE_RETICLE_MIN_RADIUS, AGENT_HE_RETICLE_MAX_RADIUS)
+	var inner_radius: float = max(radius * 0.42, 12.0)
+	var rotation_offset: float = progress * TAU
+	draw_circle(center, radius, Color(reticle_color.r, reticle_color.g, reticle_color.b, 0.045 + pulse * 0.035))
+	draw_arc(center, radius, -PI * 0.5, -PI * 0.5 + TAU * progress, 58, Color(reticle_color.r, reticle_color.g, reticle_color.b, 0.78), 3.2)
+	draw_arc(center, inner_radius, rotation_offset, rotation_offset + TAU * 0.52, 34, Color(1.0, 0.94, 0.28, 0.68), 2.2)
+	draw_line(center + Vector2.LEFT * radius, center + Vector2.LEFT * inner_radius, Color(1.0, 0.94, 0.28, 0.58), 2.0)
+	draw_line(center + Vector2.RIGHT * inner_radius, center + Vector2.RIGHT * radius, Color(1.0, 0.94, 0.28, 0.58), 2.0)
+	draw_line(center + Vector2.UP * radius, center + Vector2.UP * inner_radius, Color(1.0, 0.94, 0.28, 0.58), 2.0)
+	draw_line(center + Vector2.DOWN * inner_radius, center + Vector2.DOWN * radius, Color(1.0, 0.94, 0.28, 0.58), 2.0)
 
 
 func _draw_boss_special_telegraph() -> void:
@@ -1145,6 +1172,8 @@ func _emit_agent_high_explosive_rocket(to_target: Vector2) -> bool:
 		"explosion_radius": max(float(agent_program.high_explosive_rocket_radius), 48.0),
 		"explosion_damage_multiplier": 1.0,
 		"target_position": target_position_at_launch,
+		"show_target_reticle": true,
+		"target_reticle_radius": max(float(agent_program.high_explosive_rocket_radius), 48.0),
 		"lifetime": max(shot_origin.distance_to(target_position_at_launch) / rocket_speed, 0.08),
 		"exact_lifetime": true
 	}
@@ -1180,6 +1209,8 @@ func _emit_agent_grenade(to_target: Vector2) -> bool:
 		"explosion_radius": max(float(agent_program.high_explosive_grenade_radius), 44.0),
 		"explosion_damage_multiplier": 1.0,
 		"target_position": target_position_at_launch,
+		"show_target_reticle": true,
+		"target_reticle_radius": max(float(agent_program.high_explosive_grenade_radius), 44.0),
 		"lifetime": air_seconds,
 		"exact_lifetime": true
 	}
@@ -1225,6 +1256,8 @@ func _try_emit_next_agent_mine() -> void:
 		"explosion_radius": max(float(agent_program.high_explosive_mine_blast_radius), trigger_radius + 18.0),
 		"explosion_damage_multiplier": 1.0,
 		"target_position": mine_position,
+		"show_target_reticle": true,
+		"target_reticle_radius": max(float(agent_program.high_explosive_mine_blast_radius), trigger_radius + 18.0),
 		"arming_seconds": throw_seconds,
 		"visual_rotation_offset": _agent_rng.randf_range(-PI, PI),
 		"lifetime": throw_seconds + max(float(agent_program.high_explosive_mine_lifetime), 0.5),
