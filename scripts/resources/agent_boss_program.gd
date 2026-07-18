@@ -95,7 +95,7 @@ const SPECIAL_ATTACK_PINWHEEL_BURST := "pinwheel_burst"
 ## Controls how long wide scatter slow-pressure bullets stay alive.
 @export var slow_wide_scatter_lifetime: float = 0.62
 ## Controls how quickly the wide scatter slow-pressure pattern fires.
-@export var slow_wide_scatter_cooldown: float = 0.74
+@export var slow_wide_scatter_cooldown: float = 0.96
 ## Controls how many bullets the wide scatter slow-pressure pattern fires.
 @export var slow_wide_scatter_projectile_count: int = 7
 ## Controls the spread width of the wide scatter slow-pressure pattern.
@@ -121,7 +121,7 @@ const SPECIAL_ATTACK_PINWHEEL_BURST := "pinwheel_burst"
 ## Controls the chance to trigger a high-explosive move when normal movement begins and the explosive cooldown is ready.
 @export var high_explosive_action_chance: float = 0.25
 ## Controls the cooldown after a high-explosive move triggers during normal movement.
-@export var high_explosive_cooldown_seconds: float = 3.35
+@export var high_explosive_cooldown_seconds: float = 6.7
 ## Controls how long high-explosive moves visibly wind up before launching or placing.
 @export var high_explosive_windup_seconds: float = 0.42
 ## Controls high-explosive rocket projectile speed.
@@ -140,10 +140,16 @@ const SPECIAL_ATTACK_PINWHEEL_BURST := "pinwheel_burst"
 @export var high_explosive_mine_interval: float = 0.26
 ## Controls how long placed mines wait before detonating on their own.
 @export var high_explosive_mine_lifetime: float = 2.75
+## Controls how long each mine spends in its short thrown arc before arming.
+@export var high_explosive_mine_throw_seconds: float = 0.32
+## Controls how far mine throws land from the agent.
+@export var high_explosive_mine_throw_distance: float = 126.0
+## Controls the fan width used when placing multiple thrown mines.
+@export var high_explosive_mine_spread_degrees: float = 92.0
 ## Controls how close the player must get to trigger a mine.
-@export var high_explosive_mine_trigger_radius: float = 34.0
+@export var high_explosive_mine_trigger_radius: float = 20.0
 ## Controls high-explosive mine blast radius.
-@export var high_explosive_mine_blast_radius: float = 66.0
+@export var high_explosive_mine_blast_radius: float = 46.0
 ## Controls how often coward personalities choose a direct aggressive movement instead of retreating or strafing.
 @export var coward_aggression_chance: float = 0.18
 ## Controls the spacing duelist personalities try to maintain from the player.
@@ -159,9 +165,9 @@ const SPECIAL_ATTACK_PINWHEEL_BURST := "pinwheel_burst"
 ## Controls how long teleport warns before the agent relocates.
 @export var teleport_cast_seconds: float = 0.42
 ## Controls the normal cooldown after one special movement plus special attack.
-@export var special_base_cooldown_seconds: float = 2.8
+@export var special_base_cooldown_seconds: float = 5.6
 ## Adds cooldown for each extra chained special beyond the first.
-@export var special_chain_cooldown_bonus_seconds: float = 1.65
+@export var special_chain_cooldown_bonus_seconds: float = 3.3
 ## Controls the chance to immediately chain another special after one completes.
 @export var special_chain_chance: float = 0.44
 ## Reduces chain chance for each already completed chained special.

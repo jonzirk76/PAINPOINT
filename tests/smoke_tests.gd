@@ -3825,6 +3825,8 @@ func _test_agent_high_explosive_normal_moves(failures: Array[String], base_agent
 				failures.append("Agent rocket high-explosive move should emit an exact-lifetime targeted rocket.")
 			if high_explosive_verb == "mines" and String(config.get("kind", "")) != "agent_mine":
 				failures.append("Agent mine high-explosive move should emit mine projectile configs.")
+			if high_explosive_verb == "mines" and (float(config.get("arming_seconds", 0.0)) <= 0.0 or not config.has("target_position") or float(config.get("speed", 0.0)) <= 1.0):
+				failures.append("Agent mine high-explosive move should emit thrown mine arming metadata.")
 		boss.free()
 	if not seen_kinds.has("rocket") or not seen_kinds.has("agent_grenade") or not seen_kinds.has("agent_mine"):
 		failures.append("Agent high-explosive normal moves should cover rocket, grenade, and mine projectile kinds.")

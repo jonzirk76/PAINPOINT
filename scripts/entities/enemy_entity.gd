@@ -1122,8 +1122,8 @@ func _emit_agent_high_explosive_rocket(to_target: Vector2) -> bool:
 		return false
 	var shot_direction: Vector2 = to_target.normalized()
 	var shot_radius: float = max(projectile_radius * 1.55, 10.5)
-	var shot_origin: Vector2 = global_position + shot_direction * (body_radius + shot_radius + 6.0)
-	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
+	var shot_origin: Vector2 = _get_agent_projectile_spawn_origin(shot_direction, shot_radius, 4.0)
+	if shot_origin == Vector2.INF:
 		return false
 	if _wall_blocks_segment(global_position, target_position) or _wall_blocks_segment(global_position, shot_origin):
 		return false
@@ -1156,8 +1156,8 @@ func _emit_agent_grenade(to_target: Vector2) -> bool:
 		return false
 	var shot_direction: Vector2 = to_target.normalized()
 	var shot_radius: float = max(projectile_radius * 1.28, 9.0)
-	var shot_origin: Vector2 = global_position + shot_direction * (body_radius + shot_radius + 5.0)
-	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
+	var shot_origin: Vector2 = _get_agent_projectile_spawn_origin(shot_direction, shot_radius, 3.0)
+	if shot_origin == Vector2.INF:
 		return false
 	var target_position_at_launch: Vector2 = _constrain_to_playable(target_position)
 	var distance: float = max(shot_origin.distance_to(target_position_at_launch), 48.0)
@@ -1200,11 +1200,20 @@ func _try_emit_next_agent_mine() -> void:
 	var mine_count: int = clampi(int(agent_program.high_explosive_mine_count), 1, 5)
 	var mine_index: int = mine_count - _agent_mine_sequence_remaining
 	var direction: Vector2 = _get_agent_mine_direction(mine_index)
-	var trigger_radius: float = max(float(agent_program.high_explosive_mine_trigger_radius), 14.0)
-	var placement_distance: float = body_radius + trigger_radius + 24.0 + float(mine_index) * 10.0
+	var trigger_radius: float = max(float(agent_program.high_explosive_mine_trigger_radius), 8.0)
+	var throw_seconds: float = max(float(agent_program.high_explosive_mine_throw_seconds), 0.08)
+	var placement_distance: float = max(float(agent_program.high_explosive_mine_throw_distance), body_radius + trigger_radius + 42.0) + float(mine_index) * 8.0
 	var mine_position: Vector2 = _pick_agent_mine_position(direction, placement_distance, trigger_radius)
+	var shot_radius: float = max(trigger_radius * 0.7, 7.0)
+	var shot_origin: Vector2 = _get_agent_projectile_spawn_origin(direction, shot_radius, 3.0)
+	if shot_origin == Vector2.INF:
+		shot_origin = global_position
+	var throw_direction: Vector2 = mine_position - shot_origin
+	if throw_direction.length_squared() <= 4.0:
+		throw_direction = direction
+	var throw_distance: float = max(shot_origin.distance_to(mine_position), 24.0)
 	var shot_config: Dictionary = {
-		"speed": 1.0,
+		"speed": throw_distance / throw_seconds,
 		"damage": max(projectile_damage, 1),
 		"radius": trigger_radius,
 		"kind": "agent_mine",
@@ -1213,10 +1222,13 @@ func _try_emit_next_agent_mine() -> void:
 		"knockback": 360.0,
 		"explosion_radius": max(float(agent_program.high_explosive_mine_blast_radius), trigger_radius + 18.0),
 		"explosion_damage_multiplier": 1.0,
-		"lifetime": max(float(agent_program.high_explosive_mine_lifetime), 0.5),
+		"target_position": mine_position,
+		"arming_seconds": throw_seconds,
+		"visual_rotation_offset": _agent_rng.randf_range(-PI, PI),
+		"lifetime": throw_seconds + max(float(agent_program.high_explosive_mine_lifetime), 0.5),
 		"exact_lifetime": true
 	}
-	shot_ready.emit(self, mine_position, Vector2.RIGHT, shot_config)
+	shot_ready.emit(self, shot_origin, throw_direction.normalized(), shot_config)
 	_play_agent_shoot_pose(direction)
 	_agent_mine_sequence_remaining -= 1
 	if _agent_mine_sequence_remaining > 0:
@@ -1227,8 +1239,13 @@ func _get_agent_mine_direction(mine_index: int) -> Vector2:
 	var base_direction: Vector2 = _agent_mine_sequence_direction.normalized()
 	if base_direction.length_squared() <= 0.001:
 		base_direction = Vector2.RIGHT
-	var offsets: Array[float] = [0.0, -0.38, 0.38, -0.68, 0.68]
-	var offset: float = offsets[mine_index % offsets.size()]
+	var mine_count: int = clampi(int(agent_program.high_explosive_mine_count), 1, 5)
+	var spread: float = deg_to_rad(max(float(agent_program.high_explosive_mine_spread_degrees), 8.0))
+	var offset: float = 0.0
+	if mine_count > 1:
+		var sequence_position: float = (float(mine_index) / float(mine_count - 1)) - 0.5
+		offset = sequence_position * spread
+	offset += _agent_rng.randf_range(-0.12, 0.12)
 	return base_direction.rotated(offset).normalized()
 
 
@@ -1713,9 +1730,11 @@ func _emit_agent_single_special_shot(to_target: Vector2, attack_verb: String) ->
 	var shot_direction: Vector2 = to_target.normalized()
 	var shot_config: Dictionary = _get_agent_special_shot_config(attack_verb)
 	var radius: float = float(shot_config.get("radius", projectile_radius))
-	var shot_origin: Vector2 = global_position + shot_direction * (body_radius + radius + 6.0)
-	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
-		shot_origin = global_position
+	var shot_origin: Vector2 = _get_agent_projectile_spawn_origin(shot_direction, radius, 3.0)
+	if shot_origin == Vector2.INF:
+		return
+	if _wall_blocks_segment(global_position, target_position):
+		return
 	if attack_verb == AgentBossProgram.SPECIAL_ATTACK_ROCKET:
 		var target_position_at_launch: Vector2 = target_position
 		var target_direction: Vector2 = target_position_at_launch - shot_origin
@@ -1793,11 +1812,10 @@ func _update_agent_special_stream(delta: float) -> void:
 		var direction: Vector2 = _get_agent_stream_direction()
 		var shot_config: Dictionary = _get_agent_special_shot_config(_agent_stream_kind)
 		var radius: float = float(shot_config.get("radius", projectile_radius))
-		var shot_origin: Vector2 = global_position + direction * (body_radius + radius + 6.0)
-		if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
-			shot_origin = global_position
-		shot_ready.emit(self, shot_origin, direction, shot_config)
-		_play_agent_shoot_pose(direction)
+		var shot_origin: Vector2 = _get_agent_projectile_spawn_origin(direction, radius, 3.0)
+		if shot_origin != Vector2.INF:
+			shot_ready.emit(self, shot_origin, direction, shot_config)
+			_play_agent_shoot_pose(direction)
 		_agent_stream_next_shot_remaining += interval
 		emitted_count += 1
 	if _agent_stream_remaining <= 0.0:
@@ -1881,10 +1899,24 @@ func _emit_agent_pattern_projectile(direction: Vector2, shot_config: Dictionary)
 	if direction.length_squared() <= 0.001:
 		return
 	var radius: float = float(shot_config.get("radius", projectile_radius))
-	var shot_origin: Vector2 = global_position + direction * (body_radius + radius + 6.0)
-	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
-		shot_origin = global_position
+	var shot_origin: Vector2 = _get_agent_projectile_spawn_origin(direction, radius, 3.0)
+	if shot_origin == Vector2.INF:
+		return
 	shot_ready.emit(self, shot_origin, direction, shot_config.duplicate())
+
+
+func _get_agent_projectile_spawn_origin(shot_direction: Vector2, radius: float, clearance: float = 3.0) -> Vector2:
+	if shot_direction.length_squared() <= 0.001:
+		return Vector2.INF
+	var normalized_direction: Vector2 = shot_direction.normalized()
+	var shot_radius: float = max(radius, 1.0)
+	var spawn_distance: float = body_radius + shot_radius + max(clearance, 0.0)
+	var shot_origin: Vector2 = global_position + normalized_direction * spawn_distance
+	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
+		return Vector2.INF
+	if _wall_blocks_segment(global_position, shot_origin):
+		return Vector2.INF
+	return shot_origin
 
 
 func _get_agent_stream_direction() -> Vector2:

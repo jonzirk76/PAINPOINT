@@ -182,6 +182,8 @@ func _spawn_hostile_projectile(origin: Vector2, direction: Vector2, shot_config:
 		add_child(projectile)
 	projectile.set_arena_definition(_arena_bounds, _arena_shape)
 	projectile.set_projectile_team("hostile")
+	if projectile.has_method("configure_hostile_metadata"):
+		projectile.configure_hostile_metadata(shot_config)
 	projectile.initialize(origin, direction, packet, shot_speed)
 	projectile.hit_detected.connect(_on_projectile_hit)
 	projectile.expired.connect(_on_projectile_expired)

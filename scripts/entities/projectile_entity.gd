@@ -28,6 +28,10 @@ var _age: float = 0.0
 var _is_expired: bool = false
 var _base_body_radius: float = 6.0
 var _collision_shape: CollisionShape2D = null
+var _agent_mine_arming_remaining: float = 0.0
+var _agent_mine_arming_duration: float = 0.0
+var _agent_mine_target_position: Vector2 = Vector2.INF
+var _visual_rotation_offset: float = 0.0
 
 
 func _init() -> void:
@@ -60,7 +64,7 @@ func initialize(origin: Vector2, shot_direction: Vector2, packet, projectile_spe
 	body_radius = _base_body_radius
 	_configure_projectile_kind_behavior()
 	_update_collision_radius()
-	rotation = direction.angle()
+	rotation = direction.angle() + _visual_rotation_offset
 	queue_redraw()
 
 
@@ -68,6 +72,11 @@ func _physics_process(delta: float) -> void:
 	if _is_expired:
 		return
 	_age += delta
+	if _is_agent_mine_arming():
+		_update_agent_mine_throw(delta)
+		if _age >= lifetime_seconds:
+			expire("lifetime", global_position)
+		return
 	var previous_position := global_position
 	var next_position := global_position + direction * speed * delta
 	global_position = next_position
@@ -95,6 +104,17 @@ func set_projectile_team(team: String) -> void:
 	_configure_collision_identity()
 
 
+func configure_hostile_metadata(shot_config: Dictionary) -> void:
+	if String(shot_config.get("kind", "")) != AGENT_MINE_KIND:
+		return
+	_agent_mine_arming_duration = max(float(shot_config.get("arming_seconds", 0.0)), 0.0)
+	_agent_mine_arming_remaining = _agent_mine_arming_duration
+	var configured_target: Variant = shot_config.get("target_position", Vector2.INF)
+	if configured_target is Vector2:
+		_agent_mine_target_position = configured_target
+	_visual_rotation_offset = float(shot_config.get("visual_rotation_offset", 0.0))
+
+
 func _configure_projectile_kind_behavior() -> void:
 	if projectile_team != "hostile" or damage_packet == null:
 		return
@@ -102,8 +122,44 @@ func _configure_projectile_kind_behavior() -> void:
 		AGENT_GRENADE_KIND:
 			collision_mask = 0
 		AGENT_MINE_KIND:
-			collision_mask = 1
-			speed = 0.0
+			if _is_agent_mine_arming():
+				collision_mask = 0
+			else:
+				collision_mask = 1
+				speed = 0.0
+
+
+func _is_agent_mine_arming() -> bool:
+	return damage_packet != null and String(damage_packet.projectile_kind) == AGENT_MINE_KIND and _agent_mine_arming_remaining > 0.0
+
+
+func _update_agent_mine_throw(delta: float) -> void:
+	var previous_position: Vector2 = global_position
+	var next_position: Vector2 = global_position + direction * speed * delta
+	_agent_mine_arming_remaining = max(_agent_mine_arming_remaining - delta, 0.0)
+	if _agent_mine_target_position != Vector2.INF:
+		var step_distance: float = previous_position.distance_to(next_position)
+		if _agent_mine_arming_remaining <= 0.0 or previous_position.distance_to(_agent_mine_target_position) <= step_distance + 1.0:
+			global_position = _agent_mine_target_position
+			_land_agent_mine()
+		else:
+			global_position = next_position
+	else:
+		global_position = next_position
+		if _agent_mine_arming_remaining <= 0.0:
+			_land_agent_mine()
+	if not _is_expired and not ArenaGeometry.contains_point(global_position, arena_bounds, arena_shape):
+		expire("bounds", global_position)
+		return
+	queue_redraw()
+
+
+func _land_agent_mine() -> void:
+	_agent_mine_arming_remaining = 0.0
+	speed = 0.0
+	collision_mask = 1
+	_update_collision_radius()
+	queue_redraw()
 
 
 func _handle_target_hit(body: Node, hit_position: Vector2 = Vector2.INF) -> void:
@@ -254,7 +310,14 @@ func _draw() -> void:
 		draw_circle(Vector2.DOWN * (arc_height * 0.26 + body_radius * 0.9), body_radius * (0.72 - arc_progress * 0.12), Color(0.0, 0.0, 0.0, 0.16))
 		draw_arc(Vector2.ZERO, body_radius * (1.9 + pulse * 0.22), -PI * 0.15, PI * 1.05, 24, Color(1.0, 0.94, 0.24, 0.46), 2.2)
 	if damage_packet != null and String(damage_packet.projectile_kind) == AGENT_MINE_KIND:
-		var arm_ratio: float = clamp(_age / max(lifetime_seconds, 0.001), 0.0, 1.0)
+		if _is_agent_mine_arming():
+			var throw_progress: float = 1.0 - clamp(_agent_mine_arming_remaining / max(_agent_mine_arming_duration, 0.001), 0.0, 1.0)
+			var throw_height: float = sin(throw_progress * PI) * body_radius * 1.05
+			draw_circle(Vector2.DOWN * (throw_height * 0.24 + body_radius * 0.82), body_radius * (0.6 - throw_progress * 0.08), Color(0.0, 0.0, 0.0, 0.14))
+			draw_arc(Vector2.ZERO, body_radius * (1.72 + pulse * 0.18), -PI * 0.1, PI * 0.95, 24, Color(1.0, 0.82, 0.16, 0.42), 2.0)
+			return
+		var armed_duration: float = max(lifetime_seconds - _agent_mine_arming_duration, 0.001)
+		var arm_ratio: float = clamp((_age - _agent_mine_arming_duration) / armed_duration, 0.0, 1.0)
 		draw_arc(Vector2.ZERO, body_radius * (1.34 + pulse * 0.18), -PI * 0.5, -PI * 0.5 + TAU * arm_ratio, 36, Color(1.0, 0.82, 0.12, 0.72), 2.4)
 		draw_circle(Vector2.ZERO, body_radius * (1.85 + pulse * 0.16), Color(1.0, 0.16, 0.08, 0.08))
 	if damage_packet != null and String(damage_packet.projectile_kind) == "super" and bool(damage_packet.super_full_charge):
