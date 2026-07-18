@@ -30,19 +30,20 @@ static func generate_profile(base_profile: Resource, run_seed: int, floor_number
 
 static func generate_program(run_seed: int, floor_number: int, level_id: String) -> AgentBossProgram:
 	var program: AgentBossProgram = AgentBossProgram.new()
-	var seed := _compute_generation_seed(run_seed, floor_number, level_id)
-	var rng := RandomNumberGenerator.new()
+	var seed: int = _compute_generation_seed(run_seed, floor_number, level_id)
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	rng.seed = seed
 	program.generation_seed = seed
 	var body_scale: float = rng.randf_range(MIN_BODY_SCALE, MAX_BODY_SCALE)
 	program.body_radius = PLAYER_BODY_RADIUS * body_scale
 	program.contact_radius = max(PLAYER_SIZED_CONTACT_RADIUS * body_scale, program.body_radius + 5.0)
-	program.normal_movement_verb = _pick_string(rng, [
-		AgentBossProgram.NORMAL_STRAFE,
-		AgentBossProgram.NORMAL_PUSH_FORWARD,
-		AgentBossProgram.NORMAL_ZIG_ZAG,
-		AgentBossProgram.NORMAL_PULL_BACK
+	program.personality_verb = _pick_string(rng, [
+		AgentBossProgram.PERSONALITY_HUNTER,
+		AgentBossProgram.PERSONALITY_BULLY,
+		AgentBossProgram.PERSONALITY_COWARD,
+		AgentBossProgram.PERSONALITY_DUELIST
 	])
+	program.normal_movement_verb = _pick_normal_movement_for_personality(rng, program.personality_verb)
 	program.slow_attack_verb = _pick_string(rng, [
 		AgentBossProgram.SLOW_ATTACK_FAST_SINGLE,
 		AgentBossProgram.SLOW_ATTACK_SHORT_SCATTER,
@@ -54,11 +55,7 @@ static func generate_program(run_seed: int, floor_number: int, level_id: String)
 		AgentBossProgram.SPECIAL_MOVEMENT_DASH_CHAIN,
 		AgentBossProgram.SPECIAL_MOVEMENT_CHARGE
 	])
-	program.special_reposition_verb = _pick_string(rng, [
-		AgentBossProgram.SPECIAL_REPOSITION_APPROACH,
-		AgentBossProgram.SPECIAL_REPOSITION_RETREAT,
-		AgentBossProgram.SPECIAL_REPOSITION_STRAFE
-	])
+	program.special_reposition_verb = _pick_special_reposition_for_personality(rng, program.personality_verb)
 	program.high_explosive_verb = _pick_string(rng, [
 		AgentBossProgram.HIGH_EXPLOSIVE_ROCKET,
 		AgentBossProgram.HIGH_EXPLOSIVE_GRENADE,
@@ -71,7 +68,7 @@ static func generate_program(run_seed: int, floor_number: int, level_id: String)
 		AgentBossProgram.SPECIAL_ATTACK_RING_PULSE,
 		AgentBossProgram.SPECIAL_ATTACK_PINWHEEL_BURST
 	])
-	var hue := rng.randf()
+	var hue: float = rng.randf()
 	program.body_modulate = Color.from_hsv(hue, 0.72, 0.95)
 	program.accent_color = Color.from_hsv(fposmod(hue + rng.randf_range(0.28, 0.46), 1.0), 0.78, 1.0)
 	program.shadow_color = Color.from_hsv(fposmod(hue + 0.56, 1.0), 0.74, 0.18)
@@ -85,13 +82,68 @@ static func _pick_string(rng: RandomNumberGenerator, values: Array[String]) -> S
 	return values[rng.randi_range(0, values.size() - 1)]
 
 
+static func _pick_normal_movement_for_personality(rng: RandomNumberGenerator, personality_verb: String) -> String:
+	match personality_verb:
+		AgentBossProgram.PERSONALITY_HUNTER:
+			return _pick_string(rng, [
+				AgentBossProgram.NORMAL_PUSH_FORWARD,
+				AgentBossProgram.NORMAL_ZIG_ZAG
+			])
+		AgentBossProgram.PERSONALITY_BULLY:
+			return _pick_string(rng, [
+				AgentBossProgram.NORMAL_STRAFE,
+				AgentBossProgram.NORMAL_ZIG_ZAG
+			])
+		AgentBossProgram.PERSONALITY_COWARD:
+			return _pick_string(rng, [
+				AgentBossProgram.NORMAL_PULL_BACK,
+				AgentBossProgram.NORMAL_STRAFE
+			])
+		AgentBossProgram.PERSONALITY_DUELIST:
+			return _pick_string(rng, [
+				AgentBossProgram.NORMAL_STRAFE,
+				AgentBossProgram.NORMAL_PUSH_FORWARD,
+				AgentBossProgram.NORMAL_PULL_BACK
+			])
+	return _pick_string(rng, [
+		AgentBossProgram.NORMAL_STRAFE,
+		AgentBossProgram.NORMAL_PUSH_FORWARD,
+		AgentBossProgram.NORMAL_ZIG_ZAG,
+		AgentBossProgram.NORMAL_PULL_BACK
+	])
+
+
+static func _pick_special_reposition_for_personality(rng: RandomNumberGenerator, personality_verb: String) -> String:
+	match personality_verb:
+		AgentBossProgram.PERSONALITY_HUNTER:
+			return AgentBossProgram.SPECIAL_REPOSITION_STRAFE
+		AgentBossProgram.PERSONALITY_BULLY:
+			return AgentBossProgram.SPECIAL_REPOSITION_APPROACH
+		AgentBossProgram.PERSONALITY_COWARD:
+			return _pick_string(rng, [
+				AgentBossProgram.SPECIAL_REPOSITION_RETREAT,
+				AgentBossProgram.SPECIAL_REPOSITION_STRAFE
+			])
+		AgentBossProgram.PERSONALITY_DUELIST:
+			return _pick_string(rng, [
+				AgentBossProgram.SPECIAL_REPOSITION_STRAFE,
+				AgentBossProgram.SPECIAL_REPOSITION_APPROACH,
+				AgentBossProgram.SPECIAL_REPOSITION_RETREAT
+			])
+	return _pick_string(rng, [
+		AgentBossProgram.SPECIAL_REPOSITION_APPROACH,
+		AgentBossProgram.SPECIAL_REPOSITION_RETREAT,
+		AgentBossProgram.SPECIAL_REPOSITION_STRAFE
+	])
+
+
 static func _compute_generation_seed(run_seed: int, floor_number: int, level_id: String) -> int:
-	var mixed := int(run_seed) * 1103515245 + int(max(floor_number, 1)) * 1013904223 + _stable_hash(level_id)
+	var mixed: int = int(run_seed) * 1103515245 + int(max(floor_number, 1)) * 1013904223 + _stable_hash(level_id)
 	return max(posmod(mixed, 2147483647), 1)
 
 
 static func _stable_hash(text: String) -> int:
-	var hash_value := 2166136261
+	var hash_value: int = 2166136261
 	for index in range(text.length()):
 		hash_value = posmod((hash_value ^ text.unicode_at(index)) * 16777619, 2147483647)
 	return hash_value

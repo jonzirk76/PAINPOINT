@@ -149,6 +149,8 @@ var _meter_authoring_state_captured: bool = false
 var _meter_active_segment_counts: Dictionary = {}
 var _perfect_parry_slowmo_until_msec: int = 0
 var _perfect_parry_slowmo_restore_scale: float = 1.0
+var _agent_debug_panel: ColorRect = null
+var _agent_debug_label: Label = null
 
 const DUNGEON_OPTION_COUNT := 2
 const BOSS_CLEAR_DELAY_SECONDS := 0.85
@@ -176,6 +178,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_super_crackle_rng.randomize()
 	_capture_hud_authoring_state()
+	_ensure_agent_debug_panel()
 	_configure_pause_process_modes()
 	_set_tree_paused(false)
 	_connect_manager_signals()
@@ -349,6 +352,76 @@ func _capture_hud_authoring_state() -> void:
 		_meter_authoring_state_captured = true
 
 
+func _ensure_agent_debug_panel() -> void:
+	if _agent_debug_panel != null and is_instance_valid(_agent_debug_panel):
+		return
+	var ui_layer: CanvasLayer = get_node_or_null("UI") as CanvasLayer
+	if ui_layer == null:
+		return
+	var panel: ColorRect = ColorRect.new()
+	panel.name = "AgentDebugPanel"
+	panel.visible = false
+	panel.color = Color(0.012, 0.014, 0.018, 0.78)
+	panel.anchor_left = 1.0
+	panel.anchor_right = 1.0
+	panel.anchor_top = 0.0
+	panel.anchor_bottom = 0.0
+	panel.offset_left = -336.0
+	panel.offset_top = 58.0
+	panel.offset_right = -16.0
+	panel.offset_bottom = 330.0
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui_layer.add_child(panel)
+	var label: Label = Label.new()
+	label.name = "AgentDebugLabel"
+	label.offset_left = 12.0
+	label.offset_top = 10.0
+	label.offset_right = 308.0
+	label.offset_bottom = 252.0
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_font_size_override("font_size", 13)
+	label.add_theme_color_override("font_color", Color(0.88, 0.94, 1.0, 1.0))
+	panel.add_child(label)
+	_agent_debug_panel = panel
+	_agent_debug_label = label
+
+
+func _set_agent_debug_panel_visible(value: bool) -> void:
+	if _agent_debug_panel == null or not is_instance_valid(_agent_debug_panel):
+		return
+	_agent_debug_panel.visible = value
+
+
+func _update_agent_debug_panel(level_definition, boss) -> void:
+	_ensure_agent_debug_panel()
+	if _agent_debug_panel == null or _agent_debug_label == null:
+		return
+	if level_definition == null or String(level_definition.id) != "boss_test_chamber" or boss == null or not is_instance_valid(boss):
+		_set_agent_debug_panel_visible(false)
+		return
+	var program: AgentBossProgram = boss.agent_program as AgentBossProgram
+	if program == null:
+		_set_agent_debug_panel_visible(false)
+		return
+	_agent_debug_label.text = "AGENT DEBUG\nSeed: %d\nPersonality: %s\nSlow: %s\nNormal: %s + %s\nSpecial Move: %s (%s)\nSpecial Attack: %s\nWeights: %.2f / %.2f / %.2f\nCooldowns: HE %.1fs, Special %.1fs\nSize: %.2f" % [
+		int(program.generation_seed),
+		String(program.personality_verb),
+		String(program.slow_attack_verb),
+		String(program.normal_movement_verb),
+		String(program.high_explosive_verb),
+		String(program.special_movement_verb),
+		String(program.special_reposition_verb),
+		String(program.special_attack_verb),
+		float(program.slow_action_weight),
+		float(program.normal_action_weight),
+		float(program.special_action_weight),
+		float(program.high_explosive_cooldown_seconds),
+		float(program.special_base_cooldown_seconds),
+		float(program.body_radius)
+	]
+	_set_agent_debug_panel_visible(true)
+
+
 func _capture_character_hud_base_state() -> void:
 	if _character_hud_base_captured:
 		return
@@ -513,6 +586,7 @@ func _start_level(level_definition) -> void:
 		game_over_panel.visible = false
 	if win_panel != null:
 		win_panel.visible = false
+	_set_agent_debug_panel_visible(false)
 	_set_character_hud_visible(true)
 	room_manager.reset_run()
 	_clear_minimap()
@@ -715,6 +789,7 @@ func _enter_level_select() -> void:
 	_set_all_enabled(false)
 	_clear_gameplay()
 	_clear_minimap()
+	_set_agent_debug_panel_visible(false)
 	if gameplay_camera != null:
 		gameplay_camera.global_position = Vector2.ZERO
 	_set_character_hud_visible(false)
@@ -730,6 +805,7 @@ func _enter_level_select() -> void:
 
 func _clear_gameplay() -> void:
 	_clear_floor_exit_portal()
+	_set_agent_debug_panel_visible(false)
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
 	spawner_manager.clear_spawners()
@@ -1015,8 +1091,10 @@ func _on_spawn_requested(spawn_position: Vector2, profile) -> void:
 func _spawn_level_boss(level_definition):
 	if level_definition == null or level_definition.boss_profile == null:
 		return null
-	var boss_profile = _get_level_boss_profile(level_definition)
-	return enemy_manager.spawn_enemy(boss_profile, level_definition.boss_spawn_position)
+	var boss_profile: EnemyProfile = _get_level_boss_profile(level_definition) as EnemyProfile
+	var boss: EnemyEntity = enemy_manager.spawn_enemy(boss_profile, level_definition.boss_spawn_position) as EnemyEntity
+	_update_agent_debug_panel(level_definition, boss)
+	return boss
 
 
 func _get_level_boss_profile(level_definition):

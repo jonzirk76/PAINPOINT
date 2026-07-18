@@ -3644,10 +3644,12 @@ func _test_agent_boss_generation_and_behavior(failures: Array[String]) -> void:
 		return
 	var program: AgentBossProgram = first_profile.agent_program
 	var repeated_program: AgentBossProgram = repeated_profile.agent_program
-	if program.normal_movement_verb != repeated_program.normal_movement_verb or program.slow_attack_verb != repeated_program.slow_attack_verb or program.high_explosive_verb != repeated_program.high_explosive_verb or program.special_movement_verb != repeated_program.special_movement_verb or program.special_reposition_verb != repeated_program.special_reposition_verb or program.special_attack_verb != repeated_program.special_attack_verb:
+	if program.personality_verb != repeated_program.personality_verb or program.normal_movement_verb != repeated_program.normal_movement_verb or program.slow_attack_verb != repeated_program.slow_attack_verb or program.high_explosive_verb != repeated_program.high_explosive_verb or program.special_movement_verb != repeated_program.special_movement_verb or program.special_reposition_verb != repeated_program.special_reposition_verb or program.special_attack_verb != repeated_program.special_attack_verb:
 		failures.append("Agent boss generation should be deterministic for seed/floor/level id.")
 	if program.generation_seed == different_profile.agent_program.generation_seed:
 		failures.append("Agent boss generation should vary its deterministic seed when the run seed changes.")
+	if not ["hunter", "bully", "coward", "duelist"].has(String(program.personality_verb)):
+		failures.append("Generated agent boss picked an unknown movement personality.")
 	if not ["strafe", "push_forward", "zig_zag", "pull_back"].has(String(program.normal_movement_verb)):
 		failures.append("Generated agent boss picked an unknown normal movement verb.")
 	if not ["fast_single", "short_scatter", "wide_scatter", "assault_burst"].has(String(program.slow_attack_verb)):
@@ -3785,6 +3787,7 @@ func _test_agent_high_explosive_normal_moves(failures: Array[String], base_agent
 		profile.agent_program.high_explosive_verb = high_explosive_verb
 		profile.agent_program.high_explosive_action_chance = 1.0
 		profile.agent_program.high_explosive_cooldown_seconds = 3.1
+		profile.agent_program.high_explosive_windup_seconds = 0.2
 		profile.agent_program.high_explosive_mine_count = 3
 		profile.agent_program.high_explosive_mine_interval = 0.05
 		var boss: EnemyEntity = load("res://scenes/entities/enemy_entity.tscn").instantiate() as EnemyEntity
@@ -3798,12 +3801,15 @@ func _test_agent_high_explosive_normal_moves(failures: Array[String], base_agent
 			seen_kinds[String(shot_config.get("kind", ""))] = true
 		)
 		boss._agent_high_explosive_roll_pending = true
-		boss._update_agent_normal_high_explosive(Vector2.RIGHT * 360.0)
+		boss._update_agent_normal_high_explosive(0.0, Vector2.RIGHT * 360.0)
+		if boss._agent_high_explosive_windup_remaining <= 0.0:
+			failures.append("Agent high-explosive %s normal move should start a windup before firing." % high_explosive_verb)
+		boss._update_agent_normal_high_explosive(0.25, Vector2.RIGHT * 360.0)
 		if high_explosive_verb == "mines":
 			boss._agent_mine_sequence_interval_remaining = 0.0
-			boss._update_agent_normal_high_explosive(Vector2.RIGHT * 360.0)
+			boss._update_agent_normal_high_explosive(0.05, Vector2.RIGHT * 360.0)
 			boss._agent_mine_sequence_interval_remaining = 0.0
-			boss._update_agent_normal_high_explosive(Vector2.RIGHT * 360.0)
+			boss._update_agent_normal_high_explosive(0.05, Vector2.RIGHT * 360.0)
 		if emitted_configs.is_empty():
 			failures.append("Agent high-explosive %s normal move should emit a shot config." % high_explosive_verb)
 		if boss._agent_high_explosive_cooldown_remaining <= 0.0:
@@ -3846,6 +3852,7 @@ func _test_agent_push_pull_pathing(failures: Array[String], base_agent_profile) 
 	var wall_rect := Rect2(Vector2(90.0, -90.0), Vector2(160.0, 180.0))
 	for verb in ["push_forward", "pull_back"]:
 		var profile = base_agent_profile.duplicate(true)
+		profile.agent_program.personality_verb = ""
 		profile.agent_program.normal_movement_verb = verb
 		profile.agent_program.normal_tactical_distance = 260.0
 		var boss = load("res://scenes/entities/enemy_entity.tscn").instantiate()
@@ -3865,6 +3872,7 @@ func _test_agent_push_pull_pathing(failures: Array[String], base_agent_profile) 
 func _test_agent_special_reposition(failures: Array[String], base_agent_profile) -> void:
 	for reposition_verb in ["approach", "retreat", "strafe"]:
 		var profile = base_agent_profile.duplicate(true)
+		profile.agent_program.personality_verb = ""
 		profile.agent_program.special_movement_verb = "dash_chain"
 		profile.agent_program.special_reposition_verb = reposition_verb
 		profile.agent_program.special_move_distance = 260.0

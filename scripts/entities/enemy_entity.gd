@@ -110,6 +110,11 @@ var _agent_tactical_target: Vector2 = Vector2.INF
 var _agent_zigzag_sign: float = 1.0
 var _agent_high_explosive_cooldown_remaining: float = 0.0
 var _agent_high_explosive_roll_pending: bool = false
+var _agent_high_explosive_windup_kind: String = ""
+var _agent_high_explosive_windup_remaining: float = 0.0
+var _agent_high_explosive_windup_duration: float = 0.0
+var _agent_high_explosive_windup_direction: Vector2 = Vector2.RIGHT
+var _agent_high_explosive_windup_target: Vector2 = Vector2.INF
 var _agent_mine_sequence_remaining: int = 0
 var _agent_mine_sequence_interval_remaining: float = 0.0
 var _agent_mine_sequence_direction: Vector2 = Vector2.RIGHT
@@ -409,6 +414,8 @@ func _draw() -> void:
 		_draw_projectile_shield()
 	if _is_agent_boss() and _agent_teleport_cast_remaining > 0.0:
 		_draw_agent_teleport_cast()
+	if _is_agent_boss() and _agent_high_explosive_windup_remaining > 0.0:
+		_draw_agent_high_explosive_windup()
 	if _is_agent_boss() and (_agent_special_telegraph_remaining > 0.0 or _agent_charge_remaining > 0.0):
 		_draw_agent_special_telegraph()
 	elif _boss_special_telegraph_remaining > 0.0:
@@ -459,7 +466,7 @@ func _draw_agent_character_art(tint: Color) -> void:
 	var body_scale: Vector2 = Vector2.ONE
 	var is_side_facing: bool = abs(facing.x) >= abs(facing.y)
 	var is_back_facing: bool = not is_side_facing and facing.y < 0.0
-	var is_shooting := _agent_shoot_pose_remaining > 0.0 or _agent_special_telegraph_remaining > 0.0 or _agent_stream_remaining > 0.0
+	var is_shooting: bool = _agent_shoot_pose_remaining > 0.0 or _agent_special_telegraph_remaining > 0.0 or _agent_stream_remaining > 0.0 or _agent_high_explosive_windup_remaining > 0.0 or _agent_teleport_cast_remaining > 0.0
 	var weapon_rotation := weapon_aim.angle()
 	var resting_rotation: float = _get_agent_side_resting_pistol_rotation(facing)
 	if is_side_facing:
@@ -516,7 +523,7 @@ func _get_agent_shadow_color(alpha: float = 1.0) -> Color:
 
 
 func _get_agent_visual_facing_direction() -> Vector2:
-	if (_agent_shoot_pose_remaining > 0.0 or _agent_special_telegraph_remaining > 0.0 or _agent_stream_remaining > 0.0) and _agent_aim_direction.length_squared() > 0.001:
+	if (_agent_shoot_pose_remaining > 0.0 or _agent_special_telegraph_remaining > 0.0 or _agent_stream_remaining > 0.0 or _agent_high_explosive_windup_remaining > 0.0 or _agent_teleport_cast_remaining > 0.0) and _agent_aim_direction.length_squared() > 0.001:
 		return _agent_aim_direction.normalized()
 	if velocity.length_squared() > 1.0:
 		return velocity.normalized()
@@ -720,6 +727,33 @@ func _draw_agent_teleport_cast() -> void:
 		draw_line(destination + direction * (marker_radius - 7.0), destination + direction * (marker_radius + 11.0), Color(1.0, 1.0, 0.75, 0.68), 2.4)
 
 
+func _draw_agent_high_explosive_windup() -> void:
+	var duration: float = max(_agent_high_explosive_windup_duration, 0.001)
+	var progress: float = 1.0 - clamp(_agent_high_explosive_windup_remaining / duration, 0.0, 1.0)
+	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.058)
+	var aim: Vector2 = _agent_high_explosive_windup_direction.normalized()
+	if aim.length_squared() <= 0.001:
+		aim = _get_target_direction(target_position - global_position)
+	var explosive_color: Color = Color(1.0, 0.45, 0.12, 0.8)
+	if _agent_high_explosive_windup_kind == AgentBossProgram.HIGH_EXPLOSIVE_GRENADE:
+		explosive_color = Color(1.0, 0.7, 0.18, 0.82)
+	elif _agent_high_explosive_windup_kind == AgentBossProgram.HIGH_EXPLOSIVE_MINES:
+		explosive_color = Color(1.0, 0.22, 0.12, 0.78)
+	var radius: float = body_radius + 16.0 + progress * 14.0 + pulse * 4.0
+	draw_circle(Vector2.ZERO, radius, Color(explosive_color.r, explosive_color.g, explosive_color.b, 0.08 + pulse * 0.08))
+	draw_arc(Vector2.ZERO, radius, -PI * 0.5, -PI * 0.5 + TAU * progress, 48, explosive_color, 4.0)
+	draw_line(Vector2.ZERO, aim * (body_radius + 76.0), Color(1.0, 0.82, 0.22, 0.42 + progress * 0.34), 3.0)
+	if _agent_high_explosive_windup_kind == AgentBossProgram.HIGH_EXPLOSIVE_MINES:
+		for index in range(3):
+			var marker_direction: Vector2 = aim.rotated((float(index) - 1.0) * 0.38)
+			draw_circle(marker_direction * (body_radius + 36.0 + progress * 18.0), 5.0 + pulse * 2.0, Color(1.0, 0.26, 0.12, 0.58))
+	else:
+		var target_offset: Vector2 = aim * 180.0
+		if _agent_high_explosive_windup_target != Vector2.INF:
+			target_offset = _agent_high_explosive_windup_target - global_position
+		draw_arc(target_offset, body_radius + 14.0 + pulse * 5.0, progress * TAU, progress * TAU + TAU * 0.78, 44, Color(1.0, 0.9, 0.24, 0.66), 3.0)
+
+
 func _draw_boss_special_telegraph() -> void:
 	var progress: float = 1.0 - clamp(_boss_special_telegraph_remaining / max(_boss_special_telegraph_duration, 0.001), 0.0, 1.0)
 	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.045)
@@ -797,9 +831,11 @@ func _configure_agent_boss_state() -> void:
 	_agent_burst_interval_remaining = 0.0
 	_agent_burst_shots_remaining = 0
 	_agent_burst_base_direction = Vector2.RIGHT
+	_agent_action_direction = Vector2.ZERO
 	_agent_tactical_target = Vector2.INF
 	_agent_high_explosive_cooldown_remaining = 0.0
 	_agent_high_explosive_roll_pending = false
+	_clear_agent_high_explosive_windup()
 	_agent_mine_sequence_remaining = 0
 	_agent_mine_sequence_interval_remaining = 0.0
 	_agent_mine_sequence_direction = Vector2.RIGHT
@@ -865,8 +901,9 @@ func _update_agent_boss(delta: float, to_target: Vector2) -> Vector2:
 			_update_agent_slow_pressure_shots(to_target)
 			return _get_agent_slow_velocity(to_target)
 		AGENT_ACTION_NORMAL:
-			_update_agent_normal_high_explosive(to_target)
-			_try_emit_agent_standard_shot(to_target, float(agent_program.normal_shot_cooldown), float(agent_program.normal_projectile_speed), projectile_damage, float(agent_program.normal_projectile_radius))
+			var high_explosive_busy: bool = _update_agent_normal_high_explosive(delta, to_target)
+			if not high_explosive_busy:
+				_try_emit_agent_standard_shot(to_target, float(agent_program.normal_shot_cooldown), float(agent_program.normal_projectile_speed), projectile_damage, float(agent_program.normal_projectile_radius))
 			return _get_agent_normal_velocity(to_target)
 		AGENT_ACTION_SPECIAL:
 			return _update_agent_special_movement(delta, to_target)
@@ -896,20 +933,24 @@ func _start_next_agent_action(to_target: Vector2) -> void:
 			_agent_special_chain_count = 0
 			_agent_high_explosive_roll_pending = false
 			_clear_agent_mine_sequence()
+			_clear_agent_high_explosive_windup()
 			_agent_action_remaining = max(float(agent_program.slow_action_seconds), 0.2)
-			_agent_action_direction = _pick_agent_valid_direction(Vector2.RIGHT.rotated(_agent_rng.randf() * TAU), float(agent_program.normal_tactical_distance) * 0.55)
+			_agent_action_direction = _pick_agent_valid_direction(_get_agent_slow_personality_direction(to_target), float(agent_program.normal_tactical_distance) * 0.55)
 			_agent_next_shot_remaining = min(_agent_next_shot_remaining, 0.08)
 		AGENT_ACTION_NORMAL:
 			_agent_special_chain_count = 0
 			_clear_agent_slow_fire_state()
+			_clear_agent_high_explosive_windup()
 			_agent_high_explosive_roll_pending = true
 			_agent_action_remaining = max(float(agent_program.normal_action_seconds), 0.25)
 			_agent_zigzag_sign *= -1.0
+			_agent_action_direction = _get_agent_normal_preferred_direction(to_target)
 			_agent_next_shot_remaining = min(_agent_next_shot_remaining, 0.18)
 		AGENT_ACTION_SPECIAL:
 			_clear_agent_slow_fire_state()
 			_agent_high_explosive_roll_pending = false
 			_clear_agent_mine_sequence()
+			_clear_agent_high_explosive_windup()
 			_agent_action_remaining = 5.0
 			_start_agent_special_movement(to_target)
 	queue_redraw()
@@ -918,10 +959,12 @@ func _start_next_agent_action(to_target: Vector2) -> void:
 func _finish_agent_action() -> void:
 	_agent_action_kind = ""
 	_agent_action_remaining = 0.0
+	_agent_action_direction = Vector2.ZERO
 	_agent_tactical_target = Vector2.INF
 	_clear_agent_slow_fire_state()
 	_agent_high_explosive_roll_pending = false
 	_clear_agent_mine_sequence()
+	_clear_agent_high_explosive_windup()
 	_agent_special_stage = ""
 	_agent_special_telegraph_remaining = 0.0
 	_agent_teleport_target = Vector2.INF
@@ -994,17 +1037,54 @@ func _clear_agent_mine_sequence() -> void:
 	_agent_mine_sequence_direction = Vector2.RIGHT
 
 
-func _update_agent_normal_high_explosive(to_target: Vector2) -> void:
+func _clear_agent_high_explosive_windup() -> void:
+	_agent_high_explosive_windup_kind = ""
+	_agent_high_explosive_windup_remaining = 0.0
+	_agent_high_explosive_windup_duration = 0.0
+	_agent_high_explosive_windup_direction = Vector2.RIGHT
+	_agent_high_explosive_windup_target = Vector2.INF
+
+
+func _update_agent_normal_high_explosive(delta: float, to_target: Vector2) -> bool:
+	if _agent_high_explosive_windup_remaining > 0.0:
+		return _update_agent_high_explosive_windup(delta, to_target)
 	if _agent_mine_sequence_remaining > 0:
 		_try_emit_next_agent_mine()
-		return
+		return true
 	if not _agent_high_explosive_roll_pending or _agent_high_explosive_cooldown_remaining > 0.0:
-		return
+		return false
 	_agent_high_explosive_roll_pending = false
 	if _agent_rng.randf() > clamp(float(agent_program.high_explosive_action_chance), 0.0, 1.0):
-		return
-	if _try_emit_agent_high_explosive(to_target):
+		return false
+	_start_agent_high_explosive_windup(to_target)
+	return true
+
+
+func _start_agent_high_explosive_windup(to_target: Vector2) -> void:
+	var direction: Vector2 = _get_target_direction(to_target)
+	_agent_high_explosive_windup_kind = _get_agent_high_explosive_verb()
+	_agent_high_explosive_windup_duration = max(float(agent_program.high_explosive_windup_seconds), 0.08)
+	_agent_high_explosive_windup_remaining = _agent_high_explosive_windup_duration
+	_agent_high_explosive_windup_direction = direction
+	_agent_high_explosive_windup_target = target_position
+	_agent_aim_at_target(to_target)
+	queue_redraw()
+
+
+func _update_agent_high_explosive_windup(delta: float, to_target: Vector2) -> bool:
+	_agent_high_explosive_windup_remaining = max(_agent_high_explosive_windup_remaining - delta, 0.0)
+	_agent_aim_at_target(to_target)
+	if to_target.length_squared() > 4.0:
+		_agent_high_explosive_windup_direction = to_target.normalized()
+		_agent_high_explosive_windup_target = target_position
+	if _agent_high_explosive_windup_remaining > 0.0:
+		queue_redraw()
+		return true
+	var emitted: bool = _try_emit_agent_high_explosive(to_target)
+	_clear_agent_high_explosive_windup()
+	if emitted:
 		_agent_high_explosive_cooldown_remaining = max(float(agent_program.high_explosive_cooldown_seconds), 0.1)
+	return emitted
 
 
 func _try_emit_agent_high_explosive(to_target: Vector2) -> bool:
@@ -1221,19 +1301,97 @@ func _get_agent_slow_velocity(to_target: Vector2) -> Vector2:
 
 
 func _get_agent_normal_velocity(to_target: Vector2) -> Vector2:
-	var target_direction: Vector2 = _get_target_direction(to_target)
 	var speed_value: float = max(float(agent_program.normal_move_speed), 0.0)
+	if _agent_action_direction.length_squared() <= 0.001:
+		_agent_action_direction = _get_agent_normal_preferred_direction(to_target)
+	return _get_agent_path_velocity_for_direction(_agent_action_direction, float(agent_program.normal_tactical_distance), speed_value)
+
+
+func _get_agent_normal_preferred_direction(to_target: Vector2) -> Vector2:
+	var target_direction: Vector2 = _get_target_direction(to_target)
+	var personality_direction: Vector2 = _get_agent_normal_personality_direction(to_target)
+	if personality_direction != Vector2.INF:
+		return personality_direction
 	match _get_agent_normal_movement_verb():
 		AgentBossProgram.NORMAL_PUSH_FORWARD:
-			return _get_agent_path_velocity_for_direction(target_direction, float(agent_program.normal_tactical_distance), speed_value)
+			return target_direction
 		AgentBossProgram.NORMAL_PULL_BACK:
-			return _get_agent_path_velocity_for_direction(-target_direction, float(agent_program.normal_tactical_distance), speed_value)
+			return -target_direction
 		AgentBossProgram.NORMAL_ZIG_ZAG:
 			var zig_direction: Vector2 = (target_direction + target_direction.orthogonal() * _agent_zigzag_sign * 0.9).normalized()
-			return _get_agent_path_velocity_for_direction(zig_direction, float(agent_program.normal_tactical_distance), speed_value)
+			return zig_direction
 		_:
 			var strafe_direction: Vector2 = target_direction.orthogonal() * _strafe_sign
-			return _get_agent_path_velocity_for_direction(strafe_direction, float(agent_program.normal_tactical_distance), speed_value)
+			return strafe_direction
+
+
+func _get_agent_slow_personality_direction(to_target: Vector2) -> Vector2:
+	var target_direction: Vector2 = _get_target_direction(to_target)
+	match _get_agent_personality_verb():
+		AgentBossProgram.PERSONALITY_HUNTER:
+			return target_direction
+		AgentBossProgram.PERSONALITY_BULLY:
+			return -target_direction
+		AgentBossProgram.PERSONALITY_COWARD:
+			if _agent_rng.randf() < clamp(float(agent_program.coward_aggression_chance), 0.0, 1.0):
+				return target_direction
+			return _get_retreat_or_strafe_direction(target_direction, float(agent_program.normal_tactical_distance) * 0.55)
+		AgentBossProgram.PERSONALITY_DUELIST:
+			return _get_duelist_personality_direction(target_direction)
+		_:
+			return Vector2.RIGHT.rotated(_agent_rng.randf() * TAU)
+
+
+func _get_agent_normal_personality_direction(to_target: Vector2) -> Vector2:
+	var target_direction: Vector2 = _get_target_direction(to_target)
+	match _get_agent_personality_verb():
+		AgentBossProgram.PERSONALITY_HUNTER:
+			return target_direction
+		AgentBossProgram.PERSONALITY_BULLY:
+			return target_direction.orthogonal() * _agent_zigzag_sign
+		AgentBossProgram.PERSONALITY_COWARD:
+			if _agent_rng.randf() < clamp(float(agent_program.coward_aggression_chance), 0.0, 1.0):
+				return target_direction
+			return _get_retreat_or_strafe_direction(target_direction, float(agent_program.normal_tactical_distance))
+		AgentBossProgram.PERSONALITY_DUELIST:
+			return _get_duelist_personality_direction(target_direction)
+	return Vector2.INF
+
+
+func _get_retreat_or_strafe_direction(target_direction: Vector2, distance: float) -> Vector2:
+	if _agent_direction_has_lane(-target_direction, distance):
+		return -target_direction
+	var side_direction: Vector2 = target_direction.orthogonal() * _agent_zigzag_sign
+	if _agent_direction_has_lane(side_direction, distance):
+		return side_direction
+	if _agent_direction_has_lane(-side_direction, distance):
+		return -side_direction
+	return target_direction
+
+
+func _get_duelist_personality_direction(target_direction: Vector2) -> Vector2:
+	var distance_to_target: float = global_position.distance_to(target_position)
+	var preferred: float = max(float(agent_program.duelist_preferred_distance), 80.0)
+	var band: float = max(float(agent_program.duelist_distance_band), 12.0)
+	if _wall_blocks_segment(global_position, target_position):
+		return target_direction
+	if distance_to_target < preferred - band:
+		return -target_direction
+	if distance_to_target > preferred + band:
+		return target_direction
+	return target_direction.orthogonal() * _agent_zigzag_sign
+
+
+func _agent_direction_has_lane(direction: Vector2, distance: float) -> bool:
+	if direction.length_squared() <= 0.001:
+		return false
+	var normalized_direction: Vector2 = direction.normalized()
+	var candidate: Vector2 = global_position + normalized_direction * max(distance, 48.0)
+	candidate = _constrain_to_playable(candidate)
+	var to_candidate: Vector2 = candidate - global_position
+	if to_candidate.length_squared() <= 36.0 * 36.0 or to_candidate.normalized().dot(normalized_direction) < 0.45:
+		return false
+	return _agent_point_is_valid(candidate) and not _path_blocks_segment(global_position, candidate, body_radius * 0.55)
 
 
 func _get_agent_path_velocity_for_direction(preferred_direction: Vector2, distance: float, speed_value: float) -> Vector2:
@@ -1364,7 +1522,7 @@ func _pick_agent_dash_target(to_target: Vector2) -> Vector2:
 func _get_agent_special_move_directions(to_target: Vector2) -> Array[Vector2]:
 	var target_direction: Vector2 = _get_target_direction(to_target)
 	var side_direction: Vector2 = target_direction.orthogonal() * _agent_zigzag_sign
-	match _get_agent_special_reposition_verb():
+	match _get_agent_personality_special_reposition(to_target):
 		AgentBossProgram.SPECIAL_REPOSITION_RETREAT:
 			return [
 				-target_direction,
@@ -1392,6 +1550,33 @@ func _get_agent_special_move_directions(to_target: Vector2) -> Array[Vector2]:
 				-side_direction,
 				-target_direction
 			]
+
+
+func _get_agent_personality_special_reposition(to_target: Vector2) -> String:
+	var target_direction: Vector2 = _get_target_direction(to_target)
+	match _get_agent_personality_verb():
+		AgentBossProgram.PERSONALITY_HUNTER:
+			return AgentBossProgram.SPECIAL_REPOSITION_STRAFE
+		AgentBossProgram.PERSONALITY_BULLY:
+			return AgentBossProgram.SPECIAL_REPOSITION_APPROACH
+		AgentBossProgram.PERSONALITY_COWARD:
+			if _agent_rng.randf() < clamp(float(agent_program.coward_aggression_chance), 0.0, 1.0):
+				return AgentBossProgram.SPECIAL_REPOSITION_APPROACH
+			if _agent_direction_has_lane(-target_direction, float(agent_program.special_move_distance)):
+				return AgentBossProgram.SPECIAL_REPOSITION_RETREAT
+			return AgentBossProgram.SPECIAL_REPOSITION_STRAFE
+		AgentBossProgram.PERSONALITY_DUELIST:
+			var distance_to_target: float = global_position.distance_to(target_position)
+			var preferred: float = max(float(agent_program.duelist_preferred_distance), 80.0)
+			var band: float = max(float(agent_program.duelist_distance_band), 12.0)
+			if _wall_blocks_segment(global_position, target_position):
+				return AgentBossProgram.SPECIAL_REPOSITION_APPROACH
+			if distance_to_target < preferred - band:
+				return AgentBossProgram.SPECIAL_REPOSITION_RETREAT
+			if distance_to_target > preferred + band:
+				return AgentBossProgram.SPECIAL_REPOSITION_APPROACH
+			return AgentBossProgram.SPECIAL_REPOSITION_STRAFE
+	return _get_agent_special_reposition_verb()
 
 
 func _adjust_agent_special_candidate_distance(candidate: Vector2) -> Vector2:
@@ -1821,6 +2006,10 @@ func _emit_agent_standard_projectile(shot_direction: Vector2, shot_speed: float,
 
 func _get_agent_normal_movement_verb() -> String:
 	return String(agent_program.normal_movement_verb) if agent_program != null else AgentBossProgram.NORMAL_STRAFE
+
+
+func _get_agent_personality_verb() -> String:
+	return String(agent_program.personality_verb) if agent_program != null else AgentBossProgram.PERSONALITY_HUNTER
 
 
 func _get_agent_slow_attack_verb() -> String:

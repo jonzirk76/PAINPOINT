@@ -6,6 +6,11 @@ const NORMAL_PUSH_FORWARD := "push_forward"
 const NORMAL_ZIG_ZAG := "zig_zag"
 const NORMAL_PULL_BACK := "pull_back"
 
+const PERSONALITY_HUNTER := "hunter"
+const PERSONALITY_BULLY := "bully"
+const PERSONALITY_COWARD := "coward"
+const PERSONALITY_DUELIST := "duelist"
+
 const SLOW_ATTACK_FAST_SINGLE := "fast_single"
 const SLOW_ATTACK_SHORT_SCATTER := "short_scatter"
 const SLOW_ATTACK_WIDE_SCATTER := "wide_scatter"
@@ -33,6 +38,8 @@ const SPECIAL_ATTACK_PINWHEEL_BURST := "pinwheel_burst"
 
 ## Records the deterministic seed used to build this agent loadout.
 @export var generation_seed: int = 1
+## Controls the movement personality used to bias tactical repositioning.
+@export_enum("hunter", "bully", "coward", "duelist") var personality_verb: String = PERSONALITY_HUNTER
 ## Controls which tactical movement verb the agent uses during normal actions.
 @export_enum("strafe", "push_forward", "zig_zag", "pull_back") var normal_movement_verb: String = NORMAL_STRAFE
 ## Controls which weapon pattern the agent uses during slow pressure.
@@ -109,6 +116,8 @@ const SPECIAL_ATTACK_PINWHEEL_BURST := "pinwheel_burst"
 @export var high_explosive_action_chance: float = 0.25
 ## Controls the cooldown after a high-explosive move triggers during normal movement.
 @export var high_explosive_cooldown_seconds: float = 3.35
+## Controls how long high-explosive moves visibly wind up before launching or placing.
+@export var high_explosive_windup_seconds: float = 0.42
 ## Controls high-explosive rocket projectile speed.
 @export var high_explosive_rocket_speed: float = 640.0
 ## Controls high-explosive rocket blast radius.
@@ -129,6 +138,12 @@ const SPECIAL_ATTACK_PINWHEEL_BURST := "pinwheel_burst"
 @export var high_explosive_mine_trigger_radius: float = 34.0
 ## Controls high-explosive mine blast radius.
 @export var high_explosive_mine_blast_radius: float = 66.0
+## Controls how often coward personalities choose a direct aggressive movement instead of retreating or strafing.
+@export var coward_aggression_chance: float = 0.18
+## Controls the spacing duelist personalities try to maintain from the player.
+@export var duelist_preferred_distance: float = 255.0
+## Controls how far from preferred spacing duelists can drift before repositioning in or out.
+@export var duelist_distance_band: float = 58.0
 ## Controls how far normal push and pull verbs try to move before steering fallback.
 @export var normal_tactical_distance: float = 230.0
 ## Controls how long the agent telegraphs after fast movement before firing the special.
