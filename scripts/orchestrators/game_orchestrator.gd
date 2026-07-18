@@ -12,6 +12,7 @@ const LEVELS := [
 ]
 const FLOOR_EXIT_PORTAL_SCENE := preload("res://scenes/entities/floor_exit_portal_entity.tscn")
 const AGENT_BOSS_GENERATOR := preload("res://scripts/resources/agent_boss_generator.gd")
+const BOLD_PIXELS_FONT := preload("res://art/fonts/BoldPixels.ttf")
 
 @onready var input_manager = $Managers/InputManager
 @onready var player_manager = $Managers/PlayerManager
@@ -189,9 +190,9 @@ const BOSS_METER_SEGMENT_EJECT_OFFSET := Vector2(20.0, -30.0)
 const BOSS_HEALTH_BAR_WIDTH := 840.0
 const BOSS_HEALTH_BAR_HEIGHT := 28.0
 const BOSS_HEALTH_HIDE_SECONDS := 1.05
-const BOSS_ALERT_DEFAULT_SECONDS := 1.65
-const BOSS_ALERT_HEALTH_FILL_SECONDS := 1.15
-const BOSS_ALERT_DEFAULT_FLASH_COUNT := 2
+const BOSS_ALERT_DEFAULT_SECONDS := 2.35
+const BOSS_ALERT_HEALTH_FILL_SECONDS := 1.45
+const BOSS_ALERT_DEFAULT_FLASH_COUNT := 3
 const AMMO_SEGMENT_REFILL_STEP_SECONDS := 0.06
 const AMMO_SEGMENT_REFILL_MIN_SECONDS := 0.22
 const AMMO_SEGMENT_REFILL_MAX_SECONDS := 0.72
@@ -390,24 +391,27 @@ func _ensure_agent_debug_panel() -> void:
 	panel.name = "AgentDebugPanel"
 	panel.visible = false
 	panel.color = Color(0.012, 0.014, 0.018, 0.78)
-	panel.anchor_left = 1.0
-	panel.anchor_right = 1.0
+	panel.anchor_left = 0.0
+	panel.anchor_right = 0.0
 	panel.anchor_top = 0.0
 	panel.anchor_bottom = 0.0
-	panel.offset_left = -336.0
-	panel.offset_top = 58.0
-	panel.offset_right = -16.0
-	panel.offset_bottom = 330.0
+	panel.offset_left = 24.0
+	panel.offset_top = 230.0
+	panel.offset_right = 284.0
+	panel.offset_bottom = 378.0
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	ui_layer.add_child(panel)
 	var label: Label = Label.new()
 	label.name = "AgentDebugLabel"
-	label.offset_left = 12.0
-	label.offset_top = 10.0
-	label.offset_right = 308.0
-	label.offset_bottom = 252.0
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	label.offset_left = 8.0
+	label.offset_top = 7.0
+	label.offset_right = 252.0
+	label.offset_bottom = 140.0
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.add_theme_font_size_override("font_size", 13)
+	label.add_theme_font_override("font", BOLD_PIXELS_FONT)
+	label.add_theme_font_size_override("font_size", 9)
 	label.add_theme_color_override("font_color", Color(0.88, 0.94, 1.0, 1.0))
 	panel.add_child(label)
 	_agent_debug_panel = panel
@@ -431,7 +435,7 @@ func _update_agent_debug_panel(level_definition, boss) -> void:
 	if program == null:
 		_set_agent_debug_panel_visible(false)
 		return
-	_agent_debug_label.text = "AGENT DEBUG\nSeed: %d\nPersonality: %s\nSlow: %s\nNormal: %s + %s\nSpecial Move: %s (%s)\nSpecial Attack: %s\nWeights: %.2f / %.2f / %.2f\nCooldowns: HE %.1fs, Special %.1fs\nSize: %.2f" % [
+	_agent_debug_label.text = "AGENT DEBUG\nSeed %d\nType %s\nSlow %s\nMove %s + %s\nSpec %s / %s\nAtk %s\nW %.2f %.2f %.2f\nCD HE %.1f  SP %.1f\nSize %.1f" % [
 		int(program.generation_seed),
 		String(program.personality_verb),
 		String(program.slow_attack_verb),
@@ -486,6 +490,7 @@ func _ensure_boss_health_hud() -> void:
 		alert_label.offset_right = 0.0
 		alert_label.offset_top = -24.0
 		alert_label.offset_bottom = 0.0
+		alert_label.add_theme_font_override("font", BOLD_PIXELS_FONT)
 		alert_label.add_theme_font_size_override("font_size", 58)
 		alert_label.add_theme_color_override("font_color", Color(1.0, 0.68, 0.56, 0.0))
 		alert_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -513,6 +518,7 @@ func _ensure_boss_health_hud() -> void:
 	name_label.offset_right = BOSS_HEALTH_BAR_WIDTH
 	name_label.offset_top = 0.0
 	name_label.offset_bottom = 28.0
+	name_label.add_theme_font_override("font", BOLD_PIXELS_FONT)
 	name_label.add_theme_font_size_override("font_size", 24)
 	name_label.add_theme_color_override("font_color", Color(1.0, 0.78, 0.46, 1.0))
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE

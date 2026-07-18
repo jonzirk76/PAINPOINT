@@ -69,11 +69,11 @@ const SPECIAL_ATTACK_PINWHEEL_BURST := "pinwheel_burst"
 ## Modulates darker outline and boot details on the agent.
 @export var shadow_color: Color = Color(0.08, 0.03, 0.16)
 ## Controls how long the agent waits shielded during the boss alert intro.
-@export var intro_seconds: float = 1.65
+@export var intro_seconds: float = 2.35
 ## Controls how many red alert pulses play during the boss alert intro.
-@export var intro_alert_flash_count: int = 2
+@export var intro_alert_flash_count: int = 3
 ## Controls how long the bottom boss healthbar takes to fill during the intro.
-@export var intro_health_fill_seconds: float = 1.15
+@export var intro_health_fill_seconds: float = 1.45
 ## Controls how long the slow pressure action lasts before choosing a new action.
 @export var slow_action_seconds: float = 1.45
 ## Controls how quickly the agent drifts during slow pressure.
