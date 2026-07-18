@@ -1,15 +1,30 @@
-[gd_resource type="Resource" script_class="LevelDefinition" load_steps=3 format=3 uid="uid://ykjixpdn5408"]
+[gd_resource type="Resource" script_class="LevelDefinition" load_steps=6 format=3 uid="uid://ykjixpdn5408"]
 
 [ext_resource type="Script" uid="uid://ch0sx5oaq1deo" path="res://scripts/resources/level_definition.gd" id="1"]
 [ext_resource type="Resource" uid="uid://c7lsas62p4ss8" path="res://resources/enemies/first_boss_enemy.tres" id="2"]
+[ext_resource type="Script" uid="uid://dsux5p5dfwcu7" path="res://scripts/resources/destructible_prop_placement.gd" id="3"]
+
+[sub_resource type="Resource" id="BossTestCrate_1"]
+script = ExtResource("3")
+position = Vector2(-330, 150)
+prop_kind = "barrel"
+
+[sub_resource type="Resource" id="BossTestCrate_2"]
+script = ExtResource("3")
+position = Vector2(330, -150)
+prop_kind = "barrel"
 
 [resource]
 script = ExtResource("1")
 id = "boss_test_chamber"
 display_name = "Boss Test Chamber"
 difficulty_label = "Boss Test"
+arena_bounds = Rect2(-640, -360, 1280, 720)
 use_default_spawners = false
+destructible_prop_placements = Array[Resource]([SubResource("BossTestCrate_1"), SubResource("BossTestCrate_2")])
+wall_rects = Array[Rect2]([Rect2(-260, -170, 80, 120), Rect2(180, 50, 80, 120)])
 max_active_enemies = 1
 boss_profile = ExtResource("2")
 generate_agent_boss = true
+randomize_agent_boss_each_load = true
 boss_spawn_position = Vector2(260, 0)

@@ -2665,8 +2665,16 @@ func _test_room_interior_generator_determinism_and_budget(failures: Array[String
 		failures.append("Generated boss rooms should use a true one-cell arena.")
 	if not bool(boss.generate_agent_boss):
 		failures.append("Generated boss rooms should request procedural agent boss generation.")
-	if not boss.void_rects.is_empty() or _level_has_interior_blocker(boss):
-		failures.append("Generated boss rooms should not include interior blockers.")
+	var boss_interior_blockers: Array[Rect2] = _get_level_interior_blocker_rects(boss)
+	if boss_interior_blockers.is_empty():
+		failures.append("Generated boss rooms should include symmetric interior cover blockers.")
+	elif not _has_rotational_blocker_pair(boss_interior_blockers, boss.arena_bounds.get_center()):
+		failures.append("Generated boss room cover blockers should keep rotational symmetry.")
+	var boss_prop_rects: Array[Rect2] = _get_level_prop_rects(boss)
+	if boss_prop_rects.size() < 2:
+		failures.append("Generated boss rooms should include paired destructible cover.")
+	elif not _has_rotational_blocker_pair(boss_prop_rects, boss.arena_bounds.get_center()):
+		failures.append("Generated boss room destructible cover should keep rotational symmetry.")
 	var boss_result: Dictionary = generator.validate_level(boss, {"west": "path_3"}, "boss")
 	if not bool(boss_result.get("ok", false)):
 		failures.append("Generated boss room failed its own validation: %s" % String(boss_result.get("reason", "")))
@@ -3002,15 +3010,31 @@ func _get_blocker_tile_count(level) -> int:
 
 
 func _level_has_interior_blocker(level) -> bool:
+	return not _get_level_interior_blocker_rects(level).is_empty()
+
+
+func _get_level_interior_blocker_rects(level) -> Array[Rect2]:
+	var interior: Array[Rect2] = []
 	if level == null:
-		return false
+		return interior
 	for rect in _get_level_meta_rects(level, "wall_tile_rects", level.wall_rects):
 		if not _rect_touches_arena_edge(rect, level.arena_bounds):
-			return true
+			interior.append(rect)
 	for rect in _get_level_meta_rects(level, "void_tile_rects", level.void_rects):
 		if not _rect_touches_arena_edge(rect, level.arena_bounds):
-			return true
-	return false
+			interior.append(rect)
+	return interior
+
+
+func _get_level_prop_rects(level) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if level == null:
+		return rects
+	for placement in level.destructible_prop_placements:
+		if placement == null:
+			continue
+		rects.append(Rect2(placement.position - placement.size * 0.5, placement.size))
+	return rects
 
 
 func _rect_touches_arena_edge(rect: Rect2, bounds: Rect2) -> bool:
@@ -3628,8 +3652,14 @@ func _test_agent_boss_generation_and_behavior(failures: Array[String]) -> void:
 		failures.append("Generated agent boss picked an unknown special movement verb.")
 	if not ["small_fast_bullet", "rocket", "minigun_sweep_twice", "spiral_clockwise", "spiral_counter_clockwise"].has(String(program.special_attack_verb)):
 		failures.append("Generated agent boss picked an unknown special attack verb.")
-	if not is_equal_approx(float(program.slow_action_weight), 0.4) or not is_equal_approx(float(program.normal_action_weight), 0.4) or not is_equal_approx(float(program.special_action_weight), 0.2):
-		failures.append("Agent boss default action weights should stay at 40/40/20.")
+	if not is_equal_approx(float(program.slow_action_weight), 0.45) or not is_equal_approx(float(program.normal_action_weight), 0.45) or not is_equal_approx(float(program.special_action_weight), 0.1):
+		failures.append("Agent boss default action weights should stay at 45/45/10.")
+	var player = load("res://scenes/entities/player_entity.tscn").instantiate()
+	if not is_equal_approx(float(first_profile.body_radius), float(player.body_radius)):
+		failures.append("Generated agent boss body radius should match the player body radius.")
+	if float(first_profile.contact_radius) > float(player.body_radius) * 1.6:
+		failures.append("Generated agent boss contact radius should stay player-scaled.")
+	player.free()
 
 	var boss = load("res://scenes/entities/enemy_entity.tscn").instantiate()
 	boss.initialize(first_profile)

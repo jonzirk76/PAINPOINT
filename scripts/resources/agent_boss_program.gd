@@ -25,11 +25,15 @@ const SPECIAL_ATTACK_SPIRAL_COUNTER_CLOCKWISE := "spiral_counter_clockwise"
 ## Controls which hostile special attack the agent uses after its special movement.
 @export_enum("small_fast_bullet", "rocket", "minigun_sweep_twice", "spiral_clockwise", "spiral_counter_clockwise") var special_attack_verb: String = SPECIAL_ATTACK_SMALL_FAST_BULLET
 ## Weighted chance for slow pressure actions after the current action completes.
-@export var slow_action_weight: float = 0.4
+@export var slow_action_weight: float = 0.45
 ## Weighted chance for normal movement actions after the current action completes.
-@export var normal_action_weight: float = 0.4
+@export var normal_action_weight: float = 0.45
 ## Weighted chance for special movement and special attack actions after the current action completes.
-@export var special_action_weight: float = 0.2
+@export var special_action_weight: float = 0.1
+## Controls the generated agent's collision and visual body size; defaults to the player body radius.
+@export var body_radius: float = 17.0
+## Controls the generated agent's contact hit range; player-body overlap still adds both body radii.
+@export var contact_radius: float = 24.0
 ## Modulates the player-like body art used by this agent.
 @export var body_modulate: Color = Color(0.78, 0.25, 0.95)
 ## Modulates muzzle, telegraph, and ring accents used by this agent.

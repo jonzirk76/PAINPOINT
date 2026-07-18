@@ -102,6 +102,7 @@ var _loading_completion_floor_start_pending: bool = false
 var _paused_previous_status: String = ""
 var _main_loop_floor: int = 1
 var _run_seed: int = 0
+var _agent_boss_generation_nonce: int = 0
 var _run_enemy_kills: int = 0
 var _run_spawner_kills: int = 0
 var _run_boss_kills: int = 0
@@ -1012,7 +1013,16 @@ func _get_level_boss_profile(level_definition):
 		return null
 	if not bool(level_definition.get("generate_agent_boss")):
 		return level_definition.boss_profile
-	return AGENT_BOSS_GENERATOR.generate_profile(level_definition.boss_profile, _run_seed, int(level_definition.floor_number), String(level_definition.id))
+	return AGENT_BOSS_GENERATOR.generate_profile(level_definition.boss_profile, _get_agent_boss_generation_seed(level_definition), int(level_definition.floor_number), String(level_definition.id))
+
+
+func _get_agent_boss_generation_seed(level_definition) -> int:
+	if level_definition == null or not bool(level_definition.get("randomize_agent_boss_each_load")):
+		return _run_seed
+	_agent_boss_generation_nonce += 1
+	var tick_seed: int = int(Time.get_ticks_usec() % 2147483647)
+	var nonce_seed: int = _agent_boss_generation_nonce * 104729
+	return max(posmod(tick_seed + nonce_seed, 2147483647), 1)
 
 
 func _on_hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: Dictionary) -> void:

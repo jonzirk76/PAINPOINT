@@ -1,6 +1,9 @@
 extends RefCounted
 class_name AgentBossGenerator
 
+const PLAYER_BODY_RADIUS := 17.0
+const PLAYER_SIZED_CONTACT_RADIUS := 24.0
+
 static func generate_profile(base_profile: Resource, run_seed: int, floor_number: int, level_id: String) -> EnemyProfile:
 	var profile: EnemyProfile = EnemyProfile.new()
 	if base_profile != null:
@@ -10,6 +13,8 @@ static func generate_profile(base_profile: Resource, run_seed: int, floor_number
 	var program: AgentBossProgram = generate_program(run_seed, floor_number, level_id)
 	profile.behavior_kind = EnemyProfile.BEHAVIOR_BOSS
 	profile.agent_program = program
+	profile.body_radius = program.body_radius
+	profile.contact_radius = program.contact_radius
 	profile.body_color = program.body_modulate
 	profile.accent_color = program.accent_color
 	profile.shot_projectile_count = 1
@@ -26,6 +31,8 @@ static func generate_program(run_seed: int, floor_number: int, level_id: String)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
 	program.generation_seed = seed
+	program.body_radius = PLAYER_BODY_RADIUS
+	program.contact_radius = PLAYER_SIZED_CONTACT_RADIUS
 	program.normal_movement_verb = _pick_string(rng, [
 		AgentBossProgram.NORMAL_STRAFE,
 		AgentBossProgram.NORMAL_PUSH_FORWARD,

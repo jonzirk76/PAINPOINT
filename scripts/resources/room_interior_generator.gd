@@ -27,11 +27,25 @@ func generate(piece, room_id: String, floor_number: int, floor_seed: int, connec
 	var rng := RandomNumberGenerator.new()
 	rng.seed = _compute_room_seed(room_id, floor_number, floor_seed, String(piece.id))
 	if room_kind == "boss":
-		var level = _make_base_level(piece, room_id, floor_number, effective_connection_edges)
-		level.max_active_enemies = 1
-		var result: Dictionary = validate_level(level, connections, room_kind)
-		if bool(result.get("ok", false)):
-			return level
+		for attempt in range(MAX_ATTEMPTS):
+			var level = _make_base_level(piece, room_id, floor_number, effective_connection_edges)
+			var shell_wall_tiles: Array[Rect2] = _get_level_wall_tiles(level)
+			var blockers: Dictionary = _build_boss_obstacles(level, connections, rng, floor_number, attempt)
+			var generated_wall_tiles: Array[Rect2] = shell_wall_tiles.duplicate()
+			var generated_walls: Array[Rect2] = _typed_rect_array(blockers.get("walls", []))
+			generated_wall_tiles.append_array(ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(generated_walls))
+			var generated_voids: Array[Rect2] = _typed_rect_array(blockers.get("voids", []))
+			_apply_wall_tiles(level, generated_wall_tiles)
+			_apply_void_rects(level, generated_voids)
+			var empty_spawners: Array[Resource] = []
+			var empty_positions: Array[Vector2] = []
+			level.spawner_placements = empty_spawners
+			level.spawner_positions = empty_positions
+			level.destructible_prop_placements = _build_boss_destructible_prop_placements(level, connections, floor_number, rng)
+			level.max_active_enemies = 1
+			var result: Dictionary = validate_level(level, connections, room_kind)
+			if bool(result.get("ok", false)):
+				return level
 		var fallback_boss = _make_base_level(piece, room_id, floor_number, effective_connection_edges)
 		_apply_fallback_boss_interior(fallback_boss)
 		return fallback_boss
@@ -241,6 +255,48 @@ func _build_boss_obstacles(level, connections: Dictionary, rng: RandomNumberGene
 		var cells := Vector2(rng.randi_range(2, 3), rng.randi_range(1, 2))
 		_try_add_symmetric_rect_pair(voids, level, connections, walls, voids, center, offset, cells)
 	return {"walls": walls, "voids": voids}
+
+
+func _build_boss_destructible_prop_placements(level, connections: Dictionary, floor_number: int, rng: RandomNumberGenerator) -> Array[Resource]:
+	var placements: Array[Resource] = []
+	var bounds: Rect2 = level.arena_bounds
+	var center: Vector2 = bounds.get_center()
+	var half: Vector2 = bounds.size * 0.5
+	var target_pairs: int = clampi(1 + int(floor_number / 3), 1, 3)
+	var attempts := 0
+	while placements.size() < target_pairs * 2 and attempts < 28:
+		attempts += 1
+		var offset: Vector2 = Vector2(
+			rng.randf_range(half.x * 0.18, half.x * 0.43),
+			rng.randf_range(-half.y * 0.3, half.y * 0.3)
+		)
+		if abs(offset.y) < GRID_SIZE * 0.8:
+			offset.y += GRID_SIZE * (1.4 if rng.randf() < 0.5 else -1.4)
+		var prop_kind: String = "barrel" if rng.randf() < 0.42 else "crate"
+		_try_add_symmetric_prop_pair(placements, level, connections, center, offset, prop_kind)
+	return placements
+
+
+func _try_add_symmetric_prop_pair(placements: Array[Resource], level, connections: Dictionary, center: Vector2, offset: Vector2, prop_kind: String) -> bool:
+	var first: Resource = _make_prop_placement(center + offset, prop_kind)
+	var second: Resource = _make_prop_placement(center - offset, prop_kind)
+	var pair: Array[Resource] = [first, second]
+	var blockers: Array[Rect2] = _get_wall_void_blockers(level)
+	for placement in pair:
+		if not _prop_placement_is_clear(level, placement, connections, blockers, placements):
+			return false
+	if _prop_rect(first).grow(28.0).intersects(_prop_rect(second)):
+		return false
+	for placement in pair:
+		placements.append(placement)
+	return true
+
+
+func _typed_rect_array(value: Variant) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	for rect in value:
+		rects.append(rect)
+	return rects
 
 
 func _try_add_symmetric_rect_pair(target: Array[Rect2], level, connections: Dictionary, walls: Array[Rect2], voids: Array[Rect2], center: Vector2, offset: Vector2, cells: Vector2) -> bool:
@@ -667,7 +723,7 @@ func _get_destructible_prop_budget(cell_count: int, room_kind: String, floor_num
 	return clamp(rng.randi_range(min_count, max_count) + floor_bonus, min_count, max_count + floor_bonus)
 
 
-func _make_prop_placement(position: Vector2, prop_kind: String):
+func _make_prop_placement(position: Vector2, prop_kind: String) -> Resource:
 	var placement = DESTRUCTIBLE_PROP_PLACEMENT_SCRIPT.new()
 	placement.position = position
 	placement.prop_kind = prop_kind

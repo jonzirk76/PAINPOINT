@@ -28,6 +28,8 @@ enum ArenaShape {
 @export var boss_profile: Resource = null
 ## Generates a procedural agent boss from boss_profile when this level spawns a boss.
 @export var generate_agent_boss: bool = false
+## Gives generated agent bosses a fresh loadout seed each time this level starts; intended for boss test rooms.
+@export var randomize_agent_boss_each_load: bool = false
 @export var boss_spawn_position: Vector2 = Vector2.ZERO
 
 
