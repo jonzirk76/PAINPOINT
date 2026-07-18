@@ -13,6 +13,17 @@ const LEVELS := [
 const FLOOR_EXIT_PORTAL_SCENE := preload("res://scenes/entities/floor_exit_portal_entity.tscn")
 const AGENT_BOSS_GENERATOR := preload("res://scripts/resources/agent_boss_generator.gd")
 const BOLD_PIXELS_FONT := preload("res://art/fonts/BoldPixels.ttf")
+const LOADING_PROGRESS_FLOOR_LAYOUT_START := 0.08
+const LOADING_PROGRESS_FLOOR_LAYOUT_DONE := 0.18
+const LOADING_PROGRESS_ROOM_GEOMETRY := 0.28
+const LOADING_PROGRESS_ARENA_CONFIGURED := 0.40
+const LOADING_PROGRESS_ROOM_RESET := 0.52
+const LOADING_PROGRESS_ROOM_PROPS := 0.66
+const LOADING_PROGRESS_COMBAT_ACTORS_START := 0.74
+const LOADING_PROGRESS_INITIAL_ENEMIES_START := 0.78
+const LOADING_PROGRESS_INITIAL_ENEMIES_DONE := 0.88
+const LOADING_PROGRESS_BOSS_DONE := 0.92
+const LOADING_PROGRESS_ROOM_READY := 0.96
 
 @onready var input_manager = $Managers/InputManager
 @onready var player_manager = $Managers/PlayerManager
@@ -910,10 +921,10 @@ func _start_selected_level() -> void:
 		await _show_loading_before_work("LOADING", "Preparing arena", 0.05)
 		_start_level(LEVELS[_selected_level_index])
 	elif _selected_level_index == LEVELS.size():
-		await _show_loading_before_work("LOADING FLOOR", "Generating dungeon", 0.05)
+		await _show_loading_before_work("LOADING FLOOR", "Generating floor layout", 0.05)
 		_start_dungeon_run()
 	else:
-		await _show_loading_before_work("LOADING FLOOR", "Generating dungeon", 0.05)
+		await _show_loading_before_work("LOADING FLOOR", "Generating floor layout", 0.05)
 		_start_main_loop_run()
 	_loading_transition_pending = false
 
@@ -994,7 +1005,7 @@ func _start_level(level_definition) -> void:
 
 func _start_dungeon_run() -> void:
 	_set_tree_paused(false)
-	_begin_loading_screen("LOADING FLOOR", "Generating dungeon", 0.05)
+	_begin_loading_screen("LOADING FLOOR", "Generating floor layout", 0.05)
 	_is_dungeon_run = true
 	_is_main_loop_run = false
 	_set_room_entry_transition_active(false)
@@ -1033,8 +1044,9 @@ func _start_dungeon_run() -> void:
 	if win_panel != null:
 		win_panel.visible = false
 	_set_character_hud_visible(true)
+	_set_loading_progress(LOADING_PROGRESS_FLOOR_LAYOUT_START, "Generating floor layout")
 	dungeon_manager.reset_run(_main_loop_floor, _run_seed)
-	_set_loading_progress(0.18, "Preparing start room")
+	_set_loading_progress(LOADING_PROGRESS_FLOOR_LAYOUT_DONE, "Floor layout ready")
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
 	_clear_boss_health_hud()
@@ -1056,7 +1068,7 @@ func _start_dungeon_run() -> void:
 
 func _start_main_loop_run() -> void:
 	_set_tree_paused(false)
-	_begin_loading_screen("LOADING FLOOR", "Generating dungeon", 0.05)
+	_begin_loading_screen("LOADING FLOOR", "Generating floor layout", 0.05)
 	_is_dungeon_run = true
 	_is_main_loop_run = true
 	_set_room_entry_transition_active(false)
@@ -1095,8 +1107,9 @@ func _start_main_loop_run() -> void:
 	if win_panel != null:
 		win_panel.visible = false
 	_set_character_hud_visible(true)
+	_set_loading_progress(LOADING_PROGRESS_FLOOR_LAYOUT_START, "Generating floor layout")
 	dungeon_manager.reset_run(_main_loop_floor, _run_seed)
-	_set_loading_progress(0.18, "Preparing start room")
+	_set_loading_progress(LOADING_PROGRESS_FLOOR_LAYOUT_DONE, "Floor layout ready")
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
 	spawner_manager.clear_spawners()
@@ -1118,8 +1131,8 @@ func _advance_main_loop_floor() -> void:
 	if not _is_main_loop_run:
 		return
 	_set_tree_paused(false)
-	await _show_loading_before_work("LOADING FLOOR", "Generating next floor", 0.05)
-	_begin_loading_screen("LOADING FLOOR", "Generating next floor", 0.05)
+	await _show_loading_before_work("LOADING FLOOR", "Generating floor layout", 0.05)
+	_begin_loading_screen("LOADING FLOOR", "Generating floor layout", 0.05)
 	_main_loop_floor += 1
 	_status = "STARTING"
 	_set_room_entry_transition_active(false)
@@ -1129,8 +1142,9 @@ func _advance_main_loop_floor() -> void:
 	_reward_prompt_text = ""
 	if win_panel != null:
 		win_panel.visible = false
+	_set_loading_progress(LOADING_PROGRESS_FLOOR_LAYOUT_START, "Generating floor layout")
 	dungeon_manager.reset_run(_main_loop_floor, _run_seed)
-	_set_loading_progress(0.18, "Preparing start room")
+	_set_loading_progress(LOADING_PROGRESS_FLOOR_LAYOUT_DONE, "Floor layout ready")
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
 	spawner_manager.clear_spawners()
@@ -2009,6 +2023,26 @@ func _preload_pending_initial_spawner_enemies() -> void:
 		var spawn_position: Vector2 = spawn_request.get("position", Vector2.ZERO)
 		var profile: Resource = spawn_request.get("profile", null) as Resource
 		enemy_manager.spawn_enemy(profile, spawn_position, {"inactive": true, "allow_when_disabled": true})
+
+
+func _preload_pending_initial_spawner_enemies_with_loading(progress_start: float, progress_end: float) -> void:
+	var spawn_requests: Array[Dictionary] = spawner_manager.consume_initial_spawn_requests()
+	var enemy_total: int = spawn_requests.size()
+	if enemy_total <= 0:
+		_set_loading_progress(progress_end, "No initial enemies to preload")
+		return
+	_set_loading_progress(progress_start, "Loading enemies 0/%d" % enemy_total)
+	for spawn_index: int in range(enemy_total):
+		var spawn_request: Dictionary = spawn_requests[spawn_index]
+		var spawn_position: Vector2 = spawn_request.get("position", Vector2.ZERO)
+		var profile: Resource = spawn_request.get("profile", null) as Resource
+		enemy_manager.spawn_enemy(profile, spawn_position, {"inactive": true, "allow_when_disabled": true})
+		var loaded_count: int = spawn_index + 1
+		var progress_ratio: float = float(loaded_count) / float(enemy_total)
+		_set_loading_progress(
+			lerp(progress_start, progress_end, progress_ratio),
+			"Loading enemies %d/%d" % [loaded_count, enemy_total]
+		)
 
 
 func _preload_current_treasure_reward_choices() -> void:
@@ -2947,7 +2981,7 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool, ove
 	_camera_recenter_remaining = 0.0
 	var should_update_loading_screen := _loading_screen_is_visible()
 	if should_update_loading_screen:
-		_set_loading_progress(max(float(loading_screen.get("progress")), 0.2), "Preparing room geometry")
+		_set_loading_progress(max(float(loading_screen.get("progress")), LOADING_PROGRESS_ROOM_GEOMETRY), "Building room geometry")
 	_current_level = level_definition
 	_is_loading_room = true
 	_set_all_enabled(false)
@@ -2955,13 +2989,13 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool, ove
 	if arena_view != null:
 		arena_view.configure(level_definition)
 	if should_update_loading_screen:
-		_set_loading_progress(0.38, "Configuring arena")
+		_set_loading_progress(LOADING_PROGRESS_ARENA_CONFIGURED, "Configuring room collision")
 	player_manager.set_arena_definition(level_definition)
 	projectile_manager.set_arena_definition(level_definition)
 	enemy_manager.set_arena_definition(level_definition)
 	spawner_manager.set_arena_definition(level_definition)
 	if should_update_loading_screen:
-		_set_loading_progress(0.54, "Clearing previous room")
+		_set_loading_progress(LOADING_PROGRESS_ROOM_RESET, "Clearing previous combat actors")
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
 	_clear_boss_health_hud()
@@ -2980,18 +3014,23 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool, ove
 	else:
 		player_manager.set_player_position(_get_room_entry_position(level_definition, entry_direction))
 	if should_update_loading_screen:
-		_set_loading_progress(0.7, "Creating room contents")
+		_set_loading_progress(LOADING_PROGRESS_ROOM_PROPS, "Instantiating room props")
 	var room_is_cleared: bool = dungeon_manager.is_current_room_cleared()
 	if not room_is_cleared:
 		spawner_manager.reset_run(level_definition)
 		if should_update_loading_screen:
 			spawner_manager.prepare_spawners_for_preload()
+			var spawner_count: int = int(spawner_manager.get_spawner_count())
+			if spawner_count > 0:
+				_set_loading_progress(LOADING_PROGRESS_COMBAT_ACTORS_START, "Loading spawners %d" % spawner_count)
 	destructible_manager.reset_run(level_definition)
 	room_manager.load_room(level_definition, dungeon_manager.get_full_floor_current_door_infos(), room_is_cleared)
 	_sync_gate_blockers_into_actors()
 	if room_is_cleared:
 		_preload_current_treasure_reward_choices()
 	if should_update_loading_screen and not room_is_cleared:
+		_preload_pending_initial_spawner_enemies_with_loading(LOADING_PROGRESS_INITIAL_ENEMIES_START, LOADING_PROGRESS_INITIAL_ENEMIES_DONE)
+	elif not room_is_cleared:
 		_preload_pending_initial_spawner_enemies()
 	if should_update_loading_screen:
 		_set_room_combat_active(false)
@@ -3000,15 +3039,20 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool, ove
 	if not room_is_cleared and level_definition.boss_profile != null:
 		var boss_spawn_flags: Dictionary = {}
 		if should_update_loading_screen:
+			_set_loading_progress(LOADING_PROGRESS_INITIAL_ENEMIES_DONE, "Loading boss agent")
 			boss_spawn_flags = {"inactive": true, "allow_when_disabled": true}
 		_spawn_level_boss(level_definition, boss_spawn_flags)
+		if should_update_loading_screen:
+			_set_loading_progress(LOADING_PROGRESS_BOSS_DONE, "Boss agent ready")
 		if _is_main_loop_run and dungeon_manager.is_current_boss_room():
 			_show_boss_exit_portal_preview(level_definition)
+	elif should_update_loading_screen and not room_is_cleared:
+		_set_loading_progress(LOADING_PROGRESS_BOSS_DONE, "Combat actors ready")
 	room_manager.set_doors_unlocked(room_is_cleared)
 	_sync_gate_blockers_into_actors()
 	_is_loading_room = false
 	if should_update_loading_screen:
-		_set_loading_progress(0.95, "Entering room")
+		_set_loading_progress(LOADING_PROGRESS_ROOM_READY, "Room ready")
 	_update_camera()
 	_update_minimap()
 	_check_level_clear()
