@@ -103,6 +103,7 @@ var _path_repath_interval: float = PATH_REPATH_BASE_SECONDS
 var _agent_rng := RandomNumberGenerator.new()
 var _agent_action_kind: String = ""
 var _agent_action_remaining: float = 0.0
+var _agent_intro_pending: bool = false
 var _agent_intro_remaining: float = 0.0
 var _agent_next_shot_remaining: float = 0.0
 var _agent_burst_interval_remaining: float = 0.0
@@ -317,11 +318,24 @@ func activate_projectile_shield(duration: float) -> void:
 
 
 func is_projectile_shield_active() -> bool:
-	return _projectile_shield_remaining > 0.0 and health > 0 and not _is_dying
+	return (_projectile_shield_remaining > 0.0 or _agent_intro_pending) and health > 0 and not _is_dying
+
+
+func prepare_agent_boss_intro() -> void:
+	if not _is_agent_boss() or health <= 0 or _is_dying:
+		return
+	_finish_agent_action()
+	_agent_intro_pending = true
+	_agent_intro_remaining = 0.0
+	queue_redraw()
 
 
 func start_agent_boss_intro(duration: float) -> void:
-	if not _is_agent_boss() or duration <= 0.0 or health <= 0 or _is_dying:
+	if not _is_agent_boss() or health <= 0 or _is_dying:
+		return
+	_agent_intro_pending = false
+	if duration <= 0.0:
+		queue_redraw()
 		return
 	_finish_agent_action()
 	_agent_intro_remaining = max(duration, 0.0)
@@ -868,6 +882,7 @@ func _configure_agent_boss_state() -> void:
 	_agent_rng.seed = max(seed, 1)
 	_agent_action_kind = ""
 	_agent_action_remaining = 0.0
+	_agent_intro_pending = false
 	_agent_intro_remaining = 0.0
 	_agent_next_shot_remaining = 0.0
 	_agent_burst_interval_remaining = 0.0
@@ -903,6 +918,10 @@ func _configure_agent_boss_state() -> void:
 
 func _update_agent_boss(delta: float, to_target: Vector2) -> Vector2:
 	if agent_program == null or health <= 0 or _is_dying:
+		return Vector2.ZERO
+	if _agent_intro_pending:
+		_agent_aim_at_target(to_target)
+		queue_redraw()
 		return Vector2.ZERO
 	if _agent_intro_remaining > 0.0:
 		_agent_intro_remaining = max(_agent_intro_remaining - delta, 0.0)

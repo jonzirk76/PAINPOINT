@@ -160,6 +160,7 @@ var _boss_health_tick_layer: Control = null
 var _boss_alert_overlay: ColorRect = null
 var _boss_alert_label: Label = null
 var _active_boss: EnemyEntity = null
+var _pending_agent_boss_presentation: EnemyEntity = null
 var _last_boss_health: int = 0
 var _last_boss_max_health: int = 0
 var _boss_health_display_count: int = 0
@@ -559,6 +560,7 @@ func _ensure_boss_health_hud() -> void:
 
 func _clear_boss_health_hud() -> void:
 	_active_boss = null
+	_pending_agent_boss_presentation = null
 	_last_boss_health = 0
 	_last_boss_max_health = 0
 	_boss_health_display_count = 0
@@ -588,12 +590,32 @@ func _track_level_boss(boss: EnemyEntity) -> void:
 	_boss_health_display_count = _last_boss_health
 	_boss_health_hide_remaining = 0.0
 	if boss.agent_program != null:
-		_start_agent_boss_presentation(boss)
+		if _loading_screen_is_visible():
+			_pending_agent_boss_presentation = boss
+			if boss.has_method("prepare_agent_boss_intro"):
+				boss.prepare_agent_boss_intro()
+			_boss_health_reveal_remaining = 0.0
+			_boss_health_reveal_duration = 0.0
+			_boss_alert_remaining = 0.0
+			_boss_alert_duration = 0.0
+		else:
+			_pending_agent_boss_presentation = null
+			_start_agent_boss_presentation(boss)
 	else:
+		_pending_agent_boss_presentation = null
 		_boss_health_reveal_remaining = 0.0
 		_boss_health_reveal_duration = 0.0
 		_boss_alert_remaining = 0.0
 		_boss_alert_duration = 0.0
+	_update_boss_health_panel()
+
+
+func _start_pending_agent_boss_presentation() -> void:
+	var boss: EnemyEntity = _pending_agent_boss_presentation
+	_pending_agent_boss_presentation = null
+	if boss == null or not is_instance_valid(boss) or boss != _active_boss or boss.agent_program == null:
+		return
+	_start_agent_boss_presentation(boss)
 	_update_boss_health_panel()
 
 
@@ -1417,6 +1439,7 @@ func _on_enemy_defeated(_enemy, score_value: int) -> void:
 	if _enemy != null and is_instance_valid(_enemy):
 		if _enemy.behavior_kind == "boss":
 			if _active_boss == _enemy:
+				_pending_agent_boss_presentation = null
 				_last_boss_health = 0
 				_boss_health_display_count = 0
 				_boss_health_reveal_remaining = 0.0
@@ -2773,6 +2796,7 @@ func _finish_loading_screen(message: String = "READY") -> void:
 func _on_loading_continue_requested() -> void:
 	if _status == "RUNNING" or _status == "DUNGEON":
 		_set_all_enabled(true)
+		_start_pending_agent_boss_presentation()
 		_play_loading_completion_feedback()
 		_update_hud()
 
