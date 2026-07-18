@@ -26,6 +26,8 @@ signal hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: 
 @export var spawner_separation_force: float = 92.0
 ## Adds extra spacing between spawner body radii when resolving spawner overlap.
 @export var spawner_separation_padding: float = 16.0
+## Controls how long newly-instantiated room spawners use the teleport-in materialization visual.
+@export var spawner_birth_animation_seconds: float = 0.42
 
 const SPAWNER_PLACEMENT_SCRIPT := preload("res://scripts/resources/spawner_placement.gd")
 
@@ -147,6 +149,8 @@ func _spawn_spawner(placement, index: int) -> void:
 		_spawner_layer.add_child(spawner)
 	else:
 		add_child(spawner)
+	if spawner_birth_animation_seconds > 0.0 and spawner.has_method("play_birth_animation"):
+		spawner.play_birth_animation(spawner_birth_animation_seconds)
 	_spawners.append(spawner)
 
 

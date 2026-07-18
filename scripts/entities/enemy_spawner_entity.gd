@@ -65,6 +65,8 @@ var _minigun_next_shot_remaining: float = 0.0
 var _minigun_base_direction: Vector2 = Vector2.RIGHT
 var _recoil_velocity: Vector2 = Vector2.ZERO
 var _crowd_separation_velocity: Vector2 = Vector2.ZERO
+var _birth_remaining: float = 0.0
+var _birth_duration: float = 0.42
 
 
 func _init() -> void:
@@ -90,6 +92,12 @@ func _process(delta: float) -> void:
 		_hit_flash_remaining = max(_hit_flash_remaining - delta, 0.0)
 		queue_redraw()
 	_update_projectile_shield(delta)
+	if _birth_remaining > 0.0:
+		_birth_remaining = max(_birth_remaining - delta, 0.0)
+		if _birth_remaining <= 0.0:
+			_configure_collision_identity()
+		queue_redraw()
+		return
 	if _is_destroyed or not active:
 		return
 	_timer -= delta
@@ -109,7 +117,7 @@ func _process(delta: float) -> void:
 
 
 func _physics_process(_delta: float) -> void:
-	if _is_destroyed or not active:
+	if _is_destroyed or not active or is_birth_animation_active():
 		velocity = Vector2.ZERO
 		return
 	var intent_velocity: Vector2 = _get_general_velocity()
@@ -136,6 +144,20 @@ func set_enabled(value: bool) -> void:
 
 func delay_next_spawn_until(delay_seconds: float) -> void:
 	_timer = max(_timer, max(delay_seconds, 0.0))
+
+
+func play_birth_animation(duration: float = 0.42) -> void:
+	if _is_destroyed:
+		return
+	_birth_duration = max(duration, 0.08)
+	_birth_remaining = _birth_duration
+	collision_layer = 0
+	collision_mask = 0
+	queue_redraw()
+
+
+func is_birth_animation_active() -> bool:
+	return _birth_remaining > 0.0 and not _is_destroyed
 
 
 func initialize(spawner_health: int, interval: float, radius: float) -> void:
@@ -211,7 +233,7 @@ func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: A
 
 
 func take_damage(packet) -> bool:
-	if packet == null or health <= 0 or _is_destroyed:
+	if packet == null or health <= 0 or _is_destroyed or is_birth_animation_active():
 		return false
 	if blocks_projectile_damage(packet):
 		return false
@@ -265,7 +287,7 @@ func _should_reduce_shield_pierce_damage(packet) -> bool:
 
 
 func apply_crowd_separation(push_vector: Vector2) -> void:
-	if _is_destroyed or push_vector.length_squared() <= 0.001:
+	if _is_destroyed or is_birth_animation_active() or push_vector.length_squared() <= 0.001:
 		return
 	_crowd_separation_velocity += push_vector
 	_crowd_separation_velocity = _crowd_separation_velocity.limit_length(120.0)
@@ -276,6 +298,8 @@ func _constrain_to_playable(position: Vector2) -> Vector2:
 
 
 func _draw() -> void:
+	if is_birth_animation_active():
+		_draw_birth_animation_underlay()
 	var health_ratio := 0.0
 	if max_health > 0:
 		health_ratio = float(health) / float(max_health)
@@ -310,6 +334,8 @@ func _draw() -> void:
 	if damage_level > 0.72:
 		draw_line(Vector2(-body_radius * 0.18, -body_radius * 0.72), Vector2(body_radius * 0.42, -body_radius * 0.18), Color(0.04, 0.03, 0.05), 2.0)
 	draw_line(Vector2(-body_radius * 0.65, body_radius + 8.0), Vector2(-body_radius * 0.65 + body_radius * 1.3 * health_ratio, body_radius + 8.0), accent_color, 4.0)
+	if is_birth_animation_active():
+		_draw_birth_animation_overlay()
 
 
 func _add_collision() -> void:
@@ -399,6 +425,26 @@ func _draw_minigun_sweep() -> void:
 	draw_line(side * -body_radius * 0.75, direction * (body_radius + 82.0), Color(1.0, 0.96, 0.42, 0.68 + pulse * 0.18), 4.0)
 	draw_line(side * body_radius * 0.75, direction * (body_radius + 68.0), Color(0.45, 1.0, 1.0, 0.4 + pulse * 0.12), 3.0)
 	draw_circle(direction * (body_radius + 30.0), 4.0 + pulse * 1.8, Color(1.0, 0.82, 0.16, 0.72))
+
+
+func _draw_birth_animation_underlay() -> void:
+	var progress: float = 1.0 - clamp(_birth_remaining / max(_birth_duration, 0.001), 0.0, 1.0)
+	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.032)
+	var outer_radius: float = body_radius * (2.1 - progress * 0.55)
+	draw_circle(Vector2.ZERO, outer_radius, Color(0.35, 0.85, 1.0, 0.09 + pulse * 0.05))
+	draw_arc(Vector2.ZERO, outer_radius, progress * TAU, progress * TAU + TAU * 0.74, 36, Color(0.58, 1.0, 1.0, 0.78), 4.0)
+	draw_arc(Vector2.ZERO, outer_radius * 0.62, -progress * TAU * 1.2, -progress * TAU * 1.2 + TAU * 0.62, 28, Color(1.0, 0.9, 0.42, 0.62), 3.0)
+
+
+func _draw_birth_animation_overlay() -> void:
+	var progress: float = 1.0 - clamp(_birth_remaining / max(_birth_duration, 0.001), 0.0, 1.0)
+	var beam_height: float = body_radius * (2.5 - progress * 0.8)
+	draw_line(Vector2(0.0, -beam_height), Vector2.ZERO, Color(0.72, 1.0, 1.0, 0.6 * (1.0 - progress * 0.4)), 3.0)
+	for index in range(5):
+		var angle: float = TAU * float(index) / 5.0 + progress * TAU
+		var from_point := Vector2.RIGHT.rotated(angle) * body_radius * (0.55 + progress * 0.25)
+		var to_point := Vector2.RIGHT.rotated(angle) * body_radius * (1.22 + progress * 0.55)
+		draw_line(from_point, to_point, Color(1.0, 1.0, 1.0, 0.52 * (1.0 - progress * 0.35)), 2.0)
 
 
 func _get_special_telegraph_color() -> Color:
