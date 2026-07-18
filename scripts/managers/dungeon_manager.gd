@@ -264,20 +264,7 @@ func get_cleared_floor_level_definition():
 	level.spawner_placements = empty_spawners
 	level.destructible_prop_placements = empty_props
 	level.void_rects = empty_voids
-	var wall_tiles: Array[Rect2] = []
-	for room_id in cleared_room_ids:
-		var state: Dictionary = _rooms[room_id]
-		var offset: Vector2 = _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
-		var room_level = state.get("level_definition", null)
-		if room_level != null and room_level.has_meta("wall_tile_rects"):
-			for rect in room_level.get_meta("wall_tile_rects"):
-				if rect is Rect2:
-					wall_tiles.append(_translated_rect(rect, offset))
-		else:
-			var piece = state["piece"]
-			var room_wall_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_tile_rects(piece.footprint_cells, Dictionary(state.get("connection_edges", {})))
-			for rect in room_wall_tiles:
-				wall_tiles.append(_translated_rect(rect, offset))
+	var wall_tiles: Array[Rect2] = _get_cleared_floor_wall_tiles(cleared_room_ids, min_world_cell, floor_cells)
 	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(wall_tiles)
 	level.set_meta("footprint_cells", floor_cells.duplicate())
 	level.set_meta("connection_edges", {})
@@ -357,6 +344,7 @@ func get_cleared_floor_minimap_position_for_position(position: Vector2) -> Dicti
 		return {"ok": false, "cell": Vector2i.ZERO, "position": Vector2.ZERO, "room_id": ""}
 	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(cleared_room_ids)
 	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(cleared_room_ids)
+	var disputed: bool = _position_is_in_cleared_floor_disputed_area(position, floor_cells)
 	var best_cell: Vector2i = Vector2i.ZERO
 	var best_position: Vector2 = Vector2.ZERO
 	var best_room_id: String = ""
@@ -373,7 +361,7 @@ func get_cleared_floor_minimap_position_for_position(position: Vector2) -> Dicti
 			var cell_fraction: Vector2 = _get_rect_fraction(translated_rect, position)
 			var minimap_position: Vector2 = Vector2(world_cell) + cell_fraction
 			if translated_rect.has_point(position):
-				return {"ok": true, "cell": world_cell, "position": minimap_position, "room_id": room_id}
+				return {"ok": true, "cell": world_cell, "position": minimap_position, "room_id": room_id, "disputed": disputed}
 			var closest_point: Vector2 = _get_closest_point_in_rect(position, translated_rect)
 			var distance: float = closest_point.distance_squared_to(position)
 			if distance < best_distance:
@@ -381,7 +369,7 @@ func get_cleared_floor_minimap_position_for_position(position: Vector2) -> Dicti
 				best_cell = world_cell
 				best_position = minimap_position
 				best_room_id = room_id
-	return {"ok": true, "cell": best_cell, "position": best_position, "room_id": best_room_id}
+	return {"ok": true, "cell": best_cell, "position": best_position, "room_id": best_room_id, "disputed": disputed}
 
 
 func get_minimap_rooms() -> Array:
@@ -432,6 +420,129 @@ func get_occupied_cell_count() -> int:
 
 func get_room_ids() -> Array[String]:
 	return _room_order.duplicate()
+
+
+func _get_cleared_floor_wall_tiles(cleared_room_ids: Array[String], min_world_cell: Vector2i, floor_cells: Array[Vector2i]) -> Array[Rect2]:
+	var wall_tiles: Array[Rect2] = []
+	var cell_owner: Dictionary = _get_cleared_floor_cell_owner_map(cleared_room_ids)
+	for room_id in cleared_room_ids:
+		var state: Dictionary = _rooms[room_id]
+		var offset: Vector2 = _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
+		var shell_lookup: Dictionary = _get_room_shell_tile_lookup(state)
+		var room_wall_tiles: Array[Rect2] = _get_room_wall_tiles(state)
+		for rect in room_wall_tiles:
+			var rect_key: String = _rect_key(rect)
+			var is_shell_tile: bool = shell_lookup.has(rect_key)
+			if is_shell_tile and not _should_keep_cleared_floor_shell_tile(state, rect, cell_owner):
+				continue
+			wall_tiles.append(_translated_rect(rect, offset))
+	return wall_tiles
+
+
+func _get_room_wall_tiles(state: Dictionary) -> Array[Rect2]:
+	var wall_tiles: Array[Rect2] = []
+	var room_level: LevelDefinition = state.get("level_definition", null) as LevelDefinition
+	if room_level != null and room_level.has_meta("wall_tile_rects"):
+		for rect in room_level.get_meta("wall_tile_rects"):
+			if rect is Rect2:
+				wall_tiles.append(rect)
+		return wall_tiles
+	return _get_room_shell_tiles(state)
+
+
+func _get_room_shell_tile_lookup(state: Dictionary) -> Dictionary:
+	var lookup: Dictionary = {}
+	for rect in _get_room_shell_tiles(state):
+		lookup[_rect_key(rect)] = true
+	return lookup
+
+
+func _get_room_shell_tiles(state: Dictionary) -> Array[Rect2]:
+	var piece: RoomPieceDefinition = state["piece"] as RoomPieceDefinition
+	var connection_edges: Dictionary = Dictionary(state.get("connection_edges", {}))
+	if piece == null:
+		var empty_tiles: Array[Rect2] = []
+		return empty_tiles
+	return ROOM_GEOMETRY_BUILDER.build_wall_tile_rects(piece.footprint_cells, connection_edges)
+
+
+func _should_keep_cleared_floor_shell_tile(state: Dictionary, rect: Rect2, cell_owner: Dictionary) -> bool:
+	var edges: Array[Dictionary] = _get_room_shell_tile_edges(state, rect)
+	if edges.is_empty():
+		return true
+	var room_id: String = String(state.get("id", ""))
+	var anchor: Vector2i = state["anchor"]
+	var shared_edge_found: bool = false
+	for edge in edges:
+		var local_cell: Vector2i = edge["local_cell"]
+		var direction: String = String(edge["direction"])
+		var world_cell: Vector2i = anchor + local_cell
+		var neighbor_cell: Vector2i = world_cell + DIRECTION_OFFSETS.get(direction, Vector2i.ZERO)
+		var neighbor_key: String = _cell_key(neighbor_cell)
+		if not cell_owner.has(neighbor_key):
+			return true
+		var neighbor_room_id: String = String(cell_owner[neighbor_key])
+		if neighbor_room_id == room_id:
+			return true
+		shared_edge_found = true
+		if _shared_boundary_is_owned_by_cell(world_cell, neighbor_cell):
+			return true
+	return not shared_edge_found
+
+
+func _get_room_shell_tile_edges(state: Dictionary, rect: Rect2) -> Array[Dictionary]:
+	var edges: Array[Dictionary] = []
+	var piece: RoomPieceDefinition = state["piece"] as RoomPieceDefinition
+	if piece == null:
+		return edges
+	for local_cell in piece.footprint_cells:
+		var cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(piece.footprint_cells, local_cell)
+		if _rect_lies_on_cell_edge(rect, cell_rect, "north"):
+			edges.append({"local_cell": local_cell, "direction": "north"})
+		if _rect_lies_on_cell_edge(rect, cell_rect, "east"):
+			edges.append({"local_cell": local_cell, "direction": "east"})
+		if _rect_lies_on_cell_edge(rect, cell_rect, "south"):
+			edges.append({"local_cell": local_cell, "direction": "south"})
+		if _rect_lies_on_cell_edge(rect, cell_rect, "west"):
+			edges.append({"local_cell": local_cell, "direction": "west"})
+	return edges
+
+
+func _rect_lies_on_cell_edge(rect: Rect2, cell_rect: Rect2, direction: String) -> bool:
+	var tolerance: float = 0.5
+	var rect_right: float = rect.position.x + rect.size.x
+	var rect_bottom: float = rect.position.y + rect.size.y
+	var cell_right: float = cell_rect.position.x + cell_rect.size.x
+	var cell_bottom: float = cell_rect.position.y + cell_rect.size.y
+	match direction:
+		"north":
+			return abs(rect.position.y - cell_rect.position.y) <= tolerance and rect.position.x >= cell_rect.position.x - tolerance and rect_right <= cell_right + tolerance
+		"east":
+			return abs(rect_right - cell_right) <= tolerance and rect.position.y >= cell_rect.position.y - tolerance and rect_bottom <= cell_bottom + tolerance
+		"south":
+			return abs(rect_bottom - cell_bottom) <= tolerance and rect.position.x >= cell_rect.position.x - tolerance and rect_right <= cell_right + tolerance
+		"west":
+			return abs(rect.position.x - cell_rect.position.x) <= tolerance and rect.position.y >= cell_rect.position.y - tolerance and rect_bottom <= cell_bottom + tolerance
+	return false
+
+
+func _shared_boundary_is_owned_by_cell(cell: Vector2i, neighbor_cell: Vector2i) -> bool:
+	if cell.y == neighbor_cell.y:
+		return cell.x < neighbor_cell.x
+	return cell.y < neighbor_cell.y
+
+
+func _get_cleared_floor_cell_owner_map(cleared_room_ids: Array[String]) -> Dictionary:
+	var cell_owner: Dictionary = {}
+	for room_id in cleared_room_ids:
+		var state: Dictionary = _rooms[room_id]
+		var piece: RoomPieceDefinition = state["piece"] as RoomPieceDefinition
+		if piece == null:
+			continue
+		var anchor: Vector2i = state["anchor"]
+		for local_cell in piece.footprint_cells:
+			cell_owner[_cell_key(anchor + local_cell)] = room_id
+	return cell_owner
 
 
 func _get_cleared_floor_room_ids() -> Array[String]:
@@ -509,6 +620,26 @@ func _get_closest_point_in_rect(position: Vector2, rect: Rect2) -> Vector2:
 		clamp(position.x, rect.position.x, rect.position.x + rect.size.x),
 		clamp(position.y, rect.position.y, rect.position.y + rect.size.y)
 	)
+
+
+func _position_is_in_cleared_floor_disputed_area(position: Vector2, floor_cells: Array[Vector2i]) -> bool:
+	var floor_lookup: Dictionary = {}
+	for local_cell in floor_cells:
+		floor_lookup[_cell_key(local_cell)] = true
+	var band: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
+	for local_cell in floor_cells:
+		var cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(floor_cells, local_cell)
+		if not cell_rect.grow(band).has_point(position):
+			continue
+		if abs(position.x - cell_rect.position.x) <= band and floor_lookup.has(_cell_key(local_cell + Vector2i(-1, 0))):
+			return true
+		if abs(position.x - (cell_rect.position.x + cell_rect.size.x)) <= band and floor_lookup.has(_cell_key(local_cell + Vector2i(1, 0))):
+			return true
+		if abs(position.y - cell_rect.position.y) <= band and floor_lookup.has(_cell_key(local_cell + Vector2i(0, -1))):
+			return true
+		if abs(position.y - (cell_rect.position.y + cell_rect.size.y)) <= band and floor_lookup.has(_cell_key(local_cell + Vector2i(0, 1))):
+			return true
+	return false
 
 
 func _get_room_kind(room_id: String) -> String:
@@ -1001,6 +1132,15 @@ func _get_place_density_score(piece, anchor: Vector2i, parent_id: String, parent
 
 func _cell_key(cell: Vector2i) -> String:
 	return "%d,%d" % [cell.x, cell.y]
+
+
+func _rect_key(rect: Rect2) -> String:
+	return "%d,%d,%d,%d" % [
+		roundi(rect.position.x),
+		roundi(rect.position.y),
+		roundi(rect.size.x),
+		roundi(rect.size.y)
+	]
 
 
 func _reveal_room(room_id: String) -> void:

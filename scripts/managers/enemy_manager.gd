@@ -48,6 +48,17 @@ func reset_run() -> void:
 	enemy_count_changed.emit(0)
 
 
+func offset_transient_enemies(offset: Vector2) -> void:
+	if offset == Vector2.ZERO:
+		return
+	var parent: Node = _enemy_layer if _enemy_layer != null else self
+	for child in parent.get_children():
+		if not is_instance_valid(child) or not child is EnemyEntity:
+			continue
+		child.global_position += offset
+		child.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
+
+
 func set_enabled(value: bool) -> void:
 	enabled = value
 

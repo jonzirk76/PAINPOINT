@@ -24,6 +24,18 @@ func reset_run() -> void:
 	_effects.clear()
 
 
+func offset_active_effects(offset: Vector2) -> void:
+	if offset == Vector2.ZERO:
+		return
+	for effect in _effects:
+		if not is_instance_valid(effect):
+			continue
+		if effect.has_method("offset_world_position"):
+			effect.offset_world_position(offset)
+		else:
+			effect.global_position += offset
+
+
 func set_enabled(value: bool) -> void:
 	enabled = value
 

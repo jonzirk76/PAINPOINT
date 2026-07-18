@@ -38,6 +38,15 @@ func initialize(from_position: Vector2, to_position: Vector2, perfect: bool, pro
 	queue_redraw()
 
 
+func offset_world_position(offset: Vector2) -> void:
+	if offset == Vector2.ZERO:
+		return
+	start_position += offset
+	end_position += offset
+	_control_position += offset
+	queue_redraw()
+
+
 func _process(delta: float) -> void:
 	_age += delta
 	if _age >= lifetime_seconds:

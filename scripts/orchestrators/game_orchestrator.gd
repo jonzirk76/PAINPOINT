@@ -129,6 +129,7 @@ var _last_minimap_player_position: Vector2 = Vector2.ZERO
 var _has_last_minimap_player_position: bool = false
 var _last_minimap_room_id: String = ""
 var _minimap_player_cell_check_remaining: float = 0.0
+var _camera_recenter_remaining: float = 0.0
 var _ammo_refill_flash_remaining: float = 0.0
 var _ammo_refill_flash_duration: float = 0.48
 var _ammo_refill_perfect_flash_remaining: float = 0.0
@@ -205,6 +206,8 @@ const AMMO_SEGMENT_REFILL_STEP_SECONDS := 0.06
 const AMMO_SEGMENT_REFILL_MIN_SECONDS := 0.22
 const AMMO_SEGMENT_REFILL_MAX_SECONDS := 0.72
 const MINIMAP_PLAYER_CELL_CHECK_SECONDS := 0.1
+const CLEARED_FLOOR_CAMERA_RECENTER_SECONDS := 0.72
+const CLEARED_FLOOR_CAMERA_RECENTER_RESPONSE := 5.4
 
 
 func _ready() -> void:
@@ -254,7 +257,7 @@ func _process(delta: float) -> void:
 	if _update_boss_health_feedback(delta):
 		_update_boss_health_panel()
 	if _is_gameplay_running():
-		_update_camera()
+		_update_camera(delta)
 		if _is_dungeon_run:
 			_minimap_player_cell_check_remaining -= delta
 			if _minimap_player_cell_check_remaining <= 0.0:
@@ -1162,6 +1165,8 @@ func _set_all_enabled(value: bool) -> void:
 
 func _set_cleared_floor_map_active(value: bool) -> void:
 	_is_cleared_floor_map_active = value
+	if not value:
+		_camera_recenter_remaining = 0.0
 	if player_manager != null and player_manager.has_method("set_context_speed_multiplier"):
 		var multiplier: float = max(cleared_floor_speed_multiplier, 0.1) if value else 1.0
 		player_manager.set_context_speed_multiplier(multiplier)
@@ -1802,16 +1807,19 @@ func _enter_cleared_floor_map_after_current_room_clear() -> bool:
 	var pickup_offset: Vector2 = player_floor_position - player_room_position
 	var reward_room_position: Vector2 = dungeon_manager.get_current_spawn_position()
 	var reward_floor_position: Vector2 = dungeon_manager.get_cleared_floor_position_for_room_position(room_id, reward_room_position)
-	if not _load_cleared_floor_map(player_floor_position, true, pickup_offset):
+	if not _load_cleared_floor_map(player_floor_position, true, pickup_offset, true):
 		return false
 	_maybe_spawn_current_room_reward_choices(reward_floor_position)
 	return true
 
 
-func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = false, pickup_offset: Vector2 = Vector2.ZERO) -> bool:
+func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = false, pickup_offset: Vector2 = Vector2.ZERO, smooth_camera: bool = false) -> bool:
 	var level_definition = dungeon_manager.get_cleared_floor_level_definition()
 	if level_definition == null:
 		return false
+	var preserved_camera_position: Vector2 = Vector2.INF
+	if smooth_camera and gameplay_camera != null:
+		preserved_camera_position = gameplay_camera.global_position + pickup_offset
 	_is_loading_room = true
 	_current_level = level_definition
 	_clear_floor_exit_portal()
@@ -1823,6 +1831,8 @@ func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = 
 	spawner_manager.set_arena_definition(level_definition)
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
+	if preserve_pickups:
+		enemy_manager.offset_transient_enemies(pickup_offset)
 	_clear_boss_health_hud()
 	spawner_manager.clear_spawners()
 	destructible_manager.clear_destructibles()
@@ -1832,14 +1842,21 @@ func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = 
 	else:
 		item_manager.clear_pickups()
 		item_manager.rehydrate_floor_permanent_pickups()
-	effects_manager.reset_run()
+	if preserve_pickups:
+		effects_manager.offset_active_effects(pickup_offset)
+	else:
+		effects_manager.reset_run()
 	room_manager.load_room(level_definition, dungeon_manager.get_cleared_floor_door_infos(), true)
 	room_manager.set_doors_unlocked(true)
 	_set_cleared_floor_map_active(true)
 	player_manager.set_player_position(player_position)
+	if preserved_camera_position != Vector2.INF and gameplay_camera != null:
+		gameplay_camera.global_position = preserved_camera_position
+		_camera_recenter_remaining = CLEARED_FLOOR_CAMERA_RECENTER_SECONDS
 	_sync_gate_blockers_into_actors()
 	_is_loading_room = false
-	_update_camera()
+	if _camera_recenter_remaining <= 0.0:
+		_update_camera()
 	_update_minimap()
 	_update_hud()
 	return true
@@ -2683,6 +2700,7 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool) -> 
 	if level_definition == null:
 		return
 	_set_cleared_floor_map_active(false)
+	_camera_recenter_remaining = 0.0
 	var should_update_loading_screen := _loading_screen_is_visible()
 	if should_update_loading_screen:
 		_set_loading_progress(max(float(loading_screen.get("progress")), 0.2), "Preparing room geometry")
@@ -2844,6 +2862,12 @@ func _update_minimap() -> void:
 			var player_location: Variant = null
 			var player_location_info := _get_current_minimap_player_location()
 			if bool(player_location_info.get("ok", false)):
+				var is_disputed: bool = bool(player_location_info.get("disputed", false))
+				if is_disputed and _has_last_minimap_player_cell:
+					minimap_current_room_id = _last_minimap_room_id if not _last_minimap_room_id.is_empty() else minimap_current_room_id
+					player_location = _last_minimap_player_position if _has_last_minimap_player_position else _last_minimap_player_cell
+					dungeon_minimap.call("set_map", dungeon_manager.get_minimap_rooms(), minimap_current_room_id, player_location)
+					return
 				var location_room_id: String = String(player_location_info.get("room_id", ""))
 				if _is_cleared_floor_map_active and not location_room_id.is_empty():
 					minimap_current_room_id = location_room_id
@@ -2877,6 +2901,8 @@ func _update_minimap_player_cell_if_changed() -> void:
 		_update_minimap()
 		return
 	if not has_location:
+		return
+	if bool(player_location_info.get("disputed", false)):
 		return
 	var location_room_id: String = dungeon_manager.current_room_id
 	var player_room_id: String = String(player_location_info.get("room_id", ""))
@@ -2967,7 +2993,7 @@ func _play_loading_completion_feedback() -> void:
 		audio_manager.play_floor_start()
 
 
-func _update_camera() -> void:
+func _update_camera(delta: float = 0.0) -> void:
 	if gameplay_camera == null or _current_level == null:
 		return
 	var bounds: Rect2 = _current_level.arena_bounds
@@ -2986,6 +3012,16 @@ func _update_camera() -> void:
 		desired.y = bounds.get_center().y
 	else:
 		desired.y = clamp(desired.y, bounds.position.y + half_view.y, bounds.position.y + bounds.size.y - half_view.y)
+	if _camera_recenter_remaining > 0.0 and delta > 0.0:
+		_camera_recenter_remaining = max(_camera_recenter_remaining - delta, 0.0)
+		var response: float = 1.0 - exp(-CLEARED_FLOOR_CAMERA_RECENTER_RESPONSE * delta)
+		gameplay_camera.global_position = gameplay_camera.global_position.lerp(desired, clamp(response, 0.0, 1.0))
+		if gameplay_camera.global_position.distance_squared_to(desired) <= 1.0:
+			gameplay_camera.global_position = desired
+			_camera_recenter_remaining = 0.0
+		elif _camera_recenter_remaining <= 0.0:
+			_camera_recenter_remaining = 0.001
+		return
 	gameplay_camera.global_position = desired
 
 
