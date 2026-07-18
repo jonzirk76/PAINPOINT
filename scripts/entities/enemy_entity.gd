@@ -108,6 +108,11 @@ var _agent_burst_base_direction: Vector2 = Vector2.RIGHT
 var _agent_action_direction: Vector2 = Vector2.RIGHT
 var _agent_tactical_target: Vector2 = Vector2.INF
 var _agent_zigzag_sign: float = 1.0
+var _agent_high_explosive_cooldown_remaining: float = 0.0
+var _agent_high_explosive_roll_pending: bool = false
+var _agent_mine_sequence_remaining: int = 0
+var _agent_mine_sequence_interval_remaining: float = 0.0
+var _agent_mine_sequence_direction: Vector2 = Vector2.RIGHT
 var _agent_special_cooldown_remaining: float = 0.0
 var _agent_special_chain_count: int = 0
 var _agent_special_attack_emitted: bool = false
@@ -793,6 +798,11 @@ func _configure_agent_boss_state() -> void:
 	_agent_burst_shots_remaining = 0
 	_agent_burst_base_direction = Vector2.RIGHT
 	_agent_tactical_target = Vector2.INF
+	_agent_high_explosive_cooldown_remaining = 0.0
+	_agent_high_explosive_roll_pending = false
+	_agent_mine_sequence_remaining = 0
+	_agent_mine_sequence_interval_remaining = 0.0
+	_agent_mine_sequence_direction = Vector2.RIGHT
 	_agent_special_cooldown_remaining = 0.0
 	_agent_special_chain_count = 0
 	_agent_special_attack_emitted = false
@@ -816,6 +826,10 @@ func _configure_agent_boss_state() -> void:
 func _update_agent_boss(delta: float, to_target: Vector2) -> Vector2:
 	if agent_program == null or health <= 0 or _is_dying:
 		return Vector2.ZERO
+	if _agent_high_explosive_cooldown_remaining > 0.0:
+		_agent_high_explosive_cooldown_remaining = max(_agent_high_explosive_cooldown_remaining - delta, 0.0)
+	if _agent_mine_sequence_interval_remaining > 0.0:
+		_agent_mine_sequence_interval_remaining = max(_agent_mine_sequence_interval_remaining - delta, 0.0)
 	if _agent_special_cooldown_remaining > 0.0:
 		_agent_special_cooldown_remaining = max(_agent_special_cooldown_remaining - delta, 0.0)
 	if _agent_shoot_pose_remaining > 0.0:
@@ -851,6 +865,7 @@ func _update_agent_boss(delta: float, to_target: Vector2) -> Vector2:
 			_update_agent_slow_pressure_shots(to_target)
 			return _get_agent_slow_velocity(to_target)
 		AGENT_ACTION_NORMAL:
+			_update_agent_normal_high_explosive(to_target)
 			_try_emit_agent_standard_shot(to_target, float(agent_program.normal_shot_cooldown), float(agent_program.normal_projectile_speed), projectile_damage, float(agent_program.normal_projectile_radius))
 			return _get_agent_normal_velocity(to_target)
 		AGENT_ACTION_SPECIAL:
@@ -879,17 +894,22 @@ func _start_next_agent_action(to_target: Vector2) -> void:
 	match _agent_action_kind:
 		AGENT_ACTION_SLOW:
 			_agent_special_chain_count = 0
+			_agent_high_explosive_roll_pending = false
+			_clear_agent_mine_sequence()
 			_agent_action_remaining = max(float(agent_program.slow_action_seconds), 0.2)
 			_agent_action_direction = _pick_agent_valid_direction(Vector2.RIGHT.rotated(_agent_rng.randf() * TAU), float(agent_program.normal_tactical_distance) * 0.55)
 			_agent_next_shot_remaining = min(_agent_next_shot_remaining, 0.08)
 		AGENT_ACTION_NORMAL:
 			_agent_special_chain_count = 0
 			_clear_agent_slow_fire_state()
+			_agent_high_explosive_roll_pending = true
 			_agent_action_remaining = max(float(agent_program.normal_action_seconds), 0.25)
 			_agent_zigzag_sign *= -1.0
 			_agent_next_shot_remaining = min(_agent_next_shot_remaining, 0.18)
 		AGENT_ACTION_SPECIAL:
 			_clear_agent_slow_fire_state()
+			_agent_high_explosive_roll_pending = false
+			_clear_agent_mine_sequence()
 			_agent_action_remaining = 5.0
 			_start_agent_special_movement(to_target)
 	queue_redraw()
@@ -900,6 +920,8 @@ func _finish_agent_action() -> void:
 	_agent_action_remaining = 0.0
 	_agent_tactical_target = Vector2.INF
 	_clear_agent_slow_fire_state()
+	_agent_high_explosive_roll_pending = false
+	_clear_agent_mine_sequence()
 	_agent_special_stage = ""
 	_agent_special_telegraph_remaining = 0.0
 	_agent_teleport_target = Vector2.INF
@@ -964,6 +986,169 @@ func _clear_agent_slow_fire_state() -> void:
 	_agent_burst_interval_remaining = 0.0
 	_agent_burst_shots_remaining = 0
 	_agent_burst_base_direction = Vector2.RIGHT
+
+
+func _clear_agent_mine_sequence() -> void:
+	_agent_mine_sequence_remaining = 0
+	_agent_mine_sequence_interval_remaining = 0.0
+	_agent_mine_sequence_direction = Vector2.RIGHT
+
+
+func _update_agent_normal_high_explosive(to_target: Vector2) -> void:
+	if _agent_mine_sequence_remaining > 0:
+		_try_emit_next_agent_mine()
+		return
+	if not _agent_high_explosive_roll_pending or _agent_high_explosive_cooldown_remaining > 0.0:
+		return
+	_agent_high_explosive_roll_pending = false
+	if _agent_rng.randf() > clamp(float(agent_program.high_explosive_action_chance), 0.0, 1.0):
+		return
+	if _try_emit_agent_high_explosive(to_target):
+		_agent_high_explosive_cooldown_remaining = max(float(agent_program.high_explosive_cooldown_seconds), 0.1)
+
+
+func _try_emit_agent_high_explosive(to_target: Vector2) -> bool:
+	match _get_agent_high_explosive_verb():
+		AgentBossProgram.HIGH_EXPLOSIVE_GRENADE:
+			return _emit_agent_grenade(to_target)
+		AgentBossProgram.HIGH_EXPLOSIVE_MINES:
+			return _start_agent_mine_sequence(to_target)
+		_:
+			return _emit_agent_high_explosive_rocket(to_target)
+
+
+func _emit_agent_high_explosive_rocket(to_target: Vector2) -> bool:
+	if to_target.length_squared() <= 4.0:
+		return false
+	var shot_direction: Vector2 = to_target.normalized()
+	var shot_radius: float = max(projectile_radius * 1.55, 10.5)
+	var shot_origin: Vector2 = global_position + shot_direction * (body_radius + shot_radius + 6.0)
+	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
+		return false
+	if _wall_blocks_segment(global_position, target_position) or _wall_blocks_segment(global_position, shot_origin):
+		return false
+	var rocket_speed: float = max(float(agent_program.high_explosive_rocket_speed), 260.0)
+	var target_position_at_launch: Vector2 = target_position
+	var target_direction: Vector2 = target_position_at_launch - shot_origin
+	if target_direction.length_squared() > 4.0:
+		shot_direction = target_direction.normalized()
+	var shot_config: Dictionary = {
+		"speed": rocket_speed,
+		"damage": max(projectile_damage + 1, 2),
+		"radius": shot_radius,
+		"kind": "rocket",
+		"projectile_count": 1,
+		"spread_angle_degrees": 0.0,
+		"knockback": 520.0,
+		"explosion_radius": max(float(agent_program.high_explosive_rocket_radius), 48.0),
+		"explosion_damage_multiplier": 1.0,
+		"target_position": target_position_at_launch,
+		"lifetime": max(shot_origin.distance_to(target_position_at_launch) / rocket_speed, 0.08),
+		"exact_lifetime": true
+	}
+	shot_ready.emit(self, shot_origin, shot_direction, shot_config)
+	_play_agent_shoot_pose(shot_direction)
+	return true
+
+
+func _emit_agent_grenade(to_target: Vector2) -> bool:
+	if to_target.length_squared() <= 4.0:
+		return false
+	var shot_direction: Vector2 = to_target.normalized()
+	var shot_radius: float = max(projectile_radius * 1.28, 9.0)
+	var shot_origin: Vector2 = global_position + shot_direction * (body_radius + shot_radius + 5.0)
+	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
+		return false
+	var target_position_at_launch: Vector2 = _constrain_to_playable(target_position)
+	var distance: float = max(shot_origin.distance_to(target_position_at_launch), 48.0)
+	var base_speed: float = max(float(agent_program.high_explosive_grenade_speed), 120.0)
+	var air_seconds: float = clamp(distance / base_speed, 0.42, max(float(agent_program.high_explosive_grenade_max_air_seconds), 0.45))
+	var shot_speed: float = distance / air_seconds
+	var target_direction: Vector2 = target_position_at_launch - shot_origin
+	if target_direction.length_squared() > 4.0:
+		shot_direction = target_direction.normalized()
+	var shot_config: Dictionary = {
+		"speed": shot_speed,
+		"damage": max(projectile_damage, 1),
+		"radius": shot_radius,
+		"kind": "agent_grenade",
+		"projectile_count": 1,
+		"spread_angle_degrees": 0.0,
+		"knockback": 390.0,
+		"explosion_radius": max(float(agent_program.high_explosive_grenade_radius), 44.0),
+		"explosion_damage_multiplier": 1.0,
+		"target_position": target_position_at_launch,
+		"lifetime": air_seconds,
+		"exact_lifetime": true
+	}
+	shot_ready.emit(self, shot_origin, shot_direction, shot_config)
+	_play_agent_shoot_pose(shot_direction)
+	return true
+
+
+func _start_agent_mine_sequence(to_target: Vector2) -> bool:
+	_agent_mine_sequence_direction = _get_target_direction(to_target)
+	_agent_mine_sequence_remaining = clampi(int(agent_program.high_explosive_mine_count), 1, 5)
+	_agent_mine_sequence_interval_remaining = 0.0
+	_try_emit_next_agent_mine()
+	return true
+
+
+func _try_emit_next_agent_mine() -> void:
+	if _agent_mine_sequence_remaining <= 0 or _agent_mine_sequence_interval_remaining > 0.0:
+		return
+	var mine_count: int = clampi(int(agent_program.high_explosive_mine_count), 1, 5)
+	var mine_index: int = mine_count - _agent_mine_sequence_remaining
+	var direction: Vector2 = _get_agent_mine_direction(mine_index)
+	var trigger_radius: float = max(float(agent_program.high_explosive_mine_trigger_radius), 14.0)
+	var placement_distance: float = body_radius + trigger_radius + 24.0 + float(mine_index) * 10.0
+	var mine_position: Vector2 = _pick_agent_mine_position(direction, placement_distance, trigger_radius)
+	var shot_config: Dictionary = {
+		"speed": 1.0,
+		"damage": max(projectile_damage, 1),
+		"radius": trigger_radius,
+		"kind": "agent_mine",
+		"projectile_count": 1,
+		"spread_angle_degrees": 0.0,
+		"knockback": 360.0,
+		"explosion_radius": max(float(agent_program.high_explosive_mine_blast_radius), trigger_radius + 18.0),
+		"explosion_damage_multiplier": 1.0,
+		"lifetime": max(float(agent_program.high_explosive_mine_lifetime), 0.5),
+		"exact_lifetime": true
+	}
+	shot_ready.emit(self, mine_position, Vector2.RIGHT, shot_config)
+	_play_agent_shoot_pose(direction)
+	_agent_mine_sequence_remaining -= 1
+	if _agent_mine_sequence_remaining > 0:
+		_agent_mine_sequence_interval_remaining = max(float(agent_program.high_explosive_mine_interval), 0.04)
+
+
+func _get_agent_mine_direction(mine_index: int) -> Vector2:
+	var base_direction: Vector2 = _agent_mine_sequence_direction.normalized()
+	if base_direction.length_squared() <= 0.001:
+		base_direction = Vector2.RIGHT
+	var offsets: Array[float] = [0.0, -0.38, 0.38, -0.68, 0.68]
+	var offset: float = offsets[mine_index % offsets.size()]
+	return base_direction.rotated(offset).normalized()
+
+
+func _pick_agent_mine_position(preferred_direction: Vector2, distance: float, mine_radius: float) -> Vector2:
+	var directions: Array[Vector2] = [
+		preferred_direction,
+		preferred_direction.rotated(0.46),
+		preferred_direction.rotated(-0.46),
+		preferred_direction.rotated(0.86),
+		preferred_direction.rotated(-0.86),
+		-preferred_direction
+	]
+	for direction in directions:
+		if direction.length_squared() <= 0.001:
+			continue
+		var candidate: Vector2 = global_position + direction.normalized() * distance
+		candidate = _constrain_to_playable(candidate)
+		if ArenaGeometry.contains_point(candidate, arena_bounds, arena_shape) and not _point_inside_wall(candidate, mine_radius * 0.65):
+			return candidate
+	return global_position
 
 
 func _update_agent_slow_pressure_shots(to_target: Vector2) -> void:
@@ -1640,6 +1825,10 @@ func _get_agent_normal_movement_verb() -> String:
 
 func _get_agent_slow_attack_verb() -> String:
 	return String(agent_program.slow_attack_verb) if agent_program != null else AgentBossProgram.SLOW_ATTACK_FAST_SINGLE
+
+
+func _get_agent_high_explosive_verb() -> String:
+	return String(agent_program.high_explosive_verb) if agent_program != null else AgentBossProgram.HIGH_EXPLOSIVE_ROCKET
 
 
 func _get_agent_special_movement_verb() -> String:

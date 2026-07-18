@@ -59,8 +59,12 @@ static func generate_program(run_seed: int, floor_number: int, level_id: String)
 		AgentBossProgram.SPECIAL_REPOSITION_RETREAT,
 		AgentBossProgram.SPECIAL_REPOSITION_STRAFE
 	])
+	program.high_explosive_verb = _pick_string(rng, [
+		AgentBossProgram.HIGH_EXPLOSIVE_ROCKET,
+		AgentBossProgram.HIGH_EXPLOSIVE_GRENADE,
+		AgentBossProgram.HIGH_EXPLOSIVE_MINES
+	])
 	program.special_attack_verb = _pick_string(rng, [
-		AgentBossProgram.SPECIAL_ATTACK_ROCKET,
 		AgentBossProgram.SPECIAL_ATTACK_MINIGUN_SWEEP_TWICE,
 		AgentBossProgram.SPECIAL_ATTACK_SPIRAL_CLOCKWISE,
 		AgentBossProgram.SPECIAL_ATTACK_SPIRAL_COUNTER_CLOCKWISE,

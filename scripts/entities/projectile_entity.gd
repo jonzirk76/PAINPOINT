@@ -6,6 +6,8 @@ signal expired(projectile)
 
 const HOSTILE_PROJECTILE_COLLISION_MASK := 33
 const PLAYER_PROJECTILE_COLLISION_MASK := 178
+const AGENT_GRENADE_KIND := "agent_grenade"
+const AGENT_MINE_KIND := "agent_mine"
 
 @export var speed: float = 560.0
 @export var lifetime_seconds: float = 1.2
@@ -44,6 +46,7 @@ func _configure_collision_identity() -> void:
 	collision_mask = HOSTILE_PROJECTILE_COLLISION_MASK if projectile_team == "hostile" else PLAYER_PROJECTILE_COLLISION_MASK
 	monitoring = true
 	monitorable = false
+	_configure_projectile_kind_behavior()
 
 
 func initialize(origin: Vector2, shot_direction: Vector2, packet, projectile_speed: float) -> void:
@@ -55,6 +58,7 @@ func initialize(origin: Vector2, shot_direction: Vector2, packet, projectile_spe
 	pierce_remaining = packet.pierce_count if packet != null else 0
 	_base_body_radius = body_radius * max(packet.projectile_size_multiplier if packet != null else 1.0, 0.1)
 	body_radius = _base_body_radius
+	_configure_projectile_kind_behavior()
 	_update_collision_radius()
 	rotation = direction.angle()
 	queue_redraw()
@@ -89,6 +93,17 @@ func set_arena_definition(bounds: Rect2, shape: int) -> void:
 func set_projectile_team(team: String) -> void:
 	projectile_team = team
 	_configure_collision_identity()
+
+
+func _configure_projectile_kind_behavior() -> void:
+	if projectile_team != "hostile" or damage_packet == null:
+		return
+	match String(damage_packet.projectile_kind):
+		AGENT_GRENADE_KIND:
+			collision_mask = 0
+		AGENT_MINE_KIND:
+			collision_mask = 1
+			speed = 0.0
 
 
 func _handle_target_hit(body: Node, hit_position: Vector2 = Vector2.INF) -> void:
@@ -204,6 +219,13 @@ func _draw() -> void:
 		if projectile_team == "hostile":
 			fill_color = Color(0.9, 0.18, 1.0)
 			streak_color = Color(0.34, 0.95, 1.0)
+			match String(damage_packet.projectile_kind):
+				AGENT_GRENADE_KIND:
+					fill_color = Color(1.0, 0.52, 0.12)
+					streak_color = Color(1.0, 0.92, 0.24)
+				AGENT_MINE_KIND:
+					fill_color = Color(1.0, 0.18, 0.08)
+					streak_color = Color(1.0, 0.78, 0.16)
 		else:
 			match damage_packet.projectile_kind:
 				"fire":
@@ -226,6 +248,15 @@ func _draw() -> void:
 	draw_polyline(outline_points, Color(0.08, 0.07, 0.03, 0.85), 2.0, true)
 	draw_line(Vector2(-body_radius * 0.75, -body_radius * 0.18), Vector2(body_radius * 0.72, -body_radius * 0.18), Color(1.0, 1.0, 1.0, 0.45 + pulse * 0.35), 2.0)
 	draw_line(Vector2(-body_radius * 0.35, body_radius * 0.26), Vector2(body_radius * 0.52, body_radius * 0.16), streak_color, 2.0)
+	if damage_packet != null and String(damage_packet.projectile_kind) == AGENT_GRENADE_KIND:
+		var arc_progress: float = clamp(_age / max(lifetime_seconds, 0.001), 0.0, 1.0)
+		var arc_height: float = sin(arc_progress * PI) * body_radius * 1.35
+		draw_circle(Vector2.DOWN * (arc_height * 0.26 + body_radius * 0.9), body_radius * (0.72 - arc_progress * 0.12), Color(0.0, 0.0, 0.0, 0.16))
+		draw_arc(Vector2.ZERO, body_radius * (1.9 + pulse * 0.22), -PI * 0.15, PI * 1.05, 24, Color(1.0, 0.94, 0.24, 0.46), 2.2)
+	if damage_packet != null and String(damage_packet.projectile_kind) == AGENT_MINE_KIND:
+		var arm_ratio: float = clamp(_age / max(lifetime_seconds, 0.001), 0.0, 1.0)
+		draw_arc(Vector2.ZERO, body_radius * (1.34 + pulse * 0.18), -PI * 0.5, -PI * 0.5 + TAU * arm_ratio, 36, Color(1.0, 0.82, 0.12, 0.72), 2.4)
+		draw_circle(Vector2.ZERO, body_radius * (1.85 + pulse * 0.16), Color(1.0, 0.16, 0.08, 0.08))
 	if damage_packet != null and String(damage_packet.projectile_kind) == "super" and bool(damage_packet.super_full_charge):
 		draw_arc(Vector2.ZERO, body_radius * (1.92 + pulse * 0.35), 0.0, TAU, 32, Color(1.0, 1.0, 1.0, 0.54 + pulse * 0.28), 3.0)
 

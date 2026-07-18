@@ -845,6 +845,9 @@ func _on_projectile_hit(projectile, target: Node, packet) -> void:
 		impact_position = target.global_position
 	if target != null and target.is_in_group("player"):
 		effects_manager.play_projectile_impact(impact_position, impact_direction, impact_radius, false)
+		if _is_hostile_agent_explosive_kind(projectile_kind):
+			_detonate_hostile_rocket(impact_position, impact_radius, packet, false)
+			return
 		_apply_player_projectile_hit_effects(packet, impact_position, impact_radius)
 		combat_manager.resolve_projectile_hit(projectile, target, packet)
 		return
@@ -863,15 +866,23 @@ func _on_projectile_expired(_projectile, expire_info: Dictionary) -> void:
 	var impact_direction: Vector2 = expire_info.get("direction", Vector2.RIGHT)
 	var impact_radius: float = float(expire_info.get("radius", 7.0))
 	var projectile_kind := String(expire_info.get("kind", ""))
-	if (reason == "wall" or reason == "bounds") and projectile_kind != "rocket":
+	if (reason == "wall" or reason == "bounds") and not _is_hostile_explosive_kind(projectile_kind):
 		audio_manager.play_bullet_wall_hit()
 	effects_manager.play_projectile_impact(impact_position, impact_direction, impact_radius, false)
-	if projectile_kind == "rocket":
+	if _is_hostile_explosive_kind(projectile_kind):
 		_detonate_hostile_rocket(impact_position, impact_radius, expire_info.get("damage_packet", null), false)
 	elif projectile_kind == "super":
 		var packet = expire_info.get("damage_packet", null)
 		if packet != null and packet.explosion_radius > 0.0 and packet.explosion_damage_multiplier > 0.0:
 			_on_explosion_requested(impact_position, packet)
+
+
+func _is_hostile_explosive_kind(projectile_kind: String) -> bool:
+	return projectile_kind == "rocket" or _is_hostile_agent_explosive_kind(projectile_kind)
+
+
+func _is_hostile_agent_explosive_kind(projectile_kind: String) -> bool:
+	return projectile_kind == "agent_grenade" or projectile_kind == "agent_mine"
 
 
 func _apply_player_projectile_hit_effects(packet, impact_position: Vector2, impact_radius: float = 7.0) -> void:

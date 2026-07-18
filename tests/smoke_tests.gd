@@ -3644,7 +3644,7 @@ func _test_agent_boss_generation_and_behavior(failures: Array[String]) -> void:
 		return
 	var program: AgentBossProgram = first_profile.agent_program
 	var repeated_program: AgentBossProgram = repeated_profile.agent_program
-	if program.normal_movement_verb != repeated_program.normal_movement_verb or program.slow_attack_verb != repeated_program.slow_attack_verb or program.special_movement_verb != repeated_program.special_movement_verb or program.special_reposition_verb != repeated_program.special_reposition_verb or program.special_attack_verb != repeated_program.special_attack_verb:
+	if program.normal_movement_verb != repeated_program.normal_movement_verb or program.slow_attack_verb != repeated_program.slow_attack_verb or program.high_explosive_verb != repeated_program.high_explosive_verb or program.special_movement_verb != repeated_program.special_movement_verb or program.special_reposition_verb != repeated_program.special_reposition_verb or program.special_attack_verb != repeated_program.special_attack_verb:
 		failures.append("Agent boss generation should be deterministic for seed/floor/level id.")
 	if program.generation_seed == different_profile.agent_program.generation_seed:
 		failures.append("Agent boss generation should vary its deterministic seed when the run seed changes.")
@@ -3656,8 +3656,10 @@ func _test_agent_boss_generation_and_behavior(failures: Array[String]) -> void:
 		failures.append("Generated agent boss picked an unknown special movement verb.")
 	if not ["approach", "retreat", "strafe"].has(String(program.special_reposition_verb)):
 		failures.append("Generated agent boss picked an unknown special reposition verb.")
-	if not ["rocket", "minigun_sweep_twice", "spiral_clockwise", "spiral_counter_clockwise", "ring_pulse_three_waves", "pinwheel_burst"].has(String(program.special_attack_verb)):
+	if not ["minigun_sweep_twice", "spiral_clockwise", "spiral_counter_clockwise", "ring_pulse_three_waves", "pinwheel_burst"].has(String(program.special_attack_verb)):
 		failures.append("Generated agent boss picked an unknown special attack verb.")
+	if not ["rocket", "grenade", "mines"].has(String(program.high_explosive_verb)):
+		failures.append("Generated agent boss picked an unknown high-explosive normal-movement verb.")
 	if not is_equal_approx(float(program.slow_action_weight), 0.33) or not is_equal_approx(float(program.normal_action_weight), 0.33) or not is_equal_approx(float(program.special_action_weight), 0.33):
 		failures.append("Agent boss default action weights should stay at 33/33/33 before special cooldown gating.")
 	var player = load("res://scenes/entities/player_entity.tscn").instantiate()
@@ -3686,7 +3688,7 @@ func _test_agent_boss_generation_and_behavior(failures: Array[String]) -> void:
 	if shot_configs.is_empty() or String(shot_configs[0].get("kind", "")) != "hostile" or int(shot_configs[0].get("projectile_count", 0)) != 1:
 		failures.append("Agent slow/normal shots should emit single hostile shot configs.")
 	_test_agent_slow_pressure_variants(failures, boss)
-	for attack_verb in ["rocket", "minigun_sweep_twice", "spiral_clockwise", "ring_pulse_three_waves", "pinwheel_burst"]:
+	for attack_verb in ["minigun_sweep_twice", "spiral_clockwise", "ring_pulse_three_waves", "pinwheel_burst"]:
 		boss.agent_program.special_attack_verb = attack_verb
 		boss._emit_agent_special_attack(Vector2.RIGHT * 360.0)
 		if attack_verb == "minigun_sweep_twice" or attack_verb == "spiral_clockwise":
@@ -3695,21 +3697,20 @@ func _test_agent_boss_generation_and_behavior(failures: Array[String]) -> void:
 			boss._update_agent_special_stream(0.2)
 		elif attack_verb == "pinwheel_burst":
 			boss._update_agent_special_stream(0.12)
-	var saw_rocket := false
 	var saw_minigun := false
 	var saw_spiral := false
 	var saw_pulse := false
 	var saw_pinwheel := false
 	for config in shot_configs:
-		saw_rocket = saw_rocket or String(config.get("kind", "")) == "rocket"
 		saw_minigun = saw_minigun or String(config.get("kind", "")) == "hostile_minigun"
 		saw_spiral = saw_spiral or String(config.get("kind", "")) == "hostile_spiral"
 		saw_pulse = saw_pulse or String(config.get("kind", "")) == "hostile_pulse"
 		saw_pinwheel = saw_pinwheel or String(config.get("kind", "")) == "hostile_pinwheel"
-	if not saw_rocket or not saw_minigun or not saw_spiral or not saw_pulse or not saw_pinwheel:
-		failures.append("Agent specials should emit rocket, double-sweep minigun, spiral, pulse, and pinwheel shot configs.")
+	if not saw_minigun or not saw_spiral or not saw_pulse or not saw_pinwheel:
+		failures.append("Agent specials should emit double-sweep minigun, spiral, pulse, and pinwheel shot configs.")
 	boss.free()
 	_test_agent_contact_disabled(failures, first_profile)
+	_test_agent_high_explosive_normal_moves(failures, first_profile)
 	_test_agent_push_pull_pathing(failures, first_profile)
 	_test_agent_special_reposition(failures, first_profile)
 	_test_agent_teleport_cast_and_charge_special(failures, first_profile)
@@ -3774,6 +3775,71 @@ func _test_agent_contact_disabled(failures: Array[String], base_agent_profile) -
 	manager.free()
 	player.free()
 	enemy_layer.free()
+
+
+func _test_agent_high_explosive_normal_moves(failures: Array[String], base_agent_profile) -> void:
+	var seen_kinds: Dictionary = {}
+	var high_explosive_verbs: Array[String] = ["rocket", "grenade", "mines"]
+	for high_explosive_verb in high_explosive_verbs:
+		var profile: EnemyProfile = base_agent_profile.duplicate(true) as EnemyProfile
+		profile.agent_program.high_explosive_verb = high_explosive_verb
+		profile.agent_program.high_explosive_action_chance = 1.0
+		profile.agent_program.high_explosive_cooldown_seconds = 3.1
+		profile.agent_program.high_explosive_mine_count = 3
+		profile.agent_program.high_explosive_mine_interval = 0.05
+		var boss: EnemyEntity = load("res://scenes/entities/enemy_entity.tscn").instantiate() as EnemyEntity
+		var emitted_configs: Array[Dictionary] = []
+		boss.initialize(profile)
+		boss.global_position = Vector2.ZERO
+		boss.target_position = Vector2.RIGHT * 360.0
+		boss.set_arena_definition(Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0)), 0, [], [], [])
+		boss.shot_ready.connect(func(_enemy, _origin, _direction, shot_config) -> void:
+			emitted_configs.append(shot_config)
+			seen_kinds[String(shot_config.get("kind", ""))] = true
+		)
+		boss._agent_high_explosive_roll_pending = true
+		boss._update_agent_normal_high_explosive(Vector2.RIGHT * 360.0)
+		if high_explosive_verb == "mines":
+			boss._agent_mine_sequence_interval_remaining = 0.0
+			boss._update_agent_normal_high_explosive(Vector2.RIGHT * 360.0)
+			boss._agent_mine_sequence_interval_remaining = 0.0
+			boss._update_agent_normal_high_explosive(Vector2.RIGHT * 360.0)
+		if emitted_configs.is_empty():
+			failures.append("Agent high-explosive %s normal move should emit a shot config." % high_explosive_verb)
+		if boss._agent_high_explosive_cooldown_remaining <= 0.0:
+			failures.append("Agent high-explosive %s normal move should start cooldown." % high_explosive_verb)
+		if high_explosive_verb == "mines" and emitted_configs.size() != 3:
+			failures.append("Agent mine high-explosive move should emit three mines one at a time.")
+		for config in emitted_configs:
+			if float(config.get("explosion_radius", 0.0)) <= 0.0 or float(config.get("explosion_damage_multiplier", 0.0)) <= 0.0:
+				failures.append("Agent high-explosive %s configs should carry explosion metadata." % high_explosive_verb)
+			if high_explosive_verb == "grenade" and (String(config.get("kind", "")) != "agent_grenade" or not bool(config.get("exact_lifetime", false))):
+				failures.append("Agent grenade high-explosive move should emit an exact-lifetime lobbed grenade.")
+			if high_explosive_verb == "rocket" and (String(config.get("kind", "")) != "rocket" or not bool(config.get("exact_lifetime", false))):
+				failures.append("Agent rocket high-explosive move should emit an exact-lifetime targeted rocket.")
+			if high_explosive_verb == "mines" and String(config.get("kind", "")) != "agent_mine":
+				failures.append("Agent mine high-explosive move should emit mine projectile configs.")
+		boss.free()
+	if not seen_kinds.has("rocket") or not seen_kinds.has("agent_grenade") or not seen_kinds.has("agent_mine"):
+		failures.append("Agent high-explosive normal moves should cover rocket, grenade, and mine projectile kinds.")
+
+	var packet: DamagePacket = load("res://scripts/resources/damage_packet.gd").new() as DamagePacket
+	var grenade: ProjectileEntity = load("res://scenes/entities/projectile_entity.tscn").instantiate() as ProjectileEntity
+	packet.projectile_kind = "agent_grenade"
+	grenade.set_projectile_team("hostile")
+	grenade.initialize(Vector2.ZERO, Vector2.RIGHT, packet, 300.0)
+	if int(grenade.collision_mask) != 0:
+		failures.append("Agent grenades should ignore wall and player collision while arcing.")
+	grenade.free()
+
+	var mine_packet: DamagePacket = load("res://scripts/resources/damage_packet.gd").new() as DamagePacket
+	var mine: ProjectileEntity = load("res://scenes/entities/projectile_entity.tscn").instantiate() as ProjectileEntity
+	mine_packet.projectile_kind = "agent_mine"
+	mine.set_projectile_team("hostile")
+	mine.initialize(Vector2.ZERO, Vector2.RIGHT, mine_packet, 1.0)
+	if int(mine.collision_mask) != 1 or mine.speed != 0.0:
+		failures.append("Agent mines should be stationary hostile proximity areas.")
+	mine.free()
 
 
 func _test_agent_push_pull_pathing(failures: Array[String], base_agent_profile) -> void:

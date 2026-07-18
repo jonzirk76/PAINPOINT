@@ -19,6 +19,10 @@ const SPECIAL_REPOSITION_APPROACH := "approach"
 const SPECIAL_REPOSITION_RETREAT := "retreat"
 const SPECIAL_REPOSITION_STRAFE := "strafe"
 
+const HIGH_EXPLOSIVE_ROCKET := "rocket"
+const HIGH_EXPLOSIVE_GRENADE := "grenade"
+const HIGH_EXPLOSIVE_MINES := "mines"
+
 const SPECIAL_ATTACK_SMALL_FAST_BULLET := "small_fast_bullet"
 const SPECIAL_ATTACK_ROCKET := "rocket"
 const SPECIAL_ATTACK_MINIGUN_SWEEP_TWICE := "minigun_sweep_twice"
@@ -38,7 +42,9 @@ const SPECIAL_ATTACK_PINWHEEL_BURST := "pinwheel_burst"
 ## Controls whether special movement approaches, retreats, or strafes around the player.
 @export_enum("approach", "retreat", "strafe") var special_reposition_verb: String = SPECIAL_REPOSITION_APPROACH
 ## Controls which hostile special attack the agent uses after its special movement.
-@export_enum("rocket", "minigun_sweep_twice", "spiral_clockwise", "spiral_counter_clockwise", "ring_pulse_three_waves", "pinwheel_burst") var special_attack_verb: String = SPECIAL_ATTACK_RING_PULSE
+@export_enum("minigun_sweep_twice", "spiral_clockwise", "spiral_counter_clockwise", "ring_pulse_three_waves", "pinwheel_burst") var special_attack_verb: String = SPECIAL_ATTACK_RING_PULSE
+## Controls which high-explosive move may trigger during normal movement.
+@export_enum("rocket", "grenade", "mines") var high_explosive_verb: String = HIGH_EXPLOSIVE_ROCKET
 ## Weighted chance for slow pressure actions after the current action completes.
 @export var slow_action_weight: float = 0.33
 ## Weighted chance for normal movement actions after the current action completes.
@@ -99,6 +105,30 @@ const SPECIAL_ATTACK_PINWHEEL_BURST := "pinwheel_burst"
 @export var normal_projectile_speed: float = 270.0
 ## Controls hostile projectile radius during normal movement.
 @export var normal_projectile_radius: float = 7.0
+## Controls the chance to trigger a high-explosive move when normal movement begins and the explosive cooldown is ready.
+@export var high_explosive_action_chance: float = 0.25
+## Controls the cooldown after a high-explosive move triggers during normal movement.
+@export var high_explosive_cooldown_seconds: float = 3.35
+## Controls high-explosive rocket projectile speed.
+@export var high_explosive_rocket_speed: float = 640.0
+## Controls high-explosive rocket blast radius.
+@export var high_explosive_rocket_radius: float = 72.0
+## Controls high-explosive grenade projectile speed.
+@export var high_explosive_grenade_speed: float = 310.0
+## Controls high-explosive grenade blast radius.
+@export var high_explosive_grenade_radius: float = 68.0
+## Controls the longest time a lobbed grenade can stay airborne before landing.
+@export var high_explosive_grenade_max_air_seconds: float = 1.22
+## Controls how many mines are placed by one high-explosive mine move.
+@export var high_explosive_mine_count: int = 3
+## Controls the delay between each placed mine.
+@export var high_explosive_mine_interval: float = 0.26
+## Controls how long placed mines wait before detonating on their own.
+@export var high_explosive_mine_lifetime: float = 2.75
+## Controls how close the player must get to trigger a mine.
+@export var high_explosive_mine_trigger_radius: float = 34.0
+## Controls high-explosive mine blast radius.
+@export var high_explosive_mine_blast_radius: float = 66.0
 ## Controls how far normal push and pull verbs try to move before steering fallback.
 @export var normal_tactical_distance: float = 230.0
 ## Controls how long the agent telegraphs after fast movement before firing the special.
