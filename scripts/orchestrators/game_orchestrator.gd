@@ -24,6 +24,8 @@ const LOADING_PROGRESS_INITIAL_ENEMIES_START := 0.78
 const LOADING_PROGRESS_INITIAL_ENEMIES_DONE := 0.88
 const LOADING_PROGRESS_BOSS_DONE := 0.92
 const LOADING_PROGRESS_ROOM_READY := 0.96
+const BOSS_REWARD_CHOICE_SPACING := 72.0
+const BOSS_REWARD_CHOICE_CLEARANCE := 30.0
 
 @onready var input_manager = $Managers/InputManager
 @onready var player_manager = $Managers/PlayerManager
@@ -1599,6 +1601,7 @@ func _on_enemy_defeated(_enemy, score_value: int) -> void:
 				_score += _get_boss_floor_bonus()
 				_spawn_floor_overdrive_reward_choices(_enemy.global_position)
 				_activate_boss_exit_portal(_enemy.global_position, float(_enemy.body_radius))
+				_open_current_boss_room_after_floor_boss_defeat()
 				_update_hud()
 				return
 		else:
@@ -1800,10 +1803,10 @@ func _on_player_defeated(_player) -> void:
 func _on_restart_requested() -> void:
 	if _status == "DOWN" and _current_level != null:
 		if _is_main_loop_run:
-			await _show_loading_before_work("LOADING FLOOR", "Generating dungeon", 0.05)
+			await _show_loading_before_work("LOADING FLOOR", "Generating floor layout", 0.05)
 			_start_main_loop_run()
 		elif _is_dungeon_run:
-			await _show_loading_before_work("LOADING FLOOR", "Generating dungeon", 0.05)
+			await _show_loading_before_work("LOADING FLOOR", "Generating floor layout", 0.05)
 			_start_dungeon_run()
 		else:
 			await _show_loading_before_work("LOADING FLOOR", "Building Level", 0.05)
@@ -2859,10 +2862,82 @@ func _spawn_floor_overdrive_reward_choices(origin: Vector2) -> void:
 	if _rewarded_room_ids.has(reward_key):
 		return
 	_rewarded_room_ids[reward_key] = true
-	var reward_position := origin
+	var reward_position: Vector2 = origin
 	if _current_level != null:
-		reward_position = _find_safe_room_position(origin + Vector2(0.0, 86.0), _current_level)
+		reward_position = _get_open_boss_reward_position(origin)
 	item_manager.spawn_overdrive_reward_choices(reward_position)
+
+
+func _open_current_boss_room_after_floor_boss_defeat() -> void:
+	if not _is_main_loop_run or not _is_dungeon_run or dungeon_manager == null or room_manager == null:
+		return
+	if not dungeon_manager.is_current_boss_room():
+		return
+	dungeon_manager.mark_current_room_cleared()
+	room_manager.set_doors_unlocked(true)
+	_sync_gate_blockers_into_actors()
+	_update_minimap()
+
+
+func _get_open_boss_reward_position(fallback_position: Vector2) -> Vector2:
+	if _current_level == null:
+		return fallback_position
+	var bounds: Rect2 = dungeon_manager.get_full_floor_room_bounds(dungeon_manager.current_room_id) if _is_dungeon_run else _current_level.arena_bounds
+	if bounds.size == Vector2.ZERO:
+		bounds = _current_level.arena_bounds
+	var center: Vector2 = bounds.get_center()
+	var candidates: Array[Vector2] = [
+		center,
+		center + Vector2(-96.0, 0.0),
+		center + Vector2(96.0, 0.0),
+		center + Vector2(0.0, -96.0),
+		center + Vector2(0.0, 96.0),
+		center + Vector2(-144.0, -96.0),
+		center + Vector2(144.0, -96.0),
+		center + Vector2(-144.0, 96.0),
+		center + Vector2(144.0, 96.0)
+	]
+	var ring_radii: Array[float] = [168.0, 240.0, 320.0]
+	for radius: float in ring_radii:
+		var sample_count: int = 12
+		for index: int in range(sample_count):
+			var angle: float = TAU * float(index) / float(sample_count)
+			candidates.append(center + Vector2.RIGHT.rotated(angle) * radius)
+	candidates.append(fallback_position + Vector2(0.0, 86.0))
+	for candidate: Vector2 in candidates:
+		var reward_position: Vector2 = ArenaGeometry.constrain_point(candidate, bounds, int(_current_level.arena_shape))
+		if _reward_choice_group_position_is_clear(reward_position, bounds):
+			return reward_position
+	return _find_safe_room_position(fallback_position + Vector2(0.0, 86.0), _current_level)
+
+
+func _reward_choice_group_position_is_clear(center_position: Vector2, bounds: Rect2) -> bool:
+	var offsets: Array[Vector2] = [
+		Vector2(-BOSS_REWARD_CHOICE_SPACING, 0.0),
+		Vector2.ZERO,
+		Vector2(BOSS_REWARD_CHOICE_SPACING, 0.0)
+	]
+	for offset: Vector2 in offsets:
+		var position: Vector2 = center_position + offset
+		if not ArenaGeometry.contains_point(position, bounds, int(_current_level.arena_shape)):
+			return false
+		if _room_reward_position_is_blocked(position, BOSS_REWARD_CHOICE_CLEARANCE):
+			return false
+	return true
+
+
+func _room_reward_position_is_blocked(position: Vector2, clearance: float) -> bool:
+	if _current_level == null:
+		return false
+	var blocker_rects: Array[Rect2] = []
+	blocker_rects.append_array(_current_level.wall_rects)
+	blocker_rects.append_array(_current_level.void_rects)
+	if destructible_manager != null and destructible_manager.has_method("get_blocker_rects"):
+		blocker_rects.append_array(destructible_manager.get_blocker_rects())
+	for blocker_rect: Rect2 in blocker_rects:
+		if blocker_rect.grow(clearance).has_point(position):
+			return true
+	return false
 
 
 func _get_current_room_reward_key() -> String:
@@ -2882,8 +2957,7 @@ func _check_level_clear() -> void:
 		return
 	if _is_dungeon_run:
 		if _is_main_loop_run and dungeon_manager.is_current_boss_room() and _floor_exit_portal_active():
-			room_manager.set_doors_unlocked(false)
-			_sync_gate_blockers_into_actors()
+			_open_current_boss_room_after_floor_boss_defeat()
 			_update_hud()
 			return
 		dungeon_manager.mark_current_room_cleared()
