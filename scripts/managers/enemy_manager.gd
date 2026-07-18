@@ -63,12 +63,17 @@ func set_enabled(value: bool) -> void:
 	enabled = value
 
 
-func set_entities_active(value: bool) -> void:
+func set_entities_active(value: bool, materialize_preloaded: bool = false) -> void:
 	for enemy_node in _enemies:
 		var enemy: EnemyEntity = enemy_node as EnemyEntity
 		if enemy == null or not is_instance_valid(enemy):
 			continue
 		enemy.set_physics_process(value)
+		if value and bool(enemy.get_meta("preloaded_hidden", false)):
+			enemy.visible = true
+			enemy.remove_meta("preloaded_hidden")
+			if materialize_preloaded and enemy.has_method("play_birth_animation"):
+				enemy.play_birth_animation(float(enemy.get_meta("preloaded_birth_duration", 0.42)))
 		if not value:
 			enemy.velocity = Vector2.ZERO
 
@@ -143,6 +148,9 @@ func spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary = {})
 	_enemies.append(enemy)
 	if bool(spawn_flags.get("inactive", false)):
 		enemy.velocity = Vector2.ZERO
+		enemy.visible = false
+		enemy.set_meta("preloaded_hidden", true)
+		enemy.set_meta("preloaded_birth_duration", float(spawn_flags.get("birth_duration", 0.42)))
 		enemy.set_physics_process(false)
 	enemy_count_changed.emit(_enemies.size())
 	return enemy

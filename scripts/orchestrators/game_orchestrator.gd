@@ -135,6 +135,8 @@ var _entry_transition_target_room_id: String = ""
 var _entry_transition_entry_direction: String = ""
 var _entry_transition_floor_entry_position: Vector2 = Vector2.ZERO
 var _entry_transition_camera_target_position: Vector2 = Vector2.ZERO
+var _entry_transition_player_target_position: Vector2 = Vector2.INF
+var _entry_transition_auto_walk_elapsed: float = 0.0
 var _ammo_refill_flash_remaining: float = 0.0
 var _ammo_refill_flash_duration: float = 0.48
 var _ammo_refill_perfect_flash_remaining: float = 0.0
@@ -216,6 +218,9 @@ const CLEARED_FLOOR_CAMERA_RECENTER_RESPONSE := 3.6
 const ROOM_ENTRY_CAMERA_RESPONSE := 3.2
 const ROOM_ENTRY_COMPLETE_DISTANCE := 96.0
 const ROOM_ENTRY_CAMERA_DISTANCE := 8.0
+const ROOM_ENTRY_AUTO_WALK_ARRIVE_DISTANCE := 14.0
+const ROOM_ENTRY_AUTO_WALK_TIMEOUT := 2.4
+const ROOM_ENTRY_INSIDE_NUDGE_DISTANCE := 96.0
 
 
 func _ready() -> void:
@@ -1178,10 +1183,10 @@ func _set_all_enabled(value: bool) -> void:
 	audio_manager.set_enabled(value)
 
 
-func _set_room_combat_active(value: bool) -> void:
+func _set_room_combat_active(value: bool, materialize_preloaded: bool = false) -> void:
 	projectile_manager.set_enabled(value)
 	enemy_manager.set_enabled(value)
-	enemy_manager.set_entities_active(value)
+	enemy_manager.set_entities_active(value, materialize_preloaded)
 	spawner_manager.set_enabled(value)
 	destructible_manager.set_enabled(value)
 	combat_manager.set_enabled(value)
@@ -1200,6 +1205,19 @@ func _get_opposite_direction(direction: String) -> String:
 	return ""
 
 
+func _get_direction_vector(direction: String) -> Vector2:
+	match direction:
+		"north":
+			return Vector2.UP
+		"south":
+			return Vector2.DOWN
+		"east":
+			return Vector2.RIGHT
+		"west":
+			return Vector2.LEFT
+	return Vector2.ZERO
+
+
 func _set_cleared_floor_map_active(value: bool) -> void:
 	_is_cleared_floor_map_active = value
 	if value and _is_room_entry_transition_active:
@@ -1213,11 +1231,15 @@ func _set_cleared_floor_map_active(value: bool) -> void:
 
 func _set_room_entry_transition_active(value: bool) -> void:
 	_is_room_entry_transition_active = value
+	if value:
+		_entry_transition_auto_walk_elapsed = 0.0
 	if not value:
 		_entry_transition_target_room_id = ""
 		_entry_transition_entry_direction = ""
 		_entry_transition_floor_entry_position = Vector2.ZERO
 		_entry_transition_camera_target_position = Vector2.ZERO
+		_entry_transition_player_target_position = Vector2.INF
+		_entry_transition_auto_walk_elapsed = 0.0
 	if player_manager != null and player_manager.has_method("set_context_speed_multiplier"):
 		player_manager.set_context_speed_multiplier(1.0)
 
@@ -1878,11 +1900,14 @@ func _begin_uncleared_room_entry_transition_from_cleared_floor(entry_direction: 
 	_entry_transition_entry_direction = entry_direction
 	_entry_transition_floor_entry_position = target_floor_entry_position
 	_entry_transition_camera_target_position = _get_camera_desired_position_for_bounds(target_room_bounds, target_floor_entry_position)
+	input_manager.set_enabled(false)
+	player_manager.set_move_vector(Vector2.ZERO)
 	_set_room_entry_transition_active(true)
 	if not _load_room_entry_transition(player_floor_position):
 		_set_room_entry_transition_active(false)
 		_set_cleared_floor_map_active(false)
 		_load_dungeon_current_room(entry_direction, false, player_floor_position)
+		input_manager.set_enabled(true)
 		audio_manager.play_room_entry()
 		return
 	audio_manager.play_room_entry()
@@ -1894,6 +1919,11 @@ func _load_room_entry_transition(player_position: Vector2) -> bool:
 		return false
 	_is_loading_room = true
 	_current_level = level_definition
+	_entry_transition_player_target_position = _get_room_entry_transition_player_target_position(level_definition)
+	if _entry_transition_player_target_position != Vector2.INF:
+		_entry_transition_floor_entry_position = _entry_transition_player_target_position
+		var target_room_bounds: Rect2 = dungeon_manager.get_full_floor_room_bounds(dungeon_manager.current_room_id)
+		_entry_transition_camera_target_position = _get_camera_desired_position_for_bounds(target_room_bounds, _entry_transition_player_target_position)
 	_clear_floor_exit_portal()
 	if arena_view != null:
 		arena_view.configure(level_definition)
@@ -1908,6 +1938,8 @@ func _load_room_entry_transition(player_position: Vector2) -> bool:
 	destructible_manager.clear_destructibles()
 	item_manager.set_room_context(dungeon_manager.floor_number, dungeon_manager.current_room_id)
 	var room_is_cleared: bool = dungeon_manager.is_current_room_cleared()
+	if room_is_cleared:
+		_preload_current_treasure_reward_choices()
 	if not room_is_cleared:
 		spawner_manager.reset_run(level_definition)
 	destructible_manager.reset_run(level_definition)
@@ -1939,6 +1971,28 @@ func _preload_pending_initial_spawner_enemies() -> void:
 		var spawn_position: Vector2 = spawn_request.get("position", Vector2.ZERO)
 		var profile: Resource = spawn_request.get("profile", null) as Resource
 		enemy_manager.spawn_enemy(profile, spawn_position, {"inactive": true, "allow_when_disabled": true})
+
+
+func _preload_current_treasure_reward_choices() -> void:
+	if not _is_dungeon_run or dungeon_manager.get_current_room_kind() != "treasure":
+		return
+	var spawn_position: Vector2 = dungeon_manager.get_current_spawn_position()
+	var reward_floor_position: Vector2 = dungeon_manager.get_full_floor_position_for_room_position(dungeon_manager.current_room_id, spawn_position)
+	_maybe_spawn_current_room_reward_choices(reward_floor_position)
+
+
+func _get_room_entry_transition_player_target_position(level_definition) -> Vector2:
+	if level_definition == null or dungeon_manager == null:
+		return Vector2.INF
+	var entry_position: Vector2 = dungeon_manager.get_current_entry_position(_entry_transition_entry_direction)
+	if entry_position == Vector2.INF:
+		entry_position = dungeon_manager.get_current_spawn_position()
+	var floor_entry_position: Vector2 = dungeon_manager.get_full_floor_position_for_room_position(dungeon_manager.current_room_id, entry_position)
+	var inward_direction: Vector2 = _get_direction_vector(_entry_transition_entry_direction)
+	var preferred_position: Vector2 = floor_entry_position
+	if inward_direction.length_squared() > 0.001:
+		preferred_position += inward_direction.normalized() * ROOM_ENTRY_INSIDE_NUDGE_DISTANCE
+	return _find_safe_room_position(preferred_position, level_definition)
 
 
 func _enter_cleared_floor_map_after_current_room_clear() -> bool:
@@ -2026,6 +2080,8 @@ func _resume_from_pause() -> void:
 	_status = _paused_previous_status if not _paused_previous_status.is_empty() else "RUNNING"
 	_paused_previous_status = ""
 	_set_all_enabled(true)
+	if _is_room_entry_transition_active:
+		input_manager.set_enabled(false)
 	_update_hud()
 
 
@@ -2893,6 +2949,8 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool, ove
 	destructible_manager.reset_run(level_definition)
 	room_manager.load_room(level_definition, dungeon_manager.get_full_floor_current_door_infos(), room_is_cleared)
 	_sync_gate_blockers_into_actors()
+	if room_is_cleared:
+		_preload_current_treasure_reward_choices()
 	if should_update_loading_screen and not room_is_cleared:
 		_preload_pending_initial_spawner_enemies()
 	if should_update_loading_screen:
@@ -3130,7 +3188,7 @@ func _finish_loading_screen(message: String = "READY") -> void:
 func _on_loading_continue_requested() -> void:
 	if _status == "RUNNING" or _status == "DUNGEON":
 		_set_all_enabled(true)
-		enemy_manager.set_entities_active(true)
+		enemy_manager.set_entities_active(true, true)
 		_start_pending_agent_boss_presentation()
 		_play_loading_completion_feedback()
 		_update_hud()
@@ -3154,6 +3212,9 @@ func _play_loading_completion_feedback() -> void:
 func _update_room_entry_transition(_delta: float) -> void:
 	if not _is_room_entry_transition_active or _entry_transition_target_room_id.is_empty():
 		return
+	var player_arrived: bool = _update_room_entry_auto_walk(_delta)
+	if not player_arrived:
+		return
 	var player_position: Vector2 = player_manager.get_player_position()
 	var player_room_info: Dictionary = dungeon_manager.get_full_floor_room_position_for_position(player_position)
 	var player_is_in_target_room: bool = bool(player_room_info.get("ok", false)) and String(player_room_info.get("room_id", "")) == _entry_transition_target_room_id
@@ -3165,15 +3226,37 @@ func _update_room_entry_transition(_delta: float) -> void:
 	_finish_room_entry_transition()
 
 
+func _update_room_entry_auto_walk(delta: float) -> bool:
+	if _entry_transition_player_target_position == Vector2.INF:
+		return true
+	_entry_transition_auto_walk_elapsed += delta
+	var player_position: Vector2 = player_manager.get_player_position()
+	var to_target: Vector2 = _entry_transition_player_target_position - player_position
+	if to_target.length_squared() <= ROOM_ENTRY_AUTO_WALK_ARRIVE_DISTANCE * ROOM_ENTRY_AUTO_WALK_ARRIVE_DISTANCE:
+		player_manager.set_move_vector(Vector2.ZERO)
+		return true
+	if _entry_transition_auto_walk_elapsed >= ROOM_ENTRY_AUTO_WALK_TIMEOUT:
+		player_manager.set_player_position(_entry_transition_player_target_position)
+		player_manager.set_move_vector(Vector2.ZERO)
+		return true
+	player_manager.set_move_vector(to_target.normalized())
+	return false
+
+
 func _finish_room_entry_transition() -> void:
 	if _entry_transition_target_room_id.is_empty():
 		return
 	var room_is_cleared: bool = dungeon_manager.is_current_room_cleared()
+	var final_player_position: Vector2 = _entry_transition_player_target_position
+	if final_player_position != Vector2.INF:
+		player_manager.set_player_position(final_player_position)
+	player_manager.set_move_vector(Vector2.ZERO)
 	_set_room_entry_transition_active(false)
 	_set_cleared_floor_map_active(false)
-	_set_room_combat_active(true)
+	_set_room_combat_active(true, true)
 	room_manager.set_doors_unlocked(room_is_cleared)
 	_sync_gate_blockers_into_actors()
+	input_manager.set_enabled(true)
 	_start_pending_agent_boss_presentation()
 	_update_camera()
 	_update_minimap()
