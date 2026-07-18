@@ -130,12 +130,11 @@ var _has_last_minimap_player_position: bool = false
 var _last_minimap_room_id: String = ""
 var _minimap_player_cell_check_remaining: float = 0.0
 var _camera_recenter_remaining: float = 0.0
-var _is_room_transition_map_active: bool = false
-var _transition_target_room_id: String = ""
-var _transition_entry_direction: String = ""
-var _transition_room_entry_position: Vector2 = Vector2.ZERO
-var _transition_floor_entry_position: Vector2 = Vector2.ZERO
-var _transition_camera_target_position: Vector2 = Vector2.ZERO
+var _is_room_entry_transition_active: bool = false
+var _entry_transition_target_room_id: String = ""
+var _entry_transition_entry_direction: String = ""
+var _entry_transition_floor_entry_position: Vector2 = Vector2.ZERO
+var _entry_transition_camera_target_position: Vector2 = Vector2.ZERO
 var _ammo_refill_flash_remaining: float = 0.0
 var _ammo_refill_flash_duration: float = 0.48
 var _ammo_refill_perfect_flash_remaining: float = 0.0
@@ -214,9 +213,9 @@ const AMMO_SEGMENT_REFILL_MAX_SECONDS := 0.72
 const MINIMAP_PLAYER_CELL_CHECK_SECONDS := 0.1
 const CLEARED_FLOOR_CAMERA_RECENTER_SECONDS := 1.05
 const CLEARED_FLOOR_CAMERA_RECENTER_RESPONSE := 3.6
-const ROOM_TRANSITION_CAMERA_RESPONSE := 3.2
-const ROOM_TRANSITION_COMPLETE_DISTANCE := 96.0
-const ROOM_TRANSITION_CAMERA_DISTANCE := 8.0
+const ROOM_ENTRY_CAMERA_RESPONSE := 3.2
+const ROOM_ENTRY_COMPLETE_DISTANCE := 96.0
+const ROOM_ENTRY_CAMERA_DISTANCE := 8.0
 
 
 func _ready() -> void:
@@ -267,8 +266,8 @@ func _process(delta: float) -> void:
 		_update_boss_health_panel()
 	if _is_gameplay_running():
 		_update_camera(delta)
-		if _is_room_transition_map_active:
-			_update_room_transition(delta)
+		if _is_room_entry_transition_active:
+			_update_room_entry_transition(delta)
 		if _is_dungeon_run:
 			_minimap_player_cell_check_remaining -= delta
 			if _minimap_player_cell_check_remaining <= 0.0:
@@ -883,7 +882,7 @@ func _start_level(level_definition) -> void:
 	_begin_loading_screen("LOADING", "Preparing arena", 0.05)
 	_is_dungeon_run = false
 	_is_main_loop_run = false
-	_set_room_transition_map_active(false)
+	_set_room_entry_transition_active(false)
 	_set_cleared_floor_map_active(false)
 	_current_level = level_definition
 	_score = 0
@@ -957,7 +956,7 @@ func _start_dungeon_run() -> void:
 	_begin_loading_screen("LOADING FLOOR", "Generating dungeon", 0.05)
 	_is_dungeon_run = true
 	_is_main_loop_run = false
-	_set_room_transition_map_active(false)
+	_set_room_entry_transition_active(false)
 	_set_cleared_floor_map_active(false)
 	_score = 0
 	_main_loop_floor = 1
@@ -1019,7 +1018,7 @@ func _start_main_loop_run() -> void:
 	_begin_loading_screen("LOADING FLOOR", "Generating dungeon", 0.05)
 	_is_dungeon_run = true
 	_is_main_loop_run = true
-	_set_room_transition_map_active(false)
+	_set_room_entry_transition_active(false)
 	_set_cleared_floor_map_active(false)
 	_score = 0
 	_main_loop_floor = 1
@@ -1082,7 +1081,7 @@ func _advance_main_loop_floor() -> void:
 	_begin_loading_screen("LOADING FLOOR", "Generating next floor", 0.05)
 	_main_loop_floor += 1
 	_status = "STARTING"
-	_set_room_transition_map_active(false)
+	_set_room_entry_transition_active(false)
 	_set_cleared_floor_map_active(false)
 	_clear_floor_exit_portal()
 	_rewarded_room_ids.clear()
@@ -1111,7 +1110,7 @@ func _enter_level_select() -> void:
 	_current_level = null
 	_is_dungeon_run = false
 	_is_main_loop_run = false
-	_set_room_transition_map_active(false)
+	_set_room_entry_transition_active(false)
 	_set_cleared_floor_map_active(false)
 	_run_seed = 0
 	_paused_previous_status = ""
@@ -1181,8 +1180,8 @@ func _set_all_enabled(value: bool) -> void:
 
 func _set_cleared_floor_map_active(value: bool) -> void:
 	_is_cleared_floor_map_active = value
-	if value and _is_room_transition_map_active:
-		_set_room_transition_map_active(false)
+	if value and _is_room_entry_transition_active:
+		_set_room_entry_transition_active(false)
 	if not value:
 		_camera_recenter_remaining = 0.0
 	if player_manager != null and player_manager.has_method("set_context_speed_multiplier"):
@@ -1190,14 +1189,13 @@ func _set_cleared_floor_map_active(value: bool) -> void:
 		player_manager.set_context_speed_multiplier(multiplier)
 
 
-func _set_room_transition_map_active(value: bool) -> void:
-	_is_room_transition_map_active = value
+func _set_room_entry_transition_active(value: bool) -> void:
+	_is_room_entry_transition_active = value
 	if not value:
-		_transition_target_room_id = ""
-		_transition_entry_direction = ""
-		_transition_room_entry_position = Vector2.ZERO
-		_transition_floor_entry_position = Vector2.ZERO
-		_transition_camera_target_position = Vector2.ZERO
+		_entry_transition_target_room_id = ""
+		_entry_transition_entry_direction = ""
+		_entry_transition_floor_entry_position = Vector2.ZERO
+		_entry_transition_camera_target_position = Vector2.ZERO
 	if player_manager != null and player_manager.has_method("set_context_speed_multiplier"):
 		player_manager.set_context_speed_multiplier(1.0)
 
@@ -1784,7 +1782,7 @@ func _on_pickup_collected(pickup_resource) -> void:
 
 
 func _maybe_finish_treasure_room_after_reward_collected() -> bool:
-	if not _is_dungeon_run or _status != "DUNGEON" or _is_cleared_floor_map_active or _is_room_transition_map_active:
+	if not _is_dungeon_run or _status != "DUNGEON" or _is_cleared_floor_map_active or _is_room_entry_transition_active:
 		return false
 	if dungeon_manager.get_current_room_kind() != "treasure":
 		return false
@@ -1807,10 +1805,10 @@ func _get_player_ref():
 func _on_room_door_entered(direction: String, target_room_id: String = "") -> void:
 	if not _is_dungeon_run or _status != "DUNGEON":
 		return
-	if _is_room_transition_map_active:
+	if _is_room_entry_transition_active:
 		return
 	if _is_cleared_floor_map_active:
-		_begin_uncleared_room_transition_from_cleared_floor(direction, target_room_id)
+		_begin_uncleared_room_entry_transition_from_cleared_floor(direction, target_room_id)
 		return
 	if not target_room_id.is_empty() and dungeon_manager.is_room_cleared_floor_available(target_room_id) and dungeon_manager.is_room_revealed(target_room_id):
 		_enter_cleared_floor_map_through_cleared_room(direction, target_room_id)
@@ -1823,11 +1821,11 @@ func _on_room_door_entered(direction: String, target_room_id: String = "") -> vo
 
 func _enter_cleared_floor_map_through_cleared_room(entry_direction: String, target_room_id: String) -> void:
 	var target_entry_position: Vector2 = dungeon_manager.get_room_entry_position(target_room_id, entry_direction)
-	if target_entry_position == Vector2.INF:
-		target_entry_position = player_manager.get_player_position()
 	if not dungeon_manager.enter_room(target_room_id):
 		return
-	var target_position: Vector2 = dungeon_manager.get_cleared_floor_position_for_room_position(target_room_id, target_entry_position)
+	var target_position: Vector2 = player_manager.get_player_position()
+	if target_entry_position != Vector2.INF:
+		target_position = dungeon_manager.get_full_floor_position_for_room_position(target_room_id, target_entry_position)
 	if _load_cleared_floor_map(target_position):
 		audio_manager.play_room_entry()
 
@@ -1837,44 +1835,39 @@ func _enter_uncleared_room_from_cleared_floor(entry_direction: String, target_ro
 		return
 	if not dungeon_manager.enter_room(target_room_id):
 		return
-	_set_room_transition_map_active(false)
+	_set_room_entry_transition_active(false)
 	_set_cleared_floor_map_active(false)
 	_load_dungeon_current_room(entry_direction, false)
 	audio_manager.play_room_entry()
 
 
-func _begin_uncleared_room_transition_from_cleared_floor(entry_direction: String, target_room_id: String) -> void:
+func _begin_uncleared_room_entry_transition_from_cleared_floor(entry_direction: String, target_room_id: String) -> void:
 	if target_room_id.is_empty():
 		return
-	var player_cleared_position: Vector2 = player_manager.get_player_position()
-	var player_transition_position: Vector2 = dungeon_manager.get_transition_floor_position_for_cleared_floor_position(target_room_id, player_cleared_position)
-	var transition_offset: Vector2 = player_transition_position - player_cleared_position
+	var player_floor_position: Vector2 = player_manager.get_player_position()
 	var target_entry_position: Vector2 = dungeon_manager.get_room_entry_position(target_room_id, entry_direction)
 	if not dungeon_manager.enter_room(target_room_id):
 		return
 	if target_entry_position == Vector2.INF:
 		target_entry_position = dungeon_manager.get_current_spawn_position()
-	var target_floor_entry_position: Vector2 = dungeon_manager.get_transition_floor_position_for_room_position(target_room_id, target_room_id, target_entry_position)
-	var target_level = dungeon_manager.get_current_level_definition()
-	var target_camera_room_position: Vector2 = _get_camera_desired_position(target_level, target_entry_position) if target_level != null else target_entry_position
-	var target_camera_floor_position: Vector2 = dungeon_manager.get_transition_floor_position_for_room_position(target_room_id, target_room_id, target_camera_room_position)
-	_transition_target_room_id = target_room_id
-	_transition_entry_direction = entry_direction
-	_transition_room_entry_position = target_entry_position
-	_transition_floor_entry_position = target_floor_entry_position
-	_transition_camera_target_position = target_camera_floor_position
-	_set_room_transition_map_active(true)
-	if not _load_room_transition_map(target_room_id, player_transition_position, transition_offset):
-		_set_room_transition_map_active(false)
+	var target_floor_entry_position: Vector2 = dungeon_manager.get_full_floor_position_for_room_position(target_room_id, target_entry_position)
+	var target_room_bounds: Rect2 = dungeon_manager.get_full_floor_room_bounds(target_room_id)
+	_entry_transition_target_room_id = target_room_id
+	_entry_transition_entry_direction = entry_direction
+	_entry_transition_floor_entry_position = target_floor_entry_position
+	_entry_transition_camera_target_position = _get_camera_desired_position_for_bounds(target_room_bounds, target_floor_entry_position)
+	_set_room_entry_transition_active(true)
+	if not _load_room_entry_transition(player_floor_position):
+		_set_room_entry_transition_active(false)
 		_set_cleared_floor_map_active(false)
-		_load_dungeon_current_room(entry_direction, false)
+		_load_dungeon_current_room(entry_direction, false, player_floor_position)
 		audio_manager.play_room_entry()
 		return
 	audio_manager.play_room_entry()
 
 
-func _load_room_transition_map(target_room_id: String, player_position: Vector2, preserve_offset: Vector2) -> bool:
-	var level_definition = dungeon_manager.get_transition_floor_level_definition(target_room_id)
+func _load_room_entry_transition(player_position: Vector2) -> bool:
+	var level_definition = dungeon_manager.get_current_full_floor_level_definition(false)
 	if level_definition == null:
 		return false
 	_is_loading_room = true
@@ -1888,13 +1881,10 @@ func _load_room_transition_map(target_room_id: String, player_position: Vector2,
 	spawner_manager.set_arena_definition(level_definition)
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
-	enemy_manager.offset_transient_enemies(preserve_offset)
 	_clear_boss_health_hud()
 	spawner_manager.clear_spawners()
 	destructible_manager.clear_destructibles()
 	item_manager.set_room_context(dungeon_manager.floor_number, dungeon_manager.current_room_id)
-	item_manager.offset_active_pickups(preserve_offset)
-	effects_manager.offset_active_effects(preserve_offset)
 	room_manager.load_room(level_definition, [], true)
 	room_manager.set_doors_unlocked(true)
 	_set_cleared_floor_map_active(false)
@@ -1912,24 +1902,22 @@ func _enter_cleared_floor_map_after_current_room_clear() -> bool:
 	var room_id: String = dungeon_manager.current_room_id
 	if room_id.is_empty():
 		return false
-	var player_room_position: Vector2 = player_manager.get_player_position()
-	var player_floor_position: Vector2 = dungeon_manager.get_cleared_floor_position_for_room_position(room_id, player_room_position)
-	var pickup_offset: Vector2 = player_floor_position - player_room_position
+	var player_floor_position: Vector2 = player_manager.get_player_position()
 	var reward_room_position: Vector2 = dungeon_manager.get_current_spawn_position()
-	var reward_floor_position: Vector2 = dungeon_manager.get_cleared_floor_position_for_room_position(room_id, reward_room_position)
-	if not _load_cleared_floor_map(player_floor_position, true, pickup_offset, true):
+	var reward_floor_position: Vector2 = dungeon_manager.get_full_floor_position_for_room_position(room_id, reward_room_position)
+	if not _load_cleared_floor_map(player_floor_position, true, true):
 		return false
 	_maybe_spawn_current_room_reward_choices(reward_floor_position)
 	return true
 
 
-func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = false, pickup_offset: Vector2 = Vector2.ZERO, smooth_camera: bool = false) -> bool:
-	var level_definition = dungeon_manager.get_cleared_floor_level_definition()
+func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = false, smooth_camera: bool = false) -> bool:
+	var level_definition = dungeon_manager.get_current_full_floor_level_definition(false)
 	if level_definition == null:
 		return false
 	var preserved_camera_position: Vector2 = Vector2.INF
 	if smooth_camera and gameplay_camera != null:
-		preserved_camera_position = gameplay_camera.global_position + pickup_offset
+		preserved_camera_position = gameplay_camera.global_position
 	_is_loading_room = true
 	_current_level = level_definition
 	_clear_floor_exit_portal()
@@ -1941,22 +1929,16 @@ func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = 
 	spawner_manager.set_arena_definition(level_definition)
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
-	if preserve_pickups:
-		enemy_manager.offset_transient_enemies(pickup_offset)
 	_clear_boss_health_hud()
 	spawner_manager.clear_spawners()
 	destructible_manager.clear_destructibles()
 	item_manager.set_room_context(dungeon_manager.floor_number, dungeon_manager.current_room_id)
-	if preserve_pickups:
-		item_manager.offset_active_pickups(pickup_offset)
-	else:
+	if not preserve_pickups:
 		item_manager.clear_pickups()
 		item_manager.rehydrate_floor_permanent_pickups()
-	if preserve_pickups:
-		effects_manager.offset_active_effects(pickup_offset)
-	else:
+	if not preserve_pickups:
 		effects_manager.reset_run()
-	room_manager.load_room(level_definition, dungeon_manager.get_cleared_floor_door_infos(), true)
+	room_manager.load_room(level_definition, dungeon_manager.get_full_floor_traversal_door_infos(), true)
 	room_manager.set_doors_unlocked(true)
 	_set_cleared_floor_map_active(true)
 	player_manager.set_player_position(player_position)
@@ -2686,7 +2668,10 @@ func _maybe_spawn_current_room_reward_choices(preferred_position: Vector2 = Vect
 	if preferred_position != Vector2.INF and _current_level != null:
 		reward_position = _find_safe_room_position(preferred_position, _current_level)
 	elif _current_level != null:
-		reward_position = _find_safe_room_position(dungeon_manager.get_current_spawn_position(), _current_level)
+		var spawn_position: Vector2 = dungeon_manager.get_current_spawn_position()
+		if _is_dungeon_run:
+			spawn_position = dungeon_manager.get_full_floor_position_for_room_position(dungeon_manager.current_room_id, spawn_position)
+		reward_position = _find_safe_room_position(spawn_position, _current_level)
 	if room_kind == "treasure":
 		item_manager.spawn_treasure_reward_choices(reward_position)
 	else:
@@ -2715,6 +2700,8 @@ func _check_level_clear() -> void:
 	if _is_loading_room:
 		return
 	if not _is_gameplay_running():
+		return
+	if _is_room_entry_transition_active:
 		return
 	if _is_cleared_floor_map_active:
 		return
@@ -2813,10 +2800,10 @@ func _update_level_select_ui() -> void:
 
 
 func _load_dungeon_current_room(entry_direction: String, reset_player: bool, override_player_position: Vector2 = Vector2.INF) -> void:
-	var level_definition = dungeon_manager.get_current_level_definition()
+	var level_definition = dungeon_manager.get_current_full_floor_level_definition(true)
 	if level_definition == null:
 		return
-	_set_room_transition_map_active(false)
+	_set_room_entry_transition_active(false)
 	_set_cleared_floor_map_active(false)
 	_camera_recenter_remaining = 0.0
 	var should_update_loading_screen := _loading_screen_is_visible()
@@ -2848,6 +2835,7 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool, ove
 	room_manager.reset_run()
 	if reset_player or _get_player_ref() == null:
 		player_manager.reset_run()
+		player_manager.set_player_position(dungeon_manager.get_full_floor_position_for_room_position(dungeon_manager.current_room_id, dungeon_manager.get_current_spawn_position()))
 	elif override_player_position != Vector2.INF:
 		player_manager.set_player_position(_find_safe_room_position(override_player_position, level_definition))
 	else:
@@ -2858,7 +2846,7 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool, ove
 	if not room_is_cleared:
 		spawner_manager.reset_run(level_definition)
 	destructible_manager.reset_run(level_definition)
-	room_manager.load_room(level_definition, dungeon_manager.get_current_door_infos(), room_is_cleared)
+	room_manager.load_room(level_definition, dungeon_manager.get_full_floor_current_door_infos(), room_is_cleared)
 	_sync_gate_blockers_into_actors()
 	_set_all_enabled(true)
 	if not room_is_cleared and level_definition.boss_profile != null:
@@ -2892,8 +2880,11 @@ func _sync_gate_blockers_into_actors() -> void:
 func _get_room_entry_position(level_definition, entry_direction: String) -> Vector2:
 	var derived_entry: Vector2 = dungeon_manager.get_current_entry_position(entry_direction)
 	if derived_entry != Vector2.INF:
-		return _find_safe_room_position(derived_entry, level_definition)
-	var bounds: Rect2 = level_definition.arena_bounds
+		var floor_entry: Vector2 = dungeon_manager.get_full_floor_position_for_room_position(dungeon_manager.current_room_id, derived_entry)
+		return _find_safe_room_position(floor_entry, level_definition)
+	var bounds: Rect2 = dungeon_manager.get_full_floor_room_bounds(dungeon_manager.current_room_id) if _is_dungeon_run else level_definition.arena_bounds
+	if bounds.size == Vector2.ZERO:
+		bounds = level_definition.arena_bounds
 	var margin := 96.0
 	var position := bounds.get_center()
 	match entry_direction:
@@ -2943,7 +2934,7 @@ func _is_gameplay_running() -> bool:
 func _get_status_label() -> String:
 	if _is_main_loop_run and _status == "DUNGEON" and _floor_exit_portal_active():
 		return "FLOOR %d EXIT OPEN" % _main_loop_floor
-	if _is_room_transition_map_active and _status == "DUNGEON":
+	if _is_room_entry_transition_active and _status == "DUNGEON":
 		return "FLOOR %d ENTRY" % _main_loop_floor if _is_main_loop_run else "DUNGEON ENTRY"
 	if _is_cleared_floor_map_active and _status == "DUNGEON":
 		return "FLOOR %d MAP" % _main_loop_floor if _is_main_loop_run else "DUNGEON MAP"
@@ -2991,7 +2982,7 @@ func _update_minimap() -> void:
 					dungeon_minimap.call("set_map", dungeon_manager.get_minimap_rooms(), minimap_current_room_id, player_location)
 					return
 				var location_room_id: String = String(player_location_info.get("room_id", ""))
-				if (_is_cleared_floor_map_active or _is_room_transition_map_active) and not location_room_id.is_empty():
+				if (_is_cleared_floor_map_active or _is_room_entry_transition_active) and not location_room_id.is_empty():
 					minimap_current_room_id = location_room_id
 				if player_location_info.has("position"):
 					var continuous_position: Vector2 = player_location_info.get("position", Vector2.ZERO)
@@ -3028,7 +3019,7 @@ func _update_minimap_player_cell_if_changed() -> void:
 		return
 	var location_room_id: String = dungeon_manager.current_room_id
 	var player_room_id: String = String(player_location_info.get("room_id", ""))
-	if (_is_cleared_floor_map_active or _is_room_transition_map_active) and not player_room_id.is_empty():
+	if (_is_cleared_floor_map_active or _is_room_entry_transition_active) and not player_room_id.is_empty():
 		location_room_id = player_room_id
 	if location_room_id != _last_minimap_room_id:
 		_update_minimap()
@@ -3049,11 +3040,7 @@ func _get_current_minimap_player_location() -> Dictionary:
 	var player = _get_player_ref()
 	if player == null or not is_instance_valid(player):
 		return {"ok": false, "cell": Vector2i.ZERO}
-	if _is_room_transition_map_active:
-		return dungeon_manager.get_transition_floor_minimap_position_for_position(_transition_target_room_id, player_manager.get_player_position())
-	if _is_cleared_floor_map_active:
-		return dungeon_manager.get_cleared_floor_minimap_position_for_position(player_manager.get_player_position())
-	return dungeon_manager.get_current_world_cell_for_position(player_manager.get_player_position())
+	return dungeon_manager.get_full_floor_minimap_position_for_position(player_manager.get_player_position())
 
 
 func _clear_minimap() -> void:
@@ -3117,40 +3104,36 @@ func _play_loading_completion_feedback() -> void:
 		audio_manager.play_floor_start()
 
 
-func _update_room_transition(_delta: float) -> void:
-	if not _is_room_transition_map_active or _transition_target_room_id.is_empty():
+func _update_room_entry_transition(_delta: float) -> void:
+	if not _is_room_entry_transition_active or _entry_transition_target_room_id.is_empty():
 		return
 	var player_position: Vector2 = player_manager.get_player_position()
-	if player_position.distance_squared_to(_transition_floor_entry_position) > ROOM_TRANSITION_COMPLETE_DISTANCE * ROOM_TRANSITION_COMPLETE_DISTANCE:
+	var player_room_info: Dictionary = dungeon_manager.get_full_floor_room_position_for_position(player_position)
+	var player_is_in_target_room: bool = bool(player_room_info.get("ok", false)) and String(player_room_info.get("room_id", "")) == _entry_transition_target_room_id
+	if not player_is_in_target_room and player_position.distance_squared_to(_entry_transition_floor_entry_position) > ROOM_ENTRY_COMPLETE_DISTANCE * ROOM_ENTRY_COMPLETE_DISTANCE:
 		return
 	if gameplay_camera != null:
-		var camera_target_position: Vector2 = _get_camera_desired_position(_current_level, _transition_camera_target_position)
-		if gameplay_camera.global_position.distance_squared_to(camera_target_position) > ROOM_TRANSITION_CAMERA_DISTANCE * ROOM_TRANSITION_CAMERA_DISTANCE:
+		if gameplay_camera.global_position.distance_squared_to(_entry_transition_camera_target_position) > ROOM_ENTRY_CAMERA_DISTANCE * ROOM_ENTRY_CAMERA_DISTANCE:
 			return
-	_finish_room_transition()
+	_finish_room_entry_transition()
 
 
-func _finish_room_transition() -> void:
-	if _transition_target_room_id.is_empty():
+func _finish_room_entry_transition() -> void:
+	if _entry_transition_target_room_id.is_empty():
 		return
-	var target_room_id: String = _transition_target_room_id
-	var entry_direction: String = _transition_entry_direction
-	var room_position_info: Dictionary = dungeon_manager.get_transition_floor_room_position_for_position(target_room_id, player_manager.get_player_position())
-	var player_room_position: Vector2 = _transition_room_entry_position
-	if bool(room_position_info.get("ok", false)) and String(room_position_info.get("room_id", "")) == target_room_id:
-		player_room_position = room_position_info.get("position", _transition_room_entry_position)
-	_set_room_transition_map_active(false)
+	var entry_direction: String = _entry_transition_entry_direction
+	var player_floor_position: Vector2 = player_manager.get_player_position()
+	_set_room_entry_transition_active(false)
 	_set_cleared_floor_map_active(false)
-	_load_dungeon_current_room(entry_direction, false, player_room_position)
-	audio_manager.play_room_entry()
+	_load_dungeon_current_room(entry_direction, false, player_floor_position)
 
 
 func _update_camera(delta: float = 0.0) -> void:
 	if gameplay_camera == null or _current_level == null:
 		return
-	var desired: Vector2 = _get_camera_desired_position(_current_level, _transition_camera_target_position if _is_room_transition_map_active else player_manager.get_player_position())
-	if _is_room_transition_map_active and delta > 0.0:
-		var transition_response: float = 1.0 - exp(-ROOM_TRANSITION_CAMERA_RESPONSE * delta)
+	var desired: Vector2 = _entry_transition_camera_target_position if _is_room_entry_transition_active else _get_camera_desired_position(_current_level, player_manager.get_player_position())
+	if _is_room_entry_transition_active and delta > 0.0:
+		var transition_response: float = 1.0 - exp(-ROOM_ENTRY_CAMERA_RESPONSE * delta)
 		gameplay_camera.global_position = gameplay_camera.global_position.lerp(desired, clamp(transition_response, 0.0, 1.0))
 		return
 	if _camera_recenter_remaining > 0.0 and delta > 0.0:
@@ -3169,7 +3152,13 @@ func _update_camera(delta: float = 0.0) -> void:
 func _get_camera_desired_position(level_definition, focus_position: Vector2) -> Vector2:
 	if level_definition == null:
 		return focus_position
-	var bounds: Rect2 = level_definition.arena_bounds
+	var bounds: Rect2 = _get_current_camera_bounds(level_definition)
+	return _get_camera_desired_position_for_bounds(bounds, focus_position)
+
+
+func _get_camera_desired_position_for_bounds(bounds: Rect2, focus_position: Vector2) -> Vector2:
+	if bounds.size.x <= 0.0 or bounds.size.y <= 0.0:
+		return focus_position
 	var desired: Vector2 = focus_position
 	var viewport_size := Vector2(1280.0, 720.0)
 	if is_inside_tree():
@@ -3186,6 +3175,20 @@ func _get_camera_desired_position(level_definition, focus_position: Vector2) -> 
 	else:
 		desired.y = clamp(desired.y, bounds.position.y + half_view.y, bounds.position.y + bounds.size.y - half_view.y)
 	return desired
+
+
+func _get_current_camera_bounds(level_definition) -> Rect2:
+	if level_definition == null:
+		return Rect2()
+	if _is_dungeon_run and bool(level_definition.get_meta("full_floor", false)):
+		if _is_cleared_floor_map_active:
+			var visible_bounds: Rect2 = dungeon_manager.get_full_floor_visible_bounds(dungeon_manager.current_room_id)
+			if visible_bounds.size != Vector2.ZERO:
+				return visible_bounds
+		var active_bounds: Rect2 = dungeon_manager.get_full_floor_room_bounds(dungeon_manager.current_room_id)
+		if active_bounds.size != Vector2.ZERO:
+			return active_bounds
+	return level_definition.arena_bounds
 
 
 func _activate_boss_exit_portal(boss_position: Vector2, boss_radius: float) -> void:
@@ -3234,7 +3237,9 @@ func _show_boss_exit_portal_preview(level_definition) -> void:
 func _get_boss_exit_portal_position(boss_position: Vector2) -> Vector2:
 	if _current_level == null:
 		return boss_position
-	var bounds: Rect2 = _current_level.arena_bounds
+	var bounds: Rect2 = dungeon_manager.get_full_floor_room_bounds(dungeon_manager.current_room_id) if _is_dungeon_run else _current_level.arena_bounds
+	if bounds.size == Vector2.ZERO:
+		bounds = _current_level.arena_bounds
 	var center := bounds.get_center()
 	var candidates := [
 		center + Vector2(-260.0, 0.0),

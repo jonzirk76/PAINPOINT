@@ -103,6 +103,27 @@ func get_current_level_definition():
 	return level
 
 
+func get_current_full_floor_level_definition(include_active_contents: bool = true):
+	return get_full_floor_level_definition(current_room_id, include_active_contents)
+
+
+func get_full_floor_level_definition(active_room_id: String = "", include_active_contents: bool = true):
+	var room_ids: Array[String] = _get_full_floor_room_ids()
+	var level_id: String = "full_floor_%d" % floor_number if active_room_id.is_empty() else "full_floor_%d_%s" % [floor_number, active_room_id]
+	var level = _build_floor_level_definition(room_ids, level_id, "Floor %d" % floor_number, "Floor %d Full Map" % floor_number)
+	if level == null:
+		return null
+	level.set_meta("full_floor", true)
+	level.set_meta("active_room_id", active_room_id)
+	level.set_meta("fog_rects", _get_full_floor_fog_rects(active_room_id, room_ids))
+	level.set_meta("visible_bounds", get_full_floor_visible_bounds(active_room_id))
+	if not active_room_id.is_empty():
+		level.set_meta("active_room_bounds", get_full_floor_room_bounds(active_room_id))
+	if include_active_contents:
+		_apply_active_room_contents_to_full_floor_level(level, active_room_id, room_ids)
+	return level
+
+
 func get_current_room_state() -> Dictionary:
 	if current_room_id.is_empty() or not _rooms.has(current_room_id):
 		return {}
@@ -273,16 +294,6 @@ func enter_room(room_id: String) -> bool:
 	return true
 
 
-func get_cleared_floor_level_definition():
-	var cleared_room_ids: Array[String] = _get_cleared_floor_room_ids()
-	return _build_floor_level_definition(cleared_room_ids, "cleared_floor_%d" % floor_number, "Cleared Floor %d" % floor_number, "Floor %d Traversal" % floor_number)
-
-
-func get_transition_floor_level_definition(target_room_id: String):
-	var room_ids: Array[String] = _get_transition_floor_room_ids(target_room_id)
-	return _build_floor_level_definition(room_ids, "transition_floor_%d_%s" % [floor_number, target_room_id], "Floor %d Transition" % floor_number, "Floor %d Entry" % floor_number)
-
-
 func _build_floor_level_definition(cleared_room_ids: Array[String], level_id: String, display_name: String, difficulty_label: String):
 	if cleared_room_ids.is_empty():
 		return null
@@ -314,14 +325,21 @@ func _build_floor_level_definition(cleared_room_ids: Array[String], level_id: St
 	return level
 
 
-func get_cleared_floor_door_infos() -> Array:
-	var cleared_room_ids: Array[String] = _get_cleared_floor_room_ids()
+func get_full_floor_current_door_infos() -> Array:
+	if current_room_id.is_empty():
+		return []
+	return _get_full_floor_door_infos_for_room(current_room_id)
+
+
+func get_full_floor_traversal_door_infos() -> Array:
+	var source_room_ids: Array[String] = _get_full_floor_visible_room_ids(current_room_id)
 	var door_infos: Array = []
-	if cleared_room_ids.is_empty():
+	if source_room_ids.is_empty():
 		return door_infos
-	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(cleared_room_ids)
-	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(cleared_room_ids)
-	for room_id in cleared_room_ids:
+	var room_ids: Array[String] = _get_full_floor_room_ids()
+	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(room_ids)
+	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(room_ids)
+	for room_id in source_room_ids:
 		var state: Dictionary = _rooms[room_id]
 		var piece = state["piece"]
 		var connections: Dictionary = state["connections"]
@@ -331,7 +349,7 @@ func get_cleared_floor_door_infos() -> Array:
 			if not connections.has(direction):
 				continue
 			var target_room_id := String(connections[direction])
-			if is_room_cleared_floor_available(target_room_id) and is_room_revealed(target_room_id):
+			if _room_is_visible_on_full_floor(target_room_id, current_room_id):
 				continue
 			var edge: Dictionary = connection_edges.get(direction, {})
 			var source_cell: Vector2i = edge.get("source_cell", Vector2i.ZERO)
@@ -344,64 +362,34 @@ func get_cleared_floor_door_infos() -> Array:
 				"trigger_rect": _translated_rect(trigger_rect, offset),
 				"opening_rect": _translated_rect(opening_rect, offset),
 				"source_room_id": room_id,
-				"cleared_floor_transition": true
+				"full_floor_transition": true
 			})
 	return door_infos
 
 
-func get_cleared_floor_position_for_room_position(room_id: String, room_position: Vector2) -> Vector2:
-	var cleared_room_ids: Array[String] = _get_cleared_floor_room_ids()
-	return _get_floor_position_for_room_position(room_id, room_position, cleared_room_ids)
+func get_full_floor_position_for_room_position(room_id: String, room_position: Vector2) -> Vector2:
+	return _get_floor_position_for_room_position(room_id, room_position, _get_full_floor_room_ids())
 
 
-func get_transition_floor_position_for_room_position(target_room_id: String, room_id: String, room_position: Vector2) -> Vector2:
-	var room_ids: Array[String] = _get_transition_floor_room_ids(target_room_id)
-	return _get_floor_position_for_room_position(room_id, room_position, room_ids)
+func get_full_floor_room_position_for_position(floor_position: Vector2) -> Dictionary:
+	return _get_floor_room_position_for_position(floor_position, _get_full_floor_room_ids())
 
 
-func get_transition_floor_position_for_cleared_floor_position(target_room_id: String, cleared_floor_position: Vector2) -> Vector2:
-	var cleared_room_ids: Array[String] = _get_cleared_floor_room_ids()
-	var room_position_info: Dictionary = _get_floor_room_position_for_position(cleared_floor_position, cleared_room_ids)
-	if not bool(room_position_info.get("ok", false)):
-		return cleared_floor_position
-	return get_transition_floor_position_for_room_position(
-		target_room_id,
-		String(room_position_info.get("room_id", "")),
-		room_position_info.get("position", cleared_floor_position)
-	)
+func get_full_floor_minimap_position_for_position(position: Vector2) -> Dictionary:
+	return _get_floor_minimap_position_for_position(position, _get_full_floor_room_ids())
 
 
-func get_transition_floor_room_position_for_position(target_room_id: String, floor_position: Vector2) -> Dictionary:
-	return _get_floor_room_position_for_position(floor_position, _get_transition_floor_room_ids(target_room_id))
+func get_full_floor_room_bounds(room_id: String) -> Rect2:
+	if room_id.is_empty() or not _rooms.has(room_id):
+		return Rect2()
+	return _get_floor_bounds_for_room_ids([room_id], _get_full_floor_room_ids())
 
 
-func get_cleared_floor_world_cell_for_position(position: Vector2) -> Dictionary:
-	var cleared_room_ids: Array[String] = _get_cleared_floor_room_ids()
-	if cleared_room_ids.is_empty():
-		return {"ok": false, "cell": Vector2i.ZERO}
-	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(cleared_room_ids)
-	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(cleared_room_ids)
-	var best_cell := Vector2i.ZERO
-	var best_distance := INF
-	for local_cell in floor_cells:
-		var cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(floor_cells, local_cell)
-		var world_cell: Vector2i = min_world_cell + local_cell
-		if cell_rect.has_point(position):
-			return {"ok": true, "cell": world_cell}
-		var distance := cell_rect.get_center().distance_squared_to(position)
-		if distance < best_distance:
-			best_distance = distance
-			best_cell = world_cell
-	return {"ok": true, "cell": best_cell}
-
-
-func get_cleared_floor_minimap_position_for_position(position: Vector2) -> Dictionary:
-	var cleared_room_ids: Array[String] = _get_cleared_floor_room_ids()
-	return _get_floor_minimap_position_for_position(position, cleared_room_ids)
-
-
-func get_transition_floor_minimap_position_for_position(target_room_id: String, position: Vector2) -> Dictionary:
-	return _get_floor_minimap_position_for_position(position, _get_transition_floor_room_ids(target_room_id))
+func get_full_floor_visible_bounds(active_room_id: String = "") -> Rect2:
+	var visible_room_ids: Array[String] = _get_full_floor_visible_room_ids(active_room_id)
+	if visible_room_ids.is_empty():
+		return get_full_floor_room_bounds(current_room_id)
+	return _get_floor_bounds_for_room_ids(visible_room_ids, _get_full_floor_room_ids())
 
 
 func _get_floor_minimap_position_for_position(position: Vector2, cleared_room_ids: Array[String]) -> Dictionary:
@@ -610,22 +598,57 @@ func _get_cleared_floor_cell_owner_map(cleared_room_ids: Array[String]) -> Dicti
 	return cell_owner
 
 
-func _get_cleared_floor_room_ids() -> Array[String]:
-	var cleared_room_ids: Array[String] = []
+func _get_full_floor_room_ids() -> Array[String]:
+	return _room_order.duplicate()
+
+
+func _get_full_floor_visible_room_ids(active_room_id: String = "") -> Array[String]:
+	var visible_room_ids: Array[String] = []
 	for room_id in _room_order:
-		var state: Dictionary = _rooms[room_id]
-		if bool(state["revealed"]) and _room_is_cleared_floor_available(state):
-			cleared_room_ids.append(room_id)
-	return cleared_room_ids
+		if _room_is_visible_on_full_floor(room_id, active_room_id):
+			visible_room_ids.append(room_id)
+	return visible_room_ids
 
 
-func _get_transition_floor_room_ids(target_room_id: String) -> Array[String]:
-	var room_ids: Array[String] = _get_cleared_floor_room_ids()
-	if target_room_id.is_empty() or not _rooms.has(target_room_id):
-		return room_ids
-	if not room_ids.has(target_room_id):
-		room_ids.append(target_room_id)
-	return room_ids
+func _room_is_visible_on_full_floor(room_id: String, active_room_id: String = "") -> bool:
+	if room_id.is_empty() or not _rooms.has(room_id):
+		return false
+	if room_id == active_room_id:
+		return true
+	var state: Dictionary = _rooms[room_id]
+	return bool(state.get("revealed", false)) and _room_is_cleared_floor_available(state)
+
+
+func _get_full_floor_door_infos_for_room(room_id: String) -> Array:
+	var door_infos: Array = []
+	if room_id.is_empty() or not _rooms.has(room_id):
+		return door_infos
+	var room_ids: Array[String] = _get_full_floor_room_ids()
+	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(room_ids)
+	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(room_ids)
+	var state: Dictionary = _rooms[room_id]
+	var piece = state["piece"]
+	var connections: Dictionary = state["connections"]
+	var connection_edges: Dictionary = state.get("connection_edges", {})
+	var offset: Vector2 = _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
+	for direction in CARDINAL_DIRECTIONS:
+		if not connections.has(direction):
+			continue
+		var target_room_id := String(connections[direction])
+		var edge: Dictionary = connection_edges.get(direction, {})
+		var source_cell: Vector2i = edge.get("source_cell", Vector2i.ZERO)
+		var trigger_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_trigger_rect(piece.footprint_cells, source_cell, direction)
+		var opening_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_opening_rect(piece.footprint_cells, source_cell, direction)
+		door_infos.append({
+			"direction": direction,
+			"target_room_id": target_room_id,
+			"target_room_kind": _get_room_kind(target_room_id),
+			"trigger_rect": _translated_rect(trigger_rect, offset),
+			"opening_rect": _translated_rect(opening_rect, offset),
+			"source_room_id": room_id,
+			"full_floor_transition": true
+		})
+	return door_infos
 
 
 func _get_floor_position_for_room_position(room_id: String, room_position: Vector2, room_ids: Array[String]) -> Vector2:
@@ -666,6 +689,88 @@ func _get_floor_room_position_for_position(floor_position: Vector2, room_ids: Ar
 	if best_room_id.is_empty():
 		return {"ok": false, "room_id": "", "position": floor_position}
 	return {"ok": true, "room_id": best_room_id, "position": best_position}
+
+
+func _get_floor_bounds_for_room_ids(visible_room_ids: Array[String], floor_room_ids: Array[String]) -> Rect2:
+	if visible_room_ids.is_empty() or floor_room_ids.is_empty():
+		return Rect2()
+	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(floor_room_ids)
+	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(floor_room_ids)
+	var initialized: bool = false
+	var bounds: Rect2 = Rect2()
+	for room_id in visible_room_ids:
+		if room_id.is_empty() or not _rooms.has(room_id):
+			continue
+		var state: Dictionary = _rooms[room_id]
+		var piece: RoomPieceDefinition = state["piece"] as RoomPieceDefinition
+		if piece == null:
+			continue
+		var offset: Vector2 = _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
+		var room_bounds: Rect2 = ROOM_GEOMETRY_BUILDER.get_bounds(piece.footprint_cells)
+		var translated_bounds: Rect2 = _translated_rect(room_bounds, offset)
+		if not initialized:
+			bounds = translated_bounds
+			initialized = true
+		else:
+			bounds = bounds.merge(translated_bounds)
+	if not initialized:
+		return Rect2()
+	return bounds
+
+
+func _get_full_floor_fog_rects(active_room_id: String, room_ids: Array[String]) -> Array[Rect2]:
+	var fog_rects: Array[Rect2] = []
+	if room_ids.is_empty():
+		return fog_rects
+	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(room_ids)
+	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(room_ids)
+	for room_id in room_ids:
+		if _room_is_visible_on_full_floor(room_id, active_room_id):
+			continue
+		var state: Dictionary = _rooms[room_id]
+		var piece: RoomPieceDefinition = state["piece"] as RoomPieceDefinition
+		if piece == null:
+			continue
+		var offset: Vector2 = _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
+		for local_cell in piece.footprint_cells:
+			var cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(piece.footprint_cells, local_cell)
+			fog_rects.append(_translated_rect(cell_rect, offset))
+	return fog_rects
+
+
+func _apply_active_room_contents_to_full_floor_level(level: LevelDefinition, active_room_id: String, room_ids: Array[String]) -> void:
+	if level == null or active_room_id.is_empty() or not _rooms.has(active_room_id):
+		return
+	var state: Dictionary = _rooms[active_room_id]
+	if bool(state.get("cleared", false)):
+		return
+	var active_level: LevelDefinition = state.get("level_definition", null) as LevelDefinition
+	if active_level == null:
+		return
+	var offset: Vector2 = _get_floor_position_for_room_position(active_room_id, Vector2.ZERO, room_ids)
+	level.max_active_enemies = int(active_level.max_active_enemies)
+	level.spawner_health = int(active_level.spawner_health)
+	level.spawner_radius = float(active_level.spawner_radius)
+	level.spawn_interval = float(active_level.spawn_interval)
+	level.spawner_placements = _copy_offset_resource_placements(active_level.spawner_placements, offset)
+	level.destructible_prop_placements = _copy_offset_resource_placements(active_level.destructible_prop_placements, offset)
+	level.boss_profile = active_level.boss_profile
+	level.generate_agent_boss = bool(active_level.generate_agent_boss)
+	level.randomize_agent_boss_each_load = bool(active_level.randomize_agent_boss_each_load)
+	level.boss_spawn_position = active_level.boss_spawn_position + offset
+
+
+func _copy_offset_resource_placements(source_placements: Array, offset: Vector2) -> Array[Resource]:
+	var copied_placements: Array[Resource] = []
+	for source in source_placements:
+		var source_resource: Resource = source as Resource
+		if source_resource == null:
+			continue
+		var copied_resource: Resource = source_resource.duplicate(true)
+		var source_position: Vector2 = source_resource.get("position")
+		copied_resource.set("position", source_position + offset)
+		copied_placements.append(copied_resource)
+	return copied_placements
 
 
 func _room_is_cleared_floor_available(state: Dictionary) -> bool:

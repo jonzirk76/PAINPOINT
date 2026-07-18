@@ -17,6 +17,7 @@ var _void_tile_rects: Array[Rect2] = []
 var _wall_draw_rects: Array[Rect2] = []
 var _void_draw_rects: Array[Rect2] = []
 var _footprint_cells: Array[Vector2i] = []
+var _fog_rects: Array[Rect2] = []
 
 
 func configure(level_definition) -> void:
@@ -36,6 +37,7 @@ func configure(level_definition) -> void:
 		_wall_draw_rects = wall_rects.duplicate()
 		_void_draw_rects = void_rects.duplicate()
 	_footprint_cells = _get_meta_cells(level_definition, "footprint_cells")
+	_fog_rects = _get_meta_rects(level_definition, "fog_rects", [])
 	_rebuild_blocker_bodies()
 	queue_redraw()
 
@@ -51,6 +53,7 @@ func _draw() -> void:
 		_draw_clipped_grid(polygon)
 	_draw_voids()
 	_draw_walls()
+	_draw_fog()
 	if not _uses_canonical_wall_tiles:
 		draw_polyline(_closed_points(polygon), Color(0.52, 0.58, 0.62), 4.0, true)
 
@@ -264,6 +267,14 @@ func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_co
 			draw_line(Vector2(left, top), Vector2(left, bottom), outline_color, outline_width)
 		if not lookup.has(_tile_key(cell + Vector2i(1, 0))):
 			draw_line(Vector2(right, top), Vector2(right, bottom), outline_color, outline_width)
+
+
+func _draw_fog() -> void:
+	if _fog_rects.is_empty():
+		return
+	for rect in _fog_rects:
+		draw_rect(rect, Color(0.0, 0.0, 0.0, 0.76), true)
+		draw_rect(rect.grow(-2.0), Color(0.04, 0.12, 0.14, 0.2), false, 2.0)
 
 
 func _build_tile_lookup(tile_rects: Array[Rect2]) -> Dictionary:
