@@ -1,12 +1,13 @@
 extends RefCounted
 class_name AgentBossGenerator
 
-const AGENT_BOSS_PROGRAM_SCRIPT := preload("res://scripts/resources/agent_boss_program.gd")
-
-
-static func generate_profile(base_profile: Resource, run_seed: int, floor_number: int, level_id: String):
-	var profile = base_profile.duplicate(true) if base_profile != null else EnemyProfile.new()
-	var program := generate_program(run_seed, floor_number, level_id)
+static func generate_profile(base_profile: Resource, run_seed: int, floor_number: int, level_id: String) -> EnemyProfile:
+	var profile: EnemyProfile = EnemyProfile.new()
+	if base_profile != null:
+		profile = base_profile.duplicate(true) as EnemyProfile
+	if profile == null:
+		profile = EnemyProfile.new()
+	var program: AgentBossProgram = generate_program(run_seed, floor_number, level_id)
 	profile.behavior_kind = EnemyProfile.BEHAVIOR_BOSS
 	profile.agent_program = program
 	profile.body_color = program.body_modulate
@@ -19,8 +20,8 @@ static func generate_profile(base_profile: Resource, run_seed: int, floor_number
 	return profile
 
 
-static func generate_program(run_seed: int, floor_number: int, level_id: String):
-	var program = AGENT_BOSS_PROGRAM_SCRIPT.new()
+static func generate_program(run_seed: int, floor_number: int, level_id: String) -> AgentBossProgram:
+	var program: AgentBossProgram = AgentBossProgram.new()
 	var seed := _compute_generation_seed(run_seed, floor_number, level_id)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
