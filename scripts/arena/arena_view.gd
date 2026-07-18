@@ -273,8 +273,8 @@ func _draw_fog() -> void:
 	if _fog_rects.is_empty():
 		return
 	for rect in _fog_rects:
-		draw_rect(rect, Color(0.0, 0.0, 0.0, 0.76), true)
-		draw_rect(rect.grow(-2.0), Color(0.04, 0.12, 0.14, 0.2), false, 2.0)
+		draw_rect(rect.grow(4.0), Color.BLACK, true)
+		draw_rect(rect.grow(-2.0), Color(0.03, 0.09, 0.1, 0.34), false, 2.0)
 
 
 func _build_tile_lookup(tile_rects: Array[Rect2]) -> Dictionary:
