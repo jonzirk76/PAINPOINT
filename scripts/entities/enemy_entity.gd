@@ -59,7 +59,7 @@ const AGENT_SPECIAL_STAGE_STREAM := "stream"
 @export var boss_minigun_duration: float = 0.86
 @export var boss_minigun_shot_interval: float = 0.065
 @export var boss_minigun_sweep_degrees: float = 82.0
-@export var agent_program: Resource = null
+@export var agent_program: AgentBossProgram = null
 
 var health: int = max_health
 var playable_rects: Array[Rect2] = []
@@ -161,7 +161,7 @@ func initialize(profile) -> void:
 	projectile_radius = profile.projectile_radius
 	shot_projectile_count = profile.shot_projectile_count
 	shot_spread_degrees = profile.shot_spread_degrees
-	agent_program = profile.agent_program if profile.get("agent_program") != null else null
+	agent_program = profile.agent_program as AgentBossProgram if profile.get("agent_program") != null else null
 	_visual_kind = _get_visual_kind(profile)
 	health = max_health
 	_shot_cooldown_remaining = shot_cooldown * 0.65
@@ -417,21 +417,21 @@ func _draw_enemy_character_art(tint: Color) -> void:
 
 func _draw_agent_character_art(tint: Color) -> void:
 	_draw_agent_walk_feet(tint.a)
-	var body_tint := _get_agent_body_tint(tint)
+	var body_tint: Color = _get_agent_body_tint(tint)
 	var visual_radius: float = body_radius * 2.05
-	var facing := _get_agent_visual_facing_direction()
-	var weapon_aim := _agent_aim_direction.normalized()
+	var facing: Vector2 = _get_agent_visual_facing_direction()
+	var weapon_aim: Vector2 = _agent_aim_direction.normalized()
 	if weapon_aim.length_squared() <= 0.001:
 		weapon_aim = facing
 	var weapon_texture: Texture2D = AGENT_ARMS_GUN_TEXTURE
 	var resting_texture: Texture2D = AGENT_RESTING_PISTOL_TEXTURE
 	var body_texture: Texture2D = AGENT_BODY_TEXTURE
-	var body_scale := Vector2.ONE
+	var body_scale: Vector2 = Vector2.ONE
 	var is_side_facing: bool = abs(facing.x) >= abs(facing.y)
 	var is_back_facing: bool = not is_side_facing and facing.y < 0.0
 	var is_shooting := _agent_shoot_pose_remaining > 0.0 or _agent_special_telegraph_remaining > 0.0 or _agent_stream_remaining > 0.0
 	var weapon_rotation := weapon_aim.angle()
-	var resting_rotation := _get_agent_side_resting_pistol_rotation(facing)
+	var resting_rotation: float = _get_agent_side_resting_pistol_rotation(facing)
 	if is_side_facing:
 		body_texture = AGENT_BODY_SIDE_TEXTURE
 		body_scale = Vector2(-1.0, 1.0) if facing.x < 0.0 else Vector2.ONE
@@ -458,7 +458,7 @@ func _draw_agent_character_art(tint: Color) -> void:
 			_draw_agent_vertical_resting_pistols(visual_radius, facing, body_tint)
 		if is_shooting:
 			_draw_agent_centered_texture(weapon_texture, visual_radius, weapon_rotation, body_tint)
-	var accent := _get_agent_accent_color(tint.a)
+	var accent: Color = _get_agent_accent_color(tint.a)
 	draw_arc(Vector2.ZERO, body_radius + 8.0, 0.0, TAU, 42, accent, 3.2)
 
 
@@ -617,18 +617,18 @@ func _draw_agent_special_telegraph() -> void:
 		remaining = max(float(agent_program.charge_windup_seconds) - _agent_charge_elapsed, 0.0) if agent_program != null else remaining
 	var progress: float = 1.0 - clamp(remaining / duration, 0.0, 1.0)
 	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.045)
-	var aim := _agent_aim_direction.normalized()
+	var aim: Vector2 = _agent_aim_direction.normalized()
 	if aim.length_squared() <= 0.001:
 		aim = (target_position - global_position).normalized()
 	if aim.length_squared() <= 0.001:
 		aim = Vector2.RIGHT
-	var telegraph_color := _get_agent_accent_color(0.78)
+	var telegraph_color: Color = _get_agent_accent_color(0.78)
 	var radius: float = body_radius + 14.0 + progress * 16.0 + pulse * 4.0
 	draw_circle(Vector2.ZERO, radius, Color(telegraph_color.r, telegraph_color.g, telegraph_color.b, 0.1 + pulse * 0.08))
 	draw_arc(Vector2.ZERO, radius, -PI * 0.5, -PI * 0.5 + TAU * progress, 52, telegraph_color, 5.0)
 	match _get_agent_special_attack_verb():
 		AgentBossProgram.SPECIAL_ATTACK_MINIGUN_SWEEP_TWICE:
-			var half_sweep := deg_to_rad(float(agent_program.minigun_sweep_degrees)) * 0.5 if agent_program != null else PI * 0.42
+			var half_sweep: float = deg_to_rad(float(agent_program.minigun_sweep_degrees)) * 0.5 if agent_program != null else PI * 0.42
 			draw_line(Vector2.ZERO, aim.rotated(-half_sweep) * (body_radius + 82.0), Color(1.0, 0.96, 0.58, 0.72), 3.5)
 			draw_line(Vector2.ZERO, aim.rotated(half_sweep) * (body_radius + 82.0), Color(0.54, 1.0, 1.0, 0.48), 3.5)
 		AgentBossProgram.SPECIAL_ATTACK_SPIRAL_CLOCKWISE, AgentBossProgram.SPECIAL_ATTACK_SPIRAL_COUNTER_CLOCKWISE:
@@ -642,10 +642,10 @@ func _draw_agent_special_telegraph() -> void:
 
 
 func _draw_agent_special_stream() -> void:
-	var direction := _get_agent_stream_direction()
+	var direction: Vector2 = _get_agent_stream_direction()
 	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.075)
 	if _agent_stream_kind == AgentBossProgram.SPECIAL_ATTACK_MINIGUN_SWEEP_TWICE:
-		var side := direction.orthogonal()
+		var side: Vector2 = direction.orthogonal()
 		draw_line(side * -body_radius * 0.82, direction * (body_radius + 92.0), Color(1.0, 0.96, 0.42, 0.7 + pulse * 0.18), 4.0)
 		draw_line(side * body_radius * 0.82, direction * (body_radius + 76.0), Color(0.45, 1.0, 1.0, 0.42 + pulse * 0.12), 3.0)
 	else:
@@ -724,7 +724,7 @@ func _is_agent_boss() -> bool:
 
 
 func _configure_agent_boss_state() -> void:
-	var seed := int(agent_program.generation_seed) if agent_program != null and agent_program.get("generation_seed") != null else int(get_instance_id())
+	var seed: int = int(agent_program.generation_seed) if agent_program != null and agent_program.get("generation_seed") != null else int(get_instance_id())
 	_agent_rng.seed = max(seed, 1)
 	_agent_action_kind = ""
 	_agent_action_remaining = 0.0
@@ -835,7 +835,7 @@ func _get_agent_slow_velocity(to_target: Vector2) -> Vector2:
 
 
 func _get_agent_normal_velocity(to_target: Vector2) -> Vector2:
-	var target_direction := _get_target_direction(to_target)
+	var target_direction: Vector2 = _get_target_direction(to_target)
 	var speed_value: float = max(float(agent_program.normal_move_speed), 0.0)
 	match _get_agent_normal_movement_verb():
 		AgentBossProgram.NORMAL_PUSH_FORWARD:
@@ -843,10 +843,10 @@ func _get_agent_normal_velocity(to_target: Vector2) -> Vector2:
 		AgentBossProgram.NORMAL_PULL_BACK:
 			return _get_agent_path_velocity_for_direction(-target_direction, float(agent_program.normal_tactical_distance), speed_value)
 		AgentBossProgram.NORMAL_ZIG_ZAG:
-			var zig_direction := (target_direction + target_direction.orthogonal() * _agent_zigzag_sign * 0.9).normalized()
+			var zig_direction: Vector2 = (target_direction + target_direction.orthogonal() * _agent_zigzag_sign * 0.9).normalized()
 			return _get_agent_path_velocity_for_direction(zig_direction, float(agent_program.normal_tactical_distance), speed_value)
 		_:
-			var strafe_direction := target_direction.orthogonal() * _strafe_sign
+			var strafe_direction: Vector2 = target_direction.orthogonal() * _strafe_sign
 			return _get_agent_path_velocity_for_direction(strafe_direction, float(agent_program.normal_tactical_distance), speed_value)
 
 
@@ -857,8 +857,8 @@ func _get_agent_path_velocity_for_direction(preferred_direction: Vector2, distan
 		_agent_tactical_target = _pick_agent_tactical_target(preferred_direction.normalized(), max(distance, 48.0))
 	if _agent_tactical_target == Vector2.INF:
 		return Vector2.ZERO
-	var steering_target := _get_path_steering_target(_agent_tactical_target)
-	var to_steering := steering_target - global_position
+	var steering_target: Vector2 = _get_path_steering_target(_agent_tactical_target)
+	var to_steering: Vector2 = steering_target - global_position
 	if to_steering.length_squared() <= 4.0:
 		return Vector2.ZERO
 	return to_steering.normalized() * speed_value
@@ -875,18 +875,18 @@ func _pick_agent_tactical_target(preferred_direction: Vector2, distance: float) 
 		preferred_direction.rotated(-PI * 0.75)
 	]
 	for direction in directions:
-		var candidate := global_position + direction.normalized() * distance
+		var candidate: Vector2 = global_position + direction.normalized() * distance
 		if _agent_point_is_valid(candidate) and not _path_blocks_segment(global_position, candidate, body_radius * 0.55):
 			return candidate
 	for direction in directions:
-		var candidate := global_position + direction.normalized() * distance * 0.55
+		var candidate: Vector2 = global_position + direction.normalized() * distance * 0.55
 		if _agent_point_is_valid(candidate) and not _path_blocks_segment(global_position, candidate, body_radius * 0.55):
 			return candidate
 	return Vector2.INF
 
 
 func _pick_agent_valid_direction(preferred_direction: Vector2, distance: float) -> Vector2:
-	var target := _pick_agent_tactical_target(preferred_direction.normalized() if preferred_direction.length_squared() > 0.001 else Vector2.RIGHT, distance)
+	var target: Vector2 = _pick_agent_tactical_target(preferred_direction.normalized() if preferred_direction.length_squared() > 0.001 else Vector2.RIGHT, distance)
 	if target == Vector2.INF:
 		return Vector2.ZERO
 	return (target - global_position).normalized()
@@ -905,7 +905,7 @@ func _start_agent_special_movement(to_target: Vector2) -> void:
 	_agent_dash_steps_remaining = max(int(agent_program.dash_count), 1)
 	match _get_agent_special_movement_verb():
 		AgentBossProgram.SPECIAL_MOVEMENT_TELEPORT_LOS:
-			var teleport_target := _pick_agent_los_point(to_target)
+			var teleport_target: Vector2 = _pick_agent_los_point(to_target)
 			if teleport_target != Vector2.INF:
 				global_position = _constrain_to_playable(teleport_target)
 				_invalidate_path_cache()
@@ -925,8 +925,8 @@ func _update_agent_special_movement(_delta: float, to_target: Vector2) -> Vector
 
 
 func _pick_agent_los_point(to_target: Vector2) -> Vector2:
-	var target_direction := _get_target_direction(to_target)
-	var preferred_distance := clamp(float(agent_program.special_move_distance), 180.0, 420.0)
+	var target_direction: Vector2 = _get_target_direction(to_target)
+	var preferred_distance: float = clamp(float(agent_program.special_move_distance), 180.0, 420.0)
 	var directions: Array[Vector2] = [
 		-target_direction,
 		-target_direction.rotated(PI * 0.35),
@@ -937,7 +937,7 @@ func _pick_agent_los_point(to_target: Vector2) -> Vector2:
 		target_direction.rotated(-PI * 0.72)
 	]
 	for direction in directions:
-		var candidate := target_position + direction.normalized() * preferred_distance
+		var candidate: Vector2 = target_position + direction.normalized() * preferred_distance
 		candidate = _constrain_to_playable(candidate)
 		if _agent_point_is_valid(candidate) and not _wall_blocks_segment(candidate, target_position):
 			return candidate
@@ -945,8 +945,8 @@ func _pick_agent_los_point(to_target: Vector2) -> Vector2:
 
 
 func _pick_agent_dash_target(to_target: Vector2) -> Vector2:
-	var target_direction := _get_target_direction(to_target)
-	var distance := max(float(agent_program.special_move_distance), 140.0)
+	var target_direction: Vector2 = _get_target_direction(to_target)
+	var distance: float = max(float(agent_program.special_move_distance), 140.0)
 	var directions: Array[Vector2] = [
 		target_direction.orthogonal() * _agent_zigzag_sign,
 		(target_direction + target_direction.orthogonal() * _agent_zigzag_sign).normalized(),
@@ -954,7 +954,7 @@ func _pick_agent_dash_target(to_target: Vector2) -> Vector2:
 		-target_direction
 	]
 	for direction in directions:
-		var candidate := global_position + direction.normalized() * distance
+		var candidate: Vector2 = global_position + direction.normalized() * distance
 		if _agent_point_is_valid(candidate) and not _path_blocks_segment(global_position, candidate, body_radius * 0.65):
 			return candidate
 	return Vector2.INF
@@ -980,10 +980,10 @@ func _update_agent_dash_chain(_delta: float, to_target: Vector2) -> Vector2:
 
 
 func _start_agent_charge(to_target: Vector2) -> void:
-	var charge_direction := _get_target_direction(to_target)
-	var distance := max(float(agent_program.charge_speed) * float(agent_program.charge_seconds), 120.0)
+	var charge_direction: Vector2 = _get_target_direction(to_target)
+	var distance: float = max(float(agent_program.charge_speed) * float(agent_program.charge_seconds), 120.0)
 	if _path_blocks_segment(global_position, global_position + charge_direction * distance, body_radius * 0.75):
-		var setup_target := _pick_agent_los_point(to_target)
+		var setup_target: Vector2 = _pick_agent_los_point(to_target)
 		if setup_target != Vector2.INF:
 			global_position = _constrain_to_playable(setup_target)
 			charge_direction = _get_target_direction(target_position - global_position)
@@ -999,7 +999,7 @@ func _update_agent_charge(delta: float, to_target: Vector2) -> Vector2:
 	_agent_charge_elapsed += delta
 	_agent_charge_remaining = max(_agent_charge_remaining - delta, 0.0)
 	_agent_aim_at_target(to_target)
-	var windup := max(float(agent_program.charge_windup_seconds), 0.0)
+	var windup: float = max(float(agent_program.charge_windup_seconds), 0.0)
 	if _agent_charge_elapsed <= windup:
 		_agent_special_telegraph_remaining = max(windup - _agent_charge_elapsed, 0.0)
 		return Vector2.ZERO
@@ -1037,15 +1037,15 @@ func _emit_agent_special_attack(to_target: Vector2) -> void:
 func _emit_agent_single_special_shot(to_target: Vector2, attack_verb: String) -> void:
 	if to_target.length_squared() <= 4.0:
 		return
-	var shot_direction := to_target.normalized()
-	var shot_config := _get_agent_special_shot_config(attack_verb)
+	var shot_direction: Vector2 = to_target.normalized()
+	var shot_config: Dictionary = _get_agent_special_shot_config(attack_verb)
 	var radius: float = float(shot_config.get("radius", projectile_radius))
-	var shot_origin := global_position + shot_direction * (body_radius + radius + 6.0)
+	var shot_origin: Vector2 = global_position + shot_direction * (body_radius + radius + 6.0)
 	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
 		shot_origin = global_position
 	if attack_verb == AgentBossProgram.SPECIAL_ATTACK_ROCKET:
-		var target_position_at_launch := target_position
-		var target_direction := target_position_at_launch - shot_origin
+		var target_position_at_launch: Vector2 = target_position
+		var target_direction: Vector2 = target_position_at_launch - shot_origin
 		if target_direction.length_squared() > 4.0:
 			shot_direction = target_direction.normalized()
 		var rocket_speed: float = max(float(shot_config.get("speed", projectile_speed)), 1.0)
@@ -1085,10 +1085,10 @@ func _update_agent_special_stream(delta: float) -> void:
 		interval = max(float(agent_program.spiral_shot_interval), 0.035)
 	var emitted_count := 0
 	while _agent_stream_remaining > 0.0 and _agent_stream_next_shot_remaining <= 0.0 and emitted_count < 8:
-		var direction := _get_agent_stream_direction()
-		var shot_config := _get_agent_special_shot_config(_agent_stream_kind)
+		var direction: Vector2 = _get_agent_stream_direction()
+		var shot_config: Dictionary = _get_agent_special_shot_config(_agent_stream_kind)
 		var radius: float = float(shot_config.get("radius", projectile_radius))
-		var shot_origin := global_position + direction * (body_radius + radius + 6.0)
+		var shot_origin: Vector2 = global_position + direction * (body_radius + radius + 6.0)
 		if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
 			shot_origin = global_position
 		shot_ready.emit(self, shot_origin, direction, shot_config)
@@ -1106,11 +1106,11 @@ func _get_agent_stream_direction() -> Vector2:
 		var progress: float = clamp(_agent_stream_elapsed / duration, 0.0, 1.0)
 		var start_angle: float = deg_to_rad(float(agent_program.minigun_sweep_degrees)) * 0.5 * float(sign(int(agent_program.minigun_start_side)))
 		var phase: float = progress * 2.0
-		var angle := lerp(start_angle, -start_angle, phase) if phase <= 1.0 else lerp(-start_angle, start_angle, phase - 1.0)
+		var angle: float = lerp(start_angle, -start_angle, phase) if phase <= 1.0 else lerp(-start_angle, start_angle, phase - 1.0)
 		return _agent_stream_base_direction.rotated(angle).normalized()
 	var spiral_duration: float = max(float(agent_program.spiral_duration), 0.2)
 	var spiral_progress: float = clamp(_agent_stream_elapsed / spiral_duration, 0.0, 1.0)
-	var spiral_sign := 1.0 if _agent_stream_kind == AgentBossProgram.SPECIAL_ATTACK_SPIRAL_COUNTER_CLOCKWISE else -1.0
+	var spiral_sign: float = 1.0 if _agent_stream_kind == AgentBossProgram.SPECIAL_ATTACK_SPIRAL_COUNTER_CLOCKWISE else -1.0
 	return _agent_stream_base_direction.rotated(spiral_sign * TAU * float(agent_program.spiral_rotations) * spiral_progress).normalized()
 
 
@@ -1166,13 +1166,13 @@ func _get_agent_special_shot_config(attack_verb: String) -> Dictionary:
 func _try_emit_agent_standard_shot(to_target: Vector2, cooldown: float, shot_speed: float, damage: int, radius: float) -> void:
 	if _agent_next_shot_remaining > 0.0 or to_target.length_squared() <= 4.0:
 		return
-	var shot_direction := to_target.normalized()
-	var shot_origin := global_position + shot_direction * (body_radius + radius + 5.0)
+	var shot_direction: Vector2 = to_target.normalized()
+	var shot_origin: Vector2 = global_position + shot_direction * (body_radius + radius + 5.0)
 	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
 		return
 	if _wall_blocks_segment(global_position, target_position) or _wall_blocks_segment(global_position, shot_origin):
 		return
-	var shot_config := {
+	var shot_config: Dictionary = {
 		"speed": shot_speed,
 		"damage": max(damage, 1),
 		"radius": radius,
@@ -1206,7 +1206,7 @@ func _get_target_direction(to_target: Vector2) -> Vector2:
 
 
 func _agent_aim_at_target(to_target: Vector2) -> void:
-	var aim := _get_target_direction(to_target)
+	var aim: Vector2 = _get_target_direction(to_target)
 	if aim.length_squared() > 0.001:
 		_agent_aim_direction = aim
 

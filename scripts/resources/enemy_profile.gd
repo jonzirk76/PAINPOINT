@@ -26,4 +26,4 @@ const BEHAVIOR_BOSS := "boss"
 @export var shot_projectile_count: int = 1
 @export var shot_spread_degrees: float = 0.0
 ## Enables procedural agent boss behavior when this profile is spawned as a boss.
-@export var agent_program: Resource = null
+@export var agent_program: AgentBossProgram = null
