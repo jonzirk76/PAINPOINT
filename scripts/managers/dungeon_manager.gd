@@ -477,17 +477,11 @@ func get_room_ids() -> Array[String]:
 
 func _get_cleared_floor_wall_tiles(cleared_room_ids: Array[String], min_world_cell: Vector2i, floor_cells: Array[Vector2i]) -> Array[Rect2]:
 	var wall_tiles: Array[Rect2] = []
-	var cell_owner: Dictionary = _get_cleared_floor_cell_owner_map(cleared_room_ids)
 	for room_id in cleared_room_ids:
 		var state: Dictionary = _rooms[room_id]
 		var offset: Vector2 = _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
-		var shell_lookup: Dictionary = _get_room_shell_tile_lookup(state)
 		var room_wall_tiles: Array[Rect2] = _get_room_wall_tiles(state)
 		for rect in room_wall_tiles:
-			var rect_key: String = _rect_key(rect)
-			var is_shell_tile: bool = shell_lookup.has(rect_key)
-			if is_shell_tile and not _should_keep_cleared_floor_shell_tile(state, rect, cell_owner):
-				continue
 			wall_tiles.append(_translated_rect(rect, offset))
 	return wall_tiles
 
@@ -503,13 +497,6 @@ func _get_room_wall_tiles(state: Dictionary) -> Array[Rect2]:
 	return _get_room_shell_tiles(state)
 
 
-func _get_room_shell_tile_lookup(state: Dictionary) -> Dictionary:
-	var lookup: Dictionary = {}
-	for rect in _get_room_shell_tiles(state):
-		lookup[_rect_key(rect)] = true
-	return lookup
-
-
 func _get_room_shell_tiles(state: Dictionary) -> Array[Rect2]:
 	var piece: RoomPieceDefinition = state["piece"] as RoomPieceDefinition
 	var connection_edges: Dictionary = Dictionary(state.get("connection_edges", {}))
@@ -517,85 +504,6 @@ func _get_room_shell_tiles(state: Dictionary) -> Array[Rect2]:
 		var empty_tiles: Array[Rect2] = []
 		return empty_tiles
 	return ROOM_GEOMETRY_BUILDER.build_wall_tile_rects(piece.footprint_cells, connection_edges)
-
-
-func _should_keep_cleared_floor_shell_tile(state: Dictionary, rect: Rect2, cell_owner: Dictionary) -> bool:
-	var edges: Array[Dictionary] = _get_room_shell_tile_edges(state, rect)
-	if edges.is_empty():
-		return true
-	var room_id: String = String(state.get("id", ""))
-	var anchor: Vector2i = state["anchor"]
-	var shared_edge_found: bool = false
-	for edge in edges:
-		var local_cell: Vector2i = edge["local_cell"]
-		var direction: String = String(edge["direction"])
-		var world_cell: Vector2i = anchor + local_cell
-		var neighbor_cell: Vector2i = world_cell + DIRECTION_OFFSETS.get(direction, Vector2i.ZERO)
-		var neighbor_key: String = _cell_key(neighbor_cell)
-		if not cell_owner.has(neighbor_key):
-			return true
-		var neighbor_room_id: String = String(cell_owner[neighbor_key])
-		if neighbor_room_id == room_id:
-			return true
-		shared_edge_found = true
-		if _shared_boundary_is_owned_by_cell(world_cell, neighbor_cell):
-			return true
-	return not shared_edge_found
-
-
-func _get_room_shell_tile_edges(state: Dictionary, rect: Rect2) -> Array[Dictionary]:
-	var edges: Array[Dictionary] = []
-	var piece: RoomPieceDefinition = state["piece"] as RoomPieceDefinition
-	if piece == null:
-		return edges
-	for local_cell in piece.footprint_cells:
-		var cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(piece.footprint_cells, local_cell)
-		if _rect_lies_on_cell_edge(rect, cell_rect, "north"):
-			edges.append({"local_cell": local_cell, "direction": "north"})
-		if _rect_lies_on_cell_edge(rect, cell_rect, "east"):
-			edges.append({"local_cell": local_cell, "direction": "east"})
-		if _rect_lies_on_cell_edge(rect, cell_rect, "south"):
-			edges.append({"local_cell": local_cell, "direction": "south"})
-		if _rect_lies_on_cell_edge(rect, cell_rect, "west"):
-			edges.append({"local_cell": local_cell, "direction": "west"})
-	return edges
-
-
-func _rect_lies_on_cell_edge(rect: Rect2, cell_rect: Rect2, direction: String) -> bool:
-	var tolerance: float = 0.5
-	var rect_right: float = rect.position.x + rect.size.x
-	var rect_bottom: float = rect.position.y + rect.size.y
-	var cell_right: float = cell_rect.position.x + cell_rect.size.x
-	var cell_bottom: float = cell_rect.position.y + cell_rect.size.y
-	match direction:
-		"north":
-			return abs(rect.position.y - cell_rect.position.y) <= tolerance and rect.position.x >= cell_rect.position.x - tolerance and rect_right <= cell_right + tolerance
-		"east":
-			return abs(rect_right - cell_right) <= tolerance and rect.position.y >= cell_rect.position.y - tolerance and rect_bottom <= cell_bottom + tolerance
-		"south":
-			return abs(rect_bottom - cell_bottom) <= tolerance and rect.position.x >= cell_rect.position.x - tolerance and rect_right <= cell_right + tolerance
-		"west":
-			return abs(rect.position.x - cell_rect.position.x) <= tolerance and rect.position.y >= cell_rect.position.y - tolerance and rect_bottom <= cell_bottom + tolerance
-	return false
-
-
-func _shared_boundary_is_owned_by_cell(cell: Vector2i, neighbor_cell: Vector2i) -> bool:
-	if cell.y == neighbor_cell.y:
-		return cell.x < neighbor_cell.x
-	return cell.y < neighbor_cell.y
-
-
-func _get_cleared_floor_cell_owner_map(cleared_room_ids: Array[String]) -> Dictionary:
-	var cell_owner: Dictionary = {}
-	for room_id in cleared_room_ids:
-		var state: Dictionary = _rooms[room_id]
-		var piece: RoomPieceDefinition = state["piece"] as RoomPieceDefinition
-		if piece == null:
-			continue
-		var anchor: Vector2i = state["anchor"]
-		for local_cell in piece.footprint_cells:
-			cell_owner[_cell_key(anchor + local_cell)] = room_id
-	return cell_owner
 
 
 func _get_full_floor_room_ids() -> Array[String]:
@@ -1359,15 +1267,6 @@ func _get_place_density_score(piece, anchor: Vector2i, parent_id: String, parent
 
 func _cell_key(cell: Vector2i) -> String:
 	return "%d,%d" % [cell.x, cell.y]
-
-
-func _rect_key(rect: Rect2) -> String:
-	return "%d,%d,%d,%d" % [
-		roundi(rect.position.x),
-		roundi(rect.position.y),
-		roundi(rect.size.x),
-		roundi(rect.size.y)
-	]
 
 
 func _reveal_room(room_id: String) -> void:
