@@ -378,10 +378,12 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("CatEntity should choose between distinct idle animation states, including glance and scan look modes.")
 	if not cat_source.contains("_look_scan_reversed") or not cat_source.contains("_update_glancing_idle"):
 		failures.append("CatEntity should support one-shot scan looks and repeated seated glance looks.")
+	if not cat_source.contains("_configure_scan_idle") or not cat_source.contains("_get_scan_frame_index") or not cat_source.contains("_scan_stop_frame_index"):
+		failures.append("CatEntity should give seated scan idles randomized speed and stop on a selected look frame.")
 	if not cat_source.contains("SIT_TRANSITION_UP") or not cat_source.contains("_update_sit_transition"):
 		failures.append("CatEntity should play sit-down transitions into seated idles and reverse them before standing.")
-	if not cat_source.contains("LAY_TRANSITION_UP") or not cat_source.contains("_update_lay_transition"):
-		failures.append("CatEntity should play lay-down transitions into laying idles and reverse them before standing.")
+	if not cat_source.contains("LAY_TRANSITION_UP") or not cat_source.contains("_update_lay_transition") or not cat_source.contains("_pending_seated_idle_state") or not cat_source.contains("_stand_after_lay_up"):
+		failures.append("CatEntity should enter laying as an option from sitting and reverse through sitting before standing.")
 	if not cat_source.contains("set_player_context") or not cat_source.contains("_pick_curiosity_biased_position"):
 		failures.append("CatEntity should build curiosity from player movement context and bias wander targets closer as it grows.")
 	if not cat_source.contains("_has_line_of_sight_to_player") or not cat_source.contains("curiosity_line_of_sight_margin"):
