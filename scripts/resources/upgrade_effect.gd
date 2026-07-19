@@ -40,6 +40,8 @@ enum UpgradeType {
 @export var projectile_growth_per_second: float = 0.0
 @export var projectile_max_size_multiplier: float = 1.0
 @export var damage_multiplier: float = 1.0
+## Multiplies player projectile knockback while this overdrive effect is active.
+@export var knockback_multiplier: float = 1.0
 @export var fire_cooldown_multiplier: float = 1.0
 
 
@@ -63,6 +65,7 @@ func merge_into_modifiers(modifiers: Dictionary) -> Dictionary:
 	merged["projectile_size_multiplier"] = max(float(merged.get("projectile_size_multiplier", 1.0)), projectile_size_multiplier)
 	merged["projectile_growth_per_second"] = max(float(merged.get("projectile_growth_per_second", 0.0)), projectile_growth_per_second)
 	merged["projectile_max_size_multiplier"] = max(float(merged.get("projectile_max_size_multiplier", 1.0)), projectile_max_size_multiplier)
+	merged["knockback_multiplier"] = max(float(merged.get("knockback_multiplier", 1.0)), knockback_multiplier)
 	merged["fire_cooldown_multiplier"] = min(float(merged.get("fire_cooldown_multiplier", 1.0)), fire_cooldown_multiplier)
 	if explosion_radius > 0.0:
 		merged["projectile_kind"] = "fire"
@@ -82,7 +85,7 @@ func get_reward_description() -> String:
 		UpgradeType.SPREAD:
 			return _with_capacity("%s: overdrive shots fire +1 projectile." % display_name)
 		UpgradeType.PIERCING:
-			return _with_capacity("%s: overdrive shots pierce +%d targets and hit harder." % [display_name, max(pierce_count, 1)])
+			return _with_capacity("%s: overdrive shots pierce +%d targets and knock enemies back." % [display_name, max(pierce_count, 1)])
 		UpgradeType.CHAIN_LIGHTNING:
 			return _with_capacity("%s: overdrive shots chain +%d jump and charge targets for repeat-hit damage." % [display_name, max(chain_count, 1)])
 		UpgradeType.FIRE:

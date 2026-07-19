@@ -8,4 +8,6 @@ id = "heavy_tears"
 display_name = "Heavy Tears"
 stat_type = 2
 amount = 0.2
+roll_amount_min = 0.16
+roll_amount_max = 0.24
 max_stacks = 14

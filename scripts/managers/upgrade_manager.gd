@@ -72,12 +72,21 @@ func activate_permanent_upgrade(upgrade) -> void:
 	if upgrade == null:
 		return
 	var old_capacity := get_overdrive_max_ammo()
-	var id: String = upgrade.id
+	var id: String = upgrade.get_stack_key() if upgrade.has_method("get_stack_key") else String(upgrade.id)
 	var state: Dictionary = _permanent_upgrades.get(id, {
 		"upgrade": upgrade,
-		"stacks": 0
+		"display_name": upgrade.get_stack_display_name() if upgrade.has_method("get_stack_display_name") else String(upgrade.display_name),
+		"stacks": 0,
+		"total_amount": 0.0,
+		"max_stacks": int(upgrade.max_stacks)
 	})
-	state["stacks"] = min(int(state["stacks"]) + 1, int(upgrade.max_stacks))
+	state["upgrade"] = upgrade
+	state["display_name"] = upgrade.get_stack_display_name() if upgrade.has_method("get_stack_display_name") else String(upgrade.display_name)
+	state["max_stacks"] = max(int(state.get("max_stacks", 0)), int(upgrade.max_stacks))
+	var previous_stacks: int = int(state["stacks"])
+	state["stacks"] = min(previous_stacks + 1, int(state["max_stacks"]))
+	if int(state["stacks"]) > previous_stacks:
+		state["total_amount"] = float(state.get("total_amount", 0.0)) + float(upgrade.amount)
 	_permanent_upgrades[id] = state
 	var new_capacity := get_overdrive_max_ammo()
 	if new_capacity > old_capacity:
@@ -149,6 +158,7 @@ func get_modifiers() -> Dictionary:
 		"projectile_max_size_multiplier": 1.0,
 		"projectile_kind": "normal",
 		"fire_cooldown_multiplier": 1.0,
+		"knockback_multiplier": 1.0,
 		"move_speed_multiplier": 1.0,
 		"overdrive_active": can_fire_overdrive(),
 		"overdrive_has_effects": not _overdrive_effects.is_empty()
@@ -177,18 +187,18 @@ func get_attribute_modifiers() -> Dictionary:
 	var overdrive_capacity_bonus: float = 0.0
 	for state in _permanent_upgrades.values():
 		var upgrade = state["upgrade"]
-		var stacks: int = int(state["stacks"])
+		var total_amount: float = float(state.get("total_amount", float(upgrade.amount) * float(int(state.get("stacks", 0)))))
 		match int(upgrade.stat_type):
 			0:
-				fire_rate_bonus += upgrade.amount * float(stacks)
+				fire_rate_bonus += total_amount
 			1:
-				move_speed_bonus += upgrade.amount * float(stacks)
+				move_speed_bonus += total_amount
 			2:
-				damage_bonus += upgrade.amount * float(stacks)
+				damage_bonus += total_amount
 			3:
-				projectile_size_bonus += upgrade.amount * float(stacks)
+				projectile_size_bonus += total_amount
 			4:
-				overdrive_capacity_bonus += upgrade.amount * float(stacks)
+				overdrive_capacity_bonus += total_amount
 	return {
 		"fire_cooldown_multiplier": max(1.0 - fire_rate_bonus, 0.4),
 		"move_speed_multiplier": 1.0 + move_speed_bonus,
@@ -227,15 +237,16 @@ func get_permanent_stats() -> Array:
 	for state in _permanent_upgrades.values():
 		var upgrade = state["upgrade"]
 		var stacks: int = int(state["stacks"])
+		var total_amount: float = float(state.get("total_amount", float(upgrade.amount) * float(stacks)))
 		stats.append({
-			"id": upgrade.id,
-			"display_name": upgrade.display_name,
+			"id": upgrade.get_stack_key() if upgrade.has_method("get_stack_key") else String(upgrade.id),
+			"display_name": String(state.get("display_name", upgrade.display_name)),
 			"stat_key": upgrade.get_stat_key(),
 			"stat_label": upgrade.get_stat_label(),
-			"amount": upgrade.amount,
+			"amount": total_amount / float(max(stacks, 1)),
 			"stacks": stacks,
-			"max_stacks": upgrade.max_stacks,
-			"total": upgrade.amount * float(stacks)
+			"max_stacks": int(state.get("max_stacks", upgrade.max_stacks)),
+			"total": total_amount
 		})
 	stats.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return String(a["stat_label"]) < String(b["stat_label"])
@@ -313,6 +324,10 @@ func _merge_overdrive_effect(modifiers: Dictionary, effect, stacks: int) -> Dict
 	var damage_bonus: float = max(float(effect.damage_multiplier) - 1.0, 0.0) * float(safe_stacks)
 	if damage_bonus > 0.0:
 		merged["damage_multiplier"] = max(float(merged.get("damage_multiplier", 1.0)), 1.0 + damage_bonus)
+	var knockback_bonus: float = max(float(effect.knockback_multiplier) - 1.0, 0.0)
+	if knockback_bonus > 0.0:
+		var stacked_knockback: float = min(1.0 + knockback_bonus + float(max(safe_stacks - 1, 0)) * 0.35, 2.6)
+		merged["knockback_multiplier"] = max(float(merged.get("knockback_multiplier", 1.0)), stacked_knockback)
 	if float(effect.fire_cooldown_multiplier) > 0.0 and float(effect.fire_cooldown_multiplier) < 1.0:
 		merged["fire_cooldown_multiplier"] = min(float(merged.get("fire_cooldown_multiplier", 1.0)), pow(float(effect.fire_cooldown_multiplier), float(safe_stacks)))
 	if float(merged.get("explosion_radius", 0.0)) > 0.0:

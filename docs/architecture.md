@@ -140,8 +140,8 @@ Combat reward drops:
 1. `EnemyManager.enemy_defeated` is routed by `GameOrchestrator` to `ItemManager.roll_enemy_drop(...)`.
 2. `ItemManager` rolls occasional small health pickups and much rarer shared overdrive ammo pickups, keeping parry as the primary overdrive ammo source.
 3. `ItemManager.pickup_collected` flows to `GameOrchestrator`, which routes heal pickups to `PlayerManager.apply_healing(...)` and upgrade pickups to `UpgradeManager.activate_pickup(...)`.
-4. Challenge room and floor-end rewards spawn three optional overdrive effect choices. Non-spread overdrive effects can also raise the shared overdrive capacity. Treasure rooms spawn three optional permanent stat choices, including overdrive capacity.
-5. `UpgradeManager` stacks run-long attributes for fire-rate cooldown reduction, movement speed, bullet damage, projectile size, and overdrive capacity.
+4. Challenge room and floor-end rewards spawn three optional overdrive effect choices. Non-spread overdrive effects can also raise the shared overdrive capacity. Treasure rooms spawn three optional rolled permanent stat choices, including overdrive capacity.
+5. `UpgradeManager` stacks run-long attributes for fire-rate cooldown reduction, movement speed, bullet damage, projectile size, and overdrive capacity. Permanent upgrade state sums rolled `total_amount` values by stack key so small chest variants can contribute to the same run-long stat as treasure-room variants.
 6. `SpawnerManager.spawner_destroyed` is routed by `GameOrchestrator` to `ItemManager.drop_spawner_reward(...)`, which always drops one reward: usually an overdrive ammo cache, with a chance for a full heal instead.
 
 Opening suppression:

@@ -1087,11 +1087,13 @@ func _test_ammo_type_balance(failures: Array[String]) -> void:
 	manager.activate_upgrade(pierce)
 	manager.set_overdrive_active(true)
 	var modifiers: Dictionary = manager.get_modifiers()
-	if float(modifiers["damage_multiplier"]) < 1.1:
-		failures.append("Piercing overdrive should have a small stack-based damage fallback.")
+	if float(modifiers["damage_multiplier"]) > 1.01:
+		failures.append("Piercing overdrive should no longer increase direct projectile damage.")
+	if float(modifiers["knockback_multiplier"]) <= 1.0:
+		failures.append("Piercing overdrive should increase projectile knockback.")
 	var packet = projectile_manager._create_damage_packet(modifiers, Vector2.ZERO, Vector2.RIGHT)
-	if packet.damage < 1 or packet.pierce_count < 2:
-		failures.append("Piercing overdrive should create a piercing projectile while held.")
+	if packet.damage < 1 or packet.pierce_count < 2 or packet.knockback <= projectile_manager.base_knockback:
+		failures.append("Piercing overdrive should create a piercing knockback projectile while held.")
 	manager.activate_upgrade(chain)
 	modifiers = manager.get_modifiers()
 	packet = projectile_manager._create_damage_packet(modifiers, Vector2.ZERO, Vector2.RIGHT)
@@ -1498,6 +1500,10 @@ func _test_reward_driven_pickup_drops(failures: Array[String]) -> void:
 		for choice in manager._pickups:
 			if choice.upgrade_effect == null or choice.upgrade_effect.get_pickup_kind() != "permanent":
 				failures.append("Treasure reward choices should be permanent stat upgrades.")
+			elif float(choice.upgrade_effect.roll_amount_max) > 0.0:
+				var rolled_amount: float = float(choice.upgrade_effect.amount)
+				if rolled_amount < float(choice.upgrade_effect.roll_amount_min) or rolled_amount > float(choice.upgrade_effect.roll_amount_max):
+					failures.append("Treasure reward choices should roll permanent stat values inside their configured range.")
 	manager.clear_pickups()
 	manager.set_room_context(2, "treasure_1")
 	manager.spawn_treasure_reward_choices(Vector2(12.0, 18.0))

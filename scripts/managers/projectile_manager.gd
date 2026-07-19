@@ -209,7 +209,7 @@ func _create_damage_packet(modifiers: Dictionary, origin: Vector2, direction: Ve
 	packet.projectile_growth_per_second = float(modifiers.get("projectile_growth_per_second", 0.0))
 	packet.projectile_max_size_multiplier = float(modifiers.get("projectile_max_size_multiplier", packet.projectile_size_multiplier))
 	packet.projectile_kind = String(modifiers.get("projectile_kind", "normal"))
-	packet.knockback = base_knockback
+	packet.knockback = base_knockback * max(float(modifiers.get("knockback_multiplier", 1.0)), 0.0)
 	packet.source_position = origin
 	packet.knockback_direction = direction.normalized()
 	return packet

@@ -8,4 +8,6 @@ id = "fat_tears"
 display_name = "Fat Tears"
 stat_type = 3
 amount = 0.1
+roll_amount_min = 0.08
+roll_amount_max = 0.12
 max_stacks = 14

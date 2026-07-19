@@ -10,4 +10,4 @@ upgrade_type = 1
 duration_seconds = 0.0
 max_ammo = 8
 pierce_count = 2
-damage_multiplier = 1.16
+knockback_multiplier = 1.6
