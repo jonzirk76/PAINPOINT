@@ -384,6 +384,10 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("CatEntity should play sit-down transitions into seated idles and reverse them before standing.")
 	if not cat_source.contains("LAY_TRANSITION_UP") or not cat_source.contains("_update_lay_transition") or not cat_source.contains("_pending_seated_idle_state") or not cat_source.contains("_stand_after_lay_up"):
 		failures.append("CatEntity should enter laying as an option from sitting and reverse through sitting before standing.")
+	if not cat_source.contains("MOTION_STATE_JUMPING") or not cat_source.contains("_begin_startle_jump") or not cat_source.contains("_update_startle_jump"):
+		failures.append("CatEntity should use a reusable jumping movement state for startled movement.")
+	if not cat_source.contains("STARTLE_JUMP_FRAME_COUNT := 4") or not cat_source.contains("_get_startle_jump_visual_y_offset"):
+		failures.append("CatEntity startled jumps should use the first four running frames with a visual y-offset arc.")
 	if not cat_source.contains("set_player_context") or not cat_source.contains("_pick_curiosity_biased_position"):
 		failures.append("CatEntity should build curiosity from player movement context and bias wander targets closer as it grows.")
 	if not cat_source.contains("_has_line_of_sight_to_player") or not cat_source.contains("curiosity_line_of_sight_margin"):

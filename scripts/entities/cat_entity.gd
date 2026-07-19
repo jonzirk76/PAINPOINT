@@ -22,11 +22,14 @@ const WALK_COLUMN_START := 12
 const WALK_FRAME_COUNT := 4
 const RUN_COLUMN_START := 20
 const RUN_FRAME_COUNT := 8
+const STARTLE_JUMP_FRAME_COUNT := 4
 const IDLE_STATE_STANDING := "standing"
 const IDLE_STATE_SITTING := "sitting"
 const IDLE_STATE_GLANCING := "glancing"
 const IDLE_STATE_SCANNING := "scanning"
 const IDLE_STATE_LAYING := "laying"
+const MOTION_STATE_GROUNDED := "grounded"
+const MOTION_STATE_JUMPING := "jumping"
 const SIT_TRANSITION_NONE := "none"
 const SIT_TRANSITION_DOWN := "down"
 const SIT_TRANSITION_UP := "up"
@@ -43,6 +46,18 @@ const INVALID_PATH_CELL := Vector2i(-999999, -999999)
 @export var flee_speed: float = 142.0
 ## Controls how quickly the cat accelerates toward its current movement intent.
 @export var acceleration: float = 520.0
+## Controls how far the cat jumps when startled before it starts running.
+@export var startle_jump_distance: float = 86.0
+## Controls how long the startled jump takes.
+@export var startle_jump_duration: float = 0.24
+## Controls how high the startled jump visually lifts the sprite.
+@export var startle_jump_arc_height: float = 24.0
+## Controls how long the cat keeps running after a startled jump lands.
+@export var startle_run_seconds: float = 0.55
+## Controls how soon the same continuous danger can trigger another startled jump.
+@export var startle_retrigger_cooldown: float = 0.9
+## Controls how quickly rest animations reverse when the cat is startled.
+@export var startle_get_up_animation_rate: float = 14.0
 ## Controls how far away enemies and spawners start influencing the cat.
 @export var combat_avoidance_radius: float = 260.0
 ## Controls how far the cat tries to move when choosing a flee target.
@@ -130,6 +145,7 @@ var _player_velocity: Vector2 = Vector2.ZERO
 var _player_avoidance_radius: float = 150.0
 var _has_player_context: bool = false
 var _player_projectile_points: Array[Vector2] = []
+var _motion_state: String = MOTION_STATE_GROUNDED
 var _idle_state: String = IDLE_STATE_STANDING
 var _idle_direction_index: int = 0
 var _look_frame_index: int = LOOK_NEUTRAL_FRAME_INDEX
@@ -141,6 +157,14 @@ var _pending_seated_idle_state: String = ""
 var _stand_after_lay_up: bool = false
 var _sit_transition_mode: String = SIT_TRANSITION_NONE
 var _lay_transition_mode: String = LAY_TRANSITION_NONE
+var _startle_source_was_active: bool = false
+var _startle_jump_queued: bool = false
+var _startle_jump_elapsed: float = 0.0
+var _startle_jump_start_position: Vector2 = Vector2.ZERO
+var _startle_jump_land_position: Vector2 = Vector2.ZERO
+var _startle_jump_direction: Vector2 = Vector2.DOWN
+var _startle_jump_cooldown_remaining: float = 0.0
+var _startle_run_remaining: float = 0.0
 
 
 func _ready() -> void:
@@ -166,12 +190,21 @@ func initialize(spawn_position: Vector2, movement_seed: int = 0) -> void:
 	_player_velocity = Vector2.ZERO
 	_has_player_context = false
 	_player_projectile_points.clear()
+	_motion_state = MOTION_STATE_GROUNDED
 	_idle_direction_index = _get_direction_index(_last_facing_direction)
 	_reset_look_motion()
 	_pending_seated_idle_state = ""
 	_stand_after_lay_up = false
 	_sit_transition_mode = SIT_TRANSITION_NONE
 	_lay_transition_mode = LAY_TRANSITION_NONE
+	_startle_source_was_active = false
+	_startle_jump_queued = false
+	_startle_jump_elapsed = 0.0
+	_startle_jump_start_position = spawn_position
+	_startle_jump_land_position = spawn_position
+	_startle_jump_direction = Vector2.DOWN
+	_startle_jump_cooldown_remaining = 0.0
+	_startle_run_remaining = 0.0
 	_set_idle_state(IDLE_STATE_STANDING)
 	_configure_collision_identity()
 	_ensure_sprite()
@@ -279,18 +312,42 @@ func _physics_process(delta: float) -> void:
 	if not enabled:
 		velocity = Vector2.ZERO
 		return
+	_startle_jump_cooldown_remaining = maxf(_startle_jump_cooldown_remaining - delta, 0.0)
+	_startle_run_remaining = maxf(_startle_run_remaining - delta, 0.0)
 	var combat_avoidance: Vector2 = _get_combat_avoidance_vector()
 	var player_avoidance: Vector2 = _get_player_avoidance_vector()
-	var avoidance: Vector2 = combat_avoidance + player_avoidance
+	var projectile_startle: Vector2 = _get_player_projectile_startle_vector()
+	var startle_avoidance: Vector2 = combat_avoidance + projectile_startle
+	var avoidance: Vector2 = startle_avoidance + player_avoidance
+	var startle_source_active: bool = startle_avoidance.length_squared() > 0.001
+	if startle_source_active and not _startle_source_was_active:
+		_request_startle_jump(startle_avoidance)
+	_startle_source_was_active = startle_source_active
 	_update_curiosity(delta, combat_avoidance.length_squared() > 0.001)
 	var desired_velocity := Vector2.ZERO
-	_is_fleeing = avoidance.length_squared() > 0.001
+	_is_fleeing = avoidance.length_squared() > 0.001 or _startle_jump_queued or _startle_run_remaining > 0.0 or _is_jumping()
+	if _is_jumping():
+		velocity = Vector2.ZERO
+		_update_startle_jump(delta)
+		global_position = _constrain_to_playable(global_position)
+		_update_visual_state(delta)
+		return
 	if _is_fleeing:
 		_idle_remaining = 0.0
-		var force_rest_exit: bool = combat_avoidance.length_squared() > 0.001
-		_set_idle_state(IDLE_STATE_STANDING, force_rest_exit)
+		var flee_vector: Vector2 = avoidance
+		if flee_vector.length_squared() <= 0.001:
+			flee_vector = _startle_jump_direction
+		_set_idle_state(IDLE_STATE_STANDING)
+		if _startle_jump_queued and not _has_rest_transition():
+			_begin_startle_jump(flee_vector)
+		if _is_jumping():
+			velocity = Vector2.ZERO
+			_update_startle_jump(delta)
+			global_position = _constrain_to_playable(global_position)
+			_update_visual_state(delta)
+			return
 		if not _has_get_up_transition():
-			_set_target_position(_find_clear_target(global_position + avoidance.normalized() * flee_target_distance), false)
+			_set_target_position(_find_clear_target(global_position + flee_vector.normalized() * flee_target_distance), false)
 			var flee_target: Vector2 = _get_current_movement_target()
 			if flee_target != Vector2.INF:
 				desired_velocity = (flee_target - global_position).normalized() * flee_speed
@@ -342,7 +399,7 @@ func _ensure_sprite() -> void:
 	_sprite.centered = true
 	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_sprite.scale = Vector2(sprite_scale, sprite_scale)
-	_sprite.position = Vector2(0.0, -body_radius * 0.42)
+	_sprite.position = _get_sprite_base_position()
 	add_child(_sprite)
 
 
@@ -473,7 +530,75 @@ func _has_rest_transition() -> bool:
 
 
 func _has_get_up_transition() -> bool:
-	return _sit_transition_mode == SIT_TRANSITION_UP or _lay_transition_mode == LAY_TRANSITION_UP or not _look_exit_state.is_empty()
+	return _sit_transition_mode == SIT_TRANSITION_UP or _lay_transition_mode == LAY_TRANSITION_UP or not _look_exit_state.is_empty() or _startle_jump_queued or _is_jumping()
+
+
+func _is_jumping() -> bool:
+	return _motion_state == MOTION_STATE_JUMPING
+
+
+func _request_startle_jump(startle_vector: Vector2) -> void:
+	if _is_jumping() or _startle_jump_queued or _startle_jump_cooldown_remaining > 0.0:
+		return
+	if startle_vector.length_squared() <= 0.001:
+		return
+	_startle_jump_direction = startle_vector.normalized()
+	_startle_jump_queued = true
+	_idle_remaining = 0.0
+	_retarget_remaining = 0.0
+	_set_target_position(global_position, false)
+
+
+func _begin_startle_jump(flee_vector: Vector2) -> void:
+	if flee_vector.length_squared() > 0.001:
+		_startle_jump_direction = flee_vector.normalized()
+	elif _startle_jump_direction.length_squared() <= 0.001:
+		_startle_jump_direction = Vector2.DOWN
+	_startle_jump_queued = false
+	_motion_state = MOTION_STATE_JUMPING
+	_idle_state = IDLE_STATE_STANDING
+	_sit_transition_mode = SIT_TRANSITION_NONE
+	_lay_transition_mode = LAY_TRANSITION_NONE
+	_reset_look_motion()
+	_animation_time = 0.0
+	velocity = Vector2.ZERO
+	_startle_jump_elapsed = 0.0
+	_startle_jump_start_position = global_position
+	_startle_jump_land_position = _find_startle_jump_landing(_startle_jump_direction)
+	_last_facing_direction = _startle_jump_direction
+	if _startle_jump_start_position.distance_squared_to(_startle_jump_land_position) <= 4.0:
+		_finish_startle_jump()
+
+
+func _update_startle_jump(delta: float) -> void:
+	var jump_duration: float = maxf(startle_jump_duration, 0.05)
+	_startle_jump_elapsed = minf(_startle_jump_elapsed + delta, jump_duration)
+	var jump_progress: float = clampf(_startle_jump_elapsed / jump_duration, 0.0, 1.0)
+	global_position = _startle_jump_start_position.lerp(_startle_jump_land_position, jump_progress)
+	if jump_progress >= 1.0:
+		_finish_startle_jump()
+
+
+func _finish_startle_jump() -> void:
+	global_position = _constrain_to_playable(_startle_jump_land_position)
+	_motion_state = MOTION_STATE_GROUNDED
+	_startle_jump_elapsed = 0.0
+	_startle_jump_cooldown_remaining = maxf(startle_retrigger_cooldown, 0.0)
+	_startle_run_remaining = maxf(startle_run_seconds, 0.0)
+	_last_facing_direction = _startle_jump_direction
+	_set_target_position(_find_clear_target(global_position + _startle_jump_direction * flee_target_distance), false)
+	velocity = _startle_jump_direction * flee_speed
+
+
+func _find_startle_jump_landing(jump_direction: Vector2) -> Vector2:
+	var direction: Vector2 = jump_direction.normalized() if jump_direction.length_squared() > 0.001 else Vector2.DOWN
+	var jump_distance: float = maxf(startle_jump_distance, body_radius + 4.0)
+	var distance_ratios: Array[float] = [1.0, 0.75, 0.5, 0.3]
+	for ratio: float in distance_ratios:
+		var candidate: Vector2 = _find_clear_target(global_position + direction * jump_distance * ratio)
+		if _position_is_clear(candidate) and _has_clear_segment(global_position, candidate, body_radius * 0.5):
+			return candidate
+	return global_position
 
 
 func _reset_look_motion() -> void:
@@ -730,6 +855,24 @@ func _has_nearby_player_projectile() -> bool:
 		if global_position.distance_squared_to(projectile_position) <= reset_radius * reset_radius:
 			return true
 	return false
+
+
+func _get_player_projectile_startle_vector() -> Vector2:
+	var reset_radius: float = maxf(shot_curiosity_reset_radius, 0.0)
+	if reset_radius <= 0.0:
+		return Vector2.ZERO
+	var startle_vector := Vector2.ZERO
+	for projectile_position: Vector2 in _player_projectile_points:
+		var to_cat: Vector2 = global_position - projectile_position
+		var distance: float = to_cat.length()
+		if distance > reset_radius:
+			continue
+		if distance <= 0.001:
+			to_cat = Vector2.RIGHT.rotated(_rng.randf_range(0.0, TAU))
+			distance = 1.0
+		var ratio: float = clampf(1.0 - distance / reset_radius, 0.0, 1.0)
+		startle_vector += to_cat.normalized() * ratio * ratio
+	return startle_vector
 
 
 func _pick_curiosity_biased_position() -> Vector2:
@@ -1061,9 +1204,11 @@ func _clamp_to_roam_bounds(position: Vector2) -> Vector2:
 
 
 func _update_visual_state(delta: float) -> void:
-	var moving := velocity.length_squared() > 4.0
+	var moving := velocity.length_squared() > 4.0 or _is_jumping()
 	var animating_idle := not moving and _idle_state != IDLE_STATE_STANDING
-	if moving:
+	if _is_jumping():
+		_last_facing_direction = _startle_jump_direction
+	elif moving:
 		_last_facing_direction = velocity.normalized()
 	elif _is_look_idle_state() and not _has_rest_transition():
 		_update_look_idle(delta)
@@ -1081,20 +1226,25 @@ func _update_visual_state(delta: float) -> void:
 func _get_animation_rate(moving: bool) -> float:
 	if moving:
 		return 12.0 if _is_fleeing else 8.0
+	if _startle_jump_queued and _has_rest_transition():
+		return maxf(startle_get_up_animation_rate, 1.0)
 	return 8.0
 
 
 func _update_sprite_frame() -> void:
 	_ensure_sprite()
-	var moving := velocity.length_squared() > 4.0
-	var direction := _last_facing_direction
+	_sprite.position = _get_sprite_base_position() + Vector2(0.0, _get_startle_jump_visual_y_offset())
+	var moving := velocity.length_squared() > 4.0 or _is_jumping()
+	var direction := _startle_jump_direction if _is_jumping() else _last_facing_direction
 	if direction.length_squared() <= 0.001:
 		direction = Vector2.DOWN
 	var direction_index := _get_direction_index(direction)
 	if not moving and _idle_state != IDLE_STATE_STANDING:
 		direction_index = _idle_direction_index
 	var frames: Array[Vector2i] = []
-	if moving:
+	if _is_jumping():
+		frames = _get_startle_jump_frames(direction_index)
+	elif moving:
 		frames = _get_movement_frames(direction_index, _is_fleeing)
 	else:
 		frames = _get_idle_frames(direction_index)
@@ -1122,6 +1272,10 @@ func _get_movement_frames(direction_index: int, running: bool) -> Array[Vector2i
 	return _get_clip_frames(direction_index, column_start, frame_count)
 
 
+func _get_startle_jump_frames(direction_index: int) -> Array[Vector2i]:
+	return _get_clip_frames(direction_index, RUN_COLUMN_START, mini(STARTLE_JUMP_FRAME_COUNT, RUN_FRAME_COUNT))
+
+
 func _get_idle_frames(direction_index: int) -> Array[Vector2i]:
 	if _is_seated_idle_state() and _sit_transition_mode != SIT_TRANSITION_NONE:
 		return _get_clip_frames(direction_index, SIT_COLUMN_START, _get_sit_frame_count(direction_index))
@@ -1135,6 +1289,8 @@ func _get_idle_frames(direction_index: int) -> Array[Vector2i]:
 
 
 func _get_frame_index(frame_count: int, moving: bool) -> int:
+	if _is_jumping():
+		return _get_startle_jump_frame_index(frame_count)
 	if _sit_transition_mode == SIT_TRANSITION_DOWN:
 		return mini(int(floor(_animation_time)), frame_count - 1)
 	if _sit_transition_mode == SIT_TRANSITION_UP:
@@ -1164,6 +1320,26 @@ func _get_look_frame_index(frame_count: int) -> int:
 
 func _get_neutral_look_frame_index(frame_count: int = LOOK_FRAME_COUNT) -> int:
 	return clampi(LOOK_NEUTRAL_FRAME_INDEX, 0, maxi(frame_count - 1, 0))
+
+
+func _get_startle_jump_frame_index(frame_count: int) -> int:
+	if frame_count <= 1:
+		return 0
+	var jump_duration: float = maxf(startle_jump_duration, 0.05)
+	var jump_progress: float = clampf(_startle_jump_elapsed / jump_duration, 0.0, 1.0)
+	return mini(int(floor(jump_progress * float(frame_count))), frame_count - 1)
+
+
+func _get_sprite_base_position() -> Vector2:
+	return Vector2(0.0, -body_radius * 0.42)
+
+
+func _get_startle_jump_visual_y_offset() -> float:
+	if not _is_jumping():
+		return 0.0
+	var jump_duration: float = maxf(startle_jump_duration, 0.05)
+	var jump_progress: float = clampf(_startle_jump_elapsed / jump_duration, 0.0, 1.0)
+	return -sin(jump_progress * PI) * maxf(startle_jump_arc_height, 0.0)
 
 
 func _get_sit_frame_count(direction_index: int) -> int:
