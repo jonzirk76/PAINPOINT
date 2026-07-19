@@ -8,3 +8,5 @@ id = "overdrive_capacity"
 display_name = "Overdrive Battery"
 stat_type = 4
 amount = 10.0
+roll_amount_min = 8.0
+roll_amount_max = 12.0

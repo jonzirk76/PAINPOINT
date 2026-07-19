@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="PermanentUpgrade" load_steps=2 format=3]
+
+[ext_resource type="Script" uid="uid://xwd1q6fbp7gd" path="res://scripts/resources/permanent_upgrade.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "minor_overdrive_capacity"
+display_name = "Pocket Battery"
+stack_key = "overdrive_capacity"
+stack_display_name = "Overdrive Battery"
+stat_type = 4
+amount = 3.0
+roll_amount_min = 2.0
+roll_amount_max = 4.0

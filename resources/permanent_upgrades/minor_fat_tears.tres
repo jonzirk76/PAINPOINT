@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="PermanentUpgrade" load_steps=2 format=3]
+
+[ext_resource type="Script" uid="uid://xwd1q6fbp7gd" path="res://scripts/resources/permanent_upgrade.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "minor_fat_tears"
+display_name = "Plump Tear"
+stack_key = "fat_tears"
+stack_display_name = "Fat Tears"
+stat_type = 3
+amount = 0.03
+roll_amount_min = 0.02
+roll_amount_max = 0.04
+max_stacks = 14

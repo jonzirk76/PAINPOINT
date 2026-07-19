@@ -198,11 +198,19 @@ func _create_damage_packet(modifiers: Dictionary, origin: Vector2, direction: Ve
 	packet.chain_radius = float(modifiers.get("chain_radius", 0.0))
 	packet.explosion_radius = float(modifiers.get("explosion_radius", 0.0))
 	packet.explosion_damage_multiplier = float(modifiers.get("explosion_damage_multiplier", 0.0))
+	packet.burn_damage_per_second = float(modifiers.get("burn_damage_per_second", 0.0))
+	packet.burn_duration_seconds = float(modifiers.get("burn_duration_seconds", 0.0))
+	packet.slow_multiplier = float(modifiers.get("slow_multiplier", 1.0))
+	packet.slow_duration_seconds = float(modifiers.get("slow_duration_seconds", 0.0))
+	packet.lightning_charge_damage_multiplier = float(modifiers.get("lightning_charge_damage_multiplier", 1.0))
+	packet.lightning_charge_required_stacks = int(modifiers.get("lightning_charge_required_stacks", 0))
+	packet.lightning_charge_duration_seconds = float(modifiers.get("lightning_charge_duration_seconds", 0.0))
+	packet.lightning_charge_max_stacks = int(modifiers.get("lightning_charge_max_stacks", 0))
 	packet.projectile_size_multiplier = float(modifiers.get("projectile_size_multiplier", 1.0))
 	packet.projectile_growth_per_second = float(modifiers.get("projectile_growth_per_second", 0.0))
 	packet.projectile_max_size_multiplier = float(modifiers.get("projectile_max_size_multiplier", packet.projectile_size_multiplier))
 	packet.projectile_kind = String(modifiers.get("projectile_kind", "normal"))
-	packet.knockback = base_knockback
+	packet.knockback = base_knockback * max(float(modifiers.get("knockback_multiplier", 1.0)), 0.0)
 	packet.source_position = origin
 	packet.knockback_direction = direction.normalized()
 	return packet

@@ -15,6 +15,11 @@ const RUNNER_LEGS := preload("res://resources/permanent_upgrades/runner_legs.tre
 const HEAVY_TEARS := preload("res://resources/permanent_upgrades/heavy_tears.tres")
 const FAT_TEARS := preload("res://resources/permanent_upgrades/fat_tears.tres")
 const OVERDRIVE_CAPACITY := preload("res://resources/permanent_upgrades/overdrive_capacity.tres")
+const MINOR_FASTER_REFLEXES := preload("res://resources/permanent_upgrades/minor_faster_reflexes.tres")
+const MINOR_RUNNER_LEGS := preload("res://resources/permanent_upgrades/minor_runner_legs.tres")
+const MINOR_HEAVY_TEARS := preload("res://resources/permanent_upgrades/minor_heavy_tears.tres")
+const MINOR_FAT_TEARS := preload("res://resources/permanent_upgrades/minor_fat_tears.tres")
+const MINOR_OVERDRIVE_CAPACITY := preload("res://resources/permanent_upgrades/minor_overdrive_capacity.tres")
 const SMALL_HEAL := preload("res://resources/pickups/small_heal.tres")
 const FULL_HEAL := preload("res://resources/pickups/full_heal.tres")
 const OVERDRIVE_AMMO := preload("res://resources/pickups/overdrive_ammo.tres")
@@ -31,6 +36,7 @@ const OVERDRIVE_AMMO_CACHE := preload("res://resources/pickups/overdrive_ammo_ca
 var enabled: bool = false
 var upgrade_effects: Array = [SPREAD_SHOT, PIERCING_SHOT, CHAIN_LIGHTNING, FIRE_BURST, WATER_SWELL]
 var permanent_upgrades: Array = [FASTER_REFLEXES, RUNNER_LEGS, HEAVY_TEARS, FAT_TEARS, OVERDRIVE_CAPACITY]
+var minor_permanent_upgrades: Array = [MINOR_FASTER_REFLEXES, MINOR_RUNNER_LEGS, MINOR_HEAVY_TEARS, MINOR_FAT_TEARS, MINOR_OVERDRIVE_CAPACITY]
 var healing_pickups: Array = [SMALL_HEAL]
 var full_heal_pickup = FULL_HEAL
 var overdrive_ammo_pickup = OVERDRIVE_AMMO
@@ -177,7 +183,9 @@ func drop_destructible_reward(prop_position: Vector2, drop_kind: String) -> void
 	match drop_kind:
 		"treasure":
 			var roll := _rng.randf()
-			if roll < 0.48:
+			if roll < 0.34:
+				spawn_pickup(_choose_minor_permanent_upgrade(), _jitter_drop_position(prop_position))
+			elif roll < 0.66:
 				spawn_pickup(full_heal_pickup, _jitter_drop_position(prop_position))
 			else:
 				spawn_pickup(overdrive_ammo_cache_pickup, _jitter_drop_position(prop_position))
@@ -198,7 +206,7 @@ func spawn_overdrive_reward_choices(center_position: Vector2) -> void:
 
 
 func spawn_treasure_reward_choices(center_position: Vector2) -> void:
-	_spawn_reward_choices(_choose_unique_rewards(permanent_upgrades, 3), center_position)
+	_spawn_reward_choices(_roll_permanent_rewards(_choose_unique_rewards(permanent_upgrades, 3)), center_position)
 
 
 func collect_focused_reward() -> bool:
@@ -242,7 +250,11 @@ func _choose_temporary_upgrade():
 
 
 func _choose_permanent_upgrade():
-	return permanent_upgrades[_rng.randi_range(0, permanent_upgrades.size() - 1)]
+	return _roll_permanent_reward(permanent_upgrades[_rng.randi_range(0, permanent_upgrades.size() - 1)])
+
+
+func _choose_minor_permanent_upgrade():
+	return _roll_permanent_reward(minor_permanent_upgrades[_rng.randi_range(0, minor_permanent_upgrades.size() - 1)])
 
 
 func _choose_heal_pickup():
@@ -273,6 +285,19 @@ func _choose_unique_rewards(pool: Array, count: int) -> Array:
 		choices.append(available[index])
 		available.remove_at(index)
 	return choices
+
+
+func _roll_permanent_rewards(options: Array) -> Array:
+	var rolled_options: Array = []
+	for option in options:
+		rolled_options.append(_roll_permanent_reward(option))
+	return rolled_options
+
+
+func _roll_permanent_reward(option):
+	if option != null and option.has_method("create_rolled_copy"):
+		return option.create_rolled_copy(_rng)
+	return option
 
 
 func _on_pickup_focused(pickup, _collector: Node, effect) -> void:
