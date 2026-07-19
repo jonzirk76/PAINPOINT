@@ -149,6 +149,7 @@ var _player_avoidance_radius: float = 150.0
 var _has_player_context: bool = false
 var _player_projectile_points: Array[Vector2] = []
 var _motion_state: String = MOTION_STATE_GROUNDED
+var _movement_state_label: String = "idle"
 var _idle_state: String = IDLE_STATE_STANDING
 var _idle_direction_index: int = 0
 var _look_frame_index: int = LOOK_NEUTRAL_FRAME_INDEX
@@ -195,6 +196,7 @@ func initialize(spawn_position: Vector2, movement_seed: int = 0) -> void:
 	_has_player_context = false
 	_player_projectile_points.clear()
 	_motion_state = MOTION_STATE_GROUNDED
+	_movement_state_label = "idle"
 	_idle_direction_index = _get_direction_index(_last_facing_direction)
 	_reset_look_motion()
 	_pending_seated_idle_state = ""
@@ -253,6 +255,27 @@ func set_player_projectile_points(points: Array) -> void:
 
 func get_curiosity() -> float:
 	return _curiosity
+
+
+func get_state_snapshot() -> Dictionary:
+	var target_distance: float = -1.0
+	if _target_position != Vector2.INF:
+		target_distance = global_position.distance_to(_target_position)
+	return {
+		"motion_state": _motion_state,
+		"movement_state": _movement_state_label,
+		"idle_state": _idle_state,
+		"sit_transition": _sit_transition_mode,
+		"lay_transition": _lay_transition_mode,
+		"look_exit": _look_exit_state,
+		"jump_queued": _startle_jump_queued,
+		"is_fleeing": _is_fleeing,
+		"curiosity": _curiosity,
+		"speed": velocity.length(),
+		"target_distance": target_distance,
+		"path_points": _path_points.size(),
+		"position": global_position
+	}
 
 
 func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: Array = [], playable_regions: Array = []) -> void:
@@ -315,6 +338,7 @@ func _discard_reached_path_points() -> void:
 func _physics_process(delta: float) -> void:
 	if not enabled:
 		velocity = Vector2.ZERO
+		_movement_state_label = "disabled"
 		return
 	_startle_jump_cooldown_remaining = maxf(_startle_jump_cooldown_remaining - delta, 0.0)
 	_startle_run_remaining = maxf(_startle_run_remaining - delta, 0.0)
@@ -329,8 +353,9 @@ func _physics_process(delta: float) -> void:
 	_startle_source_was_active = startle_source_active
 	_update_curiosity(delta, combat_avoidance.length_squared() > 0.001)
 	var desired_velocity := Vector2.ZERO
-	_is_fleeing = avoidance.length_squared() > 0.001 or _startle_jump_queued or _startle_run_remaining > 0.0 or _is_jumping()
+	_is_fleeing = startle_avoidance.length_squared() > 0.001 or _startle_jump_queued or _startle_run_remaining > 0.0 or _is_jumping()
 	if _is_jumping():
+		_movement_state_label = "jumping"
 		velocity = Vector2.ZERO
 		_update_startle_jump(delta)
 		global_position = _constrain_to_playable(global_position)
@@ -342,10 +367,12 @@ func _physics_process(delta: float) -> void:
 		if flee_vector.length_squared() <= 0.001:
 			flee_vector = _startle_jump_direction
 		_set_idle_state(IDLE_STATE_STANDING)
+		_movement_state_label = _get_startled_movement_label(startle_avoidance)
 		if _startle_jump_queued and not _has_rest_transition():
 			var jump_direction: Vector2 = _get_slippery_escape_direction(flee_vector, startle_jump_distance)
 			_begin_startle_jump(jump_direction)
 		if _is_jumping():
+			_movement_state_label = "jumping"
 			velocity = Vector2.ZERO
 			_update_startle_jump(delta)
 			global_position = _constrain_to_playable(global_position)
@@ -360,6 +387,19 @@ func _physics_process(delta: float) -> void:
 			var flee_target: Vector2 = _get_current_movement_target()
 			if flee_target != Vector2.INF:
 				desired_velocity = (flee_target - global_position).normalized() * flee_speed
+	elif player_avoidance.length_squared() > 0.001:
+		_movement_state_label = "personal_space"
+		_idle_remaining = 0.0
+		_set_idle_state(IDLE_STATE_STANDING)
+		if not _has_get_up_transition():
+			_flee_retarget_remaining = maxf(_flee_retarget_remaining - delta, 0.0)
+			if _should_refresh_flee_target():
+				var personal_space_direction: Vector2 = _get_slippery_escape_direction(player_avoidance, player_personal_space_radius)
+				_set_target_position(_find_escape_target(personal_space_direction, maxf(player_personal_space_radius, body_radius + 8.0)), false)
+				_flee_retarget_remaining = maxf(flee_retarget_seconds, 0.05)
+			var personal_space_target: Vector2 = _get_current_movement_target()
+			if personal_space_target != Vector2.INF:
+				desired_velocity = (personal_space_target - global_position).normalized() * wander_speed
 	else:
 		_flee_retarget_remaining = 0.0
 		_update_wander_target(delta)
@@ -369,6 +409,7 @@ func _physics_process(delta: float) -> void:
 				var to_target: Vector2 = movement_target - global_position
 				if to_target.length_squared() > 16.0 * 16.0:
 					desired_velocity = to_target.normalized() * wander_speed
+		_movement_state_label = "wander" if desired_velocity.length_squared() > 0.001 else "idle"
 	velocity = velocity.move_toward(desired_velocity, acceleration * delta)
 	move_and_slide()
 	if get_slide_collision_count() > 0:
@@ -550,6 +591,16 @@ func _has_get_up_transition() -> bool:
 
 func _is_jumping() -> bool:
 	return _motion_state == MOTION_STATE_JUMPING
+
+
+func _get_startled_movement_label(startle_avoidance: Vector2) -> String:
+	if _startle_jump_queued:
+		return "startle_get_up"
+	if _startle_run_remaining > 0.0:
+		return "startle_run"
+	if startle_avoidance.length_squared() > 0.001:
+		return "combat_flee"
+	return "flee"
 
 
 func _should_refresh_flee_target() -> bool:

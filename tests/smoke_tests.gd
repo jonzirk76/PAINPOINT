@@ -388,6 +388,10 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("CatEntity should use a reusable jumping movement state for startled movement.")
 	if not cat_source.contains("STARTLE_JUMP_FRAME_COUNT := 4") or not cat_source.contains("_get_startle_jump_visual_y_offset"):
 		failures.append("CatEntity startled jumps should use the first four running frames with a visual y-offset arc.")
+	if not cat_source.contains("get_state_snapshot") or not cat_source.contains("_movement_state_label"):
+		failures.append("CatEntity should expose a current state snapshot for cat-room debug logs.")
+	if not cat_source.contains("_is_fleeing = startle_avoidance.length_squared()") or not cat_source.contains("\"personal_space\""):
+		failures.append("CatEntity should treat player personal-space movement as walking, not startled running or jumping.")
 	if not cat_source.contains("_sit_transition_mode != SIT_TRANSITION_UP") or not cat_source.contains("_lay_transition_mode != LAY_TRANSITION_UP"):
 		failures.append("CatEntity should not restart get-up animations every frame while a startle is queued.")
 	if not cat_source.contains("_get_slippery_escape_direction") or not cat_source.contains("_get_direct_escape_target") or not cat_source.contains("_find_escape_target"):
@@ -417,9 +421,14 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("FaunaManager should feed player position and velocity context to cats.")
 	if not manager_source.contains("player_projectile_positions_provider") or not manager_source.contains("set_player_projectile_points"):
 		failures.append("FaunaManager should feed nearby player projectile positions to cats.")
+	if not manager_source.contains("get_cat_state_snapshot") or not manager_source.contains("has_active_cat"):
+		failures.append("FaunaManager should expose active cat state for cat-room debug logs.")
 	var projectile_manager_source := _read_text("res://scripts/managers/projectile_manager.gd")
 	if not projectile_manager_source.contains("get_player_projectile_positions"):
 		failures.append("ProjectileManager should expose active player projectile positions for background fauna awareness.")
+	var orchestrator_source := _read_text("res://scripts/orchestrators/game_orchestrator.gd")
+	if not orchestrator_source.contains("CatDebugPanel") or not orchestrator_source.contains("_update_cat_debug_panel") or not orchestrator_source.contains("get_cat_state_snapshot"):
+		failures.append("GameOrchestrator should show a cat state log in rooms with active cats.")
 	var cat_scene = load("res://scenes/entities/cat_entity.tscn")
 	if cat_scene == null:
 		failures.append("Cat scene failed to load.")

@@ -186,6 +186,8 @@ var _perfect_parry_slowmo_until_msec: int = 0
 var _perfect_parry_slowmo_restore_scale: float = 1.0
 var _agent_debug_panel: ColorRect = null
 var _agent_debug_label: Label = null
+var _cat_debug_panel: ColorRect = null
+var _cat_debug_label: Label = null
 var _boss_health_panel: Control = null
 var _boss_health_label: Label = null
 var _boss_health_bar_back: ColorRect = null
@@ -252,6 +254,7 @@ func _ready() -> void:
 	_super_crackle_rng.randomize()
 	_capture_hud_authoring_state()
 	_ensure_agent_debug_panel()
+	_ensure_cat_debug_panel()
 	_ensure_boss_health_hud()
 	_configure_pause_process_modes()
 	_set_tree_paused(false)
@@ -295,6 +298,7 @@ func _process(delta: float) -> void:
 		_update_boss_health_panel()
 	if _is_gameplay_running():
 		_update_camera(delta)
+		_update_cat_debug_panel()
 		if _is_room_entry_transition_active:
 			_update_room_entry_transition(delta)
 		if _is_dungeon_run:
@@ -509,6 +513,109 @@ func _update_agent_debug_panel(level_definition, boss) -> void:
 		float(program.body_radius)
 	]
 	_set_agent_debug_panel_visible(true)
+
+
+func _ensure_cat_debug_panel() -> void:
+	if _cat_debug_panel != null and is_instance_valid(_cat_debug_panel):
+		return
+	var ui_layer: CanvasLayer = get_node_or_null("UI") as CanvasLayer
+	if ui_layer == null:
+		return
+	var panel: ColorRect = ColorRect.new()
+	panel.name = "CatDebugPanel"
+	panel.visible = false
+	panel.color = Color(0.012, 0.014, 0.018, 0.78)
+	panel.anchor_left = 0.0
+	panel.anchor_right = 0.0
+	panel.anchor_top = 0.0
+	panel.anchor_bottom = 0.0
+	panel.offset_left = 24.0
+	panel.offset_top = 154.0
+	panel.offset_right = 344.0
+	panel.offset_bottom = 282.0
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui_layer.add_child(panel)
+	var label: Label = Label.new()
+	label.name = "CatDebugLabel"
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	label.offset_left = 8.0
+	label.offset_top = 7.0
+	label.offset_right = 312.0
+	label.offset_bottom = 120.0
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_font_override("font", BOLD_PIXELS_FONT)
+	label.add_theme_font_size_override("font_size", 10)
+	label.add_theme_color_override("font_color", Color(0.92, 0.96, 0.82, 1.0))
+	panel.add_child(label)
+	_cat_debug_panel = panel
+	_cat_debug_label = label
+
+
+func _set_cat_debug_panel_visible(value: bool) -> void:
+	if _cat_debug_panel == null or not is_instance_valid(_cat_debug_panel):
+		return
+	_cat_debug_panel.visible = value
+
+
+func _update_cat_debug_panel() -> void:
+	_ensure_cat_debug_panel()
+	if _cat_debug_panel == null or _cat_debug_label == null:
+		return
+	if not _should_show_cat_debug_panel():
+		_set_cat_debug_panel_visible(false)
+		return
+	var snapshot: Dictionary = {}
+	if fauna_manager != null and fauna_manager.has_method("get_cat_state_snapshot"):
+		snapshot = fauna_manager.get_cat_state_snapshot()
+	if snapshot.is_empty():
+		_cat_debug_label.text = "CAT LOG\nNo active cat"
+		_set_cat_debug_panel_visible(true)
+		return
+	var movement_state: String = String(snapshot.get("movement_state", "unknown"))
+	var motion_state: String = String(snapshot.get("motion_state", "unknown"))
+	var idle_state: String = String(snapshot.get("idle_state", "unknown"))
+	var sit_transition: String = String(snapshot.get("sit_transition", "none"))
+	var lay_transition: String = String(snapshot.get("lay_transition", "none"))
+	var look_exit: String = String(snapshot.get("look_exit", ""))
+	var jump_queued: bool = bool(snapshot.get("jump_queued", false))
+	var is_fleeing: bool = bool(snapshot.get("is_fleeing", false))
+	var curiosity: float = float(snapshot.get("curiosity", 0.0))
+	var speed: float = float(snapshot.get("speed", 0.0))
+	var target_distance: float = float(snapshot.get("target_distance", -1.0))
+	var path_points: int = int(snapshot.get("path_points", 0))
+	var position_value: Variant = snapshot.get("position", Vector2.INF)
+	var position: Vector2 = position_value if position_value is Vector2 else Vector2.INF
+	var target_text: String = "--"
+	if target_distance >= 0.0:
+		target_text = "%4.0f" % target_distance
+	var position_text: String = "--"
+	if position != Vector2.INF:
+		position_text = "%4.0f,%4.0f" % [position.x, position.y]
+	_cat_debug_label.text = "CAT LOG\nMove %s  Motion %s\nIdle %s  Sit %s  Lay %s\nLookExit %s  JumpQ %s  Flee %s\nCuriosity %.2f  Speed %4.0f\nTarget %s  Path %d  Pos %s" % [
+		movement_state,
+		motion_state,
+		idle_state,
+		sit_transition,
+		lay_transition,
+		look_exit if not look_exit.is_empty() else "none",
+		"yes" if jump_queued else "no",
+		"yes" if is_fleeing else "no",
+		curiosity,
+		speed,
+		target_text,
+		path_points,
+		position_text
+	]
+	_set_cat_debug_panel_visible(true)
+
+
+func _should_show_cat_debug_panel() -> bool:
+	if fauna_manager != null and fauna_manager.has_method("has_active_cat") and bool(fauna_manager.has_active_cat()):
+		return true
+	if _current_level == null or _is_dungeon_run:
+		return false
+	return bool(_current_level.get("cat_spawn_enabled"))
 
 
 func _ensure_boss_health_hud() -> void:
@@ -990,6 +1097,7 @@ func _start_level(level_definition) -> void:
 	if win_panel != null:
 		win_panel.visible = false
 	_set_agent_debug_panel_visible(false)
+	_set_cat_debug_panel_visible(false)
 	_clear_boss_health_hud()
 	_set_character_hud_visible(true)
 	room_manager.reset_run()
@@ -1066,6 +1174,7 @@ func _start_dungeon_run() -> void:
 		game_over_panel.visible = false
 	if win_panel != null:
 		win_panel.visible = false
+	_set_cat_debug_panel_visible(false)
 	_set_character_hud_visible(true)
 	_set_loading_progress(LOADING_PROGRESS_FLOOR_LAYOUT_START, "Generating floor layout")
 	dungeon_manager.reset_run(_main_loop_floor, _run_seed)
@@ -1130,6 +1239,7 @@ func _start_main_loop_run() -> void:
 		game_over_panel.visible = false
 	if win_panel != null:
 		win_panel.visible = false
+	_set_cat_debug_panel_visible(false)
 	_set_character_hud_visible(true)
 	_set_loading_progress(LOADING_PROGRESS_FLOOR_LAYOUT_START, "Generating floor layout")
 	dungeon_manager.reset_run(_main_loop_floor, _run_seed)
@@ -1167,6 +1277,7 @@ func _advance_main_loop_floor() -> void:
 	_reward_prompt_text = ""
 	if win_panel != null:
 		win_panel.visible = false
+	_set_cat_debug_panel_visible(false)
 	_set_loading_progress(LOADING_PROGRESS_FLOOR_LAYOUT_START, "Generating floor layout")
 	dungeon_manager.reset_run(_main_loop_floor, _run_seed)
 	_set_loading_progress(LOADING_PROGRESS_FLOOR_LAYOUT_DONE, "Floor layout ready")
@@ -1215,6 +1326,7 @@ func _enter_level_select() -> void:
 	_clear_gameplay()
 	_clear_minimap()
 	_set_agent_debug_panel_visible(false)
+	_set_cat_debug_panel_visible(false)
 	_clear_boss_health_hud()
 	if gameplay_camera != null:
 		gameplay_camera.global_position = Vector2.ZERO
@@ -1232,6 +1344,7 @@ func _enter_level_select() -> void:
 func _clear_gameplay() -> void:
 	_clear_floor_exit_portal()
 	_set_agent_debug_panel_visible(false)
+	_set_cat_debug_panel_visible(false)
 	_clear_boss_health_hud()
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()

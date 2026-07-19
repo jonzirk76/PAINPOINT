@@ -172,6 +172,12 @@ func get_cat_position() -> Vector2:
 	return Vector2.INF
 
 
+func get_cat_state_snapshot() -> Dictionary:
+	if _has_cat() and _cat.has_method("get_state_snapshot"):
+		return _cat.get_state_snapshot()
+	return {}
+
+
 func _process(delta: float) -> void:
 	if not enabled or not _has_cat():
 		return
