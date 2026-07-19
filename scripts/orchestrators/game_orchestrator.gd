@@ -134,6 +134,7 @@ var _tree_pause_requested: bool = false
 var _boss_clear_delay_remaining: float = 0.0
 var _boss_clear_pending_status: String = ""
 var _floor_exit_portal = null
+var _focused_floor_exit_portal = null
 var _rewarded_room_ids: Dictionary = {}
 var _reward_prompt_text: String = ""
 var _last_minimap_player_cell: Vector2i = Vector2i.ZERO
@@ -1979,7 +1980,7 @@ func _load_room_entry_transition(player_position: Vector2) -> bool:
 		_entry_transition_floor_entry_position = _entry_transition_player_target_position
 		var target_room_bounds: Rect2 = dungeon_manager.get_full_floor_room_bounds(dungeon_manager.current_room_id)
 		_entry_transition_camera_target_position = _get_camera_desired_position_for_bounds(target_room_bounds, _entry_transition_player_target_position)
-	_clear_floor_exit_portal()
+	_clear_floor_exit_portal(true)
 	if arena_view != null:
 		arena_view.configure(level_definition)
 	player_manager.set_arena_definition(level_definition)
@@ -2093,7 +2094,7 @@ func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = 
 		preserved_camera_position = gameplay_camera.global_position
 	_is_loading_room = true
 	_current_level = level_definition
-	_clear_floor_exit_portal()
+	_clear_floor_exit_portal(true)
 	if arena_view != null:
 		arena_view.configure(level_definition)
 	player_manager.set_arena_definition(level_definition)
@@ -2179,7 +2180,10 @@ func _update_hud() -> void:
 	elif _status == "FLOOR_CLEARED":
 		footer = "FLOOR CLEARED. Press Enter/A for next floor, or R/Start to return to level select."
 	elif _is_main_loop_run and _floor_exit_portal_active():
-		footer = "BOSS DEFEATED. Enter the portal to finish the mission."
+		if _floor_exit_portal_focused():
+			footer = "BOSS DEFEATED. Press Enter/A to finish the floor."
+		else:
+			footer = "BOSS DEFEATED. Collect rewards, then stand in the portal and press Enter/A."
 	elif _status == "PAUSED":
 		footer = "PAUSED. Esc/Start resumes. Enter/A opens exit prompt."
 	elif _status == "PAUSE_EXIT_CONFIRM":
@@ -3007,6 +3011,9 @@ func _on_menu_confirm_requested() -> void:
 	if _is_gameplay_running() and item_manager.collect_focused_reward():
 		_update_hud()
 		return
+	if _is_gameplay_running() and _confirm_focused_floor_exit_portal():
+		_update_hud()
+		return
 	if _status == "LEVEL_SELECT":
 		_start_selected_level()
 	elif _status == "PAUSED":
@@ -3058,7 +3065,7 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool, ove
 	_current_level = level_definition
 	_is_loading_room = true
 	_set_all_enabled(false)
-	_clear_floor_exit_portal()
+	_clear_floor_exit_portal(true)
 	if arena_view != null:
 		arena_view.configure(level_definition)
 	if should_update_loading_screen:
@@ -3226,7 +3233,7 @@ func _get_dungeon_hud_suffix() -> String:
 	var piece = state["piece"]
 	var door_text := "doors open" if dungeon_manager.is_current_room_cleared() else "clear room to open doors"
 	if _is_main_loop_run and _floor_exit_portal_active():
-		door_text = "exit portal open"
+		door_text = "press Enter/A in portal" if _floor_exit_portal_focused() else "exit portal open"
 	var floor_text := "  |  Floor %d" % _main_loop_floor if _is_main_loop_run else ""
 	var seed_text := "  |  Seed %d" % _run_seed if _run_seed > 0 else ""
 	return "\nRoom: %s%s%s  |  %s" % [piece.display_name, floor_text, seed_text, door_text]
@@ -3505,7 +3512,7 @@ func _activate_boss_exit_portal(boss_position: Vector2, boss_radius: float) -> v
 		var portal_position := _get_boss_exit_portal_position(boss_position)
 		if portal.has_method("initialize"):
 			portal.initialize(portal_position, max(boss_radius * 1.05, 48.0), true)
-		_connect_once(portal, &"entered", _on_floor_exit_portal_entered)
+		_connect_floor_exit_portal(portal)
 		_floor_exit_portal = portal
 	_update_minimap()
 
@@ -3526,7 +3533,7 @@ func _show_boss_exit_portal_preview(level_definition) -> void:
 		portal_radius = max(float(level_definition.boss_profile.body_radius) * 1.05, 48.0)
 	if portal.has_method("initialize"):
 		portal.initialize(_get_boss_exit_portal_position(level_definition.boss_spawn_position), portal_radius, false)
-	_connect_once(portal, &"entered", _on_floor_exit_portal_entered)
+	_connect_floor_exit_portal(portal)
 	_floor_exit_portal = portal
 
 
@@ -3565,6 +3572,42 @@ func _get_boss_exit_portal_position(boss_position: Vector2) -> Vector2:
 	return _find_safe_room_position(boss_position + Vector2(-320.0, 0.0), _current_level)
 
 
+func _connect_floor_exit_portal(portal) -> void:
+	if portal == null:
+		return
+	_connect_once(portal, &"entered", _on_floor_exit_portal_entered)
+	if portal.has_signal("focused"):
+		_connect_once(portal, &"focused", _on_floor_exit_portal_focused)
+	if portal.has_signal("focus_exited"):
+		_connect_once(portal, &"focus_exited", _on_floor_exit_portal_focus_exited)
+
+
+func _on_floor_exit_portal_focused(portal, _body: Node) -> void:
+	if portal != _floor_exit_portal or not _floor_exit_portal_active():
+		return
+	_focused_floor_exit_portal = portal
+	_update_hud()
+
+
+func _on_floor_exit_portal_focus_exited(portal, _body: Node) -> void:
+	if portal != _focused_floor_exit_portal:
+		return
+	_focused_floor_exit_portal = null
+	_update_hud()
+
+
+func _confirm_focused_floor_exit_portal() -> bool:
+	if not _floor_exit_portal_focused():
+		return false
+	if not _is_main_loop_run or _status != "DUNGEON":
+		return false
+	if _focused_floor_exit_portal.has_method("confirm_enter"):
+		_focused_floor_exit_portal.confirm_enter()
+	else:
+		_on_floor_exit_portal_entered(_focused_floor_exit_portal)
+	return true
+
+
 func _on_floor_exit_portal_entered(portal) -> void:
 	if portal != _floor_exit_portal or not _floor_exit_portal_active() or not _is_main_loop_run or _status != "DUNGEON":
 		return
@@ -3581,10 +3624,27 @@ func _floor_exit_portal_active() -> bool:
 	return true
 
 
-func _clear_floor_exit_portal() -> void:
+func _floor_exit_portal_focused() -> bool:
+	if _focused_floor_exit_portal == null or not is_instance_valid(_focused_floor_exit_portal):
+		return false
+	return _focused_floor_exit_portal == _floor_exit_portal and _floor_exit_portal_active()
+
+
+func _should_preserve_active_floor_exit_portal() -> bool:
+	return _is_main_loop_run and _is_dungeon_run and _status == "DUNGEON" and _floor_exit_portal_active()
+
+
+func _clear_floor_exit_portal(preserve_active_floor_exit: bool = false) -> void:
+	if preserve_active_floor_exit and _should_preserve_active_floor_exit_portal():
+		var can_clear_focus := _floor_exit_portal != null and is_instance_valid(_floor_exit_portal)
+		if can_clear_focus and _floor_exit_portal.has_method("clear_focus"):
+			_floor_exit_portal.clear_focus()
+		_focused_floor_exit_portal = null
+		return
 	if _floor_exit_portal != null and is_instance_valid(_floor_exit_portal):
 		_floor_exit_portal.queue_free()
 	_floor_exit_portal = null
+	_focused_floor_exit_portal = null
 
 
 func _complete_main_loop_floor() -> void:

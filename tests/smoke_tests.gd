@@ -4196,18 +4196,34 @@ func _test_orchestrator_main_loop_floor_progression(failures: Array[String]) -> 
 	if main.item_manager.get_pickup_count() != 3:
 		failures.append("Main loop boss kill should spawn three optional overdrive reward choices.")
 	if main.win_panel.visible:
-		failures.append("Main loop should wait for the portal entry before showing the next-floor panel.")
+		failures.append("Main loop should wait for portal confirm before showing the next-floor panel.")
 	if bool(main._tree_pause_requested):
 		failures.append("Main loop boss exit portal should not pause the SceneTree before entry.")
 	if not main.enemy_manager.enabled or not main.spawner_manager.enabled or not main.projectile_manager.enabled:
 		failures.append("Main loop should keep gameplay managers enabled while the boss exit portal is open.")
-	main._on_floor_exit_portal_entered(main._floor_exit_portal)
+	var active_portal = main._floor_exit_portal
+	if not main._load_cleared_floor_map(main.player_manager.get_player_position()):
+		failures.append("Main loop should allow returning to the cleared floor map after the boss dies.")
+	elif main._floor_exit_portal != active_portal or not main._floor_exit_portal_active():
+		failures.append("Main loop boss exit portal should persist when leaving the cleared boss room.")
+	if main.item_manager.get_pickup_count() != 3:
+		failures.append("Main loop boss reward choices should persist when leaving the cleared boss room.")
+	main._on_menu_confirm_requested()
+	if main._status == "FLOOR_CLEARED":
+		failures.append("Main loop floor exit should require standing in the portal before confirm.")
+	if main._floor_exit_portal != null and is_instance_valid(main._floor_exit_portal):
+		main._floor_exit_portal._on_body_entered(main.player_manager.player)
+	if main._status != "DUNGEON":
+		failures.append("Main loop floor exit should not auto-complete on portal overlap.")
+	if not main._floor_exit_portal_focused():
+		failures.append("Main loop floor exit should focus when the player stands in the portal.")
+	main._on_menu_confirm_requested()
 	if main._status != "FLOOR_CLEARED":
-		failures.append("Main loop portal entry should move to floor-cleared state.")
+		failures.append("Main loop portal confirm should move to floor-cleared state.")
 	if main._run_floors_cleared != 1:
-		failures.append("Main loop should tally cleared floors after portal entry.")
+		failures.append("Main loop should tally cleared floors after portal confirm.")
 	if not main.win_panel.visible:
-		failures.append("Main loop floor clear should show the mission results panel after portal entry.")
+		failures.append("Main loop floor clear should show the mission results panel after portal confirm.")
 	if main.win_title_label == null or main.win_title_label.text != "MISSION RESULTS":
 		failures.append("Main loop floor clear should present a mission results screen.")
 	if main.win_score_label == null or not main.win_score_label.text.contains("Longest parry chain: 3"):

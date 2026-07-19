@@ -2,12 +2,15 @@ extends Area2D
 class_name FloorExitPortalEntity
 
 signal entered(portal)
+signal focused(portal, body: Node)
+signal focus_exited(portal, body: Node)
 
 @export var portal_radius: float = 44.0
 
 var _age: float = 0.0
 var _active: bool = true
 var _triggered: bool = false
+var _focused_body: Node = null
 var _collision_shape: CollisionShape2D = null
 
 
@@ -20,6 +23,7 @@ func _ready() -> void:
 	_add_collision()
 	_sync_active_state()
 	body_entered.connect(_on_body_entered)
+	body_exited.connect(_on_body_exited)
 	queue_redraw()
 
 
@@ -28,6 +32,7 @@ func initialize(spawn_position: Vector2, radius: float = 44.0, starts_active: bo
 	portal_radius = max(radius, 18.0)
 	_active = starts_active
 	_triggered = false
+	_focused_body = null
 	_update_collision_radius()
 	_sync_active_state()
 	queue_redraw()
@@ -36,12 +41,31 @@ func initialize(spawn_position: Vector2, radius: float = 44.0, starts_active: bo
 func set_active(value: bool) -> void:
 	_active = value
 	_triggered = false
+	if not _active:
+		clear_focus()
 	_sync_active_state()
 	queue_redraw()
 
 
 func is_active() -> bool:
 	return _active
+
+
+func confirm_enter() -> void:
+	if not _active or _triggered or _focused_body == null or not is_instance_valid(_focused_body):
+		return
+	_triggered = true
+	entered.emit(self)
+	queue_redraw()
+
+
+func clear_focus() -> void:
+	if _focused_body == null:
+		return
+	var previous_body := _focused_body
+	_focused_body = null
+	focus_exited.emit(self, previous_body)
+	queue_redraw()
 
 
 func _process(delta: float) -> void:
@@ -67,13 +91,22 @@ func _draw() -> void:
 	if not _active:
 		draw_arc(Vector2.ZERO, portal_radius * 0.48, 0.0, TAU, 36, Color(0.42, 0.58, 0.72, 0.62), 3.0)
 		draw_line(Vector2(-portal_radius * 0.24, 0.0), Vector2(portal_radius * 0.24, 0.0), Color(0.42, 0.58, 0.72, 0.62), 3.0)
+	elif _focused_body != null:
+		draw_arc(Vector2.ZERO, portal_radius * 1.28 + pulse * 5.0, 0.0, TAU, 48, Color(1.0, 1.0, 1.0, 0.78), 4.0)
 
 
 func _on_body_entered(body: Node) -> void:
 	if not _active or _triggered or body == null or not body.is_in_group("player"):
 		return
-	_triggered = true
-	entered.emit(self)
+	_focused_body = body
+	focused.emit(self, body)
+	queue_redraw()
+
+
+func _on_body_exited(body: Node) -> void:
+	if body == null or body != _focused_body:
+		return
+	clear_focus()
 
 
 func _add_collision() -> void:

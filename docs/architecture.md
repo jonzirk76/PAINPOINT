@@ -68,7 +68,7 @@ Boss rooms can also include typed spawner placements. Their enemy budget must al
 
 The dungeon minimap is UI-only rendering of `DungeonManager` state. `DungeonManager` owns room reveal state as rooms are entered, and `GameOrchestrator` syncs that state into `DungeonMinimap`.
 
-`Main Game Loop Test` layers floor progression on top of the dungeon room flow. Boss death awards a large floor-clear score bonus, opens the floor-exit portal, spawns optional overdrive reward choices, and advances to a freshly generated floor after the portal/result flow. Run stats such as the run seed, enemies, bosses, spawners, pickups, upgrades, heals, and floors cleared are tracked by `GameOrchestrator` and displayed on the death tally screen.
+`Main Game Loop Test` layers floor progression on top of the dungeon room flow. Boss death awards a large floor-clear score bonus, opens the floor-exit portal, spawns optional overdrive reward choices, and advances to a freshly generated floor after the player stands in the portal and confirms the exit. Run stats such as the run seed, enemies, bosses, spawners, pickups, upgrades, heals, and floors cleared are tracked by `GameOrchestrator` and displayed on the death tally screen.
 
 ## HUD And Pause Flow
 
