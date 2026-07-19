@@ -390,6 +390,10 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("CatEntity startled jumps should use the first four running frames with a visual y-offset arc.")
 	if not cat_source.contains("_sit_transition_mode != SIT_TRANSITION_UP") or not cat_source.contains("_lay_transition_mode != LAY_TRANSITION_UP"):
 		failures.append("CatEntity should not restart get-up animations every frame while a startle is queued.")
+	if not cat_source.contains("_get_slippery_escape_direction") or not cat_source.contains("_get_direct_escape_target") or not cat_source.contains("_find_escape_target"):
+		failures.append("CatEntity should route startled flee movement along clear wall-parallel escape directions.")
+	if not cat_source.contains("flee_retarget_seconds") or not cat_source.contains("_should_refresh_flee_target"):
+		failures.append("CatEntity should throttle startled flee route probing to avoid wall collision performance spikes.")
 	if not cat_source.contains("set_player_context") or not cat_source.contains("_pick_curiosity_biased_position"):
 		failures.append("CatEntity should build curiosity from player movement context and bias wander targets closer as it grows.")
 	if not cat_source.contains("_has_line_of_sight_to_player") or not cat_source.contains("curiosity_line_of_sight_margin"):

@@ -46,6 +46,8 @@ const INVALID_PATH_CELL := Vector2i(-999999, -999999)
 @export var flee_speed: float = 142.0
 ## Controls how quickly the cat accelerates toward its current movement intent.
 @export var acceleration: float = 520.0
+## Controls how often fleeing cats recheck their wall-sliding escape route.
+@export var flee_retarget_seconds: float = 0.18
 ## Controls how far the cat jumps when startled before it starts running.
 @export var startle_jump_distance: float = 86.0
 ## Controls how long the startled jump takes.
@@ -135,6 +137,7 @@ var _danger_points: Array[Dictionary] = []
 var _roam_bounds: Rect2 = Rect2()
 var _has_roam_bounds: bool = false
 var _retarget_remaining: float = 0.0
+var _flee_retarget_remaining: float = 0.0
 var _idle_remaining: float = 0.0
 var _animation_time: float = 0.0
 var _last_facing_direction: Vector2 = Vector2.DOWN
@@ -181,6 +184,7 @@ func initialize(spawn_position: Vector2, movement_seed: int = 0) -> void:
 	_target_position = spawn_position
 	_path_points.clear()
 	_retarget_remaining = 0.0
+	_flee_retarget_remaining = 0.0
 	_idle_remaining = 0.0
 	_animation_time = 0.0
 	_last_facing_direction = Vector2.DOWN
@@ -339,7 +343,8 @@ func _physics_process(delta: float) -> void:
 			flee_vector = _startle_jump_direction
 		_set_idle_state(IDLE_STATE_STANDING)
 		if _startle_jump_queued and not _has_rest_transition():
-			_begin_startle_jump(flee_vector)
+			var jump_direction: Vector2 = _get_slippery_escape_direction(flee_vector, startle_jump_distance)
+			_begin_startle_jump(jump_direction)
 		if _is_jumping():
 			velocity = Vector2.ZERO
 			_update_startle_jump(delta)
@@ -347,11 +352,16 @@ func _physics_process(delta: float) -> void:
 			_update_visual_state(delta)
 			return
 		if not _has_get_up_transition():
-			_set_target_position(_find_clear_target(global_position + flee_vector.normalized() * flee_target_distance), false)
+			_flee_retarget_remaining = maxf(_flee_retarget_remaining - delta, 0.0)
+			if _should_refresh_flee_target():
+				var escape_direction: Vector2 = _get_slippery_escape_direction(flee_vector, flee_target_distance)
+				_set_target_position(_find_escape_target(escape_direction, flee_target_distance), false)
+				_flee_retarget_remaining = maxf(flee_retarget_seconds, 0.05)
 			var flee_target: Vector2 = _get_current_movement_target()
 			if flee_target != Vector2.INF:
 				desired_velocity = (flee_target - global_position).normalized() * flee_speed
 	else:
+		_flee_retarget_remaining = 0.0
 		_update_wander_target(delta)
 		if desired_velocity.length_squared() <= 0.001 and _idle_remaining <= 0.0 and _target_position != Vector2.INF:
 			var movement_target: Vector2 = _get_current_movement_target()
@@ -361,8 +371,11 @@ func _physics_process(delta: float) -> void:
 					desired_velocity = to_target.normalized() * wander_speed
 	velocity = velocity.move_toward(desired_velocity, acceleration * delta)
 	move_and_slide()
-	if get_slide_collision_count() > 0 and avoidance.length_squared() <= 0.001:
-		_pick_next_wander_target()
+	if get_slide_collision_count() > 0:
+		if avoidance.length_squared() <= 0.001:
+			_pick_next_wander_target()
+		elif _is_fleeing:
+			_flee_retarget_remaining = 0.0
 	global_position = _constrain_to_playable(global_position)
 	_update_visual_state(delta)
 
@@ -539,12 +552,23 @@ func _is_jumping() -> bool:
 	return _motion_state == MOTION_STATE_JUMPING
 
 
+func _should_refresh_flee_target() -> bool:
+	if _flee_retarget_remaining <= 0.0:
+		return true
+	if _target_position == Vector2.INF:
+		return true
+	var current_target: Vector2 = _get_current_movement_target()
+	if current_target == Vector2.INF:
+		return true
+	return global_position.distance_squared_to(current_target) <= 18.0 * 18.0
+
+
 func _request_startle_jump(startle_vector: Vector2) -> void:
 	if _is_jumping() or _startle_jump_queued or _startle_jump_cooldown_remaining > 0.0:
 		return
 	if startle_vector.length_squared() <= 0.001:
 		return
-	_startle_jump_direction = startle_vector.normalized()
+	_startle_jump_direction = _get_slippery_escape_direction(startle_vector, startle_jump_distance)
 	_startle_jump_queued = true
 	_idle_remaining = 0.0
 	_retarget_remaining = 0.0
@@ -553,7 +577,7 @@ func _request_startle_jump(startle_vector: Vector2) -> void:
 
 func _begin_startle_jump(flee_vector: Vector2) -> void:
 	if flee_vector.length_squared() > 0.001:
-		_startle_jump_direction = flee_vector.normalized()
+		_startle_jump_direction = _get_slippery_escape_direction(flee_vector, startle_jump_distance)
 	elif _startle_jump_direction.length_squared() <= 0.001:
 		_startle_jump_direction = Vector2.DOWN
 	_startle_jump_queued = false
@@ -588,7 +612,7 @@ func _finish_startle_jump() -> void:
 	_startle_jump_cooldown_remaining = maxf(startle_retrigger_cooldown, 0.0)
 	_startle_run_remaining = maxf(startle_run_seconds, 0.0)
 	_last_facing_direction = _startle_jump_direction
-	_set_target_position(_find_clear_target(global_position + _startle_jump_direction * flee_target_distance), false)
+	_set_target_position(_find_escape_target(_startle_jump_direction, flee_target_distance), false)
 	velocity = _startle_jump_direction * flee_speed
 
 
@@ -597,10 +621,80 @@ func _find_startle_jump_landing(jump_direction: Vector2) -> Vector2:
 	var jump_distance: float = maxf(startle_jump_distance, body_radius + 4.0)
 	var distance_ratios: Array[float] = [1.0, 0.75, 0.5, 0.3]
 	for ratio: float in distance_ratios:
-		var candidate: Vector2 = _find_clear_target(global_position + direction * jump_distance * ratio)
-		if _position_is_clear(candidate) and _has_clear_segment(global_position, candidate, body_radius * 0.5):
+		var candidate: Vector2 = _get_direct_escape_target(direction, jump_distance * ratio)
+		if candidate != Vector2.INF:
 			return candidate
 	return global_position
+
+
+func _get_slippery_escape_direction(preferred_vector: Vector2, probe_distance: float) -> Vector2:
+	var preferred_direction: Vector2 = _get_valid_escape_direction(preferred_vector)
+	var best_direction: Vector2 = preferred_direction
+	var best_distance: float = _get_escape_clear_distance(preferred_direction, probe_distance)
+	if best_distance >= probe_distance * 0.9:
+		return preferred_direction
+	var side_sign: float = 1.0 if preferred_direction.cross(_last_facing_direction) >= 0.0 else -1.0
+	var candidate_angles: Array[float] = [
+		side_sign * PI * 0.5,
+		-side_sign * PI * 0.5,
+		side_sign * PI * 0.25,
+		-side_sign * PI * 0.25,
+		side_sign * PI * 0.75,
+		-side_sign * PI * 0.75,
+		PI
+	]
+	for angle: float in candidate_angles:
+		var candidate_direction: Vector2 = preferred_direction.rotated(angle).normalized()
+		var clear_distance: float = _get_escape_clear_distance(candidate_direction, probe_distance)
+		if clear_distance > best_distance + 1.0:
+			best_direction = candidate_direction
+			best_distance = clear_distance
+		if best_distance >= probe_distance * 0.9:
+			return best_direction
+	return best_direction
+
+
+func _get_valid_escape_direction(vector: Vector2) -> Vector2:
+	if vector.length_squared() > 0.001:
+		return vector.normalized()
+	if _startle_jump_direction.length_squared() > 0.001:
+		return _startle_jump_direction.normalized()
+	if _last_facing_direction.length_squared() > 0.001:
+		return _last_facing_direction.normalized()
+	return Vector2.DOWN
+
+
+func _get_escape_clear_distance(direction: Vector2, max_distance: float) -> float:
+	var distance: float = maxf(max_distance, body_radius + 4.0)
+	var distance_ratios: Array[float] = [1.0, 0.75, 0.5, 0.3]
+	for ratio: float in distance_ratios:
+		var target: Vector2 = _get_direct_escape_target(direction, distance * ratio)
+		if target != Vector2.INF:
+			return global_position.distance_to(target)
+	return 0.0
+
+
+func _find_escape_target(direction: Vector2, distance: float) -> Vector2:
+	var escape_distance: float = maxf(distance, body_radius + 4.0)
+	var distance_ratios: Array[float] = [1.0, 0.75, 0.5, 0.3]
+	for ratio: float in distance_ratios:
+		var target: Vector2 = _get_direct_escape_target(direction, escape_distance * ratio)
+		if target != Vector2.INF:
+			return target
+	return global_position
+
+
+func _get_direct_escape_target(direction: Vector2, distance: float) -> Vector2:
+	if direction.length_squared() <= 0.001:
+		return Vector2.INF
+	var target: Vector2 = _clamp_to_roam_bounds(global_position + direction.normalized() * maxf(distance, body_radius + 4.0))
+	if target.distance_squared_to(global_position) <= maxf(body_radius * 0.5, 4.0) * maxf(body_radius * 0.5, 4.0):
+		return Vector2.INF
+	if not _position_is_clear(target):
+		return Vector2.INF
+	if not _has_clear_segment(global_position, target, body_radius * 0.5):
+		return Vector2.INF
+	return target
 
 
 func _reset_look_motion() -> void:
