@@ -1510,6 +1510,10 @@ func _on_chain_requested(origin_target: Node, packet) -> void:
 		var overload_packet = packet.copy_for_chain()
 		overload_packet.chain_count = 0
 		overload_packet.damage = max(roundi(float(packet.damage) * 0.65), 1)
+		overload_packet.lightning_charge_damage_multiplier = 1.0
+		overload_packet.lightning_charge_required_stacks = 0
+		overload_packet.lightning_charge_duration_seconds = 0.0
+		overload_packet.lightning_charge_max_stacks = 0
 		_on_damage_resolved(origin_target, overload_packet)
 		return
 	var next_target = candidates[0]

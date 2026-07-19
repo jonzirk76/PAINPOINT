@@ -30,8 +30,10 @@ enum UpgradeType {
 @export_range(0.25, 1.0, 0.01) var slow_multiplier: float = 1.0
 ## Controls how long water slow lasts before it must be refreshed.
 @export var slow_duration_seconds: float = 0.0
-## Adds repeat-hit lightning bonus damage per existing shock stack.
-@export var lightning_charge_damage_bonus: float = 0.0
+## Multiplies lightning hit damage once the target has enough active shock stacks.
+@export var lightning_charge_damage_multiplier: float = 1.0
+## Active shock stacks needed before lightning hits receive the damage multiplier.
+@export var lightning_charge_required_stacks: int = 0
 ## Controls how long lightning shock stacks remain without another hit.
 @export var lightning_charge_duration_seconds: float = 0.0
 ## Caps shock stacks that can build on one enemy from repeated lightning hits.
@@ -59,7 +61,8 @@ func merge_into_modifiers(modifiers: Dictionary) -> Dictionary:
 	merged["burn_duration_seconds"] = max(float(merged.get("burn_duration_seconds", 0.0)), burn_duration_seconds)
 	merged["slow_multiplier"] = min(float(merged.get("slow_multiplier", 1.0)), slow_multiplier)
 	merged["slow_duration_seconds"] = max(float(merged.get("slow_duration_seconds", 0.0)), slow_duration_seconds)
-	merged["lightning_charge_damage_bonus"] = max(float(merged.get("lightning_charge_damage_bonus", 0.0)), lightning_charge_damage_bonus)
+	merged["lightning_charge_damage_multiplier"] = max(float(merged.get("lightning_charge_damage_multiplier", 1.0)), lightning_charge_damage_multiplier)
+	merged["lightning_charge_required_stacks"] = max(int(merged.get("lightning_charge_required_stacks", 0)), lightning_charge_required_stacks)
 	merged["lightning_charge_duration_seconds"] = max(float(merged.get("lightning_charge_duration_seconds", 0.0)), lightning_charge_duration_seconds)
 	merged["lightning_charge_max_stacks"] = max(int(merged.get("lightning_charge_max_stacks", 0)), lightning_charge_max_stacks)
 	merged["projectile_size_multiplier"] = max(float(merged.get("projectile_size_multiplier", 1.0)), projectile_size_multiplier)

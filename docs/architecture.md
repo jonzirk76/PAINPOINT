@@ -124,7 +124,7 @@ Overdrive:
 4. `GameOrchestrator` calls `UpgradeManager.consume_overdrive_shot()` after routing an overdrive shot; each overdrive shot spends one shared ammo.
 5. Fire upgrades stamp explosion and burn fields onto damage packets; `CombatManager` emits `explosion_requested`, and `GameOrchestrator` routes AoE damage plus `EffectsManager.play_explosion(...)`.
 6. Water upgrades stamp projectile growth, pierce, and slow fields onto damage packets; `ProjectileEntity` grows its drawn/collision radius while traveling, while hit enemies own their slow timer.
-7. Chain-lightning upgrades stamp chain and shock-charge fields onto damage packets. Repeated lightning hits on the same enemy deal bonus damage from the target's active charge stacks, while chain arcs remain visible through `EffectsManager`.
+7. Chain-lightning upgrades stamp chain and shock-charge fields onto damage packets. Repeated lightning hits on the same enemy build shock charge, then hits against a fully primed target deal doubled damage while the charge is maintained. Chain arcs remain visible through `EffectsManager`.
 
 Parry:
 

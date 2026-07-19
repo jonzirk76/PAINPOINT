@@ -1097,8 +1097,12 @@ func _test_ammo_type_balance(failures: Array[String]) -> void:
 	manager.activate_upgrade(chain)
 	modifiers = manager.get_modifiers()
 	packet = projectile_manager._create_damage_packet(modifiers, Vector2.ZERO, Vector2.RIGHT)
-	if packet.chain_count < 1 or packet.lightning_charge_damage_bonus <= 0.0 or packet.lightning_charge_max_stacks <= 0:
-		failures.append("Chain Lightning should stamp chain and repeat-hit charge metadata.")
+	var chain_charge_valid := packet.lightning_charge_damage_multiplier >= 2.0
+	chain_charge_valid = chain_charge_valid and packet.lightning_charge_required_stacks >= 2
+	chain_charge_valid = chain_charge_valid and packet.lightning_charge_max_stacks >= packet.lightning_charge_required_stacks
+	chain_charge_valid = chain_charge_valid and packet.lightning_charge_duration_seconds > 0.0
+	if packet.chain_count < 1 or not chain_charge_valid:
+		failures.append("Chain Lightning should stamp chain and repeat-hit charge threshold metadata.")
 	manager.activate_upgrade(spread)
 	for _index in range(10):
 		manager.consume_overdrive_shot()

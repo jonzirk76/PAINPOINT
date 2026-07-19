@@ -150,7 +150,8 @@ func get_modifiers() -> Dictionary:
 		"burn_duration_seconds": 0.0,
 		"slow_multiplier": 1.0,
 		"slow_duration_seconds": 0.0,
-		"lightning_charge_damage_bonus": 0.0,
+		"lightning_charge_damage_multiplier": 1.0,
+		"lightning_charge_required_stacks": 0,
 		"lightning_charge_duration_seconds": 0.0,
 		"lightning_charge_max_stacks": 0,
 		"projectile_size_multiplier": 1.0,
@@ -282,10 +283,14 @@ func _merge_overdrive_effect(modifiers: Dictionary, effect, stacks: int) -> Dict
 	if int(effect.chain_count) > 0:
 		merged["chain_count"] = int(merged.get("chain_count", 0)) + int(effect.chain_count) * safe_stacks
 		merged["chain_radius"] = max(float(merged.get("chain_radius", 0.0)), float(effect.chain_radius) + float(safe_stacks - 1) * 12.0)
-	if float(effect.lightning_charge_damage_bonus) > 0.0:
-		merged["lightning_charge_damage_bonus"] = max(
-			float(merged.get("lightning_charge_damage_bonus", 0.0)),
-			float(effect.lightning_charge_damage_bonus) + float(safe_stacks - 1) * 0.18
+	if float(effect.lightning_charge_damage_multiplier) > 1.0 and int(effect.lightning_charge_max_stacks) > 0:
+		merged["lightning_charge_damage_multiplier"] = max(
+			float(merged.get("lightning_charge_damage_multiplier", 1.0)),
+			float(effect.lightning_charge_damage_multiplier)
+		)
+		merged["lightning_charge_required_stacks"] = max(
+			int(merged.get("lightning_charge_required_stacks", 0)),
+			int(effect.lightning_charge_required_stacks)
 		)
 		merged["lightning_charge_duration_seconds"] = max(
 			float(merged.get("lightning_charge_duration_seconds", 0.0)),

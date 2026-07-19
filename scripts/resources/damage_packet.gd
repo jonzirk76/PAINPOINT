@@ -11,7 +11,8 @@ class_name DamagePacket
 @export var burn_duration_seconds: float = 0.0
 @export var slow_multiplier: float = 1.0
 @export var slow_duration_seconds: float = 0.0
-@export var lightning_charge_damage_bonus: float = 0.0
+@export var lightning_charge_damage_multiplier: float = 1.0
+@export var lightning_charge_required_stacks: int = 0
 @export var lightning_charge_duration_seconds: float = 0.0
 @export var lightning_charge_max_stacks: int = 0
 @export var knockback: float = 85.0
@@ -44,7 +45,8 @@ func copy_for_chain():
 	packet.burn_duration_seconds = burn_duration_seconds
 	packet.slow_multiplier = slow_multiplier
 	packet.slow_duration_seconds = slow_duration_seconds
-	packet.lightning_charge_damage_bonus = lightning_charge_damage_bonus
+	packet.lightning_charge_damage_multiplier = lightning_charge_damage_multiplier
+	packet.lightning_charge_required_stacks = lightning_charge_required_stacks
 	packet.lightning_charge_duration_seconds = lightning_charge_duration_seconds
 	packet.lightning_charge_max_stacks = lightning_charge_max_stacks
 	packet.knockback = knockback
@@ -77,7 +79,8 @@ func copy_for_explosion():
 	packet.burn_duration_seconds = burn_duration_seconds
 	packet.slow_multiplier = slow_multiplier
 	packet.slow_duration_seconds = slow_duration_seconds
-	packet.lightning_charge_damage_bonus = lightning_charge_damage_bonus
+	packet.lightning_charge_damage_multiplier = lightning_charge_damage_multiplier
+	packet.lightning_charge_required_stacks = lightning_charge_required_stacks
 	packet.lightning_charge_duration_seconds = lightning_charge_duration_seconds
 	packet.lightning_charge_max_stacks = lightning_charge_max_stacks
 	packet.knockback = knockback * 1.4
@@ -109,7 +112,8 @@ func copy_with_damage_bonus(bonus: int):
 	packet.burn_duration_seconds = burn_duration_seconds
 	packet.slow_multiplier = slow_multiplier
 	packet.slow_duration_seconds = slow_duration_seconds
-	packet.lightning_charge_damage_bonus = lightning_charge_damage_bonus
+	packet.lightning_charge_damage_multiplier = lightning_charge_damage_multiplier
+	packet.lightning_charge_required_stacks = lightning_charge_required_stacks
 	packet.lightning_charge_duration_seconds = lightning_charge_duration_seconds
 	packet.lightning_charge_max_stacks = lightning_charge_max_stacks
 	packet.knockback = knockback

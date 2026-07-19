@@ -305,7 +305,7 @@ func take_damage(packet) -> bool:
 	if blocks_projectile_damage(packet):
 		return false
 	var damage_amount: int = max(int(packet.damage), 0)
-	damage_amount += _get_lightning_charge_damage_bonus(packet)
+	damage_amount = _apply_lightning_charge_damage_multiplier(packet, damage_amount)
 	if _should_reduce_shield_pierce_damage(packet):
 		damage_amount = max(roundi(float(damage_amount) * clamp(float(packet.shield_damage_multiplier), 0.05, 1.0)), 1)
 		_projectile_shield_block_flash_remaining = 0.24
@@ -337,23 +337,21 @@ func _apply_status_effects_from_packet(packet) -> void:
 	if float(packet.slow_duration_seconds) > 0.0 and float(packet.slow_multiplier) < 1.0:
 		_slow_multiplier = min(_slow_multiplier, clamp(float(packet.slow_multiplier), 0.25, 1.0))
 		_slow_remaining = max(_slow_remaining, float(packet.slow_duration_seconds))
-	if float(packet.lightning_charge_damage_bonus) > 0.0 and int(packet.lightning_charge_max_stacks) > 0:
+	if float(packet.lightning_charge_damage_multiplier) > 1.0 and int(packet.lightning_charge_max_stacks) > 0:
 		_lightning_charge_max_stacks = max(_lightning_charge_max_stacks, int(packet.lightning_charge_max_stacks))
 		_lightning_charge_stacks = clampi(_lightning_charge_stacks + 1, 1, _lightning_charge_max_stacks)
 		_lightning_charge_remaining = max(_lightning_charge_remaining, float(packet.lightning_charge_duration_seconds))
 	queue_redraw()
 
 
-func _get_lightning_charge_damage_bonus(packet) -> int:
+func _apply_lightning_charge_damage_multiplier(packet, damage_amount: int) -> int:
 	if packet == null or _lightning_charge_remaining <= 0.0 or _lightning_charge_stacks <= 0:
-		return 0
-	if float(packet.lightning_charge_damage_bonus) <= 0.0:
-		return 0
-	var max_packet_stacks: int = max(int(packet.lightning_charge_max_stacks), 0)
-	if max_packet_stacks <= 0:
-		return 0
-	var applied_stacks: int = min(_lightning_charge_stacks, max_packet_stacks)
-	return max(roundi(float(packet.lightning_charge_damage_bonus) * float(applied_stacks)), 0)
+		return damage_amount
+	var required_stacks: int = max(int(packet.lightning_charge_required_stacks), 1)
+	if _lightning_charge_stacks < required_stacks:
+		return damage_amount
+	var multiplier: float = max(float(packet.lightning_charge_damage_multiplier), 1.0)
+	return max(roundi(float(damage_amount) * multiplier), damage_amount)
 
 
 func _update_status_effects(delta: float) -> void:
