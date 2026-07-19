@@ -216,11 +216,11 @@ func _ensure_sprite() -> void:
 
 func _update_wander_target(delta: float) -> void:
 	if _idle_remaining > 0.0:
-		_idle_remaining = max(_idle_remaining - delta, 0.0)
+		_idle_remaining = maxf(_idle_remaining - delta, 0.0)
 		if _idle_remaining <= 0.0:
 			_set_idle_state(IDLE_STATE_STANDING)
 		return
-	_retarget_remaining = max(_retarget_remaining - delta, 0.0)
+	_retarget_remaining = maxf(_retarget_remaining - delta, 0.0)
 	var target_reached := _target_position == Vector2.INF or global_position.distance_squared_to(_target_position) <= 18.0 * 18.0
 	if target_reached or _retarget_remaining <= 0.0:
 		if _rng.randf() < clamp(idle_chance, 0.0, 1.0):
@@ -232,12 +232,12 @@ func _update_wander_target(delta: float) -> void:
 func _pick_next_wander_target() -> void:
 	_set_idle_state(IDLE_STATE_STANDING)
 	_target_position = _pick_clear_random_position()
-	_retarget_remaining = max(wander_retarget_seconds * _rng.randf_range(0.65, 1.35), 0.2)
+	_retarget_remaining = maxf(wander_retarget_seconds * _rng.randf_range(0.65, 1.35), 0.2)
 
 
 func _begin_idle_pause() -> void:
-	var idle_min := max(min_idle_seconds, 0.1)
-	var idle_max := max(max_idle_seconds, idle_min + 0.1)
+	var idle_min: float = maxf(min_idle_seconds, 0.1)
+	var idle_max: float = maxf(max_idle_seconds, idle_min + 0.1)
 	_idle_remaining = _rng.randf_range(idle_min, idle_max)
 	_retarget_remaining = 0.0
 	_target_position = global_position
@@ -246,18 +246,18 @@ func _begin_idle_pause() -> void:
 
 
 func _choose_idle_state() -> String:
-	var weights := [
-		max(standing_idle_weight, 0.0),
-		max(sitting_idle_weight, 0.0),
-		max(looking_idle_weight, 0.0),
-		max(laying_idle_weight, 0.0)
+	var weights: Array[float] = [
+		maxf(standing_idle_weight, 0.0),
+		maxf(sitting_idle_weight, 0.0),
+		maxf(looking_idle_weight, 0.0),
+		maxf(laying_idle_weight, 0.0)
 	]
-	var total_weight := 0.0
-	for weight in weights:
-		total_weight += float(weight)
+	var total_weight: float = 0.0
+	for weight: float in weights:
+		total_weight += weight
 	if total_weight <= 0.0:
 		return IDLE_STATE_STANDING
-	var roll := _rng.randf_range(0.0, total_weight)
+	var roll: float = _rng.randf_range(0.0, total_weight)
 	if roll < weights[0]:
 		return IDLE_STATE_STANDING
 	roll -= weights[0]
@@ -282,7 +282,7 @@ func _get_combat_avoidance_vector() -> Vector2:
 		var position: Vector2 = point_info.get("position", Vector2.INF)
 		if position == Vector2.INF:
 			continue
-		var radius: float = max(float(point_info.get("radius", combat_avoidance_radius)), body_radius + 1.0)
+		var radius: float = maxf(float(point_info.get("radius", combat_avoidance_radius)), body_radius + 1.0)
 		var to_cat: Vector2 = global_position - position
 		var distance: float = to_cat.length()
 		if distance > radius:
@@ -290,7 +290,7 @@ func _get_combat_avoidance_vector() -> Vector2:
 		if distance <= 0.001:
 			to_cat = Vector2.RIGHT.rotated(_rng.randf_range(0.0, TAU))
 			distance = 1.0
-		var weight: float = max(float(point_info.get("weight", 1.0)), 0.0)
+		var weight: float = maxf(float(point_info.get("weight", 1.0)), 0.0)
 		var ratio: float = clamp(1.0 - distance / radius, 0.0, 1.0)
 		avoidance += to_cat.normalized() * ratio * ratio * weight
 	return avoidance
@@ -298,7 +298,7 @@ func _get_combat_avoidance_vector() -> Vector2:
 
 func _pick_clear_random_position() -> Vector2:
 	var bounds := _get_effective_roam_bounds()
-	var margin: float = max(body_radius + 18.0, 24.0)
+	var margin: float = maxf(body_radius + 18.0, 24.0)
 	for _attempt in range(24):
 		var candidate := Vector2(
 			_rng.randf_range(bounds.position.x + margin, bounds.position.x + bounds.size.x - margin),
@@ -316,7 +316,7 @@ func _find_clear_target(preferred_position: Vector2) -> Vector2:
 	var constrained := ArenaGeometry.constrain_point_to_playable_regions(clamped, arena_bounds, arena_shape, playable_rects, blockers, body_radius)
 	if _position_is_clear(constrained):
 		return constrained
-	var search_step: float = max(body_radius * 2.2, 28.0)
+	var search_step: float = maxf(body_radius * 2.2, 28.0)
 	for radius_index in range(1, 8):
 		var radius := search_step * float(radius_index)
 		var sample_count := 8 + radius_index * 4
@@ -378,7 +378,7 @@ func _update_visual_state(delta: float) -> void:
 	if moving:
 		_last_facing_direction = velocity.normalized()
 	if moving or animating_idle:
-		var animation_rate := 12.0 if _is_fleeing else 8.0
+		var animation_rate: float = 12.0 if _is_fleeing else 8.0
 		_animation_time += delta * animation_rate
 		queue_redraw()
 	_update_sprite_frame()
@@ -391,7 +391,11 @@ func _update_sprite_frame() -> void:
 	if direction.length_squared() <= 0.001:
 		direction = Vector2.DOWN
 	var direction_index := _get_direction_index(direction)
-	var frames := _get_movement_frames(direction_index, _is_fleeing) if moving else _get_idle_frames(direction_index)
+	var frames: Array[Vector2i] = []
+	if moving:
+		frames = _get_movement_frames(direction_index, _is_fleeing)
+	else:
+		frames = _get_idle_frames(direction_index)
 	_sprite.flip_h = false
 	var frame_index := _get_frame_index(frames.size(), moving)
 	var frame: Vector2i = frames[frame_index]
@@ -407,8 +411,8 @@ func _get_direction_index(direction: Vector2) -> int:
 
 
 func _get_movement_frames(direction_index: int, running: bool) -> Array[Vector2i]:
-	var column_start := RUN_COLUMN_START if running else WALK_COLUMN_START
-	var frame_count := RUN_FRAME_COUNT if running else WALK_FRAME_COUNT
+	var column_start: int = RUN_COLUMN_START if running else WALK_COLUMN_START
+	var frame_count: int = RUN_FRAME_COUNT if running else WALK_FRAME_COUNT
 	return _get_clip_frames(direction_index, column_start, frame_count)
 
 
