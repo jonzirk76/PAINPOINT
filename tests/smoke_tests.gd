@@ -402,6 +402,8 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("CatEntity should build curiosity from player movement context and bias wander targets closer as it grows.")
 	if not cat_source.contains("_has_line_of_sight_to_player") or not cat_source.contains("curiosity_line_of_sight_margin"):
 		failures.append("CatEntity should only build curiosity while it has line of sight to the player.")
+	if not cat_source.contains("curiosity_line_of_sight_check_seconds") or not cat_source.contains("_has_cached_line_of_sight_to_player") or not cat_source.contains("_blocker_rects"):
+		failures.append("CatEntity should cache expensive line-of-sight and blocker checks during curiosity updates.")
 	if not cat_source.contains("_build_path_to") or not cat_source.contains("path_grid_size"):
 		failures.append("CatEntity should path toward curiosity-biased wander targets when walls block direct movement.")
 	if not cat_source.contains("set_player_projectile_points") or not cat_source.contains("shot_curiosity_reset_radius"):
@@ -423,6 +425,8 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("FaunaManager should feed nearby player projectile positions to cats.")
 	if not manager_source.contains("get_cat_state_snapshot") or not manager_source.contains("has_active_cat"):
 		failures.append("FaunaManager should expose active cat state for cat-room debug logs.")
+	if not manager_source.contains("set_cat_activity_bounds") or not manager_source.contains("_cat_is_inside_activity_bounds") or not manager_source.contains("_sync_cat_simulation_state"):
+		failures.append("FaunaManager should pause cats outside current dungeon activity bounds.")
 	var projectile_manager_source := _read_text("res://scripts/managers/projectile_manager.gd")
 	if not projectile_manager_source.contains("get_player_projectile_positions"):
 		failures.append("ProjectileManager should expose active player projectile positions for background fauna awareness.")
@@ -431,6 +435,8 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("GameOrchestrator should show a cat state log in cat test rooms.")
 	if not orchestrator_source.contains("CAT_DEBUG_LEVEL_IDS") or not orchestrator_source.contains("cat_behavior_test") or not orchestrator_source.contains("cat_peaceful_test") or not orchestrator_source.contains("CAT_DEBUG_LEVEL_IDS.has"):
 		failures.append("GameOrchestrator should scope the cat state log to authored cat test rooms only.")
+	if not orchestrator_source.contains("_sync_fauna_roam_bounds(level_definition, room_is_cleared)") or not orchestrator_source.contains("set_cat_activity_bounds"):
+		failures.append("GameOrchestrator should scope dungeon cat activity to the current combat room until rooms are cleared.")
 	var cat_scene = load("res://scenes/entities/cat_entity.tscn")
 	if cat_scene == null:
 		failures.append("Cat scene failed to load.")

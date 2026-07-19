@@ -74,6 +74,8 @@ const INVALID_PATH_CELL := Vector2i(-999999, -999999)
 @export var curiosity_awareness_radius: float = 560.0
 ## Controls how much wall clearance the cat needs for curiosity line-of-sight checks.
 @export var curiosity_line_of_sight_margin: float = 6.0
+## Controls how often curiosity refreshes line of sight while the cat and player are mostly steady.
+@export var curiosity_line_of_sight_check_seconds: float = 0.22
 ## Controls the wander target radius when curiosity first starts influencing movement.
 @export var curiosity_outer_target_radius: float = 300.0
 ## Controls the wander target radius when curiosity is full.
@@ -127,6 +129,7 @@ var arena_shape: int = 0
 var wall_rects: Array[Rect2] = []
 var void_rects: Array[Rect2] = []
 var playable_rects: Array[Rect2] = []
+var _blocker_rects: Array[Rect2] = []
 
 var _sprite: Sprite2D = null
 var _cat_texture: Texture2D = DEFAULT_CAT_TEXTURE
@@ -148,6 +151,10 @@ var _player_velocity: Vector2 = Vector2.ZERO
 var _player_avoidance_radius: float = 150.0
 var _has_player_context: bool = false
 var _player_projectile_points: Array[Vector2] = []
+var _curiosity_line_of_sight_remaining: float = 0.0
+var _curiosity_line_of_sight_visible: bool = false
+var _curiosity_line_of_sight_cat_position: Vector2 = Vector2.INF
+var _curiosity_line_of_sight_player_position: Vector2 = Vector2.INF
 var _motion_state: String = MOTION_STATE_GROUNDED
 var _movement_state_label: String = "idle"
 var _idle_state: String = IDLE_STATE_STANDING
@@ -195,6 +202,7 @@ func initialize(spawn_position: Vector2, movement_seed: int = 0) -> void:
 	_player_velocity = Vector2.ZERO
 	_has_player_context = false
 	_player_projectile_points.clear()
+	_reset_curiosity_line_of_sight_cache()
 	_motion_state = MOTION_STATE_GROUNDED
 	_movement_state_label = "idle"
 	_idle_direction_index = _get_direction_index(_last_facing_direction)
@@ -224,6 +232,7 @@ func set_enabled(value: bool) -> void:
 	if not enabled:
 		velocity = Vector2.ZERO
 		_is_fleeing = false
+		_movement_state_label = "sleeping"
 
 
 func set_cat_texture(texture: Texture2D) -> void:
@@ -239,6 +248,7 @@ func set_player_context(position: Vector2, velocity: Vector2, avoidance_radius: 
 		_has_player_context = false
 		_player_position = Vector2.INF
 		_player_velocity = Vector2.ZERO
+		_reset_curiosity_line_of_sight_cache()
 		return
 	_has_player_context = true
 	_player_position = position
@@ -293,6 +303,7 @@ func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: A
 	for playable_rect in playable_regions:
 		if playable_rect is Rect2:
 			playable_rects.append(playable_rect)
+	_rebuild_blocker_rects()
 	global_position = _constrain_to_playable(global_position)
 	if _target_position != Vector2.INF:
 		_set_target_position(_constrain_to_playable(_target_position))
@@ -947,18 +958,21 @@ func _update_curiosity(delta: float, combat_near: bool) -> void:
 	if _has_nearby_player_projectile():
 		_curiosity = 0.0
 		return
-	if _can_build_curiosity(combat_near):
+	if _can_build_curiosity(combat_near, delta):
 		_curiosity = minf(1.0, _curiosity + maxf(curiosity_build_rate, 0.0) * delta)
 	else:
 		_curiosity = maxf(0.0, _curiosity - maxf(curiosity_decay_rate, 0.0) * delta)
 
 
-func _can_build_curiosity(combat_near: bool) -> bool:
+func _can_build_curiosity(combat_near: bool, delta: float = 0.0, refresh_line_of_sight: bool = true) -> bool:
 	if not _has_player_context or combat_near:
 		return false
 	if global_position.distance_squared_to(_player_position) > curiosity_awareness_radius * curiosity_awareness_radius:
 		return false
-	if not _has_line_of_sight_to_player():
+	if refresh_line_of_sight:
+		if not _has_cached_line_of_sight_to_player(delta):
+			return false
+	elif not _curiosity_line_of_sight_visible:
 		return false
 	if _is_player_moving_toward_cat():
 		return false
@@ -968,7 +982,7 @@ func _can_build_curiosity(combat_near: bool) -> bool:
 func _should_bias_wander_toward_player() -> bool:
 	if _curiosity < curiosity_target_bias_threshold:
 		return false
-	if not _can_build_curiosity(false):
+	if not _can_build_curiosity(false, 0.0, false):
 		return false
 	return global_position.distance_squared_to(_player_position) > player_personal_space_radius * player_personal_space_radius
 
@@ -1054,6 +1068,30 @@ func _has_line_of_sight_to_player() -> bool:
 	if not _has_player_context:
 		return false
 	return _has_clear_segment(global_position, _player_position, maxf(curiosity_line_of_sight_margin, 0.0))
+
+
+func _has_cached_line_of_sight_to_player(delta: float) -> bool:
+	if not _has_player_context:
+		_reset_curiosity_line_of_sight_cache()
+		return false
+	_curiosity_line_of_sight_remaining = maxf(_curiosity_line_of_sight_remaining - delta, 0.0)
+	var refresh_distance: float = maxf(path_grid_size * 0.75, 24.0)
+	var refresh_distance_squared: float = refresh_distance * refresh_distance
+	var cat_position_changed: bool = _curiosity_line_of_sight_cat_position == Vector2.INF or global_position.distance_squared_to(_curiosity_line_of_sight_cat_position) > refresh_distance_squared
+	var player_position_changed: bool = _curiosity_line_of_sight_player_position == Vector2.INF or _player_position.distance_squared_to(_curiosity_line_of_sight_player_position) > refresh_distance_squared
+	if _curiosity_line_of_sight_remaining <= 0.0 or cat_position_changed or player_position_changed:
+		_curiosity_line_of_sight_visible = _has_line_of_sight_to_player()
+		_curiosity_line_of_sight_cat_position = global_position
+		_curiosity_line_of_sight_player_position = _player_position
+		_curiosity_line_of_sight_remaining = maxf(curiosity_line_of_sight_check_seconds, 0.05)
+	return _curiosity_line_of_sight_visible
+
+
+func _reset_curiosity_line_of_sight_cache() -> void:
+	_curiosity_line_of_sight_remaining = 0.0
+	_curiosity_line_of_sight_visible = false
+	_curiosity_line_of_sight_cat_position = Vector2.INF
+	_curiosity_line_of_sight_player_position = Vector2.INF
 
 
 func _build_path_to(destination: Vector2) -> Array[Vector2]:
@@ -1319,10 +1357,13 @@ func _position_is_clear(position: Vector2) -> bool:
 
 
 func _get_blocker_rects() -> Array[Rect2]:
-	var blockers: Array[Rect2] = []
-	blockers.append_array(wall_rects)
-	blockers.append_array(void_rects)
-	return blockers
+	return _blocker_rects
+
+
+func _rebuild_blocker_rects() -> void:
+	_blocker_rects.clear()
+	_blocker_rects.append_array(wall_rects)
+	_blocker_rects.append_array(void_rects)
 
 
 func _constrain_to_playable(position: Vector2) -> Vector2:

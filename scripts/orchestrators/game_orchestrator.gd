@@ -2143,12 +2143,13 @@ func _load_room_entry_transition(player_position: Vector2) -> bool:
 	_clear_floor_exit_portal(true)
 	if arena_view != null:
 		arena_view.configure(level_definition)
+	var room_is_cleared: bool = dungeon_manager.is_current_room_cleared()
 	player_manager.set_arena_definition(level_definition)
 	projectile_manager.set_arena_definition(level_definition)
 	enemy_manager.set_arena_definition(level_definition)
 	spawner_manager.set_arena_definition(level_definition)
+	_sync_fauna_roam_bounds(level_definition, room_is_cleared)
 	fauna_manager.set_arena_definition(level_definition)
-	_sync_fauna_roam_bounds(level_definition)
 	_maybe_spawn_dungeon_floor_cat(level_definition)
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
@@ -2156,7 +2157,6 @@ func _load_room_entry_transition(player_position: Vector2) -> bool:
 	spawner_manager.clear_spawners()
 	destructible_manager.clear_destructibles()
 	item_manager.set_room_context(dungeon_manager.floor_number, dungeon_manager.current_room_id)
-	var room_is_cleared: bool = dungeon_manager.is_current_room_cleared()
 	if room_is_cleared:
 		_preload_current_treasure_reward_choices()
 	if not room_is_cleared:
@@ -2264,8 +2264,8 @@ func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = 
 	projectile_manager.set_arena_definition(level_definition)
 	enemy_manager.set_arena_definition(level_definition)
 	spawner_manager.set_arena_definition(level_definition)
+	_sync_fauna_roam_bounds(level_definition, true)
 	fauna_manager.set_arena_definition(level_definition)
-	_sync_fauna_roam_bounds(level_definition)
 	_maybe_spawn_dungeon_floor_cat(level_definition)
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
@@ -3286,12 +3286,13 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool, ove
 		arena_view.configure(level_definition)
 	if should_update_loading_screen:
 		_set_loading_progress(LOADING_PROGRESS_ARENA_CONFIGURED, "Configuring room collision")
+	var room_is_cleared: bool = dungeon_manager.is_current_room_cleared()
 	player_manager.set_arena_definition(level_definition)
 	projectile_manager.set_arena_definition(level_definition)
 	enemy_manager.set_arena_definition(level_definition)
 	spawner_manager.set_arena_definition(level_definition)
+	_sync_fauna_roam_bounds(level_definition, room_is_cleared)
 	fauna_manager.set_arena_definition(level_definition)
-	_sync_fauna_roam_bounds(level_definition)
 	_maybe_spawn_dungeon_floor_cat(level_definition)
 	if should_update_loading_screen:
 		_set_loading_progress(LOADING_PROGRESS_ROOM_RESET, "Clearing previous combat actors")
@@ -3314,7 +3315,6 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool, ove
 		player_manager.set_player_position(_get_room_entry_position(level_definition, entry_direction))
 	if should_update_loading_screen:
 		_set_loading_progress(LOADING_PROGRESS_ROOM_PROPS, "Instantiating room props")
-	var room_is_cleared: bool = dungeon_manager.is_current_room_cleared()
 	if not room_is_cleared:
 		spawner_manager.reset_run(level_definition)
 		if should_update_loading_screen:
@@ -3424,14 +3424,30 @@ func _position_is_clear_of_room_walls(position: Vector2, level_definition) -> bo
 	return true
 
 
-func _sync_fauna_roam_bounds(level_definition) -> void:
+func _sync_fauna_roam_bounds(level_definition, current_room_cleared: bool = true) -> void:
 	if level_definition == null or fauna_manager == null:
 		return
 	var roam_bounds: Rect2 = level_definition.arena_bounds
-	if _is_dungeon_run and level_definition.has_meta("visible_bounds"):
-		var visible_bounds = level_definition.get_meta("visible_bounds")
-		if visible_bounds is Rect2 and visible_bounds.size != Vector2.ZERO:
+	if _is_dungeon_run:
+		var visible_bounds: Rect2 = Rect2()
+		var active_room_bounds: Rect2 = Rect2()
+		if level_definition.has_meta("visible_bounds"):
+			var visible_bounds_value: Variant = level_definition.get_meta("visible_bounds")
+			if visible_bounds_value is Rect2:
+				visible_bounds = visible_bounds_value
+		if level_definition.has_meta("active_room_bounds"):
+			var active_room_bounds_value: Variant = level_definition.get_meta("active_room_bounds")
+			if active_room_bounds_value is Rect2:
+				active_room_bounds = active_room_bounds_value
+		if current_room_cleared and visible_bounds.size != Vector2.ZERO:
 			roam_bounds = visible_bounds
+		elif active_room_bounds.size != Vector2.ZERO:
+			roam_bounds = active_room_bounds
+		elif visible_bounds.size != Vector2.ZERO:
+			roam_bounds = visible_bounds
+		fauna_manager.set_cat_activity_bounds(roam_bounds)
+	else:
+		fauna_manager.clear_cat_activity_bounds()
 	fauna_manager.set_roam_bounds(roam_bounds)
 
 

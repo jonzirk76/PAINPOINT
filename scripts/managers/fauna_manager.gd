@@ -61,6 +61,8 @@ const CAT_TEXTURES := [
 @export var enemy_avoidance_radius: float = 285.0
 ## Controls the radius around active spawners that a cat treats as unsafe.
 @export var spawner_avoidance_radius: float = 235.0
+## Controls how far outside the current dungeon activity bounds a cat remains simulated.
+@export var cat_activity_bounds_margin: float = 96.0
 
 var enabled: bool = false
 var _fauna_layer: Node = null
@@ -76,6 +78,8 @@ var _level_wall_rects: Array[Rect2] = []
 var _void_rects: Array[Rect2] = []
 var _playable_rects: Array[Rect2] = []
 var _roam_bounds: Rect2 = Rect2()
+var _cat_activity_bounds: Rect2 = Rect2()
+var _has_cat_activity_bounds: bool = false
 var _cat_texture_rng := RandomNumberGenerator.new()
 var _last_player_position: Vector2 = Vector2.INF
 var _has_last_player_position: bool = false
@@ -100,14 +104,14 @@ func clear_fauna() -> void:
 	if _cat != null and is_instance_valid(_cat):
 		_cat.queue_free()
 	_cat = null
+	clear_cat_activity_bounds()
 	_last_player_position = Vector2.INF
 	_has_last_player_position = false
 
 
 func set_enabled(value: bool) -> void:
 	enabled = value
-	if _has_cat() and _cat.has_method("set_enabled"):
-		_cat.set_enabled(value)
+	_apply_cat_enabled_state()
 
 
 func set_arena_definition(level_definition) -> void:
@@ -119,21 +123,29 @@ func set_arena_definition(level_definition) -> void:
 	_wall_rects = _level_wall_rects.duplicate()
 	_void_rects = level_definition.void_rects
 	_playable_rects = _get_playable_rects(level_definition)
-	if _has_cat():
-		_cat.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
+	_sync_cat_simulation_state()
 
 
 func set_dynamic_wall_rects(extra_wall_rects: Array[Rect2]) -> void:
 	_wall_rects = _level_wall_rects.duplicate()
 	_wall_rects.append_array(extra_wall_rects)
-	if _has_cat():
-		_cat.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
-
+	_sync_cat_simulation_state()
 
 func set_roam_bounds(bounds: Rect2) -> void:
 	_roam_bounds = bounds
-	if _has_cat() and _cat.has_method("set_roam_bounds"):
-		_cat.set_roam_bounds(bounds)
+	_sync_cat_simulation_state()
+
+
+func set_cat_activity_bounds(bounds: Rect2) -> void:
+	_cat_activity_bounds = bounds
+	_has_cat_activity_bounds = bounds.size.x > 0.0 and bounds.size.y > 0.0
+	_apply_cat_enabled_state()
+
+
+func clear_cat_activity_bounds() -> void:
+	_cat_activity_bounds = Rect2()
+	_has_cat_activity_bounds = false
+	_apply_cat_enabled_state()
 
 
 func spawn_cat(spawn_position: Vector2, movement_seed: int = 0):
@@ -150,11 +162,7 @@ func spawn_cat(spawn_position: Vector2, movement_seed: int = 0):
 		cat.set_cat_texture(_pick_cat_texture())
 	if cat.has_method("initialize"):
 		cat.initialize(spawn_position, cat_seed)
-	cat.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
-	if cat.has_method("set_roam_bounds"):
-		cat.set_roam_bounds(_roam_bounds)
-	if cat.has_method("set_enabled"):
-		cat.set_enabled(enabled)
+	_sync_cat_simulation_state()
 	return cat
 
 
@@ -181,6 +189,9 @@ func get_cat_state_snapshot() -> Dictionary:
 func _process(delta: float) -> void:
 	if not enabled or not _has_cat():
 		return
+	if not _cat_is_inside_activity_bounds():
+		_apply_cat_enabled_state()
+		return
 	var player_position: Vector2 = _get_current_player_position()
 	if _cat.has_method("set_danger_points"):
 		_cat.set_danger_points(_get_danger_points(player_position))
@@ -192,6 +203,41 @@ func _process(delta: float) -> void:
 
 func _has_cat() -> bool:
 	return _cat != null and is_instance_valid(_cat)
+
+
+func _sync_cat_simulation_state() -> void:
+	if not _has_cat():
+		return
+	if not _cat_should_sync_geometry():
+		_apply_cat_enabled_state()
+		return
+	_cat.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
+	if _cat.has_method("set_roam_bounds"):
+		_cat.set_roam_bounds(_roam_bounds)
+	_apply_cat_enabled_state()
+
+
+func _apply_cat_enabled_state() -> void:
+	if not _has_cat() or not _cat.has_method("set_enabled"):
+		return
+	var inside_activity_bounds: bool = _cat_is_inside_activity_bounds()
+	_cat.set_enabled(enabled and inside_activity_bounds)
+
+
+func _cat_is_inside_activity_bounds() -> bool:
+	if not _has_cat():
+		return false
+	if not _has_cat_activity_bounds:
+		return true
+	return _cat_activity_bounds.grow(maxf(cat_activity_bounds_margin, 0.0)).has_point(_cat.global_position)
+
+
+func _cat_should_sync_geometry() -> bool:
+	if not _has_cat():
+		return false
+	if not _has_cat_activity_bounds:
+		return true
+	return _cat_is_inside_activity_bounds()
 
 
 func _pick_cat_texture() -> Texture2D:
