@@ -366,15 +366,25 @@ func _test_character_art_applied_to_entities(failures: Array[String]) -> void:
 
 func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 	if not FileAccess.file_exists("res://art/characters/white_0.png"):
-		failures.append("Cat fauna should use the white cat spritesheet asset.")
+		failures.append("Cat fauna should keep the default white cat spritesheet asset.")
+	if not FileAccess.file_exists("res://art/characters/Cats Download/calico_0.png"):
+		failures.append("Cat fauna should include randomly selectable cat color spritesheets.")
 	var cat_source := _read_text("res://scripts/entities/cat_entity.gd")
 	if not cat_source.contains("white_0.png") or not cat_source.contains("set_danger_points"):
 		failures.append("CatEntity should animate from the white cat spritesheet and accept danger points.")
+	if not cat_source.contains("SIT_COLUMN_START") or not cat_source.contains("LOOK_COLUMN_START") or not cat_source.contains("LAY_COLUMN_START"):
+		failures.append("CatEntity should wire sitting, looking, and laying idle animations from the cat spritesheet.")
+	if not cat_source.contains("IDLE_STATE_SITTING") or not cat_source.contains("IDLE_STATE_LOOKING") or not cat_source.contains("IDLE_STATE_LAYING"):
+		failures.append("CatEntity should choose between distinct idle animation states.")
+	if not cat_source.contains("set_cat_texture"):
+		failures.append("CatEntity should accept a selected cat color texture from FaunaManager.")
 	if cat_source.contains("add_to_group(\"enemies\")") or cat_source.contains("take_damage"):
 		failures.append("CatEntity should stay out of combat groups and damage handling.")
 	var manager_source := _read_text("res://scripts/managers/fauna_manager.gd")
 	if not manager_source.contains("enemy_positions_provider") or not manager_source.contains("spawner_positions_provider"):
 		failures.append("FaunaManager should receive combat danger through injected provider callables.")
+	if not manager_source.contains("CAT_TEXTURES") or not manager_source.contains("set_cat_texture"):
+		failures.append("FaunaManager should randomly select a cat color spritesheet when spawning cats.")
 	var cat_scene = load("res://scenes/entities/cat_entity.tscn")
 	if cat_scene == null:
 		failures.append("Cat scene failed to load.")

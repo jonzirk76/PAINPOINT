@@ -1,6 +1,59 @@
 extends Node
 class_name FaunaManager
 
+const CAT_TEXTURES := [
+	preload("res://art/characters/Cats Download/black_0.png"),
+	preload("res://art/characters/Cats Download/black_1.png"),
+	preload("res://art/characters/Cats Download/black_2.png"),
+	preload("res://art/characters/Cats Download/black_3.png"),
+	preload("res://art/characters/Cats Download/black_4.png"),
+	preload("res://art/characters/Cats Download/blue_0.png"),
+	preload("res://art/characters/Cats Download/blue_1.png"),
+	preload("res://art/characters/Cats Download/blue_2.png"),
+	preload("res://art/characters/Cats Download/blue_3.png"),
+	preload("res://art/characters/Cats Download/brown_0.png"),
+	preload("res://art/characters/Cats Download/brown_1.png"),
+	preload("res://art/characters/Cats Download/brown_2.png"),
+	preload("res://art/characters/Cats Download/brown_3.png"),
+	preload("res://art/characters/Cats Download/brown_4.png"),
+	preload("res://art/characters/Cats Download/brown_5.png"),
+	preload("res://art/characters/Cats Download/brown_6.png"),
+	preload("res://art/characters/Cats Download/brown_7.png"),
+	preload("res://art/characters/Cats Download/brown_8.png"),
+	preload("res://art/characters/Cats Download/calico_0.png"),
+	preload("res://art/characters/Cats Download/cotton_candy_blue_0.png"),
+	preload("res://art/characters/Cats Download/cotton_candy_pink_0.png"),
+	preload("res://art/characters/Cats Download/creme_0.png"),
+	preload("res://art/characters/Cats Download/creme_1.png"),
+	preload("res://art/characters/Cats Download/dark_0.png"),
+	preload("res://art/characters/Cats Download/game_boy_0.png"),
+	preload("res://art/characters/Cats Download/game_boy_1.png"),
+	preload("res://art/characters/Cats Download/game_boy_2.png"),
+	preload("res://art/characters/Cats Download/ghost_0.png"),
+	preload("res://art/characters/Cats Download/gold_0.png"),
+	preload("res://art/characters/Cats Download/grey_0.png"),
+	preload("res://art/characters/Cats Download/grey_1.png"),
+	preload("res://art/characters/Cats Download/grey_2.png"),
+	preload("res://art/characters/Cats Download/hairless_0.png"),
+	preload("res://art/characters/Cats Download/hairless_1.png"),
+	preload("res://art/characters/Cats Download/indigo_0.png"),
+	preload("res://art/characters/Cats Download/orange_0.png"),
+	preload("res://art/characters/Cats Download/orange_1.png"),
+	preload("res://art/characters/Cats Download/orange_2.png"),
+	preload("res://art/characters/Cats Download/orange_3.png"),
+	preload("res://art/characters/Cats Download/peach_0.png"),
+	preload("res://art/characters/Cats Download/pink_0.png"),
+	preload("res://art/characters/Cats Download/radioactive_0.png"),
+	preload("res://art/characters/Cats Download/red_0.png"),
+	preload("res://art/characters/Cats Download/red_1.png"),
+	preload("res://art/characters/Cats Download/seal_point_0.png"),
+	preload("res://art/characters/Cats Download/teal_0.png"),
+	preload("res://art/characters/Cats Download/white_0.png"),
+	preload("res://art/characters/Cats Download/white_grey_0.png"),
+	preload("res://art/characters/Cats Download/white_grey_1.png"),
+	preload("res://art/characters/Cats Download/yellow_0.png")
+]
+
 @export var cat_scene: PackedScene = preload("res://scenes/entities/cat_entity.tscn")
 ## Controls the radius around the player that a cat treats as mildly unsafe.
 @export var player_avoidance_radius: float = 150.0
@@ -78,14 +131,17 @@ func set_roam_bounds(bounds: Rect2) -> void:
 func spawn_cat(spawn_position: Vector2, movement_seed: int = 0):
 	if _has_cat():
 		return _cat
+	var cat_seed: int = max(movement_seed, 1)
 	var cat = cat_scene.instantiate()
 	if _fauna_layer != null:
 		_fauna_layer.add_child(cat)
 	else:
 		add_child(cat)
 	_cat = cat
+	if cat.has_method("set_cat_texture"):
+		cat.set_cat_texture(_pick_cat_texture(cat_seed))
 	if cat.has_method("initialize"):
-		cat.initialize(spawn_position, max(movement_seed, 1))
+		cat.initialize(spawn_position, cat_seed)
 	cat.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
 	if cat.has_method("set_roam_bounds"):
 		cat.set_roam_bounds(_roam_bounds)
@@ -116,6 +172,14 @@ func _process(_delta: float) -> void:
 
 func _has_cat() -> bool:
 	return _cat != null and is_instance_valid(_cat)
+
+
+func _pick_cat_texture(movement_seed: int) -> Texture2D:
+	if CAT_TEXTURES.is_empty():
+		return null
+	var texture_rng := RandomNumberGenerator.new()
+	texture_rng.seed = max(movement_seed, 1) + 7919
+	return CAT_TEXTURES[texture_rng.randi_range(0, CAT_TEXTURES.size() - 1)]
 
 
 func _get_danger_points() -> Array[Dictionary]:

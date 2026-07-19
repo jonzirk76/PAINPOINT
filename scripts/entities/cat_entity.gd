@@ -1,7 +1,7 @@
 extends CharacterBody2D
 class_name CatEntity
 
-const CAT_TEXTURE := preload("res://art/characters/white_0.png")
+const DEFAULT_CAT_TEXTURE := preload("res://art/characters/white_0.png")
 const FRAME_SIZE := Vector2i(32, 32)
 const COLLISION_MASK_WALLS_AND_VOID := 96
 # Direction row groups start facing south, then rotate 45 degrees clockwise every two rows.
@@ -10,10 +10,20 @@ const DIRECTION_ROW_STRIDE := 2
 const DIRECTION_COUNT := 8
 const DIRECTION_STEP_RADIANS := PI / 4.0
 const ANIMATION_FRAMES_PER_ROW := 4
+const SIT_COLUMN_START := 0
+const SIT_FRAME_COUNTS := [7, 6, 6, 6, 7, 6, 6, 6]
+const LOOK_COLUMN_START := 4
+const LOOK_FRAME_COUNT := 5
+const LAY_COLUMN_START := 8
+const LAY_FRAME_COUNT := 8
 const WALK_COLUMN_START := 12
 const WALK_FRAME_COUNT := 4
 const RUN_COLUMN_START := 20
 const RUN_FRAME_COUNT := 8
+const IDLE_STATE_STANDING := "standing"
+const IDLE_STATE_SITTING := "sitting"
+const IDLE_STATE_LOOKING := "looking"
+const IDLE_STATE_LAYING := "laying"
 
 ## Controls the cat's wall clearance and soft movement body size.
 @export var body_radius: float = 11.0
@@ -31,8 +41,18 @@ const RUN_FRAME_COUNT := 8
 @export var wander_retarget_seconds: float = 2.4
 ## Controls how likely the cat is to pause instead of immediately choosing another wander target.
 @export var idle_chance: float = 0.28
+## Controls the shortest random idle pause between wandering moves.
+@export var min_idle_seconds: float = 0.85
 ## Controls the largest random idle pause between wandering moves.
-@export var max_idle_seconds: float = 1.45
+@export var max_idle_seconds: float = 3.4
+## Controls how often an idle cat remains in a standing rest pose.
+@export var standing_idle_weight: float = 0.35
+## Controls how often an idle cat uses the sit-down animation.
+@export var sitting_idle_weight: float = 0.32
+## Controls how often an idle cat uses the look-around animation.
+@export var looking_idle_weight: float = 0.23
+## Controls how often an idle cat uses the lay-down animation.
+@export var laying_idle_weight: float = 0.10
 ## Controls the visual sprite scale applied to 32x32 sheet frames.
 @export var sprite_scale: float = 1.45
 
@@ -44,6 +64,7 @@ var void_rects: Array[Rect2] = []
 var playable_rects: Array[Rect2] = []
 
 var _sprite: Sprite2D = null
+var _cat_texture: Texture2D = DEFAULT_CAT_TEXTURE
 var _rng := RandomNumberGenerator.new()
 var _target_position: Vector2 = Vector2.INF
 var _danger_points: Array[Dictionary] = []
@@ -54,6 +75,7 @@ var _idle_remaining: float = 0.0
 var _animation_time: float = 0.0
 var _last_facing_direction: Vector2 = Vector2.DOWN
 var _is_fleeing: bool = false
+var _idle_state: String = IDLE_STATE_STANDING
 
 
 func _ready() -> void:
@@ -70,8 +92,10 @@ func initialize(spawn_position: Vector2, movement_seed: int = 0) -> void:
 	_target_position = spawn_position
 	_retarget_remaining = 0.0
 	_idle_remaining = 0.0
+	_animation_time = 0.0
 	_last_facing_direction = Vector2.DOWN
 	_is_fleeing = false
+	_set_idle_state(IDLE_STATE_STANDING)
 	_configure_collision_identity()
 	_ensure_sprite()
 	_update_sprite_frame()
@@ -84,6 +108,14 @@ func set_enabled(value: bool) -> void:
 	if not enabled:
 		velocity = Vector2.ZERO
 		_is_fleeing = false
+
+
+func set_cat_texture(texture: Texture2D) -> void:
+	if texture == null:
+		return
+	_cat_texture = texture
+	_ensure_sprite()
+	_sprite.texture = _cat_texture
 
 
 func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: Array = [], playable_regions: Array = []) -> void:
@@ -129,6 +161,7 @@ func _physics_process(delta: float) -> void:
 	_is_fleeing = avoidance.length_squared() > 0.001
 	if _is_fleeing:
 		_idle_remaining = 0.0
+		_set_idle_state(IDLE_STATE_STANDING)
 		_target_position = _find_clear_target(global_position + avoidance.normalized() * flee_target_distance)
 		desired_velocity = (_target_position - global_position).normalized() * flee_speed
 	else:
@@ -172,7 +205,7 @@ func _ensure_sprite() -> void:
 		return
 	_sprite = Sprite2D.new()
 	_sprite.name = "CatSprite"
-	_sprite.texture = CAT_TEXTURE
+	_sprite.texture = _cat_texture
 	_sprite.region_enabled = true
 	_sprite.centered = true
 	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -184,20 +217,63 @@ func _ensure_sprite() -> void:
 func _update_wander_target(delta: float) -> void:
 	if _idle_remaining > 0.0:
 		_idle_remaining = max(_idle_remaining - delta, 0.0)
+		if _idle_remaining <= 0.0:
+			_set_idle_state(IDLE_STATE_STANDING)
 		return
 	_retarget_remaining = max(_retarget_remaining - delta, 0.0)
 	var target_reached := _target_position == Vector2.INF or global_position.distance_squared_to(_target_position) <= 18.0 * 18.0
 	if target_reached or _retarget_remaining <= 0.0:
 		if _rng.randf() < clamp(idle_chance, 0.0, 1.0):
-			_idle_remaining = _rng.randf_range(0.25, max(max_idle_seconds, 0.26))
-			_retarget_remaining = wander_retarget_seconds
+			_begin_idle_pause()
 			return
 		_pick_next_wander_target()
 
 
 func _pick_next_wander_target() -> void:
+	_set_idle_state(IDLE_STATE_STANDING)
 	_target_position = _pick_clear_random_position()
 	_retarget_remaining = max(wander_retarget_seconds * _rng.randf_range(0.65, 1.35), 0.2)
+
+
+func _begin_idle_pause() -> void:
+	var idle_min := max(min_idle_seconds, 0.1)
+	var idle_max := max(max_idle_seconds, idle_min + 0.1)
+	_idle_remaining = _rng.randf_range(idle_min, idle_max)
+	_retarget_remaining = 0.0
+	_target_position = global_position
+	velocity = Vector2.ZERO
+	_set_idle_state(_choose_idle_state())
+
+
+func _choose_idle_state() -> String:
+	var weights := [
+		max(standing_idle_weight, 0.0),
+		max(sitting_idle_weight, 0.0),
+		max(looking_idle_weight, 0.0),
+		max(laying_idle_weight, 0.0)
+	]
+	var total_weight := 0.0
+	for weight in weights:
+		total_weight += float(weight)
+	if total_weight <= 0.0:
+		return IDLE_STATE_STANDING
+	var roll := _rng.randf_range(0.0, total_weight)
+	if roll < weights[0]:
+		return IDLE_STATE_STANDING
+	roll -= weights[0]
+	if roll < weights[1]:
+		return IDLE_STATE_SITTING
+	roll -= weights[1]
+	if roll < weights[2]:
+		return IDLE_STATE_LOOKING
+	return IDLE_STATE_LAYING
+
+
+func _set_idle_state(state: String) -> void:
+	if _idle_state == state:
+		return
+	_idle_state = state
+	_animation_time = 0.0
 
 
 func _get_combat_avoidance_vector() -> Vector2:
@@ -297,8 +373,11 @@ func _clamp_to_roam_bounds(position: Vector2) -> Vector2:
 
 
 func _update_visual_state(delta: float) -> void:
-	if velocity.length_squared() > 4.0:
+	var moving := velocity.length_squared() > 4.0
+	var animating_idle := not moving and _idle_state != IDLE_STATE_STANDING
+	if moving:
 		_last_facing_direction = velocity.normalized()
+	if moving or animating_idle:
 		var animation_rate := 12.0 if _is_fleeing else 8.0
 		_animation_time += delta * animation_rate
 		queue_redraw()
@@ -312,9 +391,9 @@ func _update_sprite_frame() -> void:
 	if direction.length_squared() <= 0.001:
 		direction = Vector2.DOWN
 	var direction_index := _get_direction_index(direction)
-	var frames := _get_direction_frames(direction_index, _is_fleeing)
+	var frames := _get_movement_frames(direction_index, _is_fleeing) if moving else _get_idle_frames(direction_index)
 	_sprite.flip_h = false
-	var frame_index := int(floor(_animation_time)) % frames.size() if moving else 0
+	var frame_index := _get_frame_index(frames.size(), moving)
 	var frame: Vector2i = frames[frame_index]
 	_sprite.region_rect = Rect2(
 		Vector2(frame.x * FRAME_SIZE.x, frame.y * FRAME_SIZE.y),
@@ -327,10 +406,32 @@ func _get_direction_index(direction: Vector2) -> int:
 	return wrapi(signed_steps, 0, DIRECTION_COUNT)
 
 
-func _get_direction_frames(direction_index: int, running: bool) -> Array[Vector2i]:
-	var row := DIRECTION_ROW_START + wrapi(direction_index, 0, DIRECTION_COUNT) * DIRECTION_ROW_STRIDE
+func _get_movement_frames(direction_index: int, running: bool) -> Array[Vector2i]:
 	var column_start := RUN_COLUMN_START if running else WALK_COLUMN_START
 	var frame_count := RUN_FRAME_COUNT if running else WALK_FRAME_COUNT
+	return _get_clip_frames(direction_index, column_start, frame_count)
+
+
+func _get_idle_frames(direction_index: int) -> Array[Vector2i]:
+	if _idle_state == IDLE_STATE_SITTING:
+		return _get_clip_frames(direction_index, SIT_COLUMN_START, int(SIT_FRAME_COUNTS[wrapi(direction_index, 0, DIRECTION_COUNT)]))
+	if _idle_state == IDLE_STATE_LOOKING:
+		return _get_clip_frames(direction_index, LOOK_COLUMN_START, LOOK_FRAME_COUNT)
+	if _idle_state == IDLE_STATE_LAYING:
+		return _get_clip_frames(direction_index, LAY_COLUMN_START, LAY_FRAME_COUNT)
+	return _get_clip_frames(direction_index, WALK_COLUMN_START, 1)
+
+
+func _get_frame_index(frame_count: int, moving: bool) -> int:
+	if moving or _idle_state == IDLE_STATE_LOOKING:
+		return int(floor(_animation_time)) % frame_count
+	if _idle_state == IDLE_STATE_STANDING:
+		return 0
+	return min(int(floor(_animation_time)), frame_count - 1)
+
+
+func _get_clip_frames(direction_index: int, column_start: int, frame_count: int) -> Array[Vector2i]:
+	var row := DIRECTION_ROW_START + wrapi(direction_index, 0, DIRECTION_COUNT) * DIRECTION_ROW_STRIDE
 	var frames: Array[Vector2i] = []
 	for frame_offset in range(frame_count):
 		var column := column_start + frame_offset % ANIMATION_FRAMES_PER_ROW
