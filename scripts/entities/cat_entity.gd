@@ -14,6 +14,8 @@ const SIT_COLUMN_START := 0
 const SIT_FRAME_COUNTS := [7, 6, 6, 6, 7, 6, 6, 6]
 const LOOK_COLUMN_START := 4
 const LOOK_FRAME_COUNT := 5
+# Look clips move from one side, through forward head placement, to the other side.
+const LOOK_NEUTRAL_FRAME_INDEX := 2
 const LAY_COLUMN_START := 8
 const LAY_FRAME_COUNT := 8
 const WALK_COLUMN_START := 12
@@ -91,14 +93,14 @@ const INVALID_PATH_CELL := Vector2i(-999999, -999999)
 @export var scanning_idle_weight: float = 0.09
 ## Controls how often a seated idle cat chooses to lay down.
 @export var laying_idle_weight: float = 0.10
-## Controls the slowest seated scan animation speed before the cat stops on a look frame.
-@export var min_scan_frame_rate: float = 2.4
-## Controls the fastest seated scan animation speed before the cat stops on a look frame.
-@export var max_scan_frame_rate: float = 5.8
-## Controls the shortest time before a glancing idle cat restarts the look-around motion.
-@export var min_glance_seconds: float = 0.35
-## Controls the longest time before a glancing idle cat restarts the look-around motion.
-@export var max_glance_seconds: float = 0.85
+## Controls the shortest time for one seated head movement frame step.
+@export var min_look_step_seconds: float = 0.10
+## Controls the longest time for one seated head movement frame step.
+@export var max_look_step_seconds: float = 0.32
+## Controls the shortest pause after seated head movement reaches a look target.
+@export var min_look_pause_seconds: float = 0.35
+## Controls the longest pause after seated head movement reaches a look target.
+@export var max_look_pause_seconds: float = 1.15
 ## Controls the visual sprite scale applied to 32x32 sheet frames.
 @export var sprite_scale: float = 1.45
 
@@ -130,10 +132,11 @@ var _has_player_context: bool = false
 var _player_projectile_points: Array[Vector2] = []
 var _idle_state: String = IDLE_STATE_STANDING
 var _idle_direction_index: int = 0
-var _glance_retarget_remaining: float = 0.0
-var _look_scan_reversed: bool = false
-var _scan_frame_rate: float = 4.0
-var _scan_stop_frame_index: int = LOOK_FRAME_COUNT - 1
+var _look_frame_index: int = LOOK_NEUTRAL_FRAME_INDEX
+var _look_target_frame_index: int = LOOK_NEUTRAL_FRAME_INDEX
+var _look_pause_remaining: float = 0.0
+var _look_step_remaining: float = 0.0
+var _look_exit_state: String = ""
 var _pending_seated_idle_state: String = ""
 var _stand_after_lay_up: bool = false
 var _sit_transition_mode: String = SIT_TRANSITION_NONE
@@ -164,10 +167,7 @@ func initialize(spawn_position: Vector2, movement_seed: int = 0) -> void:
 	_has_player_context = false
 	_player_projectile_points.clear()
 	_idle_direction_index = _get_direction_index(_last_facing_direction)
-	_glance_retarget_remaining = 0.0
-	_look_scan_reversed = false
-	_scan_frame_rate = 4.0
-	_scan_stop_frame_index = LOOK_FRAME_COUNT - 1
+	_reset_look_motion()
 	_pending_seated_idle_state = ""
 	_stand_after_lay_up = false
 	_sit_transition_mode = SIT_TRANSITION_NONE
@@ -411,15 +411,20 @@ func _choose_idle_state() -> String:
 
 
 func _set_idle_state(state: String, force: bool = false) -> void:
-	if _idle_state == state and not _has_rest_transition() and _pending_seated_idle_state.is_empty():
+	if _idle_state == state and not _has_rest_transition() and _pending_seated_idle_state.is_empty() and _look_exit_state.is_empty():
 		return
 	if state == IDLE_STATE_STANDING:
 		_pending_seated_idle_state = ""
+	if state == IDLE_STATE_STANDING and _is_look_idle_state() and not force:
+		_begin_look_exit(IDLE_STATE_STANDING)
+		return
+	if state == IDLE_STATE_LAYING and _is_look_idle_state() and not force:
+		_begin_look_exit(IDLE_STATE_LAYING)
+		return
 	if state == IDLE_STATE_STANDING and _is_seated_idle_state() and not force:
 		_sit_transition_mode = SIT_TRANSITION_UP
 		_animation_time = 0.0
-		_glance_retarget_remaining = 0.0
-		_look_scan_reversed = false
+		_reset_look_motion()
 		return
 	if state == IDLE_STATE_STANDING and _idle_state == IDLE_STATE_LAYING and not force:
 		_lay_transition_mode = LAY_TRANSITION_UP
@@ -431,8 +436,7 @@ func _set_idle_state(state: String, force: bool = false) -> void:
 		_idle_state = IDLE_STATE_SITTING
 		_animation_time = 0.0
 		_idle_direction_index = _get_direction_index(_last_facing_direction)
-		_glance_retarget_remaining = 0.0
-		_look_scan_reversed = false
+		_reset_look_motion()
 		_lay_transition_mode = LAY_TRANSITION_NONE
 		_sit_transition_mode = SIT_TRANSITION_DOWN
 		return
@@ -440,24 +444,20 @@ func _set_idle_state(state: String, force: bool = false) -> void:
 		_pending_seated_idle_state = ""
 		_idle_state = IDLE_STATE_LAYING
 		_animation_time = 0.0
-		_glance_retarget_remaining = 0.0
-		_look_scan_reversed = false
+		_reset_look_motion()
 		_lay_transition_mode = LAY_TRANSITION_DOWN
 		_sit_transition_mode = SIT_TRANSITION_NONE
 		return
 	_idle_state = state
 	_animation_time = 0.0
 	_idle_direction_index = _get_direction_index(_last_facing_direction)
-	_glance_retarget_remaining = 0.0
-	_look_scan_reversed = false
-	_scan_frame_rate = 4.0
-	_scan_stop_frame_index = LOOK_FRAME_COUNT - 1
+	_reset_look_motion()
 	_pending_seated_idle_state = ""
 	_stand_after_lay_up = false
 	_sit_transition_mode = SIT_TRANSITION_DOWN if _is_seated_idle_state() else SIT_TRANSITION_NONE
 	_lay_transition_mode = LAY_TRANSITION_DOWN if _idle_state == IDLE_STATE_LAYING else LAY_TRANSITION_NONE
-	if _idle_state == IDLE_STATE_SCANNING:
-		_configure_scan_idle()
+	if _is_look_idle_state() and _sit_transition_mode == SIT_TRANSITION_NONE:
+		_configure_look_idle()
 
 
 func _is_look_idle_state() -> bool:
@@ -473,34 +473,126 @@ func _has_rest_transition() -> bool:
 
 
 func _has_get_up_transition() -> bool:
-	return _sit_transition_mode == SIT_TRANSITION_UP or _lay_transition_mode == LAY_TRANSITION_UP
+	return _sit_transition_mode == SIT_TRANSITION_UP or _lay_transition_mode == LAY_TRANSITION_UP or not _look_exit_state.is_empty()
 
 
-func _get_next_glance_seconds() -> float:
-	var glance_min: float = maxf(min_glance_seconds, 0.05)
-	var glance_max: float = maxf(max_glance_seconds, glance_min + 0.05)
-	return _rng.randf_range(glance_min, glance_max)
+func _reset_look_motion() -> void:
+	_look_frame_index = _get_neutral_look_frame_index()
+	_look_target_frame_index = _look_frame_index
+	_look_pause_remaining = 0.0
+	_look_step_remaining = 0.0
+	_look_exit_state = ""
 
 
-func _configure_scan_idle() -> void:
-	var scan_min: float = maxf(min_scan_frame_rate, 0.1)
-	var scan_max: float = maxf(max_scan_frame_rate, scan_min)
-	_scan_frame_rate = _rng.randf_range(scan_min, scan_max)
-	_look_scan_reversed = _rng.randf() < 0.5
-	if LOOK_FRAME_COUNT <= 1:
-		_scan_stop_frame_index = 0
-	elif _look_scan_reversed:
-		_scan_stop_frame_index = _rng.randi_range(0, LOOK_FRAME_COUNT - 2)
-	else:
-		_scan_stop_frame_index = _rng.randi_range(1, LOOK_FRAME_COUNT - 1)
+func _configure_look_idle() -> void:
+	_look_exit_state = ""
+	_look_frame_index = _get_neutral_look_frame_index()
+	_look_pause_remaining = _get_next_look_pause_seconds()
+	_set_next_look_target()
 
 
-func _update_glancing_idle(delta: float) -> void:
-	_glance_retarget_remaining = maxf(_glance_retarget_remaining - delta, 0.0)
-	if _glance_retarget_remaining > 0.0:
+func _begin_look_exit(next_state: String) -> void:
+	if not _is_look_idle_state() or _has_rest_transition():
 		return
-	_animation_time = 0.0
-	_glance_retarget_remaining = _get_next_glance_seconds()
+	if _look_exit_state == next_state:
+		return
+	_look_exit_state = next_state
+	_look_target_frame_index = _get_neutral_look_frame_index()
+	_look_pause_remaining = 0.0
+	_look_step_remaining = 0.0
+	if _look_frame_index == _look_target_frame_index:
+		_finish_look_exit()
+
+
+func _finish_look_exit() -> void:
+	var exit_state: String = _look_exit_state
+	_reset_look_motion()
+	_pending_seated_idle_state = ""
+	if exit_state == IDLE_STATE_LAYING:
+		_idle_state = IDLE_STATE_LAYING
+		_animation_time = 0.0
+		_lay_transition_mode = LAY_TRANSITION_DOWN
+		_sit_transition_mode = SIT_TRANSITION_NONE
+	elif exit_state == IDLE_STATE_STANDING:
+		_animation_time = 0.0
+		_sit_transition_mode = SIT_TRANSITION_UP
+		_lay_transition_mode = LAY_TRANSITION_NONE
+
+
+func _set_next_look_target() -> void:
+	_look_target_frame_index = _pick_next_look_target_frame()
+	_look_step_remaining = _get_next_look_step_seconds()
+
+
+func _pick_next_look_target_frame() -> int:
+	var candidates: Array[int] = []
+	if _idle_state == IDLE_STATE_GLANCING:
+		candidates.append(LOOK_NEUTRAL_FRAME_INDEX - 1)
+		candidates.append(LOOK_NEUTRAL_FRAME_INDEX + 1)
+		if _rng.randf() < 0.35:
+			candidates.append(LOOK_NEUTRAL_FRAME_INDEX)
+	else:
+		candidates.append(0)
+		candidates.append(1)
+		candidates.append(3)
+		candidates.append(4)
+		if _rng.randf() < 0.25:
+			candidates.append(LOOK_NEUTRAL_FRAME_INDEX)
+	var bounded_candidates: Array[int] = []
+	for candidate: int in candidates:
+		var bounded_candidate: int = clampi(candidate, 0, LOOK_FRAME_COUNT - 1)
+		if bounded_candidate == _look_frame_index:
+			continue
+		if not bounded_candidates.has(bounded_candidate):
+			bounded_candidates.append(bounded_candidate)
+	if bounded_candidates.is_empty():
+		return _get_neutral_look_frame_index()
+	return bounded_candidates[_rng.randi_range(0, bounded_candidates.size() - 1)]
+
+
+func _get_next_look_step_seconds() -> float:
+	var step_min: float = maxf(min_look_step_seconds, 0.03)
+	var step_max: float = maxf(max_look_step_seconds, step_min)
+	return _rng.randf_range(step_min, step_max)
+
+
+func _get_next_look_pause_seconds() -> float:
+	var pause_min: float = maxf(min_look_pause_seconds, 0.05)
+	var pause_max: float = maxf(max_look_pause_seconds, pause_min + 0.05)
+	var pause_seconds: float = _rng.randf_range(pause_min, pause_max)
+	if _idle_state == IDLE_STATE_SCANNING:
+		return pause_seconds * _rng.randf_range(0.55, 0.95)
+	return pause_seconds
+
+
+func _update_look_idle(delta: float) -> void:
+	if not _is_look_idle_state():
+		return
+	if not _look_exit_state.is_empty():
+		_look_target_frame_index = _get_neutral_look_frame_index()
+	if _look_pause_remaining > 0.0:
+		_look_pause_remaining = maxf(_look_pause_remaining - delta, 0.0)
+		if _look_pause_remaining > 0.0:
+			return
+	if _look_frame_index == _look_target_frame_index:
+		if not _look_exit_state.is_empty():
+			_finish_look_exit()
+			return
+		_set_next_look_target()
+	if _look_frame_index == _look_target_frame_index:
+		_look_pause_remaining = _get_next_look_pause_seconds()
+		return
+	_look_step_remaining -= delta
+	while _look_step_remaining <= 0.0 and _look_frame_index != _look_target_frame_index:
+		var frame_step: int = 1 if _look_target_frame_index > _look_frame_index else -1
+		_look_frame_index = clampi(_look_frame_index + frame_step, 0, LOOK_FRAME_COUNT - 1)
+		if _look_frame_index != _look_target_frame_index:
+			_look_step_remaining += _get_next_look_step_seconds()
+	if _look_frame_index == _look_target_frame_index:
+		if not _look_exit_state.is_empty():
+			_finish_look_exit()
+		else:
+			_look_pause_remaining = _get_next_look_pause_seconds()
 
 
 func _update_sit_transition() -> void:
@@ -514,10 +606,8 @@ func _update_sit_transition() -> void:
 			_pending_seated_idle_state = ""
 			_set_idle_state(IDLE_STATE_LAYING)
 			return
-		if _idle_state == IDLE_STATE_GLANCING:
-			_glance_retarget_remaining = _get_next_glance_seconds()
-		elif _idle_state == IDLE_STATE_SCANNING:
-			_configure_scan_idle()
+		if _is_look_idle_state():
+			_configure_look_idle()
 	elif _sit_transition_mode == SIT_TRANSITION_UP:
 		_sit_transition_mode = SIT_TRANSITION_NONE
 		_idle_state = IDLE_STATE_STANDING
@@ -975,8 +1065,8 @@ func _update_visual_state(delta: float) -> void:
 	var animating_idle := not moving and _idle_state != IDLE_STATE_STANDING
 	if moving:
 		_last_facing_direction = velocity.normalized()
-	elif _idle_state == IDLE_STATE_GLANCING and _sit_transition_mode == SIT_TRANSITION_NONE:
-		_update_glancing_idle(delta)
+	elif _is_look_idle_state() and not _has_rest_transition():
+		_update_look_idle(delta)
 	if moving or animating_idle:
 		var animation_rate: float = _get_animation_rate(moving)
 		_animation_time += delta * animation_rate
@@ -991,8 +1081,6 @@ func _update_visual_state(delta: float) -> void:
 func _get_animation_rate(moving: bool) -> float:
 	if moving:
 		return 12.0 if _is_fleeing else 8.0
-	if _idle_state == IDLE_STATE_SCANNING and not _has_rest_transition():
-		return _scan_frame_rate
 	return 8.0
 
 
@@ -1057,10 +1145,10 @@ func _get_frame_index(frame_count: int, moving: bool) -> int:
 	if _lay_transition_mode == LAY_TRANSITION_UP:
 		var lay_up_frame_index: int = mini(int(floor(_animation_time)), frame_count - 1)
 		return frame_count - 1 - lay_up_frame_index
-	if moving or _idle_state == IDLE_STATE_GLANCING:
+	if moving:
 		return int(floor(_animation_time)) % frame_count
-	if _idle_state == IDLE_STATE_SCANNING:
-		return _get_scan_frame_index(frame_count)
+	if _is_look_idle_state():
+		return _get_look_frame_index(frame_count)
 	if _idle_state == IDLE_STATE_SITTING or _idle_state == IDLE_STATE_LAYING:
 		return frame_count - 1
 	if _idle_state == IDLE_STATE_STANDING:
@@ -1068,14 +1156,14 @@ func _get_frame_index(frame_count: int, moving: bool) -> int:
 	return mini(int(floor(_animation_time)), frame_count - 1)
 
 
-func _get_scan_frame_index(frame_count: int) -> int:
+func _get_look_frame_index(frame_count: int) -> int:
 	if frame_count <= 1:
 		return 0
-	var progress_index: int = mini(int(floor(_animation_time)), frame_count - 1)
-	var stop_frame_index: int = clampi(_scan_stop_frame_index, 0, frame_count - 1)
-	if _look_scan_reversed:
-		return maxi(frame_count - 1 - progress_index, stop_frame_index)
-	return mini(progress_index, stop_frame_index)
+	return clampi(_look_frame_index, 0, frame_count - 1)
+
+
+func _get_neutral_look_frame_index(frame_count: int = LOOK_FRAME_COUNT) -> int:
+	return clampi(LOOK_NEUTRAL_FRAME_INDEX, 0, maxi(frame_count - 1, 0))
 
 
 func _get_sit_frame_count(direction_index: int) -> int:

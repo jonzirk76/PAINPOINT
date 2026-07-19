@@ -376,10 +376,10 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("CatEntity should wire sitting, looking, and laying idle animations from the cat spritesheet.")
 	if not cat_source.contains("IDLE_STATE_SITTING") or not cat_source.contains("IDLE_STATE_GLANCING") or not cat_source.contains("IDLE_STATE_SCANNING") or not cat_source.contains("IDLE_STATE_LAYING"):
 		failures.append("CatEntity should choose between distinct idle animation states, including glance and scan look modes.")
-	if not cat_source.contains("_look_scan_reversed") or not cat_source.contains("_update_glancing_idle"):
-		failures.append("CatEntity should support one-shot scan looks and repeated seated glance looks.")
-	if not cat_source.contains("_configure_scan_idle") or not cat_source.contains("_get_scan_frame_index") or not cat_source.contains("_scan_stop_frame_index"):
-		failures.append("CatEntity should give seated scan idles randomized speed and stop on a selected look frame.")
+	if not cat_source.contains("LOOK_NEUTRAL_FRAME_INDEX") or not cat_source.contains("_look_frame_index") or not cat_source.contains("_update_look_idle"):
+		failures.append("CatEntity should drive seated look idles through neutral-centered head movement.")
+	if not cat_source.contains("_begin_look_exit") or not cat_source.contains("_finish_look_exit") or not cat_source.contains("_look_exit_state"):
+		failures.append("CatEntity should return look idles to neutral before standing or laying transitions.")
 	if not cat_source.contains("SIT_TRANSITION_UP") or not cat_source.contains("_update_sit_transition"):
 		failures.append("CatEntity should play sit-down transitions into seated idles and reverse them before standing.")
 	if not cat_source.contains("LAY_TRANSITION_UP") or not cat_source.contains("_update_lay_transition") or not cat_source.contains("_pending_seated_idle_state") or not cat_source.contains("_stand_after_lay_up"):
