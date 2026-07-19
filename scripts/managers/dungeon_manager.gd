@@ -119,9 +119,23 @@ func get_full_floor_level_definition(active_room_id: String = "", include_active
 	level.set_meta("visible_bounds", get_full_floor_visible_bounds(active_room_id))
 	if not active_room_id.is_empty():
 		level.set_meta("active_room_bounds", get_full_floor_room_bounds(active_room_id))
+	_apply_visible_floor_destructible_prop_placements(level, active_room_id, room_ids, include_active_contents)
 	if include_active_contents:
 		_apply_active_room_contents_to_full_floor_level(level, active_room_id, room_ids)
 	return level
+
+
+func remove_destructible_prop_placement(room_id: String, placement) -> bool:
+	if room_id.is_empty() or placement == null or not _rooms.has(room_id):
+		return false
+	var state: Dictionary = _rooms[room_id]
+	var room_level: LevelDefinition = state.get("level_definition", null) as LevelDefinition
+	if room_level == null or not room_level.destructible_prop_placements.has(placement):
+		return false
+	room_level.destructible_prop_placements.erase(placement)
+	state["level_definition"] = room_level
+	_rooms[room_id] = state
+	return true
 
 
 func get_current_room_state() -> Dictionary:
@@ -505,6 +519,28 @@ func _get_cleared_floor_wall_tiles(cleared_room_ids: Array[String], min_world_ce
 	return wall_tiles
 
 
+func _apply_visible_floor_destructible_prop_placements(level: LevelDefinition, active_room_id: String, room_ids: Array[String], include_active_contents: bool) -> void:
+	if level == null or room_ids.is_empty():
+		return
+	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(room_ids)
+	if floor_cells.is_empty():
+		return
+	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(room_ids)
+	var visible_props: Array[Resource] = []
+	for room_id in _get_full_floor_visible_room_ids(active_room_id):
+		if room_id.is_empty() or not _rooms.has(room_id):
+			continue
+		var state: Dictionary = _rooms[room_id]
+		if include_active_contents and room_id == active_room_id and not bool(state.get("cleared", false)):
+			continue
+		var room_level: LevelDefinition = state.get("level_definition", null) as LevelDefinition
+		if room_level == null:
+			continue
+		var offset: Vector2 = _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
+		visible_props.append_array(_copy_offset_resource_placements(room_level.destructible_prop_placements, offset, room_id))
+	level.destructible_prop_placements = visible_props
+
+
 func _get_room_wall_tiles(state: Dictionary) -> Array[Rect2]:
 	var wall_tiles: Array[Rect2] = []
 	var room_level: LevelDefinition = state.get("level_definition", null) as LevelDefinition
@@ -697,24 +733,31 @@ func _apply_active_room_contents_to_full_floor_level(level: LevelDefinition, act
 	level.spawner_radius = float(active_level.spawner_radius)
 	level.spawn_interval = float(active_level.spawn_interval)
 	level.spawner_placements = _copy_offset_resource_placements(active_level.spawner_placements, offset)
-	level.destructible_prop_placements = _copy_offset_resource_placements(active_level.destructible_prop_placements, offset)
+	level.destructible_prop_placements.append_array(_copy_offset_resource_placements(active_level.destructible_prop_placements, offset, active_room_id))
 	level.boss_profile = active_level.boss_profile
 	level.generate_agent_boss = bool(active_level.generate_agent_boss)
 	level.randomize_agent_boss_each_load = bool(active_level.randomize_agent_boss_each_load)
 	level.boss_spawn_position = active_level.boss_spawn_position + offset
 
 
-func _copy_offset_resource_placements(source_placements: Array, offset: Vector2) -> Array[Resource]:
+func _copy_offset_resource_placements(source_placements: Array, offset: Vector2, source_room_id: String = "") -> Array[Resource]:
 	var copied_placements: Array[Resource] = []
 	for source in source_placements:
 		var source_resource: Resource = source as Resource
 		if source_resource == null:
 			continue
-		var copied_resource: Resource = source_resource.duplicate(true)
-		var source_position: Vector2 = source_resource.get("position")
-		copied_resource.set("position", source_position + offset)
-		copied_placements.append(copied_resource)
+		copied_placements.append(_copy_offset_resource_placement(source_resource, offset, source_room_id))
 	return copied_placements
+
+
+func _copy_offset_resource_placement(source_resource: Resource, offset: Vector2, source_room_id: String = "") -> Resource:
+	var copied_resource: Resource = source_resource.duplicate(true)
+	var source_position: Vector2 = source_resource.get("position")
+	copied_resource.set("position", source_position + offset)
+	if not source_room_id.is_empty():
+		copied_resource.set_meta("source_room_id", source_room_id)
+		copied_resource.set_meta("source_placement", source_resource)
+	return copied_resource
 
 
 func _room_is_cleared_floor_available(state: Dictionary) -> bool:

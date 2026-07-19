@@ -2821,7 +2821,32 @@ func _test_dungeon_room_interiors_persist(failures: Array[String]) -> void:
 	if _get_level_generation_signature(manager.get_current_level_definition()) != first_signature:
 		failures.append("DungeonManager should return the cached generated interior on repeated reads.")
 
+	var persistent_prop = load("res://scripts/resources/destructible_prop_placement.gd").new()
+	persistent_prop.position = Vector2(36.0, 28.0)
+	persistent_prop.size = Vector2(48.0, 48.0)
+	persistent_prop.prop_kind = "chest"
+	persistent_prop.max_health = 5
+	persistent_prop.score_value = 4
+	persistent_prop.drop_kind = "treasure"
+	first_level.destructible_prop_placements.append(persistent_prop)
 	manager.mark_current_room_cleared()
+	var full_floor_with_props = manager.get_current_full_floor_level_definition(false)
+	var copied_persistent_prop = null
+	for placement in full_floor_with_props.destructible_prop_placements:
+		if placement != null and placement.has_meta("source_placement") and placement.get_meta("source_placement") == persistent_prop:
+			copied_persistent_prop = placement
+			break
+	if copied_persistent_prop == null:
+		failures.append("Cleared floor maps should keep unbroken destructible props from cleared rooms.")
+	elif String(copied_persistent_prop.get_meta("source_room_id")) != manager.current_room_id:
+		failures.append("Persisted cleared-floor props should retain their source room metadata.")
+	if not manager.remove_destructible_prop_placement(manager.current_room_id, persistent_prop):
+		failures.append("DungeonManager should remove destroyed persisted props from the source room.")
+	var full_floor_after_prop_removed = manager.get_current_full_floor_level_definition(false)
+	for placement in full_floor_after_prop_removed.destructible_prop_placements:
+		if placement != null and placement.has_meta("source_placement") and placement.get_meta("source_placement") == persistent_prop:
+			failures.append("Destroyed persisted props should not reappear in cleared floor maps.")
+			break
 	var return_direction := String(DUNGEON_OPPOSITE_DIRECTIONS.get(first_path_direction, ""))
 	if manager.enter_direction(return_direction):
 		if not manager.enter_direction(first_path_direction):

@@ -1635,10 +1635,27 @@ func _on_spawner_destroyed(_spawner, score_value: int) -> void:
 func _on_destructible_prop_destroyed(prop, score_value: int, drop_kind: String) -> void:
 	_sync_gate_blockers_into_actors()
 	if prop != null and is_instance_valid(prop):
+		_remove_source_destructible_prop_for_floor_copy(prop)
 		_score += max(score_value, 0)
 		item_manager.drop_destructible_reward(prop.global_position, drop_kind)
 		effects_manager.play_projectile_impact(prop.global_position, Vector2.UP, 10.0, true)
 	_update_hud()
+
+
+func _remove_source_destructible_prop_for_floor_copy(prop) -> void:
+	if not _is_dungeon_run or dungeon_manager == null or prop == null:
+		return
+	var destructible: DestructiblePropEntity = prop as DestructiblePropEntity
+	if destructible == null:
+		return
+	var placement = destructible.placement_resource
+	if placement == null or not placement.has_meta("source_room_id") or not placement.has_meta("source_placement"):
+		return
+	var source_room_id := String(placement.get_meta("source_room_id"))
+	var source_placement = placement.get_meta("source_placement")
+	if source_room_id.is_empty() or source_placement == null:
+		return
+	dungeon_manager.remove_destructible_prop_placement(source_room_id, source_placement)
 
 
 func _on_player_health_changed(old_value: int, new_value: int) -> void:
@@ -2105,7 +2122,7 @@ func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = 
 	enemy_manager.reset_run()
 	_clear_boss_health_hud()
 	spawner_manager.clear_spawners()
-	destructible_manager.clear_destructibles()
+	destructible_manager.reset_run(level_definition)
 	item_manager.set_room_context(dungeon_manager.floor_number, dungeon_manager.current_room_id)
 	if not preserve_pickups:
 		item_manager.clear_pickups()
