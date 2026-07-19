@@ -9,6 +9,7 @@ const LEVELS := [
 	preload("res://resources/levels/level_05_circle.tres"),
 	preload("res://resources/levels/level_06_maze.tres"),
 	preload("res://resources/levels/cat_behavior_test.tres"),
+	preload("res://resources/levels/cat_peaceful_test.tres"),
 	preload("res://resources/levels/boss_test_chamber.tres")
 ]
 const FLOOR_EXIT_PORTAL_SCENE := preload("res://scenes/entities/floor_exit_portal_entity.tscn")
@@ -112,6 +113,8 @@ var _latest_modifiers: Dictionary = {}
 var _attribute_modifiers: Dictionary = {}
 var _permanent_stats: Array = []
 var _selected_level_index: int = 0
+var _level_select_page: String = "main"
+var _level_select_option_index: int = 0
 var _current_level = null
 var _is_dungeon_run: bool = false
 var _is_main_loop_run: bool = false
@@ -202,7 +205,13 @@ var _boss_alert_duration: float = 0.0
 var _boss_alert_flash_count: int = 2
 var _boss_health_hide_remaining: float = 0.0
 
-const DUNGEON_OPTION_COUNT := 2
+const LEVEL_SELECT_PAGE_MAIN := "main"
+const LEVEL_SELECT_PAGE_ARCHIVE := "archive"
+const CAT_BEHAVIOR_LEVEL_INDEX := 6
+const PEACEFUL_CAT_LEVEL_INDEX := 7
+const BOSS_TEST_LEVEL_INDEX := 8
+const MAIN_LEVEL_OPTION_LEVEL_INDICES := [CAT_BEHAVIOR_LEVEL_INDEX, PEACEFUL_CAT_LEVEL_INDEX]
+const ARCHIVE_LEVEL_OPTION_LEVEL_INDICES := [0, 1, 2, 3, 4, 5, BOSS_TEST_LEVEL_INDEX]
 const BOSS_CLEAR_DELAY_SECONDS := 0.85
 const PERFECT_PARRY_TIME_SCALE := 0.24
 const PERFECT_PARRY_SLOWMO_SECONDS := 0.16
@@ -1181,6 +1190,8 @@ func _enter_level_select() -> void:
 	_current_level = null
 	_is_dungeon_run = false
 	_is_main_loop_run = false
+	_level_select_page = LEVEL_SELECT_PAGE_MAIN
+	_level_select_option_index = 0
 	_set_room_entry_transition_active(false)
 	_set_cleared_floor_map_active(false)
 	_run_seed = 0
@@ -3039,14 +3050,14 @@ func _check_level_clear() -> void:
 func _on_menu_up_requested() -> void:
 	if _status != "LEVEL_SELECT":
 		return
-	_selected_level_index = wrapi(_selected_level_index - 1, 0, _get_select_option_count())
+	_level_select_option_index = wrapi(_level_select_option_index - 1, 0, _get_select_option_count())
 	_update_level_select_ui()
 
 
 func _on_menu_down_requested() -> void:
 	if _status != "LEVEL_SELECT":
 		return
-	_selected_level_index = wrapi(_selected_level_index + 1, 0, _get_select_option_count())
+	_level_select_option_index = wrapi(_level_select_option_index + 1, 0, _get_select_option_count())
 	_update_level_select_ui()
 
 
@@ -3058,7 +3069,7 @@ func _on_menu_confirm_requested() -> void:
 		_update_hud()
 		return
 	if _status == "LEVEL_SELECT":
-		_start_selected_level()
+		_activate_level_select_option()
 	elif _status == "PAUSED":
 		_status = "PAUSE_EXIT_CONFIRM"
 		_update_hud()
@@ -3071,7 +3082,11 @@ func _on_menu_confirm_requested() -> void:
 
 
 func _on_menu_back_requested() -> void:
-	if _status == "PAUSED":
+	if _status == "LEVEL_SELECT" and _level_select_page == LEVEL_SELECT_PAGE_ARCHIVE:
+		_level_select_page = LEVEL_SELECT_PAGE_MAIN
+		_level_select_option_index = 0
+		_update_level_select_ui()
+	elif _status == "PAUSED":
 		_resume_from_pause()
 	elif _status == "PAUSE_EXIT_CONFIRM":
 		_status = "PAUSED"
@@ -3084,15 +3099,61 @@ func _update_level_select_ui() -> void:
 	if level_list_label == null:
 		return
 	var lines: Array[String] = []
-	for index in range(LEVELS.size()):
-		var level = LEVELS[index]
-		var marker := ">" if index == _selected_level_index else " "
-		lines.append("%s %d. %s  [%s]" % [marker, index + 1, level.display_name, level.get_summary()])
-	var dungeon_marker := ">" if _selected_level_index == LEVELS.size() else " "
-	lines.append("%s %d. Dungeon Prototype  [room pieces + first boss]" % [dungeon_marker, LEVELS.size() + 1])
-	var main_loop_marker := ">" if _selected_level_index == LEVELS.size() + 1 else " "
-	lines.append("%s %d. Main Game Loop Test  [floor loop + tally]" % [main_loop_marker, LEVELS.size() + 2])
+	if _level_select_page == LEVEL_SELECT_PAGE_ARCHIVE:
+		lines.append("ARCHIVE")
+		var back_marker := ">" if _level_select_option_index == 0 else " "
+		lines.append("%s Back" % back_marker)
+		for archive_index in range(ARCHIVE_LEVEL_OPTION_LEVEL_INDICES.size()):
+			var level_index: int = int(ARCHIVE_LEVEL_OPTION_LEVEL_INDICES[archive_index])
+			var level = LEVELS[level_index]
+			var option_index := archive_index + 1
+			var marker := ">" if option_index == _level_select_option_index else " "
+			lines.append("%s %d. %s  [%s]" % [marker, option_index, level.display_name, level.get_summary()])
+		var dungeon_option_index := ARCHIVE_LEVEL_OPTION_LEVEL_INDICES.size() + 1
+		var dungeon_marker := ">" if _level_select_option_index == dungeon_option_index else " "
+		lines.append("%s %d. Dungeon Prototype  [room pieces + first boss]" % [dungeon_marker, dungeon_option_index])
+		level_list_label.text = "\n".join(lines)
+		return
+	lines.append("LEVEL SELECT")
+	for option_index in range(MAIN_LEVEL_OPTION_LEVEL_INDICES.size()):
+		var level_index: int = int(MAIN_LEVEL_OPTION_LEVEL_INDICES[option_index])
+		var level = LEVELS[level_index]
+		var marker := ">" if option_index == _level_select_option_index else " "
+		lines.append("%s %d. %s  [%s]" % [marker, option_index + 1, level.display_name, level.get_summary()])
+	var main_loop_option_index := MAIN_LEVEL_OPTION_LEVEL_INDICES.size()
+	var main_loop_marker := ">" if _level_select_option_index == main_loop_option_index else " "
+	lines.append("%s %d. Main Game Loop Test  [floor loop + tally]" % [main_loop_marker, main_loop_option_index + 1])
+	var archive_option_index := MAIN_LEVEL_OPTION_LEVEL_INDICES.size() + 1
+	var archive_marker := ">" if _level_select_option_index == archive_option_index else " "
+	lines.append("%s %d. Archive  [older arenas + prototype]" % [archive_marker, archive_option_index + 1])
 	level_list_label.text = "\n".join(lines)
+
+
+func _activate_level_select_option() -> void:
+	if _level_select_page == LEVEL_SELECT_PAGE_ARCHIVE:
+		if _level_select_option_index <= 0:
+			_level_select_page = LEVEL_SELECT_PAGE_MAIN
+			_level_select_option_index = 0
+			_update_level_select_ui()
+			return
+		if _level_select_option_index <= ARCHIVE_LEVEL_OPTION_LEVEL_INDICES.size():
+			_selected_level_index = int(ARCHIVE_LEVEL_OPTION_LEVEL_INDICES[_level_select_option_index - 1])
+			_start_selected_level()
+			return
+		_selected_level_index = LEVELS.size()
+		_start_selected_level()
+		return
+	if _level_select_option_index < MAIN_LEVEL_OPTION_LEVEL_INDICES.size():
+		_selected_level_index = int(MAIN_LEVEL_OPTION_LEVEL_INDICES[_level_select_option_index])
+		_start_selected_level()
+		return
+	if _level_select_option_index == MAIN_LEVEL_OPTION_LEVEL_INDICES.size():
+		_selected_level_index = LEVELS.size() + 1
+		_start_selected_level()
+		return
+	_level_select_page = LEVEL_SELECT_PAGE_ARCHIVE
+	_level_select_option_index = 0
+	_update_level_select_ui()
 
 
 func _load_dungeon_current_room(entry_direction: String, reset_player: bool, override_player_position: Vector2 = Vector2.INF) -> void:
@@ -3333,7 +3394,9 @@ func _get_dungeon_hud_suffix() -> String:
 
 
 func _get_select_option_count() -> int:
-	return LEVELS.size() + DUNGEON_OPTION_COUNT
+	if _level_select_page == LEVEL_SELECT_PAGE_ARCHIVE:
+		return ARCHIVE_LEVEL_OPTION_LEVEL_INDICES.size() + 2
+	return MAIN_LEVEL_OPTION_LEVEL_INDICES.size() + 2
 
 
 func _update_minimap() -> void:

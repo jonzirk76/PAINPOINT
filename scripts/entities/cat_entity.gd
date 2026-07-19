@@ -4,9 +4,16 @@ class_name CatEntity
 const CAT_TEXTURE := preload("res://art/characters/white_0.png")
 const FRAME_SIZE := Vector2i(32, 32)
 const COLLISION_MASK_WALLS_AND_VOID := 96
-const DOWN_FRAMES := [Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1), Vector2i(3, 1)]
-const UP_FRAMES := [Vector2i(0, 9), Vector2i(1, 9), Vector2i(2, 9), Vector2i(3, 9)]
-const SIDE_FRAMES := [Vector2i(0, 4), Vector2i(1, 4), Vector2i(2, 4), Vector2i(3, 4)]
+# Direction row groups start facing south, then rotate 45 degrees clockwise every two rows.
+const DIRECTION_ROW_START := 1
+const DIRECTION_ROW_STRIDE := 2
+const DIRECTION_COUNT := 8
+const DIRECTION_STEP_RADIANS := PI / 4.0
+const ANIMATION_FRAMES_PER_ROW := 4
+const WALK_COLUMN_START := 12
+const WALK_FRAME_COUNT := 4
+const RUN_COLUMN_START := 20
+const RUN_FRAME_COUNT := 8
 
 ## Controls the cat's wall clearance and soft movement body size.
 @export var body_radius: float = 11.0
@@ -46,6 +53,7 @@ var _retarget_remaining: float = 0.0
 var _idle_remaining: float = 0.0
 var _animation_time: float = 0.0
 var _last_facing_direction: Vector2 = Vector2.DOWN
+var _is_fleeing: bool = false
 
 
 func _ready() -> void:
@@ -63,6 +71,7 @@ func initialize(spawn_position: Vector2, movement_seed: int = 0) -> void:
 	_retarget_remaining = 0.0
 	_idle_remaining = 0.0
 	_last_facing_direction = Vector2.DOWN
+	_is_fleeing = false
 	_configure_collision_identity()
 	_ensure_sprite()
 	_update_sprite_frame()
@@ -74,6 +83,7 @@ func set_enabled(value: bool) -> void:
 	set_physics_process(value)
 	if not enabled:
 		velocity = Vector2.ZERO
+		_is_fleeing = false
 
 
 func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: Array = [], playable_regions: Array = []) -> void:
@@ -116,7 +126,8 @@ func _physics_process(delta: float) -> void:
 		return
 	var avoidance: Vector2 = _get_combat_avoidance_vector()
 	var desired_velocity := Vector2.ZERO
-	if avoidance.length_squared() > 0.001:
+	_is_fleeing = avoidance.length_squared() > 0.001
+	if _is_fleeing:
 		_idle_remaining = 0.0
 		_target_position = _find_clear_target(global_position + avoidance.normalized() * flee_target_distance)
 		desired_velocity = (_target_position - global_position).normalized() * flee_speed
@@ -288,7 +299,8 @@ func _clamp_to_roam_bounds(position: Vector2) -> Vector2:
 func _update_visual_state(delta: float) -> void:
 	if velocity.length_squared() > 4.0:
 		_last_facing_direction = velocity.normalized()
-		_animation_time += delta * 8.0
+		var animation_rate := 12.0 if _is_fleeing else 8.0
+		_animation_time += delta * animation_rate
 		queue_redraw()
 	_update_sprite_frame()
 
@@ -299,18 +311,29 @@ func _update_sprite_frame() -> void:
 	var direction := _last_facing_direction
 	if direction.length_squared() <= 0.001:
 		direction = Vector2.DOWN
-	var frames: Array = DOWN_FRAMES
+	var direction_index := _get_direction_index(direction)
+	var frames := _get_direction_frames(direction_index, _is_fleeing)
 	_sprite.flip_h = false
-	if abs(direction.x) > abs(direction.y):
-		frames = SIDE_FRAMES
-		_sprite.flip_h = direction.x < 0.0
-	elif direction.y < 0.0:
-		frames = UP_FRAMES
-	else:
-		frames = DOWN_FRAMES
 	var frame_index := int(floor(_animation_time)) % frames.size() if moving else 0
 	var frame: Vector2i = frames[frame_index]
 	_sprite.region_rect = Rect2(
 		Vector2(frame.x * FRAME_SIZE.x, frame.y * FRAME_SIZE.y),
 		Vector2(float(FRAME_SIZE.x), float(FRAME_SIZE.y))
 	)
+
+
+func _get_direction_index(direction: Vector2) -> int:
+	var signed_steps := int(round(Vector2.DOWN.angle_to(direction.normalized()) / DIRECTION_STEP_RADIANS))
+	return wrapi(signed_steps, 0, DIRECTION_COUNT)
+
+
+func _get_direction_frames(direction_index: int, running: bool) -> Array[Vector2i]:
+	var row := DIRECTION_ROW_START + wrapi(direction_index, 0, DIRECTION_COUNT) * DIRECTION_ROW_STRIDE
+	var column_start := RUN_COLUMN_START if running else WALK_COLUMN_START
+	var frame_count := RUN_FRAME_COUNT if running else WALK_FRAME_COUNT
+	var frames: Array[Vector2i] = []
+	for frame_offset in range(frame_count):
+		var column := column_start + frame_offset % ANIMATION_FRAMES_PER_ROW
+		var row_offset := int(frame_offset / ANIMATION_FRAMES_PER_ROW)
+		frames.append(Vector2i(column, row + row_offset))
+	return frames

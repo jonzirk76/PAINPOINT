@@ -84,6 +84,7 @@ const LEVEL_PATHS := [
 	"res://resources/levels/level_05_circle.tres",
 	"res://resources/levels/level_06_maze.tres",
 	"res://resources/levels/cat_behavior_test.tres",
+	"res://resources/levels/cat_peaceful_test.tres",
 	"res://resources/levels/boss_test_chamber.tres"
 ]
 
@@ -387,6 +388,11 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 	var test_level = load("res://resources/levels/cat_behavior_test.tres")
 	if test_level == null or not bool(test_level.get("cat_spawn_enabled")):
 		failures.append("Cat behavior test room should load and explicitly enable cat spawning.")
+	var peaceful_level = load("res://resources/levels/cat_peaceful_test.tres")
+	if peaceful_level == null:
+		failures.append("Peaceful cat test room should load.")
+	elif not bool(peaceful_level.get("cat_spawn_enabled")) or peaceful_level.get_spawner_count() != 0:
+		failures.append("Peaceful cat test room should enable cat spawning without combat spawners.")
 	var dungeon = load("res://scripts/managers/dungeon_manager.gd").new()
 	dungeon.reset_run(1, 1907)
 	var cat_info: Dictionary = dungeon.get_floor_cat_spawn_info()
@@ -598,15 +604,15 @@ func _test_scene_loads(failures: Array[String]) -> void:
 
 
 func _test_level_resources(failures: Array[String]) -> void:
-	if LEVEL_PATHS.size() != 8:
-		failures.append("Expected eight level resources after adding the cat behavior test room.")
+	if LEVEL_PATHS.size() != 9:
+		failures.append("Expected nine level resources after adding both cat test rooms.")
 	for path in LEVEL_PATHS:
 		var level = load(path)
 		if level == null:
 			failures.append("Level resource failed to load: %s" % path)
 			continue
 		var spawner_count: int = level.get_spawner_count()
-		if spawner_count <= 0 and level.boss_profile == null:
+		if spawner_count <= 0 and level.boss_profile == null and not bool(level.get("cat_spawn_enabled")):
 			failures.append("Level has no spawners: %s" % path)
 		if level.boss_profile != null:
 			if not ArenaGeometry.contains_point(level.boss_spawn_position, level.arena_bounds, int(level.arena_shape)):
@@ -4142,8 +4148,22 @@ func _test_boss_test_level_select(failures: Array[String]) -> void:
 		main._connect_manager_signals()
 		main._initialize_managers()
 		main._enter_level_select()
+	if not main.level_list_label.text.contains("Cat Behavior Test") or not main.level_list_label.text.contains("Peaceful Cat Test"):
+		failures.append("Main level select should keep cat test rooms directly visible.")
+	if not main.level_list_label.text.contains("Archive"):
+		failures.append("Main level select should expose archived older arenas through an Archive option.")
+	if main.level_list_label.text.contains("Boss Test Chamber"):
+		failures.append("Boss test chamber should live in the Archive menu instead of the main level-select list.")
+	main._level_select_page = main.LEVEL_SELECT_PAGE_ARCHIVE
+	main._level_select_option_index = 0
+	main._update_level_select_ui()
+	for archived_name in ["Square Yard", "Diamond Engine", "Hex Pressure", "Crossfire Foundry", "Circle Gauntlet", "Maze Breaker"]:
+		if not main.level_list_label.text.contains(archived_name):
+			failures.append("Archive level select should include archived arena: %s" % archived_name)
 	if not main.level_list_label.text.contains("Boss Test Chamber"):
-		failures.append("Level select should include the standalone boss test chamber.")
+		failures.append("Archive level select should include the standalone boss test chamber.")
+	if not main.level_list_label.text.contains("Dungeon Prototype"):
+		failures.append("Archive level select should include the dungeon prototype.")
 	main._selected_level_index = main.LEVELS.size() - 1
 	main._start_selected_level()
 	if main._status != "RUNNING" or main._is_dungeon_run:

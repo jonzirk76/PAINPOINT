@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="LevelDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" uid="uid://ch0sx5oaq1deo" path="res://scripts/resources/level_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "cat_peaceful_test"
+display_name = "Peaceful Cat Test"
+difficulty_label = "Fauna Only"
+arena_bounds = Rect2(-620, -340, 1240, 680)
+use_default_spawners = false
+spawner_placements = Array[Resource]([])
+wall_rects = Array[Rect2]([Rect2(-140, -70, 280, 140), Rect2(-520, 70, 150, 72), Rect2(370, 70, 150, 72), Rect2(-80, 200, 160, 52)])
+max_active_enemies = 0
+cat_spawn_enabled = true
+cat_spawn_position = Vector2(0, 230)
