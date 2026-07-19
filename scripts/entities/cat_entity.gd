@@ -48,16 +48,14 @@ const LAY_TRANSITION_UP := "up"
 @export var curiosity_build_rate: float = 0.075
 ## Controls how quickly curiosity falls while the player approaches or combat is nearby.
 @export var curiosity_decay_rate: float = 0.22
-## Controls how curious the cat must be before it starts orbiting around the player.
-@export var curiosity_orbit_threshold: float = 0.28
+## Controls how curious the cat must be before it starts preferring wander targets near the player.
+@export var curiosity_target_bias_threshold: float = 0.28
 ## Controls the farthest player distance where curiosity can build.
 @export var curiosity_awareness_radius: float = 560.0
-## Controls the orbit radius when curiosity first starts influencing movement.
-@export var curiosity_outer_orbit_radius: float = 285.0
-## Controls the orbit radius when curiosity is full.
-@export var curiosity_inner_orbit_radius: float = 120.0
-## Controls sideways orbit speed around the player while curious.
-@export var curiosity_orbit_speed: float = 56.0
+## Controls the wander target radius when curiosity first starts influencing movement.
+@export var curiosity_outer_target_radius: float = 300.0
+## Controls the wander target radius when curiosity is full.
+@export var curiosity_inner_target_radius: float = 135.0
 ## Controls the closest distance the cat tolerates before backing away from the player.
 @export var player_personal_space_radius: float = 82.0
 ## Controls how fast the player must move toward the cat before curiosity decays.
@@ -116,7 +114,6 @@ var _player_velocity: Vector2 = Vector2.ZERO
 var _player_avoidance_radius: float = 150.0
 var _has_player_context: bool = false
 var _player_projectile_points: Array[Vector2] = []
-var _orbit_direction_sign: float = 1.0
 var _idle_state: String = IDLE_STATE_STANDING
 var _idle_direction_index: int = 0
 var _glance_retarget_remaining: float = 0.0
@@ -147,7 +144,6 @@ func initialize(spawn_position: Vector2, movement_seed: int = 0) -> void:
 	_player_velocity = Vector2.ZERO
 	_has_player_context = false
 	_player_projectile_points.clear()
-	_orbit_direction_sign = -1.0 if _rng.randi_range(0, 1) == 0 else 1.0
 	_idle_direction_index = _get_direction_index(_last_facing_direction)
 	_glance_retarget_remaining = 0.0
 	_look_scan_reversed = false
@@ -251,14 +247,7 @@ func _physics_process(delta: float) -> void:
 			_target_position = _find_clear_target(global_position + avoidance.normalized() * flee_target_distance)
 			desired_velocity = (_target_position - global_position).normalized() * flee_speed
 	else:
-		if _should_orbit_player():
-			_idle_remaining = 0.0
-			_retarget_remaining = 0.0
-			_set_idle_state(IDLE_STATE_STANDING)
-			if not _has_rest_transition():
-				desired_velocity = _get_curiosity_orbit_velocity()
-		else:
-			_update_wander_target(delta)
+		_update_wander_target(delta)
 		if desired_velocity.length_squared() <= 0.001 and _idle_remaining <= 0.0 and _target_position != Vector2.INF:
 			var to_target: Vector2 = _target_position - global_position
 			if to_target.length_squared() > 16.0 * 16.0:
@@ -326,7 +315,9 @@ func _update_wander_target(delta: float) -> void:
 
 func _pick_next_wander_target() -> void:
 	_set_idle_state(IDLE_STATE_STANDING)
-	_target_position = _pick_clear_random_position()
+	_target_position = _pick_curiosity_biased_position()
+	if _target_position == Vector2.INF:
+		_target_position = _pick_clear_random_position()
 	_retarget_remaining = maxf(wander_retarget_seconds * _rng.randf_range(0.65, 1.35), 0.2)
 
 
@@ -511,38 +502,20 @@ func _can_build_curiosity(combat_near: bool) -> bool:
 	return true
 
 
-func _should_orbit_player() -> bool:
-	if _curiosity < curiosity_orbit_threshold:
+func _should_bias_wander_toward_player() -> bool:
+	if _curiosity < curiosity_target_bias_threshold:
 		return false
 	if not _can_build_curiosity(false):
 		return false
 	return global_position.distance_squared_to(_player_position) > player_personal_space_radius * player_personal_space_radius
 
 
-func _get_curiosity_orbit_velocity() -> Vector2:
-	var threshold: float = clampf(curiosity_orbit_threshold, 0.0, 0.99)
+func _get_curiosity_target_radius() -> float:
+	var threshold: float = clampf(curiosity_target_bias_threshold, 0.0, 0.99)
 	var curiosity_ratio: float = clampf((_curiosity - threshold) / maxf(1.0 - threshold, 0.001), 0.0, 1.0)
-	var inner_radius: float = maxf(curiosity_inner_orbit_radius, player_personal_space_radius + body_radius + 6.0)
-	var outer_radius: float = maxf(curiosity_outer_orbit_radius, inner_radius + 1.0)
-	var orbit_radius: float = lerpf(outer_radius, inner_radius, curiosity_ratio)
-	var from_player: Vector2 = global_position - _player_position
-	var distance: float = from_player.length()
-	if distance <= 0.001:
-		from_player = _last_facing_direction
-		if from_player.length_squared() <= 0.001:
-			from_player = Vector2.RIGHT
-		distance = 1.0
-	var radial_direction: Vector2 = from_player.normalized()
-	var radial_error: float = distance - orbit_radius
-	var radial_speed: float = clampf(radial_error * 1.15, -wander_speed, wander_speed)
-	var radial_velocity: Vector2 = -radial_direction * radial_speed
-	var tangent_velocity: Vector2 = radial_direction.rotated(PI * 0.5) * _orbit_direction_sign * curiosity_orbit_speed * lerpf(0.35, 1.0, curiosity_ratio)
-	var desired_velocity: Vector2 = radial_velocity + tangent_velocity
-	var max_speed: float = maxf(wander_speed, 1.0)
-	if desired_velocity.length() > max_speed:
-		desired_velocity = desired_velocity.normalized() * max_speed
-	_target_position = Vector2.INF
-	return desired_velocity
+	var inner_radius: float = maxf(curiosity_inner_target_radius, player_personal_space_radius + body_radius + 12.0)
+	var outer_radius: float = maxf(curiosity_outer_target_radius, inner_radius + 1.0)
+	return lerpf(outer_radius, inner_radius, curiosity_ratio)
 
 
 func _is_player_moving_toward_cat() -> bool:
@@ -566,6 +539,34 @@ func _has_nearby_player_projectile() -> bool:
 		if global_position.distance_squared_to(projectile_position) <= reset_radius * reset_radius:
 			return true
 	return false
+
+
+func _pick_curiosity_biased_position() -> Vector2:
+	if not _should_bias_wander_toward_player():
+		return Vector2.INF
+	var min_radius: float = player_personal_space_radius + body_radius + 12.0
+	var max_radius: float = maxf(_get_curiosity_target_radius(), min_radius + 1.0)
+	for _attempt in range(32):
+		var sample_radius: float = _rng.randf_range(min_radius, max_radius)
+		var candidate: Vector2 = _player_position + Vector2.RIGHT.rotated(_rng.randf_range(0.0, TAU)) * sample_radius
+		candidate = _find_clear_target(candidate)
+		if _position_is_clear(candidate) and _position_respects_player_space(candidate, min_radius):
+			return candidate
+	var fallback_direction: Vector2 = global_position - _player_position
+	if fallback_direction.length_squared() <= 0.001:
+		fallback_direction = _last_facing_direction
+	if fallback_direction.length_squared() <= 0.001:
+		fallback_direction = Vector2.RIGHT
+	var fallback: Vector2 = _find_clear_target(_player_position + fallback_direction.normalized() * max_radius)
+	if _position_is_clear(fallback) and _position_respects_player_space(fallback, min_radius):
+		return fallback
+	return Vector2.INF
+
+
+func _position_respects_player_space(position: Vector2, min_radius: float) -> bool:
+	if not _has_player_context:
+		return true
+	return position.distance_squared_to(_player_position) >= min_radius * min_radius
 
 
 func _pick_clear_random_position() -> Vector2:

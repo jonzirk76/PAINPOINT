@@ -382,8 +382,8 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("CatEntity should play sit-down transitions into seated idles and reverse them before standing.")
 	if not cat_source.contains("LAY_TRANSITION_UP") or not cat_source.contains("_update_lay_transition"):
 		failures.append("CatEntity should play lay-down transitions into laying idles and reverse them before standing.")
-	if not cat_source.contains("set_player_context") or not cat_source.contains("_get_curiosity_orbit_velocity"):
-		failures.append("CatEntity should build curiosity from player movement context and orbit closer as it grows.")
+	if not cat_source.contains("set_player_context") or not cat_source.contains("_pick_curiosity_biased_position"):
+		failures.append("CatEntity should build curiosity from player movement context and bias wander targets closer as it grows.")
 	if not cat_source.contains("set_player_projectile_points") or not cat_source.contains("shot_curiosity_reset_radius"):
 		failures.append("CatEntity should reset curiosity when player shots pass nearby.")
 	if not cat_source.contains("set_cat_texture"):
