@@ -384,6 +384,10 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("CatEntity should play lay-down transitions into laying idles and reverse them before standing.")
 	if not cat_source.contains("set_player_context") or not cat_source.contains("_pick_curiosity_biased_position"):
 		failures.append("CatEntity should build curiosity from player movement context and bias wander targets closer as it grows.")
+	if not cat_source.contains("_has_line_of_sight_to_player") or not cat_source.contains("curiosity_line_of_sight_margin"):
+		failures.append("CatEntity should only build curiosity while it has line of sight to the player.")
+	if not cat_source.contains("_build_path_to") or not cat_source.contains("path_grid_size"):
+		failures.append("CatEntity should path toward curiosity-biased wander targets when walls block direct movement.")
 	if not cat_source.contains("set_player_projectile_points") or not cat_source.contains("shot_curiosity_reset_radius"):
 		failures.append("CatEntity should reset curiosity when player shots pass nearby.")
 	if not cat_source.contains("set_cat_texture"):

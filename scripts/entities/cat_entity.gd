@@ -31,6 +31,7 @@ const SIT_TRANSITION_UP := "up"
 const LAY_TRANSITION_NONE := "none"
 const LAY_TRANSITION_DOWN := "down"
 const LAY_TRANSITION_UP := "up"
+const INVALID_PATH_CELL := Vector2i(-999999, -999999)
 
 ## Controls the cat's wall clearance and soft movement body size.
 @export var body_radius: float = 11.0
@@ -52,6 +53,8 @@ const LAY_TRANSITION_UP := "up"
 @export var curiosity_target_bias_threshold: float = 0.28
 ## Controls the farthest player distance where curiosity can build.
 @export var curiosity_awareness_radius: float = 560.0
+## Controls how much wall clearance the cat needs for curiosity line-of-sight checks.
+@export var curiosity_line_of_sight_margin: float = 6.0
 ## Controls the wander target radius when curiosity first starts influencing movement.
 @export var curiosity_outer_target_radius: float = 300.0
 ## Controls the wander target radius when curiosity is full.
@@ -64,6 +67,12 @@ const LAY_TRANSITION_UP := "up"
 @export var player_approach_dot_threshold: float = 0.55
 ## Controls how close player shots must pass before they reset the cat's curiosity.
 @export var shot_curiosity_reset_radius: float = 210.0
+## Controls the coarse grid size used when the cat needs a path around walls.
+@export var path_grid_size: float = 48.0
+## Controls the largest coarse path search before the cat falls back to direct movement.
+@export var path_search_cell_limit: int = 6000
+## Controls how close the cat gets to a path waypoint before advancing to the next one.
+@export var path_waypoint_radius: float = 20.0
 ## Controls how often the cat chooses a fresh wander target.
 @export var wander_retarget_seconds: float = 2.4
 ## Controls how likely the cat is to pause instead of immediately choosing another wander target.
@@ -100,6 +109,7 @@ var _sprite: Sprite2D = null
 var _cat_texture: Texture2D = DEFAULT_CAT_TEXTURE
 var _rng := RandomNumberGenerator.new()
 var _target_position: Vector2 = Vector2.INF
+var _path_points: Array[Vector2] = []
 var _danger_points: Array[Dictionary] = []
 var _roam_bounds: Rect2 = Rect2()
 var _has_roam_bounds: bool = false
@@ -134,6 +144,7 @@ func initialize(spawn_position: Vector2, movement_seed: int = 0) -> void:
 	_rng.seed = max(movement_seed, 1)
 	global_position = spawn_position
 	_target_position = spawn_position
+	_path_points.clear()
 	_retarget_remaining = 0.0
 	_idle_remaining = 0.0
 	_animation_time = 0.0
@@ -212,7 +223,7 @@ func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: A
 			playable_rects.append(playable_rect)
 	global_position = _constrain_to_playable(global_position)
 	if _target_position != Vector2.INF:
-		_target_position = _constrain_to_playable(_target_position)
+		_set_target_position(_constrain_to_playable(_target_position))
 
 
 func set_roam_bounds(bounds: Rect2) -> void:
@@ -227,6 +238,29 @@ func set_danger_points(points: Array) -> void:
 	for point in points:
 		if point is Dictionary and point.has("position"):
 			_danger_points.append(Dictionary(point))
+
+
+func _set_target_position(position: Vector2, rebuild_path: bool = true) -> void:
+	_target_position = position
+	_path_points.clear()
+	if rebuild_path and position != Vector2.INF:
+		_path_points = _build_path_to(position)
+
+
+func _get_current_movement_target() -> Vector2:
+	if _target_position == Vector2.INF:
+		return Vector2.INF
+	_discard_reached_path_points()
+	if not _path_points.is_empty():
+		return _path_points[0]
+	return _target_position
+
+
+func _discard_reached_path_points() -> void:
+	var reach_radius: float = maxf(path_waypoint_radius, body_radius + 2.0)
+	var reach_distance_squared: float = reach_radius * reach_radius
+	while not _path_points.is_empty() and global_position.distance_squared_to(_path_points[0]) <= reach_distance_squared:
+		_path_points.pop_front()
 
 
 func _physics_process(delta: float) -> void:
@@ -244,14 +278,18 @@ func _physics_process(delta: float) -> void:
 		var force_rest_exit: bool = combat_avoidance.length_squared() > 0.001
 		_set_idle_state(IDLE_STATE_STANDING, force_rest_exit)
 		if not _has_get_up_transition():
-			_target_position = _find_clear_target(global_position + avoidance.normalized() * flee_target_distance)
-			desired_velocity = (_target_position - global_position).normalized() * flee_speed
+			_set_target_position(_find_clear_target(global_position + avoidance.normalized() * flee_target_distance), false)
+			var flee_target: Vector2 = _get_current_movement_target()
+			if flee_target != Vector2.INF:
+				desired_velocity = (flee_target - global_position).normalized() * flee_speed
 	else:
 		_update_wander_target(delta)
 		if desired_velocity.length_squared() <= 0.001 and _idle_remaining <= 0.0 and _target_position != Vector2.INF:
-			var to_target: Vector2 = _target_position - global_position
-			if to_target.length_squared() > 16.0 * 16.0:
-				desired_velocity = to_target.normalized() * wander_speed
+			var movement_target: Vector2 = _get_current_movement_target()
+			if movement_target != Vector2.INF:
+				var to_target: Vector2 = movement_target - global_position
+				if to_target.length_squared() > 16.0 * 16.0:
+					desired_velocity = to_target.normalized() * wander_speed
 	velocity = velocity.move_toward(desired_velocity, acceleration * delta)
 	move_and_slide()
 	if get_slide_collision_count() > 0 and avoidance.length_squared() <= 0.001:
@@ -315,9 +353,10 @@ func _update_wander_target(delta: float) -> void:
 
 func _pick_next_wander_target() -> void:
 	_set_idle_state(IDLE_STATE_STANDING)
-	_target_position = _pick_curiosity_biased_position()
-	if _target_position == Vector2.INF:
-		_target_position = _pick_clear_random_position()
+	var picked_position: Vector2 = _pick_curiosity_biased_position()
+	if picked_position == Vector2.INF:
+		picked_position = _pick_clear_random_position()
+	_set_target_position(picked_position)
 	_retarget_remaining = maxf(wander_retarget_seconds * _rng.randf_range(0.65, 1.35), 0.2)
 
 
@@ -326,7 +365,7 @@ func _begin_idle_pause() -> void:
 	var idle_max: float = maxf(max_idle_seconds, idle_min + 0.1)
 	_idle_remaining = _rng.randf_range(idle_min, idle_max)
 	_retarget_remaining = 0.0
-	_target_position = global_position
+	_set_target_position(global_position, false)
 	velocity = Vector2.ZERO
 	_set_idle_state(_choose_idle_state())
 
@@ -497,6 +536,8 @@ func _can_build_curiosity(combat_near: bool) -> bool:
 		return false
 	if global_position.distance_squared_to(_player_position) > curiosity_awareness_radius * curiosity_awareness_radius:
 		return false
+	if not _has_line_of_sight_to_player():
+		return false
 	if _is_player_moving_toward_cat():
 		return false
 	return true
@@ -567,6 +608,230 @@ func _position_respects_player_space(position: Vector2, min_radius: float) -> bo
 	if not _has_player_context:
 		return true
 	return position.distance_squared_to(_player_position) >= min_radius * min_radius
+
+
+func _has_line_of_sight_to_player() -> bool:
+	if not _has_player_context:
+		return false
+	return _has_clear_segment(global_position, _player_position, maxf(curiosity_line_of_sight_margin, 0.0))
+
+
+func _build_path_to(destination: Vector2) -> Array[Vector2]:
+	var points: Array[Vector2] = []
+	if destination == Vector2.INF:
+		return points
+	if _has_clear_segment(global_position, destination, body_radius * 0.75):
+		points.append(destination)
+		return points
+	var bounds: Rect2 = _get_effective_roam_bounds()
+	var grid_size: float = maxf(path_grid_size, maxf(body_radius * 2.6, 24.0))
+	var cols: int = max(int(ceil(bounds.size.x / grid_size)), 1)
+	var rows: int = max(int(ceil(bounds.size.y / grid_size)), 1)
+	var start_cell: Vector2i = _nearest_clear_path_cell(_world_to_path_cell(global_position, bounds, grid_size, cols, rows), bounds, grid_size, cols, rows)
+	var goal_cell: Vector2i = _nearest_clear_path_cell(_world_to_path_cell(destination, bounds, grid_size, cols, rows), bounds, grid_size, cols, rows)
+	if start_cell == INVALID_PATH_CELL or goal_cell == INVALID_PATH_CELL:
+		points.append(destination)
+		return points
+	var path_cells: Array[Vector2i] = _find_path_cells(start_cell, goal_cell, bounds, grid_size, cols, rows)
+	if path_cells.is_empty():
+		points.append(destination)
+		return points
+	return _smooth_path_points(_path_cells_to_points(path_cells, bounds, grid_size, destination))
+
+
+func _world_to_path_cell(position: Vector2, bounds: Rect2, grid_size: float, cols: int, rows: int) -> Vector2i:
+	var local_position: Vector2 = position - bounds.position
+	return Vector2i(
+		clampi(int(floor(local_position.x / grid_size)), 0, cols - 1),
+		clampi(int(floor(local_position.y / grid_size)), 0, rows - 1)
+	)
+
+
+func _path_cell_center(bounds: Rect2, cell: Vector2i, grid_size: float) -> Vector2:
+	return bounds.position + Vector2(float(cell.x) + 0.5, float(cell.y) + 0.5) * grid_size
+
+
+func _nearest_clear_path_cell(origin_cell: Vector2i, bounds: Rect2, grid_size: float, cols: int, rows: int) -> Vector2i:
+	if _path_cell_is_clear(origin_cell, bounds, grid_size, cols, rows):
+		return origin_cell
+	var max_radius: int = max(cols, rows)
+	for radius: int in range(1, max_radius + 1):
+		for x: int in range(origin_cell.x - radius, origin_cell.x + radius + 1):
+			for y: int in range(origin_cell.y - radius, origin_cell.y + radius + 1):
+				if abs(x - origin_cell.x) != radius and abs(y - origin_cell.y) != radius:
+					continue
+				var candidate: Vector2i = Vector2i(x, y)
+				if _path_cell_is_clear(candidate, bounds, grid_size, cols, rows):
+					return candidate
+	return INVALID_PATH_CELL
+
+
+func _find_path_cells(start_cell: Vector2i, goal_cell: Vector2i, bounds: Rect2, grid_size: float, cols: int, rows: int) -> Array[Vector2i]:
+	var empty_path: Array[Vector2i] = []
+	if start_cell == goal_cell:
+		empty_path.append(start_cell)
+		return empty_path
+	var queue: Array[Vector2i] = [start_cell]
+	var queue_index: int = 0
+	var came_from: Dictionary = {}
+	came_from[_path_cell_key(start_cell)] = start_cell
+	var neighbor_offsets: Array[Vector2i] = [
+		Vector2i(1, 0),
+		Vector2i(-1, 0),
+		Vector2i(0, 1),
+		Vector2i(0, -1)
+	]
+	var searched_cells: int = 0
+	var search_limit: int = max(path_search_cell_limit, 1)
+	while queue_index < queue.size() and searched_cells < search_limit:
+		var current_cell: Vector2i = queue[queue_index]
+		queue_index += 1
+		searched_cells += 1
+		if current_cell == goal_cell:
+			return _reconstruct_path_cells(start_cell, goal_cell, came_from)
+		for offset: Vector2i in neighbor_offsets:
+			var next_cell: Vector2i = current_cell + offset
+			if not _path_cell_is_clear(next_cell, bounds, grid_size, cols, rows):
+				continue
+			var next_key: String = _path_cell_key(next_cell)
+			if came_from.has(next_key):
+				continue
+			came_from[next_key] = current_cell
+			queue.append(next_cell)
+	return empty_path
+
+
+func _reconstruct_path_cells(start_cell: Vector2i, goal_cell: Vector2i, came_from: Dictionary) -> Array[Vector2i]:
+	var path: Array[Vector2i] = []
+	var current_cell: Vector2i = goal_cell
+	while true:
+		path.push_front(current_cell)
+		if current_cell == start_cell:
+			return path
+		var previous_value: Variant = came_from.get(_path_cell_key(current_cell), INVALID_PATH_CELL)
+		if not previous_value is Vector2i:
+			path.clear()
+			return path
+		current_cell = previous_value
+		if current_cell == INVALID_PATH_CELL:
+			path.clear()
+			return path
+	return path
+
+
+func _path_cells_to_points(path_cells: Array[Vector2i], bounds: Rect2, grid_size: float, destination: Vector2) -> Array[Vector2]:
+	var points: Array[Vector2] = []
+	for index: int in range(1, path_cells.size()):
+		points.append(_path_cell_center(bounds, path_cells[index], grid_size))
+	points.append(destination)
+	return points
+
+
+func _smooth_path_points(points: Array[Vector2]) -> Array[Vector2]:
+	var smoothed: Array[Vector2] = []
+	var anchor: Vector2 = global_position
+	var index: int = 0
+	while index < points.size():
+		var best_index: int = index
+		var candidate_index: int = points.size() - 1
+		while candidate_index >= index:
+			if _has_clear_segment(anchor, points[candidate_index], body_radius * 0.75):
+				best_index = candidate_index
+				break
+			candidate_index -= 1
+		smoothed.append(points[best_index])
+		anchor = points[best_index]
+		index = best_index + 1
+	return smoothed
+
+
+func _path_cell_is_clear(cell: Vector2i, bounds: Rect2, grid_size: float, cols: int, rows: int) -> bool:
+	if cell.x < 0 or cell.y < 0 or cell.x >= cols or cell.y >= rows:
+		return false
+	return _position_is_clear(_path_cell_center(bounds, cell, grid_size))
+
+
+func _path_cell_key(cell: Vector2i) -> String:
+	return "%d:%d" % [cell.x, cell.y]
+
+
+func _has_clear_segment(from_position: Vector2, to_position: Vector2, margin: float) -> bool:
+	if from_position == Vector2.INF or to_position == Vector2.INF:
+		return false
+	if _segment_hits_blocker(from_position, to_position, _get_blocker_rects(), margin):
+		return false
+	return _segment_stays_in_playable_area(from_position, to_position)
+
+
+func _segment_hits_blocker(from_position: Vector2, to_position: Vector2, blockers: Array[Rect2], margin: float) -> bool:
+	for blocker: Rect2 in blockers:
+		if _segment_intersects_rect(from_position, to_position, blocker.grow(margin)):
+			return true
+	return false
+
+
+func _segment_stays_in_playable_area(from_position: Vector2, to_position: Vector2) -> bool:
+	var distance: float = from_position.distance_to(to_position)
+	var sample_step: float = maxf(minf(path_grid_size * 0.5, 24.0), 8.0)
+	var sample_count: int = max(int(ceil(distance / sample_step)), 1)
+	for index: int in range(sample_count + 1):
+		var sample: Vector2 = from_position.lerp(to_position, float(index) / float(sample_count))
+		if not _point_inside_playable_area(sample):
+			return false
+	return true
+
+
+func _point_inside_playable_area(position: Vector2) -> bool:
+	if not ArenaGeometry.contains_point(position, arena_bounds, arena_shape):
+		return false
+	if playable_rects.is_empty():
+		return true
+	for rect: Rect2 in playable_rects:
+		if _rect_has_point_inclusive(rect, position):
+			return true
+	return false
+
+
+func _rect_has_point_inclusive(rect: Rect2, position: Vector2) -> bool:
+	var rect_end: Vector2 = rect.position + rect.size
+	return position.x >= rect.position.x - 0.001 and position.x <= rect_end.x + 0.001 and position.y >= rect.position.y - 0.001 and position.y <= rect_end.y + 0.001
+
+
+func _segment_intersects_rect(from_position: Vector2, to_position: Vector2, rect: Rect2) -> bool:
+	if rect.has_point(from_position) or rect.has_point(to_position):
+		return true
+	var top_left: Vector2 = rect.position
+	var top_right: Vector2 = rect.position + Vector2(rect.size.x, 0.0)
+	var bottom_right: Vector2 = rect.position + rect.size
+	var bottom_left: Vector2 = rect.position + Vector2(0.0, rect.size.y)
+	if _segments_intersect(from_position, to_position, top_left, top_right):
+		return true
+	if _segments_intersect(from_position, to_position, top_right, bottom_right):
+		return true
+	if _segments_intersect(from_position, to_position, bottom_right, bottom_left):
+		return true
+	if _segments_intersect(from_position, to_position, bottom_left, top_left):
+		return true
+	return false
+
+
+func _segments_intersect(a: Vector2, b: Vector2, c: Vector2, d: Vector2) -> bool:
+	var r: Vector2 = b - a
+	var s: Vector2 = d - c
+	var denominator: float = r.cross(s)
+	var c_to_a: Vector2 = c - a
+	if abs(denominator) <= 0.001:
+		if abs(c_to_a.cross(r)) > 0.001:
+			return false
+		var use_x: bool = abs(r.x) >= abs(r.y)
+		var a0: float = a.x if use_x else a.y
+		var b0: float = b.x if use_x else b.y
+		var c0: float = c.x if use_x else c.y
+		var d0: float = d.x if use_x else d.y
+		return max(min(a0, b0), min(c0, d0)) <= min(max(a0, b0), max(c0, d0))
+	var t: float = c_to_a.cross(s) / denominator
+	var u: float = c_to_a.cross(r) / denominator
+	return t >= 0.0 and t <= 1.0 and u >= 0.0 and u <= 1.0
 
 
 func _pick_clear_random_position() -> Vector2:
