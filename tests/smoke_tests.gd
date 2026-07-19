@@ -404,6 +404,8 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("CatEntity should only build curiosity while it has line of sight to the player.")
 	if not cat_source.contains("curiosity_line_of_sight_check_seconds") or not cat_source.contains("_has_cached_line_of_sight_to_player") or not cat_source.contains("_blocker_rects"):
 		failures.append("CatEntity should cache expensive line-of-sight and blocker checks during curiosity updates.")
+	if not cat_source.contains("large_roam_area_threshold") or not cat_source.contains("_constrain_to_playable_if_needed") or not cat_source.contains("_get_effective_path_search_cell_limit"):
+		failures.append("CatEntity should use cheaper movement safety and pathing on larger cleared-floor roam bounds.")
 	if not cat_source.contains("_build_path_to") or not cat_source.contains("path_grid_size"):
 		failures.append("CatEntity should path toward curiosity-biased wander targets when walls block direct movement.")
 	if not cat_source.contains("set_player_projectile_points") or not cat_source.contains("shot_curiosity_reset_radius"):
@@ -427,6 +429,8 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("FaunaManager should expose active cat state for cat-room debug logs.")
 	if not manager_source.contains("set_cat_activity_bounds") or not manager_source.contains("_cat_is_inside_activity_bounds") or not manager_source.contains("_sync_cat_simulation_state"):
 		failures.append("FaunaManager should pause cats outside current dungeon activity bounds.")
+	if not manager_source.contains("_filter_rects_for_cat_activity") or not manager_source.contains("_get_cat_playable_rects"):
+		failures.append("FaunaManager should filter full-floor geometry before syncing active cats.")
 	var projectile_manager_source := _read_text("res://scripts/managers/projectile_manager.gd")
 	if not projectile_manager_source.contains("get_player_projectile_positions"):
 		failures.append("ProjectileManager should expose active player projectile positions for background fauna awareness.")
@@ -457,6 +461,9 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("Peaceful cat test room should enable cat spawning without combat spawners.")
 	var dungeon = load("res://scripts/managers/dungeon_manager.gd").new()
 	dungeon.reset_run(1, 1907)
+	var dungeon_source := _read_text("res://scripts/managers/dungeon_manager.gd")
+	if not dungeon_source.contains("CAT_START_ROOM_SPAWN_CHANCE") or not dungeon_source.contains("floor_cat_room_id = \"start\""):
+		failures.append("DungeonManager should usually place generated cats in the intro room for debugging.")
 	var cat_info: Dictionary = dungeon.get_floor_cat_spawn_info()
 	if not bool(cat_info.get("ok", false)):
 		failures.append("DungeonManager should choose one cat spawn room per floor.")

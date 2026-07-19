@@ -39,6 +39,7 @@ const DIRECTION_OFFSETS := {
 }
 
 const CARDINAL_DIRECTIONS := ["north", "east", "south", "west"]
+const CAT_START_ROOM_SPAWN_CHANCE := 0.85
 
 const COMBAT_PIECES := [
 	CELL_PIECE,
@@ -1376,6 +1377,11 @@ func _generate_room_interiors() -> void:
 
 
 func _assign_floor_cat_spawn(rng: RandomNumberGenerator) -> void:
+	if _rooms.has("start") and rng.randf() < CAT_START_ROOM_SPAWN_CHANCE:
+		floor_cat_room_id = "start"
+		_floor_cat_room_position = _pick_floor_cat_room_position(floor_cat_room_id, rng)
+		_floor_cat_seed = abs(("%d:%d:%s:cat" % [floor_generation_seed, floor_number, floor_cat_room_id]).hash()) + 1
+		return
 	var candidates: Array[String] = []
 	for room_id in _room_order:
 		var room_kind := _get_room_kind(room_id)

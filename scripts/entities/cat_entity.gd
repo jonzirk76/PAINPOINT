@@ -92,6 +92,14 @@ const INVALID_PATH_CELL := Vector2i(-999999, -999999)
 @export var path_grid_size: float = 48.0
 ## Controls the largest coarse path search before the cat falls back to direct movement.
 @export var path_search_cell_limit: int = 6000
+## Controls when larger cleared-floor roam bounds switch the cat to cheaper pathing.
+@export var large_roam_area_threshold: float = 1400000.0
+## Controls how much coarser pathfinding gets on larger cleared-floor roam bounds.
+@export var large_roam_path_grid_multiplier: float = 1.75
+## Controls the largest large-floor path search before falling back to direct movement.
+@export var large_roam_path_search_cell_limit: int = 1400
+## Controls how much longer wandering targets last on larger cleared-floor roam bounds.
+@export var large_roam_wander_retarget_multiplier: float = 1.8
 ## Controls how close the cat gets to a path waypoint before advancing to the next one.
 @export var path_waypoint_radius: float = 20.0
 ## Controls how often the cat chooses a fresh wander target.
@@ -304,9 +312,9 @@ func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: A
 		if playable_rect is Rect2:
 			playable_rects.append(playable_rect)
 	_rebuild_blocker_rects()
-	global_position = _constrain_to_playable(global_position)
+	global_position = _constrain_to_playable_if_needed(global_position)
 	if _target_position != Vector2.INF:
-		_set_target_position(_constrain_to_playable(_target_position))
+		_set_target_position(_constrain_to_playable_if_needed(_target_position))
 
 
 func set_roam_bounds(bounds: Rect2) -> void:
@@ -369,7 +377,7 @@ func _physics_process(delta: float) -> void:
 		_movement_state_label = "jumping"
 		velocity = Vector2.ZERO
 		_update_startle_jump(delta)
-		global_position = _constrain_to_playable(global_position)
+		global_position = _constrain_to_playable_if_needed(global_position)
 		_update_visual_state(delta)
 		return
 	if _is_fleeing:
@@ -386,7 +394,7 @@ func _physics_process(delta: float) -> void:
 			_movement_state_label = "jumping"
 			velocity = Vector2.ZERO
 			_update_startle_jump(delta)
-			global_position = _constrain_to_playable(global_position)
+			global_position = _constrain_to_playable_if_needed(global_position)
 			_update_visual_state(delta)
 			return
 		if not _has_get_up_transition():
@@ -428,7 +436,7 @@ func _physics_process(delta: float) -> void:
 			_pick_next_wander_target()
 		elif _is_fleeing:
 			_flee_retarget_remaining = 0.0
-	global_position = _constrain_to_playable(global_position)
+	global_position = _constrain_to_playable_if_needed(global_position)
 	_update_visual_state(delta)
 
 
@@ -491,7 +499,10 @@ func _pick_next_wander_target() -> void:
 	if picked_position == Vector2.INF:
 		picked_position = _pick_clear_random_position()
 	_set_target_position(picked_position)
-	_retarget_remaining = maxf(wander_retarget_seconds * _rng.randf_range(0.65, 1.35), 0.2)
+	var retarget_seconds: float = wander_retarget_seconds
+	if _uses_large_roam_cost_controls():
+		retarget_seconds *= maxf(large_roam_wander_retarget_multiplier, 1.0)
+	_retarget_remaining = maxf(retarget_seconds * _rng.randf_range(0.65, 1.35), 0.2)
 
 
 func _begin_idle_pause() -> void:
@@ -668,7 +679,7 @@ func _update_startle_jump(delta: float) -> void:
 
 
 func _finish_startle_jump() -> void:
-	global_position = _constrain_to_playable(_startle_jump_land_position)
+	global_position = _constrain_to_playable_if_needed(_startle_jump_land_position)
 	_motion_state = MOTION_STATE_GROUNDED
 	_startle_jump_elapsed = 0.0
 	_startle_jump_cooldown_remaining = maxf(startle_retrigger_cooldown, 0.0)
@@ -1102,7 +1113,7 @@ func _build_path_to(destination: Vector2) -> Array[Vector2]:
 		points.append(destination)
 		return points
 	var bounds: Rect2 = _get_effective_roam_bounds()
-	var grid_size: float = maxf(path_grid_size, maxf(body_radius * 2.6, 24.0))
+	var grid_size: float = _get_effective_path_grid_size(bounds)
 	var cols: int = max(int(ceil(bounds.size.x / grid_size)), 1)
 	var rows: int = max(int(ceil(bounds.size.y / grid_size)), 1)
 	var start_cell: Vector2i = _nearest_clear_path_cell(_world_to_path_cell(global_position, bounds, grid_size, cols, rows), bounds, grid_size, cols, rows)
@@ -1110,7 +1121,7 @@ func _build_path_to(destination: Vector2) -> Array[Vector2]:
 	if start_cell == INVALID_PATH_CELL or goal_cell == INVALID_PATH_CELL:
 		points.append(destination)
 		return points
-	var path_cells: Array[Vector2i] = _find_path_cells(start_cell, goal_cell, bounds, grid_size, cols, rows)
+	var path_cells: Array[Vector2i] = _find_path_cells(start_cell, goal_cell, bounds, grid_size, cols, rows, _get_effective_path_search_cell_limit(bounds))
 	if path_cells.is_empty():
 		points.append(destination)
 		return points
@@ -1144,7 +1155,7 @@ func _nearest_clear_path_cell(origin_cell: Vector2i, bounds: Rect2, grid_size: f
 	return INVALID_PATH_CELL
 
 
-func _find_path_cells(start_cell: Vector2i, goal_cell: Vector2i, bounds: Rect2, grid_size: float, cols: int, rows: int) -> Array[Vector2i]:
+func _find_path_cells(start_cell: Vector2i, goal_cell: Vector2i, bounds: Rect2, grid_size: float, cols: int, rows: int, search_cell_limit: int) -> Array[Vector2i]:
 	var empty_path: Array[Vector2i] = []
 	if start_cell == goal_cell:
 		empty_path.append(start_cell)
@@ -1160,7 +1171,7 @@ func _find_path_cells(start_cell: Vector2i, goal_cell: Vector2i, bounds: Rect2, 
 		Vector2i(0, -1)
 	]
 	var searched_cells: int = 0
-	var search_limit: int = max(path_search_cell_limit, 1)
+	var search_limit: int = max(search_cell_limit, 1)
 	while queue_index < queue.size() and searched_cells < search_limit:
 		var current_cell: Vector2i = queue[queue_index]
 		queue_index += 1
@@ -1233,6 +1244,26 @@ func _path_cell_key(cell: Vector2i) -> String:
 	return "%d:%d" % [cell.x, cell.y]
 
 
+func _get_effective_path_grid_size(bounds: Rect2) -> float:
+	var grid_size: float = maxf(path_grid_size, maxf(body_radius * 2.6, 24.0))
+	if _uses_large_roam_cost_controls(bounds):
+		grid_size *= maxf(large_roam_path_grid_multiplier, 1.0)
+	return grid_size
+
+
+func _get_effective_path_search_cell_limit(bounds: Rect2) -> int:
+	if _uses_large_roam_cost_controls(bounds):
+		return max(large_roam_path_search_cell_limit, 1)
+	return max(path_search_cell_limit, 1)
+
+
+func _uses_large_roam_cost_controls(bounds: Rect2 = Rect2()) -> bool:
+	var checked_bounds: Rect2 = bounds
+	if checked_bounds.size == Vector2.ZERO:
+		checked_bounds = _get_effective_roam_bounds()
+	return checked_bounds.size.x * checked_bounds.size.y >= maxf(large_roam_area_threshold, 1.0)
+
+
 func _has_clear_segment(from_position: Vector2, to_position: Vector2, margin: float) -> bool:
 	if from_position == Vector2.INF or to_position == Vector2.INF:
 		return false
@@ -1250,7 +1281,7 @@ func _segment_hits_blocker(from_position: Vector2, to_position: Vector2, blocker
 
 func _segment_stays_in_playable_area(from_position: Vector2, to_position: Vector2) -> bool:
 	var distance: float = from_position.distance_to(to_position)
-	var sample_step: float = maxf(minf(path_grid_size * 0.5, 24.0), 8.0)
+	var sample_step: float = maxf(minf(_get_effective_path_grid_size(_get_effective_roam_bounds()) * 0.5, 32.0), 8.0)
 	var sample_count: int = max(int(ceil(distance / sample_step)), 1)
 	for index: int in range(sample_count + 1):
 		var sample: Vector2 = from_position.lerp(to_position, float(index) / float(sample_count))
@@ -1260,14 +1291,12 @@ func _segment_stays_in_playable_area(from_position: Vector2, to_position: Vector
 
 
 func _point_inside_playable_area(position: Vector2) -> bool:
-	if not ArenaGeometry.contains_point(position, arena_bounds, arena_shape):
+	if not playable_rects.is_empty():
+		for rect: Rect2 in playable_rects:
+			if _rect_has_point_inclusive(rect, position):
+				return true
 		return false
-	if playable_rects.is_empty():
-		return true
-	for rect: Rect2 in playable_rects:
-		if _rect_has_point_inclusive(rect, position):
-			return true
-	return false
+	return ArenaGeometry.contains_point(position, arena_bounds, arena_shape)
 
 
 func _rect_has_point_inclusive(rect: Rect2, position: Vector2) -> bool:
@@ -1348,7 +1377,7 @@ func _find_clear_target(preferred_position: Vector2) -> Vector2:
 func _position_is_clear(position: Vector2) -> bool:
 	if not _position_inside_roam_bounds(position):
 		return false
-	if position.distance_squared_to(_constrain_to_playable(position)) > 1.0:
+	if not _point_inside_playable_area(position):
 		return false
 	for blocker in _get_blocker_rects():
 		if blocker.grow(body_radius + 4.0).has_point(position):
@@ -1368,6 +1397,12 @@ func _rebuild_blocker_rects() -> void:
 
 func _constrain_to_playable(position: Vector2) -> Vector2:
 	return ArenaGeometry.constrain_point_to_playable_regions(position, arena_bounds, arena_shape, playable_rects, _get_blocker_rects(), body_radius)
+
+
+func _constrain_to_playable_if_needed(position: Vector2) -> Vector2:
+	if _position_is_clear(position):
+		return position
+	return _constrain_to_playable(position)
 
 
 func _get_effective_roam_bounds() -> Rect2:

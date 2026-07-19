@@ -133,7 +133,9 @@ func set_dynamic_wall_rects(extra_wall_rects: Array[Rect2]) -> void:
 
 func set_roam_bounds(bounds: Rect2) -> void:
 	_roam_bounds = bounds
-	_sync_cat_simulation_state()
+	if _has_cat() and _cat_should_sync_geometry() and _cat.has_method("set_roam_bounds"):
+		_cat.set_roam_bounds(_roam_bounds)
+	_apply_cat_enabled_state()
 
 
 func set_cat_activity_bounds(bounds: Rect2) -> void:
@@ -211,7 +213,7 @@ func _sync_cat_simulation_state() -> void:
 	if not _cat_should_sync_geometry():
 		_apply_cat_enabled_state()
 		return
-	_cat.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
+	_cat.set_arena_definition(_arena_bounds, _arena_shape, _get_cat_wall_rects(), _get_cat_void_rects(), _get_cat_playable_rects())
 	if _cat.has_method("set_roam_bounds"):
 		_cat.set_roam_bounds(_roam_bounds)
 	_apply_cat_enabled_state()
@@ -238,6 +240,29 @@ func _cat_should_sync_geometry() -> bool:
 	if not _has_cat_activity_bounds:
 		return true
 	return _cat_is_inside_activity_bounds()
+
+
+func _get_cat_wall_rects() -> Array[Rect2]:
+	return _filter_rects_for_cat_activity(_wall_rects)
+
+
+func _get_cat_void_rects() -> Array[Rect2]:
+	return _filter_rects_for_cat_activity(_void_rects)
+
+
+func _get_cat_playable_rects() -> Array[Rect2]:
+	return _filter_rects_for_cat_activity(_playable_rects)
+
+
+func _filter_rects_for_cat_activity(rects: Array[Rect2]) -> Array[Rect2]:
+	if not _has_cat_activity_bounds:
+		return rects.duplicate()
+	var filtered: Array[Rect2] = []
+	var filter_bounds: Rect2 = _cat_activity_bounds.grow(maxf(cat_activity_bounds_margin, 0.0) + 96.0)
+	for rect: Rect2 in rects:
+		if rect.intersects(filter_bounds, true):
+			filtered.append(rect)
+	return filtered
 
 
 func _pick_cat_texture() -> Texture2D:
