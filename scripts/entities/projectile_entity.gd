@@ -304,6 +304,9 @@ func _draw() -> void:
 				"water":
 					fill_color = Color(0.18, 0.62, 1.0)
 					streak_color = Color(0.75, 0.95, 1.0)
+				"lightning":
+					fill_color = Color(0.74, 0.48, 1.0)
+					streak_color = Color(0.72, 1.0, 1.0)
 				"super":
 					fill_color = Color(1.0, 0.86, 0.18)
 					streak_color = Color(0.28, 1.0, 1.0)

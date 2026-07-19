@@ -122,8 +122,9 @@ Overdrive:
 2. `GameOrchestrator` calls `UpgradeManager.set_overdrive_active(...)`.
 3. While held and ammo is available, `UpgradeManager.get_modifiers()` applies stackable overdrive effects. With no effect stacks, overdrive doubles regular projectile size.
 4. `GameOrchestrator` calls `UpgradeManager.consume_overdrive_shot()` after routing an overdrive shot; each overdrive shot spends one shared ammo.
-5. Fire upgrades stamp explosion fields onto damage packets; `CombatManager` emits `explosion_requested`, and `GameOrchestrator` routes AoE damage plus `EffectsManager.play_explosion(...)`.
-6. Water upgrades stamp projectile growth and pierce onto damage packets; `ProjectileEntity` grows its drawn/collision radius while traveling.
+5. Fire upgrades stamp explosion and burn fields onto damage packets; `CombatManager` emits `explosion_requested`, and `GameOrchestrator` routes AoE damage plus `EffectsManager.play_explosion(...)`.
+6. Water upgrades stamp projectile growth, pierce, and slow fields onto damage packets; `ProjectileEntity` grows its drawn/collision radius while traveling, while hit enemies own their slow timer.
+7. Chain-lightning upgrades stamp chain and shock-charge fields onto damage packets. Repeated lightning hits on the same enemy deal bonus damage from the target's active charge stacks, while chain arcs remain visible through `EffectsManager`.
 
 Parry:
 
@@ -139,7 +140,7 @@ Combat reward drops:
 1. `EnemyManager.enemy_defeated` is routed by `GameOrchestrator` to `ItemManager.roll_enemy_drop(...)`.
 2. `ItemManager` rolls occasional small health pickups and much rarer shared overdrive ammo pickups, keeping parry as the primary overdrive ammo source.
 3. `ItemManager.pickup_collected` flows to `GameOrchestrator`, which routes heal pickups to `PlayerManager.apply_healing(...)` and upgrade pickups to `UpgradeManager.activate_pickup(...)`.
-4. Challenge room and floor-end rewards spawn three optional overdrive effect choices. Treasure rooms spawn three optional permanent stat choices, including overdrive capacity.
+4. Challenge room and floor-end rewards spawn three optional overdrive effect choices. Non-spread overdrive effects can also raise the shared overdrive capacity. Treasure rooms spawn three optional permanent stat choices, including overdrive capacity.
 5. `UpgradeManager` stacks run-long attributes for fire-rate cooldown reduction, movement speed, bullet damage, projectile size, and overdrive capacity.
 6. `SpawnerManager.spawner_destroyed` is routed by `GameOrchestrator` to `ItemManager.drop_spawner_reward(...)`, which always drops one reward: usually an overdrive ammo cache, with a chance for a full heal instead.
 

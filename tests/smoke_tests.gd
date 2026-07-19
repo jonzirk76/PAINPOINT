@@ -1047,12 +1047,18 @@ func _test_upgrade_modifiers_and_expiry(failures: Array[String]) -> void:
 		failures.append("Permanent projectile-size upgrade did not increase projectile size.")
 	if float(modifiers["explosion_radius"]) <= 0.0:
 		failures.append("Fire Burst did not add explosion radius.")
+	if float(modifiers["burn_damage_per_second"]) <= 0.0 or float(modifiers["burn_duration_seconds"]) <= 0.0:
+		failures.append("Fire Burst should add a burn status to overdrive hits.")
 	if float(modifiers["projectile_growth_per_second"]) <= 0.0:
 		failures.append("Water Swell did not add projectile growth.")
+	if float(modifiers["slow_multiplier"]) >= 1.0 or float(modifiers["slow_duration_seconds"]) <= 0.0:
+		failures.append("Water Swell should add a slow status to overdrive hits.")
 	if manager.get_permanent_stats().size() != 5:
 		failures.append("Permanent upgrade stats were not tracked.")
-	if manager.get_overdrive_max_ammo() != 50:
-		failures.append("Overdrive capacity treasure upgrade should add 10 max ammo.")
+	if manager.get_overdrive_max_ammo() != 64:
+		failures.append("Overdrive effect and treasure capacity upgrades should both add max ammo.")
+	if manager.get_overdrive_ammo() != 63:
+		failures.append("Capacity-bearing overdrive rewards should immediately refill their added shared ammo capacity.")
 	if fire_rate.max_stacks < 16 or move_speed.max_stacks < 16 or damage.max_stacks < 14 or size.max_stacks < 14:
 		failures.append("Permanent upgrade stack ceilings should be higher for longer dungeon runs.")
 	manager.set_enabled(true)
@@ -1074,16 +1080,23 @@ func _test_ammo_type_balance(failures: Array[String]) -> void:
 	var water = load("res://resources/upgrades/water_swell.tres")
 	var manager = load("res://scripts/managers/upgrade_manager.gd").new()
 	var projectile_manager = load("res://scripts/managers/projectile_manager.gd").new()
-	if int(spread.max_ammo) != 0 or int(pierce.max_ammo) != 0 or int(chain.max_ammo) != 0 or int(fire.max_ammo) != 0 or int(water.max_ammo) != 0:
-		failures.append("Overdrive effect resources should not carry individual ammo pools.")
+	if int(spread.max_ammo) != 0:
+		failures.append("Spread Shot should not increase shared overdrive capacity.")
+	if int(pierce.max_ammo) < 5 or int(chain.max_ammo) <= 0 or int(fire.max_ammo) <= 0 or int(water.max_ammo) <= 0:
+		failures.append("Non-spread overdrive rewards should increase shared overdrive capacity.")
 	manager.activate_upgrade(pierce)
 	manager.set_overdrive_active(true)
 	var modifiers: Dictionary = manager.get_modifiers()
 	if float(modifiers["damage_multiplier"]) < 1.1:
 		failures.append("Piercing overdrive should have a small stack-based damage fallback.")
 	var packet = projectile_manager._create_damage_packet(modifiers, Vector2.ZERO, Vector2.RIGHT)
-	if packet.damage < 1 or packet.pierce_count < 1:
+	if packet.damage < 1 or packet.pierce_count < 2:
 		failures.append("Piercing overdrive should create a piercing projectile while held.")
+	manager.activate_upgrade(chain)
+	modifiers = manager.get_modifiers()
+	packet = projectile_manager._create_damage_packet(modifiers, Vector2.ZERO, Vector2.RIGHT)
+	if packet.chain_count < 1 or packet.lightning_charge_damage_bonus <= 0.0 or packet.lightning_charge_max_stacks <= 0:
+		failures.append("Chain Lightning should stamp chain and repeat-hit charge metadata.")
 	manager.activate_upgrade(spread)
 	for _index in range(10):
 		manager.consume_overdrive_shot()
