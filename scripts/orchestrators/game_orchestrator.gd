@@ -394,7 +394,8 @@ func _initialize_managers() -> void:
 		"fauna_layer": $World/FaunaLayer,
 		"player_position_provider": Callable(player_manager, "get_player_position"),
 		"enemy_positions_provider": Callable(enemy_manager, "get_enemy_positions"),
-		"spawner_positions_provider": Callable(spawner_manager, "get_spawner_positions")
+		"spawner_positions_provider": Callable(spawner_manager, "get_spawner_positions"),
+		"player_projectile_positions_provider": Callable(projectile_manager, "get_player_projectile_positions")
 	})
 	upgrade_manager.initialize({})
 	combat_manager.initialize({})

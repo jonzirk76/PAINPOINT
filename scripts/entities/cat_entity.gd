@@ -28,6 +28,9 @@ const IDLE_STATE_LAYING := "laying"
 const SIT_TRANSITION_NONE := "none"
 const SIT_TRANSITION_DOWN := "down"
 const SIT_TRANSITION_UP := "up"
+const LAY_TRANSITION_NONE := "none"
+const LAY_TRANSITION_DOWN := "down"
+const LAY_TRANSITION_UP := "up"
 
 ## Controls the cat's wall clearance and soft movement body size.
 @export var body_radius: float = 11.0
@@ -41,6 +44,28 @@ const SIT_TRANSITION_UP := "up"
 @export var combat_avoidance_radius: float = 260.0
 ## Controls how far the cat tries to move when choosing a flee target.
 @export var flee_target_distance: float = 220.0
+## Controls how quickly curiosity rises while the player is nearby but not moving toward the cat.
+@export var curiosity_build_rate: float = 0.075
+## Controls how quickly curiosity falls while the player approaches or combat is nearby.
+@export var curiosity_decay_rate: float = 0.22
+## Controls how curious the cat must be before it starts orbiting around the player.
+@export var curiosity_orbit_threshold: float = 0.28
+## Controls the farthest player distance where curiosity can build.
+@export var curiosity_awareness_radius: float = 560.0
+## Controls the orbit radius when curiosity first starts influencing movement.
+@export var curiosity_outer_orbit_radius: float = 285.0
+## Controls the orbit radius when curiosity is full.
+@export var curiosity_inner_orbit_radius: float = 120.0
+## Controls sideways orbit speed around the player while curious.
+@export var curiosity_orbit_speed: float = 56.0
+## Controls the closest distance the cat tolerates before backing away from the player.
+@export var player_personal_space_radius: float = 82.0
+## Controls how fast the player must move toward the cat before curiosity decays.
+@export var player_approach_speed_threshold: float = 55.0
+## Controls how directly the player must move toward the cat before it counts as approaching.
+@export var player_approach_dot_threshold: float = 0.55
+## Controls how close player shots must pass before they reset the cat's curiosity.
+@export var shot_curiosity_reset_radius: float = 210.0
 ## Controls how often the cat chooses a fresh wander target.
 @export var wander_retarget_seconds: float = 2.4
 ## Controls how likely the cat is to pause instead of immediately choosing another wander target.
@@ -53,15 +78,15 @@ const SIT_TRANSITION_UP := "up"
 @export var standing_idle_weight: float = 0.35
 ## Controls how often an idle cat uses the sit-down animation.
 @export var sitting_idle_weight: float = 0.32
-## Controls how often an idle cat glances toward different directions.
+## Controls how often an idle cat repeats the seated look-around motion.
 @export var glancing_idle_weight: float = 0.14
 ## Controls how often an idle cat scans in place through the look-around animation.
 @export var scanning_idle_weight: float = 0.09
 ## Controls how often an idle cat uses the lay-down animation.
 @export var laying_idle_weight: float = 0.10
-## Controls the shortest time before a glancing idle cat looks toward another direction.
+## Controls the shortest time before a glancing idle cat restarts the look-around motion.
 @export var min_glance_seconds: float = 0.35
-## Controls the longest time before a glancing idle cat looks toward another direction.
+## Controls the longest time before a glancing idle cat restarts the look-around motion.
 @export var max_glance_seconds: float = 0.85
 ## Controls the visual sprite scale applied to 32x32 sheet frames.
 @export var sprite_scale: float = 1.45
@@ -85,11 +110,19 @@ var _idle_remaining: float = 0.0
 var _animation_time: float = 0.0
 var _last_facing_direction: Vector2 = Vector2.DOWN
 var _is_fleeing: bool = false
+var _curiosity: float = 0.0
+var _player_position: Vector2 = Vector2.INF
+var _player_velocity: Vector2 = Vector2.ZERO
+var _player_avoidance_radius: float = 150.0
+var _has_player_context: bool = false
+var _player_projectile_points: Array[Vector2] = []
+var _orbit_direction_sign: float = 1.0
 var _idle_state: String = IDLE_STATE_STANDING
 var _idle_direction_index: int = 0
 var _glance_retarget_remaining: float = 0.0
 var _look_scan_reversed: bool = false
 var _sit_transition_mode: String = SIT_TRANSITION_NONE
+var _lay_transition_mode: String = LAY_TRANSITION_NONE
 
 
 func _ready() -> void:
@@ -109,10 +142,17 @@ func initialize(spawn_position: Vector2, movement_seed: int = 0) -> void:
 	_animation_time = 0.0
 	_last_facing_direction = Vector2.DOWN
 	_is_fleeing = false
+	_curiosity = 0.0
+	_player_position = Vector2.INF
+	_player_velocity = Vector2.ZERO
+	_has_player_context = false
+	_player_projectile_points.clear()
+	_orbit_direction_sign = -1.0 if _rng.randi_range(0, 1) == 0 else 1.0
 	_idle_direction_index = _get_direction_index(_last_facing_direction)
 	_glance_retarget_remaining = 0.0
 	_look_scan_reversed = false
 	_sit_transition_mode = SIT_TRANSITION_NONE
+	_lay_transition_mode = LAY_TRANSITION_NONE
 	_set_idle_state(IDLE_STATE_STANDING)
 	_configure_collision_identity()
 	_ensure_sprite()
@@ -134,6 +174,29 @@ func set_cat_texture(texture: Texture2D) -> void:
 	_cat_texture = texture
 	_ensure_sprite()
 	_sprite.texture = _cat_texture
+
+
+func set_player_context(position: Vector2, velocity: Vector2, avoidance_radius: float) -> void:
+	if position == Vector2.INF:
+		_has_player_context = false
+		_player_position = Vector2.INF
+		_player_velocity = Vector2.ZERO
+		return
+	_has_player_context = true
+	_player_position = position
+	_player_velocity = velocity
+	_player_avoidance_radius = maxf(avoidance_radius, player_personal_space_radius + 1.0)
+
+
+func set_player_projectile_points(points: Array) -> void:
+	_player_projectile_points.clear()
+	for point in points:
+		if point is Vector2:
+			_player_projectile_points.append(point)
+
+
+func get_curiosity() -> float:
+	return _curiosity
 
 
 func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: Array = [], playable_regions: Array = []) -> void:
@@ -174,17 +237,29 @@ func _physics_process(delta: float) -> void:
 	if not enabled:
 		velocity = Vector2.ZERO
 		return
-	var avoidance: Vector2 = _get_combat_avoidance_vector()
+	var combat_avoidance: Vector2 = _get_combat_avoidance_vector()
+	var player_avoidance: Vector2 = _get_player_avoidance_vector()
+	var avoidance: Vector2 = combat_avoidance + player_avoidance
+	_update_curiosity(delta, combat_avoidance.length_squared() > 0.001)
 	var desired_velocity := Vector2.ZERO
 	_is_fleeing = avoidance.length_squared() > 0.001
 	if _is_fleeing:
 		_idle_remaining = 0.0
-		_set_idle_state(IDLE_STATE_STANDING, true)
-		_target_position = _find_clear_target(global_position + avoidance.normalized() * flee_target_distance)
-		desired_velocity = (_target_position - global_position).normalized() * flee_speed
+		var force_rest_exit: bool = combat_avoidance.length_squared() > 0.001
+		_set_idle_state(IDLE_STATE_STANDING, force_rest_exit)
+		if not _has_get_up_transition():
+			_target_position = _find_clear_target(global_position + avoidance.normalized() * flee_target_distance)
+			desired_velocity = (_target_position - global_position).normalized() * flee_speed
 	else:
-		_update_wander_target(delta)
-		if _idle_remaining <= 0.0 and _target_position != Vector2.INF:
+		if _should_orbit_player():
+			_idle_remaining = 0.0
+			_retarget_remaining = 0.0
+			_set_idle_state(IDLE_STATE_STANDING)
+			if not _has_rest_transition():
+				desired_velocity = _get_curiosity_orbit_velocity()
+		else:
+			_update_wander_target(delta)
+		if desired_velocity.length_squared() <= 0.001 and _idle_remaining <= 0.0 and _target_position != Vector2.INF:
 			var to_target: Vector2 = _target_position - global_position
 			if to_target.length_squared() > 16.0 * 16.0:
 				desired_velocity = to_target.normalized() * wander_speed
@@ -233,7 +308,7 @@ func _ensure_sprite() -> void:
 
 
 func _update_wander_target(delta: float) -> void:
-	if _sit_transition_mode == SIT_TRANSITION_UP:
+	if _has_get_up_transition():
 		return
 	if _idle_remaining > 0.0:
 		_idle_remaining = maxf(_idle_remaining - delta, 0.0)
@@ -302,12 +377,17 @@ func _set_idle_state(state: String, force: bool = false) -> void:
 		_glance_retarget_remaining = 0.0
 		_look_scan_reversed = false
 		return
+	if state == IDLE_STATE_STANDING and _idle_state == IDLE_STATE_LAYING and not force:
+		_lay_transition_mode = LAY_TRANSITION_UP
+		_animation_time = 0.0
+		return
 	_idle_state = state
 	_animation_time = 0.0
 	_idle_direction_index = _get_direction_index(_last_facing_direction)
 	_glance_retarget_remaining = 0.0
 	_look_scan_reversed = false
 	_sit_transition_mode = SIT_TRANSITION_DOWN if _is_seated_idle_state() else SIT_TRANSITION_NONE
+	_lay_transition_mode = LAY_TRANSITION_DOWN if _idle_state == IDLE_STATE_LAYING else LAY_TRANSITION_NONE
 	if _idle_state == IDLE_STATE_SCANNING:
 		_look_scan_reversed = _rng.randf() < 0.5
 
@@ -320,10 +400,12 @@ func _is_seated_idle_state() -> bool:
 	return _idle_state == IDLE_STATE_SITTING or _is_look_idle_state()
 
 
-func _pick_next_glance_direction() -> int:
-	var current_direction: int = wrapi(_idle_direction_index, 0, DIRECTION_COUNT)
-	var turn_steps: int = _rng.randi_range(1, DIRECTION_COUNT - 1)
-	return wrapi(current_direction + turn_steps, 0, DIRECTION_COUNT)
+func _has_rest_transition() -> bool:
+	return _sit_transition_mode != SIT_TRANSITION_NONE or _lay_transition_mode != LAY_TRANSITION_NONE
+
+
+func _has_get_up_transition() -> bool:
+	return _sit_transition_mode == SIT_TRANSITION_UP or _lay_transition_mode == LAY_TRANSITION_UP
 
 
 func _get_next_glance_seconds() -> float:
@@ -336,8 +418,7 @@ func _update_glancing_idle(delta: float) -> void:
 	_glance_retarget_remaining = maxf(_glance_retarget_remaining - delta, 0.0)
 	if _glance_retarget_remaining > 0.0:
 		return
-	_idle_direction_index = _pick_next_glance_direction()
-	_last_facing_direction = _get_direction_vector(_idle_direction_index)
+	_animation_time = 0.0
 	_glance_retarget_remaining = _get_next_glance_seconds()
 
 
@@ -349,8 +430,6 @@ func _update_sit_transition() -> void:
 		_sit_transition_mode = SIT_TRANSITION_NONE
 		_animation_time = 0.0
 		if _idle_state == IDLE_STATE_GLANCING:
-			_idle_direction_index = _pick_next_glance_direction()
-			_last_facing_direction = _get_direction_vector(_idle_direction_index)
 			_glance_retarget_remaining = _get_next_glance_seconds()
 	elif _sit_transition_mode == SIT_TRANSITION_UP:
 		_sit_transition_mode = SIT_TRANSITION_NONE
@@ -359,9 +438,25 @@ func _update_sit_transition() -> void:
 		_last_facing_direction = _get_direction_vector(_idle_direction_index)
 
 
+func _update_lay_transition() -> void:
+	if int(floor(_animation_time)) < LAY_FRAME_COUNT:
+		return
+	if _lay_transition_mode == LAY_TRANSITION_DOWN:
+		_lay_transition_mode = LAY_TRANSITION_NONE
+		_animation_time = 0.0
+	elif _lay_transition_mode == LAY_TRANSITION_UP:
+		_lay_transition_mode = LAY_TRANSITION_NONE
+		_idle_state = IDLE_STATE_STANDING
+		_animation_time = 0.0
+		_last_facing_direction = _get_direction_vector(_idle_direction_index)
+
+
 func _get_combat_avoidance_vector() -> Vector2:
 	var avoidance := Vector2.ZERO
 	for point_info in _danger_points:
+		var point_kind: String = String(point_info.get("kind", "combat"))
+		if point_kind == "player":
+			continue
 		var position: Vector2 = point_info.get("position", Vector2.INF)
 		if position == Vector2.INF:
 			continue
@@ -377,6 +472,100 @@ func _get_combat_avoidance_vector() -> Vector2:
 		var ratio: float = clamp(1.0 - distance / radius, 0.0, 1.0)
 		avoidance += to_cat.normalized() * ratio * ratio * weight
 	return avoidance
+
+
+func _get_player_avoidance_vector() -> Vector2:
+	if not _has_player_context:
+		return Vector2.ZERO
+	var to_cat: Vector2 = global_position - _player_position
+	var distance: float = to_cat.length()
+	if distance <= 0.001:
+		to_cat = Vector2.RIGHT.rotated(_rng.randf_range(0.0, TAU))
+		distance = 1.0
+	var active_radius: float = player_personal_space_radius
+	if _is_player_moving_toward_cat():
+		active_radius = maxf(_player_avoidance_radius, player_personal_space_radius)
+	if distance > active_radius:
+		return Vector2.ZERO
+	var ratio: float = clampf(1.0 - distance / active_radius, 0.0, 1.0)
+	return to_cat.normalized() * ratio * ratio * 0.82
+
+
+func _update_curiosity(delta: float, combat_near: bool) -> void:
+	if _has_nearby_player_projectile():
+		_curiosity = 0.0
+		return
+	if _can_build_curiosity(combat_near):
+		_curiosity = minf(1.0, _curiosity + maxf(curiosity_build_rate, 0.0) * delta)
+	else:
+		_curiosity = maxf(0.0, _curiosity - maxf(curiosity_decay_rate, 0.0) * delta)
+
+
+func _can_build_curiosity(combat_near: bool) -> bool:
+	if not _has_player_context or combat_near:
+		return false
+	if global_position.distance_squared_to(_player_position) > curiosity_awareness_radius * curiosity_awareness_radius:
+		return false
+	if _is_player_moving_toward_cat():
+		return false
+	return true
+
+
+func _should_orbit_player() -> bool:
+	if _curiosity < curiosity_orbit_threshold:
+		return false
+	if not _can_build_curiosity(false):
+		return false
+	return global_position.distance_squared_to(_player_position) > player_personal_space_radius * player_personal_space_radius
+
+
+func _get_curiosity_orbit_velocity() -> Vector2:
+	var threshold: float = clampf(curiosity_orbit_threshold, 0.0, 0.99)
+	var curiosity_ratio: float = clampf((_curiosity - threshold) / maxf(1.0 - threshold, 0.001), 0.0, 1.0)
+	var inner_radius: float = maxf(curiosity_inner_orbit_radius, player_personal_space_radius + body_radius + 6.0)
+	var outer_radius: float = maxf(curiosity_outer_orbit_radius, inner_radius + 1.0)
+	var orbit_radius: float = lerpf(outer_radius, inner_radius, curiosity_ratio)
+	var from_player: Vector2 = global_position - _player_position
+	var distance: float = from_player.length()
+	if distance <= 0.001:
+		from_player = _last_facing_direction
+		if from_player.length_squared() <= 0.001:
+			from_player = Vector2.RIGHT
+		distance = 1.0
+	var radial_direction: Vector2 = from_player.normalized()
+	var radial_error: float = distance - orbit_radius
+	var radial_speed: float = clampf(radial_error * 1.15, -wander_speed, wander_speed)
+	var radial_velocity: Vector2 = -radial_direction * radial_speed
+	var tangent_velocity: Vector2 = radial_direction.rotated(PI * 0.5) * _orbit_direction_sign * curiosity_orbit_speed * lerpf(0.35, 1.0, curiosity_ratio)
+	var desired_velocity: Vector2 = radial_velocity + tangent_velocity
+	var max_speed: float = maxf(wander_speed, 1.0)
+	if desired_velocity.length() > max_speed:
+		desired_velocity = desired_velocity.normalized() * max_speed
+	_target_position = Vector2.INF
+	return desired_velocity
+
+
+func _is_player_moving_toward_cat() -> bool:
+	if not _has_player_context:
+		return false
+	var approach_speed: float = maxf(player_approach_speed_threshold, 0.0)
+	if _player_velocity.length_squared() < approach_speed * approach_speed:
+		return false
+	var to_cat: Vector2 = global_position - _player_position
+	if to_cat.length_squared() <= 0.001:
+		return true
+	var approach_dot: float = _player_velocity.normalized().dot(to_cat.normalized())
+	return approach_dot >= clampf(player_approach_dot_threshold, -1.0, 1.0)
+
+
+func _has_nearby_player_projectile() -> bool:
+	var reset_radius: float = maxf(shot_curiosity_reset_radius, 0.0)
+	if reset_radius <= 0.0:
+		return false
+	for projectile_position: Vector2 in _player_projectile_points:
+		if global_position.distance_squared_to(projectile_position) <= reset_radius * reset_radius:
+			return true
+	return false
 
 
 func _pick_clear_random_position() -> Vector2:
@@ -467,6 +656,8 @@ func _update_visual_state(delta: float) -> void:
 		_animation_time += delta * animation_rate
 		if not moving and _sit_transition_mode != SIT_TRANSITION_NONE:
 			_update_sit_transition()
+		if not moving and _lay_transition_mode != LAY_TRANSITION_NONE:
+			_update_lay_transition()
 		queue_redraw()
 	_update_sprite_frame()
 
@@ -512,12 +703,12 @@ func _get_movement_frames(direction_index: int, running: bool) -> Array[Vector2i
 func _get_idle_frames(direction_index: int) -> Array[Vector2i]:
 	if _is_seated_idle_state() and _sit_transition_mode != SIT_TRANSITION_NONE:
 		return _get_clip_frames(direction_index, SIT_COLUMN_START, _get_sit_frame_count(direction_index))
+	if _idle_state == IDLE_STATE_LAYING:
+		return _get_clip_frames(direction_index, LAY_COLUMN_START, LAY_FRAME_COUNT)
 	if _idle_state == IDLE_STATE_SITTING:
 		return _get_clip_frames(direction_index, SIT_COLUMN_START, _get_sit_frame_count(direction_index))
 	if _idle_state == IDLE_STATE_GLANCING or _idle_state == IDLE_STATE_SCANNING:
 		return _get_clip_frames(direction_index, LOOK_COLUMN_START, LOOK_FRAME_COUNT)
-	if _idle_state == IDLE_STATE_LAYING:
-		return _get_clip_frames(direction_index, LAY_COLUMN_START, LAY_FRAME_COUNT)
 	return _get_clip_frames(direction_index, WALK_COLUMN_START, 1)
 
 
@@ -527,11 +718,18 @@ func _get_frame_index(frame_count: int, moving: bool) -> int:
 	if _sit_transition_mode == SIT_TRANSITION_UP:
 		var stand_up_frame_index: int = mini(int(floor(_animation_time)), frame_count - 1)
 		return frame_count - 1 - stand_up_frame_index
+	if _lay_transition_mode == LAY_TRANSITION_DOWN:
+		return mini(int(floor(_animation_time)), frame_count - 1)
+	if _lay_transition_mode == LAY_TRANSITION_UP:
+		var lay_up_frame_index: int = mini(int(floor(_animation_time)), frame_count - 1)
+		return frame_count - 1 - lay_up_frame_index
 	if moving or _idle_state == IDLE_STATE_GLANCING:
 		return int(floor(_animation_time)) % frame_count
 	if _idle_state == IDLE_STATE_SCANNING:
 		var scan_frame_index: int = mini(int(floor(_animation_time)), frame_count - 1)
 		return frame_count - 1 - scan_frame_index if _look_scan_reversed else scan_frame_index
+	if _idle_state == IDLE_STATE_SITTING or _idle_state == IDLE_STATE_LAYING:
+		return frame_count - 1
 	if _idle_state == IDLE_STATE_STANDING:
 		return 0
 	return mini(int(floor(_animation_time)), frame_count - 1)

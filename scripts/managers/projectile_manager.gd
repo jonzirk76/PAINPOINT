@@ -166,6 +166,17 @@ func absorb_hostile_projectiles(origin: Vector2, radius: float, perfect_radius: 
 	}
 
 
+func get_player_projectile_positions() -> Array[Vector2]:
+	var positions: Array[Vector2] = []
+	for projectile in _projectiles:
+		if projectile == null or not is_instance_valid(projectile):
+			continue
+		if String(projectile.projectile_team) != "player":
+			continue
+		positions.append(projectile.global_position)
+	return positions
+
+
 func _spawn_hostile_projectile(origin: Vector2, direction: Vector2, shot_config: Dictionary, shot_speed: float) -> void:
 	var packet = _create_hostile_damage_packet(shot_config, origin, direction)
 	var projectile = projectile_scene.instantiate()

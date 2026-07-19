@@ -67,6 +67,7 @@ var _fauna_layer: Node = null
 var _player_position_provider: Callable
 var _enemy_positions_provider: Callable
 var _spawner_positions_provider: Callable
+var _player_projectile_positions_provider: Callable
 var _cat = null
 var _arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 var _arena_shape: int = 0
@@ -76,6 +77,8 @@ var _void_rects: Array[Rect2] = []
 var _playable_rects: Array[Rect2] = []
 var _roam_bounds: Rect2 = Rect2()
 var _cat_texture_rng := RandomNumberGenerator.new()
+var _last_player_position: Vector2 = Vector2.INF
+var _has_last_player_position: bool = false
 
 
 func initialize(context: Dictionary) -> void:
@@ -84,6 +87,7 @@ func initialize(context: Dictionary) -> void:
 	_player_position_provider = context.get("player_position_provider", Callable())
 	_enemy_positions_provider = context.get("enemy_positions_provider", Callable())
 	_spawner_positions_provider = context.get("spawner_positions_provider", Callable())
+	_player_projectile_positions_provider = context.get("player_projectile_positions_provider", Callable())
 
 
 func reset_run(level_definition = null) -> void:
@@ -96,6 +100,8 @@ func clear_fauna() -> void:
 	if _cat != null and is_instance_valid(_cat):
 		_cat.queue_free()
 	_cat = null
+	_last_player_position = Vector2.INF
+	_has_last_player_position = false
 
 
 func set_enabled(value: bool) -> void:
@@ -166,10 +172,16 @@ func get_cat_position() -> Vector2:
 	return Vector2.INF
 
 
-func _process(_delta: float) -> void:
-	if not enabled or not _has_cat() or not _cat.has_method("set_danger_points"):
+func _process(delta: float) -> void:
+	if not enabled or not _has_cat():
 		return
-	_cat.set_danger_points(_get_danger_points())
+	var player_position: Vector2 = _get_current_player_position()
+	if _cat.has_method("set_danger_points"):
+		_cat.set_danger_points(_get_danger_points(player_position))
+	if _cat.has_method("set_player_context"):
+		_cat.set_player_context(player_position, _get_player_velocity(player_position, delta), player_avoidance_radius)
+	if _cat.has_method("set_player_projectile_points"):
+		_cat.set_player_projectile_points(_get_player_projectile_positions())
 
 
 func _has_cat() -> bool:
@@ -182,33 +194,76 @@ func _pick_cat_texture() -> Texture2D:
 	return CAT_TEXTURES[_cat_texture_rng.randi_range(0, CAT_TEXTURES.size() - 1)]
 
 
-func _get_danger_points() -> Array[Dictionary]:
+func _get_danger_points(player_position: Vector2 = Vector2.INF) -> Array[Dictionary]:
 	var points: Array[Dictionary] = []
-	if _player_position_provider.is_valid():
-		var player_position = _player_position_provider.call()
-		if player_position is Vector2:
-			points.append({
-				"position": player_position,
-				"radius": player_avoidance_radius,
-				"weight": 0.42
-			})
+	if player_position != Vector2.INF:
+		points.append({
+			"kind": "player",
+			"position": player_position,
+			"radius": player_avoidance_radius,
+			"weight": 0.42
+		})
 	if _enemy_positions_provider.is_valid():
-		for enemy_position in _enemy_positions_provider.call():
-			if enemy_position is Vector2:
+		var enemy_positions_value: Variant = _enemy_positions_provider.call()
+		if enemy_positions_value is Array:
+			for enemy_position in enemy_positions_value:
+				if not enemy_position is Vector2:
+					continue
 				points.append({
+					"kind": "combat",
 					"position": enemy_position,
 					"radius": enemy_avoidance_radius,
 					"weight": 1.0
 				})
 	if _spawner_positions_provider.is_valid():
-		for spawner_position in _spawner_positions_provider.call():
-			if spawner_position is Vector2:
+		var spawner_positions_value: Variant = _spawner_positions_provider.call()
+		if spawner_positions_value is Array:
+			for spawner_position in spawner_positions_value:
+				if not spawner_position is Vector2:
+					continue
 				points.append({
+					"kind": "combat",
 					"position": spawner_position,
 					"radius": spawner_avoidance_radius,
 					"weight": 0.7
 				})
 	return points
+
+
+func _get_current_player_position() -> Vector2:
+	if not _player_position_provider.is_valid():
+		return Vector2.INF
+	var position_value: Variant = _player_position_provider.call()
+	if position_value is Vector2:
+		return position_value
+	return Vector2.INF
+
+
+func _get_player_velocity(player_position: Vector2, delta: float) -> Vector2:
+	if player_position == Vector2.INF or delta <= 0.0:
+		_last_player_position = Vector2.INF
+		_has_last_player_position = false
+		return Vector2.ZERO
+	if not _has_last_player_position:
+		_last_player_position = player_position
+		_has_last_player_position = true
+		return Vector2.ZERO
+	var player_velocity: Vector2 = (player_position - _last_player_position) / delta
+	_last_player_position = player_position
+	return player_velocity
+
+
+func _get_player_projectile_positions() -> Array[Vector2]:
+	var positions: Array[Vector2] = []
+	if not _player_projectile_positions_provider.is_valid():
+		return positions
+	var positions_value: Variant = _player_projectile_positions_provider.call()
+	if not positions_value is Array:
+		return positions
+	for projectile_position in positions_value:
+		if projectile_position is Vector2:
+			positions.append(projectile_position)
+	return positions
 
 
 func _get_playable_rects(level_definition) -> Array[Rect2]:
