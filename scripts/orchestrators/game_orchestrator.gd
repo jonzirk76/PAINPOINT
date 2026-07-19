@@ -8,6 +8,7 @@ const LEVELS := [
 	preload("res://resources/levels/level_04_cross.tres"),
 	preload("res://resources/levels/level_05_circle.tres"),
 	preload("res://resources/levels/level_06_maze.tres"),
+	preload("res://resources/levels/cat_behavior_test.tres"),
 	preload("res://resources/levels/boss_test_chamber.tres")
 ]
 const FLOOR_EXIT_PORTAL_SCENE := preload("res://scenes/entities/floor_exit_portal_entity.tscn")
@@ -39,6 +40,7 @@ const BOSS_REWARD_CHOICE_CLEARANCE := 30.0
 @onready var dungeon_manager = $Managers/DungeonManager
 @onready var room_manager = $Managers/RoomManager
 @onready var destructible_manager = $Managers/DestructibleManager
+@onready var fauna_manager = $Managers/FaunaManager
 @onready var audio_manager = $Managers/AudioManager
 @onready var arena_view = $World/Arena
 @onready var gameplay_camera: Camera2D = $Camera2D
@@ -378,6 +380,12 @@ func _initialize_managers() -> void:
 	})
 	destructible_manager.initialize({
 		"destructible_layer": $World/DestructibleLayer
+	})
+	fauna_manager.initialize({
+		"fauna_layer": $World/FaunaLayer,
+		"player_position_provider": Callable(player_manager, "get_player_position"),
+		"enemy_positions_provider": Callable(enemy_manager, "get_enemy_positions"),
+		"spawner_positions_provider": Callable(spawner_manager, "get_spawner_positions")
 	})
 	upgrade_manager.initialize({})
 	combat_manager.initialize({})
@@ -987,6 +995,9 @@ func _start_level(level_definition) -> void:
 	enemy_manager.reset_run()
 	spawner_manager.reset_run(level_definition)
 	destructible_manager.reset_run(level_definition)
+	fauna_manager.reset_run(level_definition)
+	_sync_fauna_roam_bounds(level_definition)
+	_maybe_spawn_authored_level_cat(level_definition)
 	_sync_gate_blockers_into_actors()
 	item_manager.reset_run()
 	upgrade_manager.reset_run()
@@ -1060,6 +1071,7 @@ func _start_dungeon_run() -> void:
 	combat_manager.reset_run()
 	effects_manager.reset_run()
 	room_manager.reset_run()
+	fauna_manager.reset_run()
 	input_manager.reset_run()
 	_status = "DUNGEON"
 	_load_dungeon_current_room("", true)
@@ -1121,6 +1133,7 @@ func _start_main_loop_run() -> void:
 	combat_manager.reset_run()
 	effects_manager.reset_run()
 	room_manager.reset_run()
+	fauna_manager.reset_run()
 	input_manager.reset_run()
 	_status = "DUNGEON"
 	_load_dungeon_current_room("", true)
@@ -1154,6 +1167,7 @@ func _advance_main_loop_floor() -> void:
 	item_manager.clear_floor_persistent_pickups()
 	effects_manager.reset_run()
 	room_manager.reset_run()
+	fauna_manager.reset_run()
 	input_manager.reset_run()
 	_status = "DUNGEON"
 	_load_dungeon_current_room("", false)
@@ -1216,6 +1230,7 @@ func _clear_gameplay() -> void:
 	combat_manager.reset_run()
 	effects_manager.reset_run()
 	room_manager.reset_run()
+	fauna_manager.reset_run()
 	player_manager.clear_player()
 
 
@@ -1232,6 +1247,7 @@ func _set_all_enabled(value: bool) -> void:
 	effects_manager.set_enabled(value)
 	dungeon_manager.set_enabled(value and _is_dungeon_run)
 	room_manager.set_enabled(value and _is_dungeon_run)
+	fauna_manager.set_enabled(value)
 	audio_manager.set_enabled(value)
 
 
@@ -2008,6 +2024,9 @@ func _load_room_entry_transition(player_position: Vector2) -> bool:
 	projectile_manager.set_arena_definition(level_definition)
 	enemy_manager.set_arena_definition(level_definition)
 	spawner_manager.set_arena_definition(level_definition)
+	fauna_manager.set_arena_definition(level_definition)
+	_sync_fauna_roam_bounds(level_definition)
+	_maybe_spawn_dungeon_floor_cat(level_definition)
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
 	_clear_boss_health_hud()
@@ -2122,6 +2141,9 @@ func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = 
 	projectile_manager.set_arena_definition(level_definition)
 	enemy_manager.set_arena_definition(level_definition)
 	spawner_manager.set_arena_definition(level_definition)
+	fauna_manager.set_arena_definition(level_definition)
+	_sync_fauna_roam_bounds(level_definition)
+	_maybe_spawn_dungeon_floor_cat(level_definition)
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
 	_clear_boss_health_hud()
@@ -3095,6 +3117,9 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool, ove
 	projectile_manager.set_arena_definition(level_definition)
 	enemy_manager.set_arena_definition(level_definition)
 	spawner_manager.set_arena_definition(level_definition)
+	fauna_manager.set_arena_definition(level_definition)
+	_sync_fauna_roam_bounds(level_definition)
+	_maybe_spawn_dungeon_floor_cat(level_definition)
 	if should_update_loading_screen:
 		_set_loading_progress(LOADING_PROGRESS_ROOM_RESET, "Clearing previous combat actors")
 	projectile_manager.reset_run()
@@ -3171,6 +3196,7 @@ func _sync_gate_blockers_into_actors() -> void:
 	player_manager.set_dynamic_wall_rects(gate_blockers)
 	enemy_manager.set_dynamic_wall_rects(gate_blockers)
 	spawner_manager.set_dynamic_wall_rects(gate_blockers)
+	fauna_manager.set_dynamic_wall_rects(gate_blockers)
 
 
 func _get_room_entry_position(level_definition, entry_direction: String) -> Vector2:
@@ -3223,6 +3249,52 @@ func _position_is_clear_of_room_walls(position: Vector2, level_definition) -> bo
 		if void_rect.grow(34.0).has_point(position):
 			return false
 	return true
+
+
+func _sync_fauna_roam_bounds(level_definition) -> void:
+	if level_definition == null or fauna_manager == null:
+		return
+	var roam_bounds: Rect2 = level_definition.arena_bounds
+	if _is_dungeon_run and level_definition.has_meta("visible_bounds"):
+		var visible_bounds = level_definition.get_meta("visible_bounds")
+		if visible_bounds is Rect2 and visible_bounds.size != Vector2.ZERO:
+			roam_bounds = visible_bounds
+	fauna_manager.set_roam_bounds(roam_bounds)
+
+
+func _maybe_spawn_authored_level_cat(level_definition) -> void:
+	if level_definition == null or _is_dungeon_run or fauna_manager == null:
+		return
+	if not bool(level_definition.get("cat_spawn_enabled")):
+		return
+	var spawn_value = level_definition.get("cat_spawn_position")
+	var spawn_position: Vector2 = spawn_value if spawn_value is Vector2 else Vector2.ZERO
+	spawn_position = _find_safe_room_position(spawn_position, level_definition)
+	fauna_manager.spawn_cat(spawn_position, _get_authored_level_cat_seed(level_definition))
+
+
+func _maybe_spawn_dungeon_floor_cat(level_definition) -> void:
+	if not _is_dungeon_run or level_definition == null or fauna_manager == null:
+		return
+	if fauna_manager.has_active_cat():
+		return
+	var cat_info: Dictionary = dungeon_manager.get_floor_cat_spawn_info()
+	if not bool(cat_info.get("ok", false)):
+		return
+	var cat_room_id := String(cat_info.get("room_id", ""))
+	if cat_room_id.is_empty() or cat_room_id != dungeon_manager.current_room_id:
+		return
+	var room_position_value = cat_info.get("room_position", dungeon_manager.get_current_spawn_position())
+	var room_position: Vector2 = room_position_value if room_position_value is Vector2 else dungeon_manager.get_current_spawn_position()
+	var floor_position: Vector2 = dungeon_manager.get_full_floor_position_for_room_position(cat_room_id, room_position)
+	floor_position = _find_safe_room_position(floor_position, level_definition)
+	fauna_manager.spawn_cat(floor_position, int(cat_info.get("seed", 1)))
+
+
+func _get_authored_level_cat_seed(level_definition) -> int:
+	if level_definition == null:
+		return 1
+	return abs(("%s:cat" % String(level_definition.id)).hash()) + 1
 
 
 func _is_gameplay_running() -> bool:

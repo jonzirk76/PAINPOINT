@@ -13,7 +13,8 @@ const ENTITY_SCRIPT_PATHS := [
 	"res://scripts/entities/muzzle_flash_effect.gd",
 	"res://scripts/entities/door_entity.gd",
 	"res://scripts/entities/destructible_prop_entity.gd",
-	"res://scripts/entities/floor_exit_portal_entity.gd"
+	"res://scripts/entities/floor_exit_portal_entity.gd",
+	"res://scripts/entities/cat_entity.gd"
 ]
 
 const FORBIDDEN_ENTITY_SNIPPETS := [
@@ -39,6 +40,7 @@ const SCRIPT_PATHS := [
 	"res://scripts/entities/door_entity.gd",
 	"res://scripts/entities/destructible_prop_entity.gd",
 	"res://scripts/entities/floor_exit_portal_entity.gd",
+	"res://scripts/entities/cat_entity.gd",
 	"res://scripts/managers/input_manager.gd",
 	"res://scripts/managers/player_manager.gd",
 	"res://scripts/managers/projectile_manager.gd",
@@ -52,6 +54,7 @@ const SCRIPT_PATHS := [
 	"res://scripts/managers/dungeon_manager.gd",
 	"res://scripts/managers/room_manager.gd",
 	"res://scripts/managers/destructible_manager.gd",
+	"res://scripts/managers/fauna_manager.gd",
 	"res://scripts/ui/dungeon_minimap.gd",
 	"res://scripts/ui/loading_screen.gd",
 	"res://scripts/ui/circular_portrait.gd",
@@ -80,6 +83,7 @@ const LEVEL_PATHS := [
 	"res://resources/levels/level_04_cross.tres",
 	"res://resources/levels/level_05_circle.tres",
 	"res://resources/levels/level_06_maze.tres",
+	"res://resources/levels/cat_behavior_test.tres",
 	"res://resources/levels/boss_test_chamber.tres"
 ]
 
@@ -168,6 +172,7 @@ func _init() -> void:
 	_test_presentation_settings(failures)
 	_test_character_svg_assets(failures)
 	_test_character_art_applied_to_entities(failures)
+	_test_cat_fauna_behavior(failures)
 	_test_player_shoot_pose_relaxes_to_movement(failures)
 	_test_scripts_instantiate(failures)
 	_test_enemy_and_spawner_profiles(failures)
@@ -358,6 +363,47 @@ func _test_character_art_applied_to_entities(failures: Array[String]) -> void:
 		failures.append("EnemyEntity should redraw moving enemies so movement-facing rotation updates.")
 
 
+func _test_cat_fauna_behavior(failures: Array[String]) -> void:
+	if not FileAccess.file_exists("res://art/characters/white_0.png"):
+		failures.append("Cat fauna should use the white cat spritesheet asset.")
+	var cat_source := _read_text("res://scripts/entities/cat_entity.gd")
+	if not cat_source.contains("white_0.png") or not cat_source.contains("set_danger_points"):
+		failures.append("CatEntity should animate from the white cat spritesheet and accept danger points.")
+	if cat_source.contains("add_to_group(\"enemies\")") or cat_source.contains("take_damage"):
+		failures.append("CatEntity should stay out of combat groups and damage handling.")
+	var manager_source := _read_text("res://scripts/managers/fauna_manager.gd")
+	if not manager_source.contains("enemy_positions_provider") or not manager_source.contains("spawner_positions_provider"):
+		failures.append("FaunaManager should receive combat danger through injected provider callables.")
+	var cat_scene = load("res://scenes/entities/cat_entity.tscn")
+	if cat_scene == null:
+		failures.append("Cat scene failed to load.")
+	else:
+		var cat = cat_scene.instantiate()
+		root.add_child(cat)
+		cat.initialize(Vector2.ZERO, 123)
+		if int(cat.collision_layer) != 0 or int(cat.collision_mask) != 96:
+			failures.append("Cat should collide with walls/voids but not expose a combat collision layer.")
+		cat.free()
+	var test_level = load("res://resources/levels/cat_behavior_test.tres")
+	if test_level == null or not bool(test_level.get("cat_spawn_enabled")):
+		failures.append("Cat behavior test room should load and explicitly enable cat spawning.")
+	var dungeon = load("res://scripts/managers/dungeon_manager.gd").new()
+	dungeon.reset_run(1, 1907)
+	var cat_info: Dictionary = dungeon.get_floor_cat_spawn_info()
+	if not bool(cat_info.get("ok", false)):
+		failures.append("DungeonManager should choose one cat spawn room per floor.")
+	var cat_room_id := String(cat_info.get("room_id", ""))
+	if not cat_room_id.is_empty():
+		var room_kind := ""
+		for room in dungeon.get_minimap_rooms():
+			if String(room.get("id", "")) == cat_room_id:
+				room_kind = String(room.get("kind", ""))
+				break
+		if room_kind != "start" and room_kind != "combat":
+			failures.append("Dungeon floor cat should spawn only in the start room or a combat room.")
+	dungeon.free()
+
+
 func _test_player_shoot_pose_relaxes_to_movement(failures: Array[String]) -> void:
 	var player = load("res://scenes/entities/player_entity.tscn").instantiate()
 	if player._get_visual_facing_direction().distance_to(Vector2.DOWN) > 0.001:
@@ -420,7 +466,8 @@ func _test_scene_loads(failures: Array[String]) -> void:
 		"res://scenes/entities/projectile_impact_effect.tscn",
 		"res://scenes/entities/door_entity.tscn",
 		"res://scenes/entities/destructible_prop_entity.tscn",
-		"res://scenes/entities/floor_exit_portal_entity.tscn"
+		"res://scenes/entities/floor_exit_portal_entity.tscn",
+		"res://scenes/entities/cat_entity.tscn"
 	]
 	for path in scene_paths:
 		var scene := load(path)
@@ -460,13 +507,15 @@ func _test_scene_loads(failures: Array[String]) -> void:
 					"UI/WinPanel/WinPromptLabel",
 					"World/DoorLayer",
 					"World/DestructibleLayer",
+					"World/FaunaLayer",
 					"World/EffectLayer",
 					"Managers/InputManager",
 					"Managers/EffectsManager",
 					"Managers/AudioManager",
 					"Managers/DungeonManager",
 					"Managers/RoomManager",
-					"Managers/DestructibleManager"
+					"Managers/DestructibleManager",
+					"Managers/FaunaManager"
 				]
 				for node_path in required_nodes:
 					if not instance.has_node(node_path):
@@ -549,8 +598,8 @@ func _test_scene_loads(failures: Array[String]) -> void:
 
 
 func _test_level_resources(failures: Array[String]) -> void:
-	if LEVEL_PATHS.size() != 7:
-		failures.append("Expected seven level resources after adding the boss test chamber.")
+	if LEVEL_PATHS.size() != 8:
+		failures.append("Expected eight level resources after adding the cat behavior test room.")
 	for path in LEVEL_PATHS:
 		var level = load(path)
 		if level == null:

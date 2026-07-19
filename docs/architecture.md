@@ -41,6 +41,7 @@ The orchestrator receives those signals and decides which manager command runs n
 - `EffectsManager`: owns short-lived visual effect entities such as chain-lightning arcs.
 - `DungeonManager`: owns generated dungeon room graph state, room clear state, and spatial room-piece placement.
 - `RoomManager`: owns generated door entities for the currently loaded dungeon room.
+- `FaunaManager`: owns non-combat background fauna such as cats, feeds them read-only combat danger points through injected providers, and keeps them off combat collision layers.
 
 ## Level Flow
 
@@ -69,6 +70,8 @@ Boss rooms can also include typed spawner placements. Their enemy budget must al
 The dungeon minimap is UI-only rendering of `DungeonManager` state. `DungeonManager` owns room reveal state as rooms are entered, and `GameOrchestrator` syncs that state into `DungeonMinimap`.
 
 `Main Game Loop Test` layers floor progression on top of the dungeon room flow. Boss death awards a large floor-clear score bonus, opens the floor-exit portal, spawns optional overdrive reward choices, and advances to a freshly generated floor after the player stands in the portal and confirms the exit. Run stats such as the run seed, enemies, bosses, spawners, pickups, upgrades, heals, and floors cleared are tracked by `GameOrchestrator` and displayed on the death tally screen.
+
+Each generated dungeon floor also chooses one start or combat room as the cat room from the floor seed. `DungeonManager` stores only the chosen room and room-local spawn point; `GameOrchestrator` turns that into a full-floor position when the room is loaded and commands `FaunaManager` to spawn the single floor cat. The cat is background fauna: it avoids player/enemy/spawner danger points but does not participate in combat damage or objective counts.
 
 ## HUD And Pause Flow
 

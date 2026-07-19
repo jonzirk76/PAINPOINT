@@ -1,0 +1,316 @@
+extends CharacterBody2D
+class_name CatEntity
+
+const CAT_TEXTURE := preload("res://art/characters/white_0.png")
+const FRAME_SIZE := Vector2i(32, 32)
+const COLLISION_MASK_WALLS_AND_VOID := 96
+const DOWN_FRAMES := [Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1), Vector2i(3, 1)]
+const UP_FRAMES := [Vector2i(0, 9), Vector2i(1, 9), Vector2i(2, 9), Vector2i(3, 9)]
+const SIDE_FRAMES := [Vector2i(0, 4), Vector2i(1, 4), Vector2i(2, 4), Vector2i(3, 4)]
+
+## Controls the cat's wall clearance and soft movement body size.
+@export var body_radius: float = 11.0
+## Controls normal wandering speed when the cat is away from combat.
+@export var wander_speed: float = 78.0
+## Controls burst speed while the cat is moving away from active combat.
+@export var flee_speed: float = 142.0
+## Controls how quickly the cat accelerates toward its current movement intent.
+@export var acceleration: float = 520.0
+## Controls how far away enemies and spawners start influencing the cat.
+@export var combat_avoidance_radius: float = 260.0
+## Controls how far the cat tries to move when choosing a flee target.
+@export var flee_target_distance: float = 220.0
+## Controls how often the cat chooses a fresh wander target.
+@export var wander_retarget_seconds: float = 2.4
+## Controls how likely the cat is to pause instead of immediately choosing another wander target.
+@export var idle_chance: float = 0.28
+## Controls the largest random idle pause between wandering moves.
+@export var max_idle_seconds: float = 1.45
+## Controls the visual sprite scale applied to 32x32 sheet frames.
+@export var sprite_scale: float = 1.45
+
+var enabled: bool = false
+var arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
+var arena_shape: int = 0
+var wall_rects: Array[Rect2] = []
+var void_rects: Array[Rect2] = []
+var playable_rects: Array[Rect2] = []
+
+var _sprite: Sprite2D = null
+var _rng := RandomNumberGenerator.new()
+var _target_position: Vector2 = Vector2.INF
+var _danger_points: Array[Dictionary] = []
+var _roam_bounds: Rect2 = Rect2()
+var _has_roam_bounds: bool = false
+var _retarget_remaining: float = 0.0
+var _idle_remaining: float = 0.0
+var _animation_time: float = 0.0
+var _last_facing_direction: Vector2 = Vector2.DOWN
+
+
+func _ready() -> void:
+	_configure_collision_identity()
+	_add_collision()
+	_ensure_sprite()
+	_pick_next_wander_target()
+	queue_redraw()
+
+
+func initialize(spawn_position: Vector2, movement_seed: int = 0) -> void:
+	_rng.seed = max(movement_seed, 1)
+	global_position = spawn_position
+	_target_position = spawn_position
+	_retarget_remaining = 0.0
+	_idle_remaining = 0.0
+	_last_facing_direction = Vector2.DOWN
+	_configure_collision_identity()
+	_ensure_sprite()
+	_update_sprite_frame()
+	queue_redraw()
+
+
+func set_enabled(value: bool) -> void:
+	enabled = value
+	set_physics_process(value)
+	if not enabled:
+		velocity = Vector2.ZERO
+
+
+func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: Array = [], playable_regions: Array = []) -> void:
+	arena_bounds = bounds
+	arena_shape = shape
+	wall_rects.clear()
+	for wall in walls:
+		if wall is Rect2:
+			wall_rects.append(wall)
+	void_rects.clear()
+	for void_rect in voids:
+		if void_rect is Rect2:
+			void_rects.append(void_rect)
+	playable_rects.clear()
+	for playable_rect in playable_regions:
+		if playable_rect is Rect2:
+			playable_rects.append(playable_rect)
+	global_position = _constrain_to_playable(global_position)
+	if _target_position != Vector2.INF:
+		_target_position = _constrain_to_playable(_target_position)
+
+
+func set_roam_bounds(bounds: Rect2) -> void:
+	_roam_bounds = bounds
+	_has_roam_bounds = bounds.size.x > 0.0 and bounds.size.y > 0.0
+	if _target_position != Vector2.INF and not _position_inside_roam_bounds(_target_position):
+		_pick_next_wander_target()
+
+
+func set_danger_points(points: Array) -> void:
+	_danger_points.clear()
+	for point in points:
+		if point is Dictionary and point.has("position"):
+			_danger_points.append(Dictionary(point))
+
+
+func _physics_process(delta: float) -> void:
+	if not enabled:
+		velocity = Vector2.ZERO
+		return
+	var avoidance: Vector2 = _get_combat_avoidance_vector()
+	var desired_velocity := Vector2.ZERO
+	if avoidance.length_squared() > 0.001:
+		_idle_remaining = 0.0
+		_target_position = _find_clear_target(global_position + avoidance.normalized() * flee_target_distance)
+		desired_velocity = (_target_position - global_position).normalized() * flee_speed
+	else:
+		_update_wander_target(delta)
+		if _idle_remaining <= 0.0 and _target_position != Vector2.INF:
+			var to_target: Vector2 = _target_position - global_position
+			if to_target.length_squared() > 16.0 * 16.0:
+				desired_velocity = to_target.normalized() * wander_speed
+	velocity = velocity.move_toward(desired_velocity, acceleration * delta)
+	move_and_slide()
+	if get_slide_collision_count() > 0 and avoidance.length_squared() <= 0.001:
+		_pick_next_wander_target()
+	global_position = _constrain_to_playable(global_position)
+	_update_visual_state(delta)
+
+
+func _draw() -> void:
+	draw_set_transform(Vector2(0.0, body_radius * 0.82), 0.0, Vector2(body_radius * 1.15, body_radius * 0.34))
+	draw_circle(Vector2.ZERO, 1.0, Color(0.0, 0.0, 0.0, 0.28))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+func _configure_collision_identity() -> void:
+	collision_layer = 0
+	collision_mask = COLLISION_MASK_WALLS_AND_VOID
+
+
+func _add_collision() -> void:
+	if get_node_or_null("CollisionShape2D") != null:
+		return
+	var shape := CircleShape2D.new()
+	shape.radius = body_radius
+	var collision_shape := CollisionShape2D.new()
+	collision_shape.name = "CollisionShape2D"
+	collision_shape.shape = shape
+	add_child(collision_shape)
+
+
+func _ensure_sprite() -> void:
+	if _sprite != null and is_instance_valid(_sprite):
+		return
+	_sprite = Sprite2D.new()
+	_sprite.name = "CatSprite"
+	_sprite.texture = CAT_TEXTURE
+	_sprite.region_enabled = true
+	_sprite.centered = true
+	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_sprite.scale = Vector2(sprite_scale, sprite_scale)
+	_sprite.position = Vector2(0.0, -body_radius * 0.42)
+	add_child(_sprite)
+
+
+func _update_wander_target(delta: float) -> void:
+	if _idle_remaining > 0.0:
+		_idle_remaining = max(_idle_remaining - delta, 0.0)
+		return
+	_retarget_remaining = max(_retarget_remaining - delta, 0.0)
+	var target_reached := _target_position == Vector2.INF or global_position.distance_squared_to(_target_position) <= 18.0 * 18.0
+	if target_reached or _retarget_remaining <= 0.0:
+		if _rng.randf() < clamp(idle_chance, 0.0, 1.0):
+			_idle_remaining = _rng.randf_range(0.25, max(max_idle_seconds, 0.26))
+			_retarget_remaining = wander_retarget_seconds
+			return
+		_pick_next_wander_target()
+
+
+func _pick_next_wander_target() -> void:
+	_target_position = _pick_clear_random_position()
+	_retarget_remaining = max(wander_retarget_seconds * _rng.randf_range(0.65, 1.35), 0.2)
+
+
+func _get_combat_avoidance_vector() -> Vector2:
+	var avoidance := Vector2.ZERO
+	for point_info in _danger_points:
+		var position: Vector2 = point_info.get("position", Vector2.INF)
+		if position == Vector2.INF:
+			continue
+		var radius: float = max(float(point_info.get("radius", combat_avoidance_radius)), body_radius + 1.0)
+		var to_cat: Vector2 = global_position - position
+		var distance: float = to_cat.length()
+		if distance > radius:
+			continue
+		if distance <= 0.001:
+			to_cat = Vector2.RIGHT.rotated(_rng.randf_range(0.0, TAU))
+			distance = 1.0
+		var weight: float = max(float(point_info.get("weight", 1.0)), 0.0)
+		var ratio: float = clamp(1.0 - distance / radius, 0.0, 1.0)
+		avoidance += to_cat.normalized() * ratio * ratio * weight
+	return avoidance
+
+
+func _pick_clear_random_position() -> Vector2:
+	var bounds := _get_effective_roam_bounds()
+	var margin: float = max(body_radius + 18.0, 24.0)
+	for _attempt in range(24):
+		var candidate := Vector2(
+			_rng.randf_range(bounds.position.x + margin, bounds.position.x + bounds.size.x - margin),
+			_rng.randf_range(bounds.position.y + margin, bounds.position.y + bounds.size.y - margin)
+		)
+		candidate = _find_clear_target(candidate)
+		if _position_is_clear(candidate):
+			return candidate
+	return _find_clear_target(bounds.get_center())
+
+
+func _find_clear_target(preferred_position: Vector2) -> Vector2:
+	var clamped := _clamp_to_roam_bounds(preferred_position)
+	var blockers := _get_blocker_rects()
+	var constrained := ArenaGeometry.constrain_point_to_playable_regions(clamped, arena_bounds, arena_shape, playable_rects, blockers, body_radius)
+	if _position_is_clear(constrained):
+		return constrained
+	var search_step: float = max(body_radius * 2.2, 28.0)
+	for radius_index in range(1, 8):
+		var radius := search_step * float(radius_index)
+		var sample_count := 8 + radius_index * 4
+		for sample_index in range(sample_count):
+			var candidate := clamped + Vector2.RIGHT.rotated(TAU * float(sample_index) / float(sample_count)) * radius
+			candidate = _clamp_to_roam_bounds(candidate)
+			candidate = ArenaGeometry.constrain_point_to_playable_regions(candidate, arena_bounds, arena_shape, playable_rects, blockers, body_radius)
+			if _position_is_clear(candidate):
+				return candidate
+	return ArenaGeometry.constrain_point_to_playable_regions(clamped, arena_bounds, arena_shape, playable_rects, blockers, body_radius)
+
+
+func _position_is_clear(position: Vector2) -> bool:
+	if not _position_inside_roam_bounds(position):
+		return false
+	if position.distance_squared_to(_constrain_to_playable(position)) > 1.0:
+		return false
+	for blocker in _get_blocker_rects():
+		if blocker.grow(body_radius + 4.0).has_point(position):
+			return false
+	return true
+
+
+func _get_blocker_rects() -> Array[Rect2]:
+	var blockers: Array[Rect2] = []
+	blockers.append_array(wall_rects)
+	blockers.append_array(void_rects)
+	return blockers
+
+
+func _constrain_to_playable(position: Vector2) -> Vector2:
+	return ArenaGeometry.constrain_point_to_playable_regions(position, arena_bounds, arena_shape, playable_rects, _get_blocker_rects(), body_radius)
+
+
+func _get_effective_roam_bounds() -> Rect2:
+	if _has_roam_bounds:
+		return _roam_bounds
+	return arena_bounds
+
+
+func _position_inside_roam_bounds(position: Vector2) -> bool:
+	if not _has_roam_bounds:
+		return true
+	return _roam_bounds.grow(-body_radius).has_point(position)
+
+
+func _clamp_to_roam_bounds(position: Vector2) -> Vector2:
+	if not _has_roam_bounds:
+		return position
+	return Vector2(
+		clamp(position.x, _roam_bounds.position.x + body_radius, _roam_bounds.position.x + _roam_bounds.size.x - body_radius),
+		clamp(position.y, _roam_bounds.position.y + body_radius, _roam_bounds.position.y + _roam_bounds.size.y - body_radius)
+	)
+
+
+func _update_visual_state(delta: float) -> void:
+	if velocity.length_squared() > 4.0:
+		_last_facing_direction = velocity.normalized()
+		_animation_time += delta * 8.0
+		queue_redraw()
+	_update_sprite_frame()
+
+
+func _update_sprite_frame() -> void:
+	_ensure_sprite()
+	var moving := velocity.length_squared() > 4.0
+	var direction := _last_facing_direction
+	if direction.length_squared() <= 0.001:
+		direction = Vector2.DOWN
+	var frames: Array = DOWN_FRAMES
+	_sprite.flip_h = false
+	if abs(direction.x) > abs(direction.y):
+		frames = SIDE_FRAMES
+		_sprite.flip_h = direction.x < 0.0
+	elif direction.y < 0.0:
+		frames = UP_FRAMES
+	else:
+		frames = DOWN_FRAMES
+	var frame_index := int(floor(_animation_time)) % frames.size() if moving else 0
+	var frame: Vector2i = frames[frame_index]
+	_sprite.region_rect = Rect2(
+		Vector2(frame.x * FRAME_SIZE.x, frame.y * FRAME_SIZE.y),
+		Vector2(float(FRAME_SIZE.x), float(FRAME_SIZE.y))
+	)

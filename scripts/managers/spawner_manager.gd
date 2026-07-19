@@ -317,6 +317,14 @@ func get_spawner_count() -> int:
 	return _spawners.size()
 
 
+func get_spawner_positions() -> Array[Vector2]:
+	var positions: Array[Vector2] = []
+	for spawner in _spawners:
+		if is_instance_valid(spawner):
+			positions.append(spawner.global_position)
+	return positions
+
+
 func _on_spawner_health_depleted(spawner) -> void:
 	if not _spawners.has(spawner):
 		return

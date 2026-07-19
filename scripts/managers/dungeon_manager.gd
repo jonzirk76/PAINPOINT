@@ -64,6 +64,7 @@ var current_room_id: String = ""
 var floor_number: int = 1
 var run_seed: int = 0
 var floor_generation_seed: int = 0
+var floor_cat_room_id: String = ""
 var _rooms: Dictionary = {}
 var _room_order: Array[String] = []
 var _occupied_cells: Dictionary = {}
@@ -71,6 +72,8 @@ var _interior_generator = ROOM_INTERIOR_GENERATOR_SCRIPT.new()
 var _large_room_count: int = 0
 var _crossroads_placed: bool = false
 var _piece_variant_cache: Dictionary = {}
+var _floor_cat_room_position: Vector2 = Vector2.ZERO
+var _floor_cat_seed: int = 0
 
 
 func initialize(_context: Dictionary) -> void:
@@ -269,6 +272,17 @@ func get_current_room_kind() -> String:
 	if piece == null:
 		return ""
 	return String(piece.room_kind)
+
+
+func get_floor_cat_spawn_info() -> Dictionary:
+	if floor_cat_room_id.is_empty():
+		return {"ok": false, "room_id": "", "room_position": Vector2.ZERO, "seed": 0}
+	return {
+		"ok": true,
+		"room_id": floor_cat_room_id,
+		"room_position": _floor_cat_room_position,
+		"seed": _floor_cat_seed
+	}
 
 
 func is_current_boss_room() -> bool:
@@ -859,6 +873,9 @@ func _generate_layout() -> void:
 	_large_room_count = 0
 	_crossroads_placed = false
 	current_room_id = ""
+	floor_cat_room_id = ""
+	_floor_cat_room_position = Vector2.ZERO
+	_floor_cat_seed = 0
 	var rng := RandomNumberGenerator.new()
 	floor_generation_seed = _compute_floor_generation_seed()
 	rng.seed = floor_generation_seed
@@ -870,6 +887,7 @@ func _generate_layout() -> void:
 		_try_place_required_branch("challenge_1", challenge_piece, path_room_ids, rng)
 	_fill_optional_branches(path_room_ids, rng)
 	_generate_room_interiors()
+	_assign_floor_cat_spawn(rng)
 	current_room_id = "start"
 	_reveal_room(current_room_id)
 	dungeon_generated.emit(_rooms.size())
@@ -1355,6 +1373,103 @@ func _generate_room_interiors() -> void:
 			_apply_room_geometry(level, piece, state["connection_edges"])
 		state["level_definition"] = level
 		_rooms[room_id] = state
+
+
+func _assign_floor_cat_spawn(rng: RandomNumberGenerator) -> void:
+	var candidates: Array[String] = []
+	for room_id in _room_order:
+		var room_kind := _get_room_kind(room_id)
+		if room_kind == "start" or room_kind == "combat":
+			candidates.append(room_id)
+	if candidates.is_empty():
+		return
+	floor_cat_room_id = candidates[rng.randi_range(0, candidates.size() - 1)]
+	_floor_cat_room_position = _pick_floor_cat_room_position(floor_cat_room_id, rng)
+	_floor_cat_seed = abs(("%d:%d:%s:cat" % [floor_generation_seed, floor_number, floor_cat_room_id]).hash()) + 1
+
+
+func _pick_floor_cat_room_position(room_id: String, rng: RandomNumberGenerator) -> Vector2:
+	if room_id.is_empty() or not _rooms.has(room_id):
+		return Vector2.ZERO
+	var state: Dictionary = _rooms[room_id]
+	var piece: RoomPieceDefinition = state.get("piece", null) as RoomPieceDefinition
+	var level: LevelDefinition = state.get("level_definition", null) as LevelDefinition
+	if level == null:
+		return ROOM_GEOMETRY_BUILDER.get_spawn_position(piece.footprint_cells) if piece != null else Vector2.ZERO
+	var bounds: Rect2 = level.arena_bounds
+	var center := bounds.get_center()
+	var half := bounds.size * 0.5
+	for _attempt in range(32):
+		var candidate := center + Vector2(
+			rng.randf_range(-half.x * 0.42, half.x * 0.42),
+			rng.randf_range(-half.y * 0.38, half.y * 0.38)
+		)
+		candidate = _find_clear_floor_cat_position(candidate, level)
+		if _floor_cat_position_is_clear(candidate, level):
+			return candidate
+	var fallback := ROOM_GEOMETRY_BUILDER.get_spawn_position(piece.footprint_cells) if piece != null else center
+	return _find_clear_floor_cat_position(fallback, level)
+
+
+func _find_clear_floor_cat_position(preferred_position: Vector2, level: LevelDefinition) -> Vector2:
+	var blockers := _get_floor_cat_blocker_rects(level)
+	var playable_rects := _get_level_playable_rects(level)
+	var constrained := ArenaGeometry.constrain_point_to_playable_regions(preferred_position, level.arena_bounds, int(level.arena_shape), playable_rects, blockers, 18.0)
+	if _floor_cat_position_is_clear(constrained, level):
+		return constrained
+	var search_step := 48.0
+	for radius_index in range(1, 7):
+		var radius := search_step * float(radius_index)
+		var sample_count := 8 + radius_index * 4
+		for sample_index in range(sample_count):
+			var candidate := preferred_position + Vector2.RIGHT.rotated(TAU * float(sample_index) / float(sample_count)) * radius
+			candidate = ArenaGeometry.constrain_point_to_playable_regions(candidate, level.arena_bounds, int(level.arena_shape), playable_rects, blockers, 18.0)
+			if _floor_cat_position_is_clear(candidate, level):
+				return candidate
+	return constrained
+
+
+func _floor_cat_position_is_clear(position: Vector2, level: LevelDefinition) -> bool:
+	if level == null:
+		return false
+	var blockers := _get_floor_cat_blocker_rects(level)
+	var playable_rects := _get_level_playable_rects(level)
+	var constrained := ArenaGeometry.constrain_point_to_playable_regions(position, level.arena_bounds, int(level.arena_shape), playable_rects, blockers, 18.0)
+	if position.distance_squared_to(constrained) > 1.0:
+		return false
+	for blocker in blockers:
+		if blocker.grow(18.0).has_point(position):
+			return false
+	return true
+
+
+func _get_floor_cat_blocker_rects(level: LevelDefinition) -> Array[Rect2]:
+	var blockers: Array[Rect2] = []
+	if level == null:
+		return blockers
+	blockers.append_array(level.wall_rects)
+	blockers.append_array(level.void_rects)
+	for placement in level.spawner_placements:
+		if placement == null:
+			continue
+		var position: Vector2 = placement.get("position")
+		blockers.append(Rect2(position - Vector2(86.0, 86.0), Vector2(172.0, 172.0)))
+	for placement in level.destructible_prop_placements:
+		if placement == null:
+			continue
+		var position: Vector2 = placement.get("position")
+		var size_value = placement.get("size")
+		var size: Vector2 = size_value if size_value is Vector2 else Vector2(48.0, 48.0)
+		blockers.append(Rect2(position - size * 0.5, size).grow(18.0))
+	return blockers
+
+
+func _get_level_playable_rects(level: LevelDefinition) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if level == null or not level.has_meta("footprint_cells"):
+		return rects
+	rects.append_array(ArenaGeometry.get_footprint_cell_rects(level.arena_bounds, level.get_meta("footprint_cells")))
+	return rects
 
 
 func _apply_floor_scaling(level, room_kind: String) -> void:

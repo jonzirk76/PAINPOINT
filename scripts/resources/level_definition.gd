@@ -31,6 +31,10 @@ enum ArenaShape {
 ## Gives generated agent bosses a fresh loadout seed each time this level starts; intended for boss test rooms.
 @export var randomize_agent_boss_each_load: bool = false
 @export var boss_spawn_position: Vector2 = Vector2.ZERO
+## Spawns one background cat in authored levels that need fauna behavior testing.
+@export var cat_spawn_enabled: bool = false
+## Controls the authored cat spawn position when cat spawning is enabled on this level.
+@export var cat_spawn_position: Vector2 = Vector2.ZERO
 
 
 func get_summary() -> String:

@@ -210,6 +210,14 @@ func get_enemy_count() -> int:
 	return _enemies.size()
 
 
+func get_enemy_positions() -> Array[Vector2]:
+	var positions: Array[Vector2] = []
+	for enemy in _enemies:
+		if is_instance_valid(enemy):
+			positions.append(enemy.global_position)
+	return positions
+
+
 func _on_enemy_health_depleted(enemy) -> void:
 	if not _enemies.has(enemy):
 		return

@@ -1,4 +1,4 @@
-[gd_scene load_steps=27 format=3 uid="uid://beu8j4ocyaju8"]
+[gd_scene load_steps=28 format=3 uid="uid://beu8j4ocyaju8"]
 
 [ext_resource type="Script" uid="uid://wt5kiqqk3ets" path="res://scripts/orchestrators/game_orchestrator.gd" id="1"]
 [ext_resource type="Script" uid="uid://bp4ssjl06eeir" path="res://scripts/arena/arena_view.gd" id="2"]
@@ -16,6 +16,7 @@
 [ext_resource type="Script" uid="uid://bdlfxool4aqai" path="res://scripts/ui/dungeon_minimap.gd" id="14"]
 [ext_resource type="Script" uid="uid://bhbn1qa7duxll" path="res://scripts/managers/audio_manager.gd" id="15"]
 [ext_resource type="Script" uid="uid://d2y6e6jpmklag" path="res://scripts/managers/destructible_manager.gd" id="16"]
+[ext_resource type="Script" uid="uid://ckhvmsa01m725" path="res://scripts/managers/fauna_manager.gd" id="17"]
 [ext_resource type="FontFile" uid="uid://ni13aeviyq7l" path="res://art/fonts/BoldPixels.ttf" id="16_yc10j"]
 [ext_resource type="Shader" uid="uid://b176a8d5tdc54" path="res://scenes/circular_portrait_mask.gdshader" id="18_0ld40"]
 [ext_resource type="Script" uid="uid://bbyh4kn6adeog" path="res://scenes/character_portrait.gd" id="18_dp3eg"]
@@ -54,6 +55,8 @@ script = ExtResource("2")
 [node name="SpawnerLayer" type="Node2D" parent="World"]
 
 [node name="PickupLayer" type="Node2D" parent="World"]
+
+[node name="FaunaLayer" type="Node2D" parent="World"]
 
 [node name="EnemyLayer" type="Node2D" parent="World"]
 
@@ -104,6 +107,9 @@ script = ExtResource("13")
 
 [node name="DestructibleManager" type="Node" parent="Managers"]
 script = ExtResource("16")
+
+[node name="FaunaManager" type="Node" parent="Managers"]
+script = ExtResource("17")
 
 [node name="AudioManager" type="Node" parent="Managers"]
 script = ExtResource("15")
