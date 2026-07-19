@@ -374,8 +374,12 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("CatEntity should animate from the white cat spritesheet and accept danger points.")
 	if not cat_source.contains("SIT_COLUMN_START") or not cat_source.contains("LOOK_COLUMN_START") or not cat_source.contains("LAY_COLUMN_START"):
 		failures.append("CatEntity should wire sitting, looking, and laying idle animations from the cat spritesheet.")
-	if not cat_source.contains("IDLE_STATE_SITTING") or not cat_source.contains("IDLE_STATE_LOOKING") or not cat_source.contains("IDLE_STATE_LAYING"):
-		failures.append("CatEntity should choose between distinct idle animation states.")
+	if not cat_source.contains("IDLE_STATE_SITTING") or not cat_source.contains("IDLE_STATE_GLANCING") or not cat_source.contains("IDLE_STATE_SCANNING") or not cat_source.contains("IDLE_STATE_LAYING"):
+		failures.append("CatEntity should choose between distinct idle animation states, including glance and scan look modes.")
+	if not cat_source.contains("_look_scan_reversed") or not cat_source.contains("_pick_next_glance_direction"):
+		failures.append("CatEntity should support one-shot scan looks and direction-changing glance looks.")
+	if not cat_source.contains("_look_sit_intro_active") or not cat_source.contains("_update_look_sit_intro"):
+		failures.append("CatEntity should play the sit-down animation before look-around idles.")
 	if not cat_source.contains("set_cat_texture"):
 		failures.append("CatEntity should accept a selected cat color texture from FaunaManager.")
 	if cat_source.contains("add_to_group(\"enemies\")") or cat_source.contains("take_damage"):

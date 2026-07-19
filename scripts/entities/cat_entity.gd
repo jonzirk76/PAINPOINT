@@ -22,7 +22,8 @@ const RUN_COLUMN_START := 20
 const RUN_FRAME_COUNT := 8
 const IDLE_STATE_STANDING := "standing"
 const IDLE_STATE_SITTING := "sitting"
-const IDLE_STATE_LOOKING := "looking"
+const IDLE_STATE_GLANCING := "glancing"
+const IDLE_STATE_SCANNING := "scanning"
 const IDLE_STATE_LAYING := "laying"
 
 ## Controls the cat's wall clearance and soft movement body size.
@@ -42,17 +43,23 @@ const IDLE_STATE_LAYING := "laying"
 ## Controls how likely the cat is to pause instead of immediately choosing another wander target.
 @export var idle_chance: float = 0.28
 ## Controls the shortest random idle pause between wandering moves.
-@export var min_idle_seconds: float = 0.85
+@export var min_idle_seconds: float = 1.45
 ## Controls the largest random idle pause between wandering moves.
-@export var max_idle_seconds: float = 3.4
+@export var max_idle_seconds: float = 5.2
 ## Controls how often an idle cat remains in a standing rest pose.
 @export var standing_idle_weight: float = 0.35
 ## Controls how often an idle cat uses the sit-down animation.
 @export var sitting_idle_weight: float = 0.32
-## Controls how often an idle cat uses the look-around animation.
-@export var looking_idle_weight: float = 0.23
+## Controls how often an idle cat glances toward different directions.
+@export var glancing_idle_weight: float = 0.14
+## Controls how often an idle cat scans in place through the look-around animation.
+@export var scanning_idle_weight: float = 0.09
 ## Controls how often an idle cat uses the lay-down animation.
 @export var laying_idle_weight: float = 0.10
+## Controls the shortest time before a glancing idle cat looks toward another direction.
+@export var min_glance_seconds: float = 0.35
+## Controls the longest time before a glancing idle cat looks toward another direction.
+@export var max_glance_seconds: float = 0.85
 ## Controls the visual sprite scale applied to 32x32 sheet frames.
 @export var sprite_scale: float = 1.45
 
@@ -76,6 +83,10 @@ var _animation_time: float = 0.0
 var _last_facing_direction: Vector2 = Vector2.DOWN
 var _is_fleeing: bool = false
 var _idle_state: String = IDLE_STATE_STANDING
+var _idle_direction_index: int = 0
+var _glance_retarget_remaining: float = 0.0
+var _look_scan_reversed: bool = false
+var _look_sit_intro_active: bool = false
 
 
 func _ready() -> void:
@@ -95,6 +106,10 @@ func initialize(spawn_position: Vector2, movement_seed: int = 0) -> void:
 	_animation_time = 0.0
 	_last_facing_direction = Vector2.DOWN
 	_is_fleeing = false
+	_idle_direction_index = _get_direction_index(_last_facing_direction)
+	_glance_retarget_remaining = 0.0
+	_look_scan_reversed = false
+	_look_sit_intro_active = false
 	_set_idle_state(IDLE_STATE_STANDING)
 	_configure_collision_identity()
 	_ensure_sprite()
@@ -249,8 +264,16 @@ func _choose_idle_state() -> String:
 	var weights: Array[float] = [
 		maxf(standing_idle_weight, 0.0),
 		maxf(sitting_idle_weight, 0.0),
-		maxf(looking_idle_weight, 0.0),
+		maxf(glancing_idle_weight, 0.0),
+		maxf(scanning_idle_weight, 0.0),
 		maxf(laying_idle_weight, 0.0)
+	]
+	var states: Array[String] = [
+		IDLE_STATE_STANDING,
+		IDLE_STATE_SITTING,
+		IDLE_STATE_GLANCING,
+		IDLE_STATE_SCANNING,
+		IDLE_STATE_LAYING
 	]
 	var total_weight: float = 0.0
 	for weight: float in weights:
@@ -258,14 +281,10 @@ func _choose_idle_state() -> String:
 	if total_weight <= 0.0:
 		return IDLE_STATE_STANDING
 	var roll: float = _rng.randf_range(0.0, total_weight)
-	if roll < weights[0]:
-		return IDLE_STATE_STANDING
-	roll -= weights[0]
-	if roll < weights[1]:
-		return IDLE_STATE_SITTING
-	roll -= weights[1]
-	if roll < weights[2]:
-		return IDLE_STATE_LOOKING
+	for index: int in range(weights.size()):
+		if roll < weights[index]:
+			return states[index]
+		roll -= weights[index]
 	return IDLE_STATE_LAYING
 
 
@@ -274,6 +293,52 @@ func _set_idle_state(state: String) -> void:
 		return
 	_idle_state = state
 	_animation_time = 0.0
+	_idle_direction_index = _get_direction_index(_last_facing_direction)
+	_glance_retarget_remaining = 0.0
+	_look_scan_reversed = false
+	_look_sit_intro_active = false
+	if _idle_state == IDLE_STATE_GLANCING:
+		_look_sit_intro_active = true
+	elif _idle_state == IDLE_STATE_SCANNING:
+		_look_sit_intro_active = true
+		_look_scan_reversed = _rng.randf() < 0.5
+
+
+func _is_look_idle_state() -> bool:
+	return _idle_state == IDLE_STATE_GLANCING or _idle_state == IDLE_STATE_SCANNING
+
+
+func _pick_next_glance_direction() -> int:
+	var current_direction: int = wrapi(_idle_direction_index, 0, DIRECTION_COUNT)
+	var turn_steps: int = _rng.randi_range(1, DIRECTION_COUNT - 1)
+	return wrapi(current_direction + turn_steps, 0, DIRECTION_COUNT)
+
+
+func _get_next_glance_seconds() -> float:
+	var glance_min: float = maxf(min_glance_seconds, 0.05)
+	var glance_max: float = maxf(max_glance_seconds, glance_min + 0.05)
+	return _rng.randf_range(glance_min, glance_max)
+
+
+func _update_glancing_idle(delta: float) -> void:
+	_glance_retarget_remaining = maxf(_glance_retarget_remaining - delta, 0.0)
+	if _glance_retarget_remaining > 0.0:
+		return
+	_idle_direction_index = _pick_next_glance_direction()
+	_last_facing_direction = _get_direction_vector(_idle_direction_index)
+	_glance_retarget_remaining = _get_next_glance_seconds()
+
+
+func _update_look_sit_intro() -> void:
+	var sit_frame_count: int = _get_sit_frame_count(_idle_direction_index)
+	if int(floor(_animation_time)) < sit_frame_count:
+		return
+	_look_sit_intro_active = false
+	_animation_time = 0.0
+	if _idle_state == IDLE_STATE_GLANCING:
+		_idle_direction_index = _pick_next_glance_direction()
+		_last_facing_direction = _get_direction_vector(_idle_direction_index)
+		_glance_retarget_remaining = _get_next_glance_seconds()
 
 
 func _get_combat_avoidance_vector() -> Vector2:
@@ -377,9 +442,13 @@ func _update_visual_state(delta: float) -> void:
 	var animating_idle := not moving and _idle_state != IDLE_STATE_STANDING
 	if moving:
 		_last_facing_direction = velocity.normalized()
+	elif _idle_state == IDLE_STATE_GLANCING and not _look_sit_intro_active:
+		_update_glancing_idle(delta)
 	if moving or animating_idle:
 		var animation_rate: float = 12.0 if _is_fleeing else 8.0
 		_animation_time += delta * animation_rate
+		if not moving and _is_look_idle_state() and _look_sit_intro_active:
+			_update_look_sit_intro()
 		queue_redraw()
 	_update_sprite_frame()
 
@@ -391,6 +460,8 @@ func _update_sprite_frame() -> void:
 	if direction.length_squared() <= 0.001:
 		direction = Vector2.DOWN
 	var direction_index := _get_direction_index(direction)
+	if not moving and _idle_state != IDLE_STATE_STANDING:
+		direction_index = _idle_direction_index
 	var frames: Array[Vector2i] = []
 	if moving:
 		frames = _get_movement_frames(direction_index, _is_fleeing)
@@ -410,6 +481,10 @@ func _get_direction_index(direction: Vector2) -> int:
 	return wrapi(signed_steps, 0, DIRECTION_COUNT)
 
 
+func _get_direction_vector(direction_index: int) -> Vector2:
+	return Vector2.DOWN.rotated(DIRECTION_STEP_RADIANS * float(wrapi(direction_index, 0, DIRECTION_COUNT)))
+
+
 func _get_movement_frames(direction_index: int, running: bool) -> Array[Vector2i]:
 	var column_start: int = RUN_COLUMN_START if running else WALK_COLUMN_START
 	var frame_count: int = RUN_FRAME_COUNT if running else WALK_FRAME_COUNT
@@ -418,8 +493,10 @@ func _get_movement_frames(direction_index: int, running: bool) -> Array[Vector2i
 
 func _get_idle_frames(direction_index: int) -> Array[Vector2i]:
 	if _idle_state == IDLE_STATE_SITTING:
-		return _get_clip_frames(direction_index, SIT_COLUMN_START, int(SIT_FRAME_COUNTS[wrapi(direction_index, 0, DIRECTION_COUNT)]))
-	if _idle_state == IDLE_STATE_LOOKING:
+		return _get_clip_frames(direction_index, SIT_COLUMN_START, _get_sit_frame_count(direction_index))
+	if _is_look_idle_state() and _look_sit_intro_active:
+		return _get_clip_frames(direction_index, SIT_COLUMN_START, _get_sit_frame_count(direction_index))
+	if _idle_state == IDLE_STATE_GLANCING or _idle_state == IDLE_STATE_SCANNING:
 		return _get_clip_frames(direction_index, LOOK_COLUMN_START, LOOK_FRAME_COUNT)
 	if _idle_state == IDLE_STATE_LAYING:
 		return _get_clip_frames(direction_index, LAY_COLUMN_START, LAY_FRAME_COUNT)
@@ -427,11 +504,20 @@ func _get_idle_frames(direction_index: int) -> Array[Vector2i]:
 
 
 func _get_frame_index(frame_count: int, moving: bool) -> int:
-	if moving or _idle_state == IDLE_STATE_LOOKING:
+	if _is_look_idle_state() and _look_sit_intro_active:
+		return mini(int(floor(_animation_time)), frame_count - 1)
+	if moving or _idle_state == IDLE_STATE_GLANCING:
 		return int(floor(_animation_time)) % frame_count
+	if _idle_state == IDLE_STATE_SCANNING:
+		var scan_frame_index: int = mini(int(floor(_animation_time)), frame_count - 1)
+		return frame_count - 1 - scan_frame_index if _look_scan_reversed else scan_frame_index
 	if _idle_state == IDLE_STATE_STANDING:
 		return 0
-	return min(int(floor(_animation_time)), frame_count - 1)
+	return mini(int(floor(_animation_time)), frame_count - 1)
+
+
+func _get_sit_frame_count(direction_index: int) -> int:
+	return int(SIT_FRAME_COUNTS[wrapi(direction_index, 0, DIRECTION_COUNT)])
 
 
 func _get_clip_frames(direction_index: int, column_start: int, frame_count: int) -> Array[Vector2i]:
