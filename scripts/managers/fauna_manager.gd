@@ -75,9 +75,11 @@ var _level_wall_rects: Array[Rect2] = []
 var _void_rects: Array[Rect2] = []
 var _playable_rects: Array[Rect2] = []
 var _roam_bounds: Rect2 = Rect2()
+var _cat_texture_rng := RandomNumberGenerator.new()
 
 
 func initialize(context: Dictionary) -> void:
+	_cat_texture_rng.randomize()
 	_fauna_layer = context.get("fauna_layer", null)
 	_player_position_provider = context.get("player_position_provider", Callable())
 	_enemy_positions_provider = context.get("enemy_positions_provider", Callable())
@@ -139,7 +141,7 @@ func spawn_cat(spawn_position: Vector2, movement_seed: int = 0):
 		add_child(cat)
 	_cat = cat
 	if cat.has_method("set_cat_texture"):
-		cat.set_cat_texture(_pick_cat_texture(cat_seed))
+		cat.set_cat_texture(_pick_cat_texture())
 	if cat.has_method("initialize"):
 		cat.initialize(spawn_position, cat_seed)
 	cat.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
@@ -174,12 +176,10 @@ func _has_cat() -> bool:
 	return _cat != null and is_instance_valid(_cat)
 
 
-func _pick_cat_texture(movement_seed: int) -> Texture2D:
+func _pick_cat_texture() -> Texture2D:
 	if CAT_TEXTURES.is_empty():
 		return null
-	var texture_rng := RandomNumberGenerator.new()
-	texture_rng.seed = max(movement_seed, 1) + 7919
-	return CAT_TEXTURES[texture_rng.randi_range(0, CAT_TEXTURES.size() - 1)]
+	return CAT_TEXTURES[_cat_texture_rng.randi_range(0, CAT_TEXTURES.size() - 1)]
 
 
 func _get_danger_points() -> Array[Dictionary]:

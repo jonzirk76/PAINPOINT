@@ -25,6 +25,9 @@ const IDLE_STATE_SITTING := "sitting"
 const IDLE_STATE_GLANCING := "glancing"
 const IDLE_STATE_SCANNING := "scanning"
 const IDLE_STATE_LAYING := "laying"
+const SIT_TRANSITION_NONE := "none"
+const SIT_TRANSITION_DOWN := "down"
+const SIT_TRANSITION_UP := "up"
 
 ## Controls the cat's wall clearance and soft movement body size.
 @export var body_radius: float = 11.0
@@ -86,7 +89,7 @@ var _idle_state: String = IDLE_STATE_STANDING
 var _idle_direction_index: int = 0
 var _glance_retarget_remaining: float = 0.0
 var _look_scan_reversed: bool = false
-var _look_sit_intro_active: bool = false
+var _sit_transition_mode: String = SIT_TRANSITION_NONE
 
 
 func _ready() -> void:
@@ -109,7 +112,7 @@ func initialize(spawn_position: Vector2, movement_seed: int = 0) -> void:
 	_idle_direction_index = _get_direction_index(_last_facing_direction)
 	_glance_retarget_remaining = 0.0
 	_look_scan_reversed = false
-	_look_sit_intro_active = false
+	_sit_transition_mode = SIT_TRANSITION_NONE
 	_set_idle_state(IDLE_STATE_STANDING)
 	_configure_collision_identity()
 	_ensure_sprite()
@@ -176,7 +179,7 @@ func _physics_process(delta: float) -> void:
 	_is_fleeing = avoidance.length_squared() > 0.001
 	if _is_fleeing:
 		_idle_remaining = 0.0
-		_set_idle_state(IDLE_STATE_STANDING)
+		_set_idle_state(IDLE_STATE_STANDING, true)
 		_target_position = _find_clear_target(global_position + avoidance.normalized() * flee_target_distance)
 		desired_velocity = (_target_position - global_position).normalized() * flee_speed
 	else:
@@ -230,6 +233,8 @@ func _ensure_sprite() -> void:
 
 
 func _update_wander_target(delta: float) -> void:
+	if _sit_transition_mode == SIT_TRANSITION_UP:
+		return
 	if _idle_remaining > 0.0:
 		_idle_remaining = maxf(_idle_remaining - delta, 0.0)
 		if _idle_remaining <= 0.0:
@@ -288,24 +293,31 @@ func _choose_idle_state() -> String:
 	return IDLE_STATE_LAYING
 
 
-func _set_idle_state(state: String) -> void:
-	if _idle_state == state:
+func _set_idle_state(state: String, force: bool = false) -> void:
+	if _idle_state == state and _sit_transition_mode == SIT_TRANSITION_NONE:
+		return
+	if state == IDLE_STATE_STANDING and _is_seated_idle_state() and not force:
+		_sit_transition_mode = SIT_TRANSITION_UP
+		_animation_time = 0.0
+		_glance_retarget_remaining = 0.0
+		_look_scan_reversed = false
 		return
 	_idle_state = state
 	_animation_time = 0.0
 	_idle_direction_index = _get_direction_index(_last_facing_direction)
 	_glance_retarget_remaining = 0.0
 	_look_scan_reversed = false
-	_look_sit_intro_active = false
-	if _idle_state == IDLE_STATE_GLANCING:
-		_look_sit_intro_active = true
-	elif _idle_state == IDLE_STATE_SCANNING:
-		_look_sit_intro_active = true
+	_sit_transition_mode = SIT_TRANSITION_DOWN if _is_seated_idle_state() else SIT_TRANSITION_NONE
+	if _idle_state == IDLE_STATE_SCANNING:
 		_look_scan_reversed = _rng.randf() < 0.5
 
 
 func _is_look_idle_state() -> bool:
 	return _idle_state == IDLE_STATE_GLANCING or _idle_state == IDLE_STATE_SCANNING
+
+
+func _is_seated_idle_state() -> bool:
+	return _idle_state == IDLE_STATE_SITTING or _is_look_idle_state()
 
 
 func _pick_next_glance_direction() -> int:
@@ -329,16 +341,22 @@ func _update_glancing_idle(delta: float) -> void:
 	_glance_retarget_remaining = _get_next_glance_seconds()
 
 
-func _update_look_sit_intro() -> void:
+func _update_sit_transition() -> void:
 	var sit_frame_count: int = _get_sit_frame_count(_idle_direction_index)
 	if int(floor(_animation_time)) < sit_frame_count:
 		return
-	_look_sit_intro_active = false
-	_animation_time = 0.0
-	if _idle_state == IDLE_STATE_GLANCING:
-		_idle_direction_index = _pick_next_glance_direction()
+	if _sit_transition_mode == SIT_TRANSITION_DOWN:
+		_sit_transition_mode = SIT_TRANSITION_NONE
+		_animation_time = 0.0
+		if _idle_state == IDLE_STATE_GLANCING:
+			_idle_direction_index = _pick_next_glance_direction()
+			_last_facing_direction = _get_direction_vector(_idle_direction_index)
+			_glance_retarget_remaining = _get_next_glance_seconds()
+	elif _sit_transition_mode == SIT_TRANSITION_UP:
+		_sit_transition_mode = SIT_TRANSITION_NONE
+		_idle_state = IDLE_STATE_STANDING
+		_animation_time = 0.0
 		_last_facing_direction = _get_direction_vector(_idle_direction_index)
-		_glance_retarget_remaining = _get_next_glance_seconds()
 
 
 func _get_combat_avoidance_vector() -> Vector2:
@@ -442,13 +460,13 @@ func _update_visual_state(delta: float) -> void:
 	var animating_idle := not moving and _idle_state != IDLE_STATE_STANDING
 	if moving:
 		_last_facing_direction = velocity.normalized()
-	elif _idle_state == IDLE_STATE_GLANCING and not _look_sit_intro_active:
+	elif _idle_state == IDLE_STATE_GLANCING and _sit_transition_mode == SIT_TRANSITION_NONE:
 		_update_glancing_idle(delta)
 	if moving or animating_idle:
 		var animation_rate: float = 12.0 if _is_fleeing else 8.0
 		_animation_time += delta * animation_rate
-		if not moving and _is_look_idle_state() and _look_sit_intro_active:
-			_update_look_sit_intro()
+		if not moving and _sit_transition_mode != SIT_TRANSITION_NONE:
+			_update_sit_transition()
 		queue_redraw()
 	_update_sprite_frame()
 
@@ -492,9 +510,9 @@ func _get_movement_frames(direction_index: int, running: bool) -> Array[Vector2i
 
 
 func _get_idle_frames(direction_index: int) -> Array[Vector2i]:
-	if _idle_state == IDLE_STATE_SITTING:
+	if _is_seated_idle_state() and _sit_transition_mode != SIT_TRANSITION_NONE:
 		return _get_clip_frames(direction_index, SIT_COLUMN_START, _get_sit_frame_count(direction_index))
-	if _is_look_idle_state() and _look_sit_intro_active:
+	if _idle_state == IDLE_STATE_SITTING:
 		return _get_clip_frames(direction_index, SIT_COLUMN_START, _get_sit_frame_count(direction_index))
 	if _idle_state == IDLE_STATE_GLANCING or _idle_state == IDLE_STATE_SCANNING:
 		return _get_clip_frames(direction_index, LOOK_COLUMN_START, LOOK_FRAME_COUNT)
@@ -504,8 +522,11 @@ func _get_idle_frames(direction_index: int) -> Array[Vector2i]:
 
 
 func _get_frame_index(frame_count: int, moving: bool) -> int:
-	if _is_look_idle_state() and _look_sit_intro_active:
+	if _sit_transition_mode == SIT_TRANSITION_DOWN:
 		return mini(int(floor(_animation_time)), frame_count - 1)
+	if _sit_transition_mode == SIT_TRANSITION_UP:
+		var stand_up_frame_index: int = mini(int(floor(_animation_time)), frame_count - 1)
+		return frame_count - 1 - stand_up_frame_index
 	if moving or _idle_state == IDLE_STATE_GLANCING:
 		return int(floor(_animation_time)) % frame_count
 	if _idle_state == IDLE_STATE_SCANNING:

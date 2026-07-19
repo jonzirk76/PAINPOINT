@@ -378,8 +378,8 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("CatEntity should choose between distinct idle animation states, including glance and scan look modes.")
 	if not cat_source.contains("_look_scan_reversed") or not cat_source.contains("_pick_next_glance_direction"):
 		failures.append("CatEntity should support one-shot scan looks and direction-changing glance looks.")
-	if not cat_source.contains("_look_sit_intro_active") or not cat_source.contains("_update_look_sit_intro"):
-		failures.append("CatEntity should play the sit-down animation before look-around idles.")
+	if not cat_source.contains("SIT_TRANSITION_UP") or not cat_source.contains("_update_sit_transition"):
+		failures.append("CatEntity should play sit-down transitions into seated idles and reverse them before standing.")
 	if not cat_source.contains("set_cat_texture"):
 		failures.append("CatEntity should accept a selected cat color texture from FaunaManager.")
 	if cat_source.contains("add_to_group(\"enemies\")") or cat_source.contains("take_damage"):
@@ -389,6 +389,8 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("FaunaManager should receive combat danger through injected provider callables.")
 	if not manager_source.contains("CAT_TEXTURES") or not manager_source.contains("set_cat_texture"):
 		failures.append("FaunaManager should randomly select a cat color spritesheet when spawning cats.")
+	if not manager_source.contains("_cat_texture_rng.randomize()"):
+		failures.append("FaunaManager cat color selection should vary between room spawns instead of using only the movement seed.")
 	var cat_scene = load("res://scenes/entities/cat_entity.tscn")
 	if cat_scene == null:
 		failures.append("Cat scene failed to load.")
