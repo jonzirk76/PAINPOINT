@@ -12,6 +12,7 @@ const LEVELS := [
 	preload("res://resources/levels/cat_peaceful_test.tres"),
 	preload("res://resources/levels/boss_test_chamber.tres")
 ]
+const CAT_DEBUG_LEVEL_IDS := ["cat_behavior_test", "cat_peaceful_test"]
 const FLOOR_EXIT_PORTAL_SCENE := preload("res://scenes/entities/floor_exit_portal_entity.tscn")
 const AGENT_BOSS_GENERATOR := preload("res://scripts/resources/agent_boss_generator.gd")
 const BOLD_PIXELS_FONT := preload("res://art/fonts/BoldPixels.ttf")
@@ -254,7 +255,6 @@ func _ready() -> void:
 	_super_crackle_rng.randomize()
 	_capture_hud_authoring_state()
 	_ensure_agent_debug_panel()
-	_ensure_cat_debug_panel()
 	_ensure_boss_health_hud()
 	_configure_pause_process_modes()
 	_set_tree_paused(false)
@@ -559,11 +559,11 @@ func _set_cat_debug_panel_visible(value: bool) -> void:
 
 
 func _update_cat_debug_panel() -> void:
-	_ensure_cat_debug_panel()
-	if _cat_debug_panel == null or _cat_debug_label == null:
-		return
 	if not _should_show_cat_debug_panel():
 		_set_cat_debug_panel_visible(false)
+		return
+	_ensure_cat_debug_panel()
+	if _cat_debug_panel == null or _cat_debug_label == null:
 		return
 	var snapshot: Dictionary = {}
 	if fauna_manager != null and fauna_manager.has_method("get_cat_state_snapshot"):
@@ -611,11 +611,9 @@ func _update_cat_debug_panel() -> void:
 
 
 func _should_show_cat_debug_panel() -> bool:
-	if fauna_manager != null and fauna_manager.has_method("has_active_cat") and bool(fauna_manager.has_active_cat()):
-		return true
 	if _current_level == null or _is_dungeon_run:
 		return false
-	return bool(_current_level.get("cat_spawn_enabled"))
+	return CAT_DEBUG_LEVEL_IDS.has(String(_current_level.id))
 
 
 func _ensure_boss_health_hud() -> void:

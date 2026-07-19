@@ -428,7 +428,9 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("ProjectileManager should expose active player projectile positions for background fauna awareness.")
 	var orchestrator_source := _read_text("res://scripts/orchestrators/game_orchestrator.gd")
 	if not orchestrator_source.contains("CatDebugPanel") or not orchestrator_source.contains("_update_cat_debug_panel") or not orchestrator_source.contains("get_cat_state_snapshot"):
-		failures.append("GameOrchestrator should show a cat state log in rooms with active cats.")
+		failures.append("GameOrchestrator should show a cat state log in cat test rooms.")
+	if not orchestrator_source.contains("CAT_DEBUG_LEVEL_IDS") or not orchestrator_source.contains("cat_behavior_test") or not orchestrator_source.contains("cat_peaceful_test") or not orchestrator_source.contains("CAT_DEBUG_LEVEL_IDS.has"):
+		failures.append("GameOrchestrator should scope the cat state log to authored cat test rooms only.")
 	var cat_scene = load("res://scenes/entities/cat_entity.tscn")
 	if cat_scene == null:
 		failures.append("Cat scene failed to load.")
