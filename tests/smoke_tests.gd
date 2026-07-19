@@ -388,6 +388,8 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("CatEntity should use a reusable jumping movement state for startled movement.")
 	if not cat_source.contains("STARTLE_JUMP_FRAME_COUNT := 4") or not cat_source.contains("_get_startle_jump_visual_y_offset"):
 		failures.append("CatEntity startled jumps should use the first four running frames with a visual y-offset arc.")
+	if not cat_source.contains("_sit_transition_mode != SIT_TRANSITION_UP") or not cat_source.contains("_lay_transition_mode != LAY_TRANSITION_UP"):
+		failures.append("CatEntity should not restart get-up animations every frame while a startle is queued.")
 	if not cat_source.contains("set_player_context") or not cat_source.contains("_pick_curiosity_biased_position"):
 		failures.append("CatEntity should build curiosity from player movement context and bias wander targets closer as it grows.")
 	if not cat_source.contains("_has_line_of_sight_to_player") or not cat_source.contains("curiosity_line_of_sight_margin"):

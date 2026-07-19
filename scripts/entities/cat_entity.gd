@@ -479,14 +479,16 @@ func _set_idle_state(state: String, force: bool = false) -> void:
 		_begin_look_exit(IDLE_STATE_LAYING)
 		return
 	if state == IDLE_STATE_STANDING and _is_seated_idle_state() and not force:
-		_sit_transition_mode = SIT_TRANSITION_UP
-		_animation_time = 0.0
-		_reset_look_motion()
+		if _sit_transition_mode != SIT_TRANSITION_UP:
+			_sit_transition_mode = SIT_TRANSITION_UP
+			_animation_time = 0.0
+			_reset_look_motion()
 		return
 	if state == IDLE_STATE_STANDING and _idle_state == IDLE_STATE_LAYING and not force:
-		_lay_transition_mode = LAY_TRANSITION_UP
+		if _lay_transition_mode != LAY_TRANSITION_UP:
+			_lay_transition_mode = LAY_TRANSITION_UP
+			_animation_time = 0.0
 		_stand_after_lay_up = true
-		_animation_time = 0.0
 		return
 	if state == IDLE_STATE_LAYING and not force and not _is_seated_idle_state() and _idle_state != IDLE_STATE_LAYING:
 		_pending_seated_idle_state = IDLE_STATE_LAYING
