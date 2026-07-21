@@ -206,7 +206,7 @@ func _get_uncovered_wall_body_tiles(body_tiles: Array[Rect2], wall_top_tiles: Ar
 
 
 func _configure_wall_top_overlay() -> void:
-	var overlay := _ensure_wall_top_overlay()
+	var overlay = _ensure_wall_top_overlay()
 	if not _uses_canonical_wall_tiles:
 		overlay.clear()
 		return
