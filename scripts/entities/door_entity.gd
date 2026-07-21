@@ -136,10 +136,11 @@ func _has_player_overlap() -> bool:
 
 
 func _draw() -> void:
+	var fill_rect := _get_visual_fill_rect()
 	var drawn_rect := _get_visual_draw_rect()
 	var trim_color := Color(0.16, 0.17, 0.18, 1.0)
 	if not unlocked:
-		_draw_locked_gate_body(drawn_rect, trim_color)
+		_draw_locked_gate_body(fill_rect, drawn_rect, trim_color)
 		var locked_marker_rect := _get_passage_draw_rect(drawn_rect)
 		_draw_room_kind_marker(_get_floor_marker_center(locked_marker_rect), min(locked_marker_rect.size.x, locked_marker_rect.size.y))
 	elif has_special_marker():
@@ -147,23 +148,12 @@ func _draw() -> void:
 		_draw_room_kind_marker(_get_floor_marker_center(passage_rect), min(passage_rect.size.x, passage_rect.size.y))
 
 
-func _draw_locked_gate_body(rect: Rect2, trim_color: Color) -> void:
+func _draw_locked_gate_body(fill_rect: Rect2, detail_rect: Rect2, trim_color: Color) -> void:
 	var body_color := GATE_SPECIAL_BODY_COLOR if has_special_marker() else GATE_BODY_COLOR
-	match direction:
-		"north":
-			var north_cap_height: float = min(rect.size.y * 0.5, rect.size.x * 0.25)
-			var body_rect := Rect2(rect.position + Vector2(0.0, north_cap_height), Vector2(rect.size.x, max(rect.size.y - north_cap_height, 1.0)))
-			draw_rect(body_rect, body_color, true)
-		"south":
-			pass
-		"east", "west":
-			var side_cap_height: float = min(rect.size.y * 0.25, rect.size.x)
-			var side_body_rect := Rect2(rect.position + Vector2(0.0, side_cap_height), Vector2(rect.size.x, max(rect.size.y - side_cap_height * 2.0, 1.0)))
-			draw_rect(side_body_rect, body_color, true)
-		_:
-			draw_rect(rect, body_color, true)
-	draw_rect(rect, trim_color, false, 2.0)
-	_draw_gate_detail_lines(rect, trim_color)
+	# The cap overlay paints above this, but the full backplate prevents wall tiles from bleeding through the cap edges.
+	draw_rect(fill_rect, body_color, true)
+	draw_rect(detail_rect, trim_color, false, 2.0)
+	_draw_gate_detail_lines(detail_rect, trim_color)
 
 
 func _sync_gate_top_visual() -> void:
@@ -171,7 +161,7 @@ func _sync_gate_top_visual() -> void:
 	if unlocked:
 		visual.clear()
 		return
-	var rect: Rect2 = _get_visual_draw_rect()
+	var rect: Rect2 = _get_visual_fill_rect()
 	var top_color := GATE_SPECIAL_TOP_COLOR if has_special_marker() else GATE_TOP_COLOR
 	var trim_color := Color(0.16, 0.17, 0.18, 1.0)
 	visual.configure(_get_gate_top_rects(rect), top_color, trim_color, 2.0)
@@ -189,9 +179,13 @@ func _ensure_gate_top_visual():
 
 
 func _get_visual_draw_rect() -> Rect2:
-	var size := visual_size if visual_size != Vector2.ZERO else door_size
-	var rect := Rect2(visual_offset - size * 0.5, size)
+	var rect := _get_visual_fill_rect()
 	return rect.grow(-1.0) if rect.size.x > 2.0 and rect.size.y > 2.0 else rect
+
+
+func _get_visual_fill_rect() -> Rect2:
+	var size := visual_size if visual_size != Vector2.ZERO else door_size
+	return Rect2(visual_offset - size * 0.5, size)
 
 
 func _get_gate_top_rects(rect: Rect2) -> Array[Rect2]:
