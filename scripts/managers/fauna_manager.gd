@@ -1,6 +1,8 @@
 extends Node
 class_name FaunaManager
 
+signal cat_meowed(pitch_center: float, pitch_variation: float)
+
 const CAT_TEXTURES := [
 	preload("res://art/characters/Cats Download/black_0.png"),
 	preload("res://art/characters/Cats Download/black_1.png"),
@@ -160,6 +162,7 @@ func spawn_cat(spawn_position: Vector2, movement_seed: int = 0):
 	else:
 		add_child(cat)
 	_cat = cat
+	_connect_cat_signals(cat)
 	if cat.has_method("set_cat_texture"):
 		cat.set_cat_texture(_pick_cat_texture())
 	if cat.has_method("initialize"):
@@ -205,6 +208,18 @@ func _process(delta: float) -> void:
 
 func _has_cat() -> bool:
 	return _cat != null and is_instance_valid(_cat)
+
+
+func _connect_cat_signals(cat: Node) -> void:
+	if cat == null or not cat.has_signal("meowed"):
+		return
+	var callback: Callable = Callable(self, "_on_cat_meowed")
+	if not cat.is_connected(&"meowed", callback):
+		cat.connect(&"meowed", callback)
+
+
+func _on_cat_meowed(pitch_center: float, pitch_variation: float) -> void:
+	cat_meowed.emit(pitch_center, pitch_variation)
 
 
 func _sync_cat_simulation_state() -> void:

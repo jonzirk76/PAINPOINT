@@ -110,6 +110,7 @@ const SFX_PATHS := [
 	"res://audio/floor_start.wav",
 	"res://audio/game_over.wav",
 	"res://audio/item_pick_up.wav",
+	"res://audio/meow.mp3",
 	"res://audio/parry.wav",
 	"res://audio/parry_ready.wav",
 	"res://audio/perfect_parry_follow_up.wav",
@@ -410,6 +411,8 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("CatEntity should path toward curiosity-biased wander targets when walls block direct movement.")
 	if not cat_source.contains("set_player_projectile_points") or not cat_source.contains("shot_curiosity_reset_radius"):
 		failures.append("CatEntity should reset curiosity when player shots pass nearby.")
+	if not cat_source.contains("signal meowed") or not cat_source.contains("curiosity_meow_threshold") or not cat_source.contains("_pick_meow_pitch_center") or not cat_source.contains("_update_curiosity_meow"):
+		failures.append("CatEntity should periodically emit varied-pitch meows after curiosity gets high.")
 	if not cat_source.contains("set_cat_texture"):
 		failures.append("CatEntity should accept a selected cat color texture from FaunaManager.")
 	if cat_source.contains("add_to_group(\"enemies\")") or cat_source.contains("take_damage"):
@@ -431,6 +434,8 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("FaunaManager should pause cats outside current dungeon activity bounds.")
 	if not manager_source.contains("_filter_rects_for_cat_activity") or not manager_source.contains("_get_cat_playable_rects"):
 		failures.append("FaunaManager should filter full-floor geometry before syncing active cats.")
+	if not manager_source.contains("signal cat_meowed") or not manager_source.contains("_on_cat_meowed") or not manager_source.contains("meowed"):
+		failures.append("FaunaManager should relay cat meow requests upward.")
 	var projectile_manager_source := _read_text("res://scripts/managers/projectile_manager.gd")
 	if not projectile_manager_source.contains("get_player_projectile_positions"):
 		failures.append("ProjectileManager should expose active player projectile positions for background fauna awareness.")
@@ -441,6 +446,11 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("GameOrchestrator should scope the cat state log to authored cat test rooms only.")
 	if not orchestrator_source.contains("_sync_fauna_roam_bounds(level_definition, room_is_cleared)") or not orchestrator_source.contains("set_cat_activity_bounds"):
 		failures.append("GameOrchestrator should scope dungeon cat activity to the current combat room until rooms are cleared.")
+	if not orchestrator_source.contains("cat_meowed") or not orchestrator_source.contains("play_cat_meow"):
+		failures.append("GameOrchestrator should route curious cat meows to AudioManager.")
+	var audio_source := _read_text("res://scripts/managers/audio_manager.gd")
+	if not audio_source.contains("CAT_MEOW") or not audio_source.contains("play_cat_meow") or not audio_source.contains("cat_meow_volume_db"):
+		failures.append("AudioManager should play the cat meow sound with routed pitch variation.")
 	var cat_scene = load("res://scenes/entities/cat_entity.tscn")
 	if cat_scene == null:
 		failures.append("Cat scene failed to load.")
@@ -1487,7 +1497,8 @@ func _test_audio_assets_and_pitch_variation(failures: Array[String]) -> void:
 	manager.play_perfect_parry()
 	manager.play_bullet_wall_hit()
 	manager.play_rocket_explosion()
-	if manager._active_players.size() != 6:
+	manager.play_cat_meow(1.23, 0.04)
+	if manager._active_players.size() != 7:
 		failures.append("AudioManager should create short-lived AudioStreamPlayers for overlapping SFX.")
 	else:
 		var first_player: AudioStreamPlayer = manager._active_players[0]
@@ -1496,7 +1507,8 @@ func _test_audio_assets_and_pitch_variation(failures: Array[String]) -> void:
 		var perfect_player: AudioStreamPlayer = manager._active_players[3]
 		var wall_player: AudioStreamPlayer = manager._active_players[4]
 		var rocket_player: AudioStreamPlayer = manager._active_players[5]
-		if first_player.stream == null or perfect_player.stream == null:
+		var cat_player: AudioStreamPlayer = manager._active_players[6]
+		if first_player.stream == null or perfect_player.stream == null or cat_player.stream == null:
 			failures.append("AudioManager should assign streams before playback.")
 		if first_player.pitch_scale == second_player.pitch_scale:
 			failures.append("Repeated SFX should receive pitch variation from AudioStreamPlayer controls.")
@@ -1510,6 +1522,8 @@ func _test_audio_assets_and_pitch_variation(failures: Array[String]) -> void:
 			failures.append("Wall-hit pitch variation is outside its expected range.")
 		if rocket_player.pitch_scale < 0.92 or rocket_player.pitch_scale > 1.06:
 			failures.append("Rocket explosion pitch variation is outside its expected range.")
+		if cat_player.pitch_scale < 1.19 or cat_player.pitch_scale > 1.27:
+			failures.append("Cat meow pitch variation should stay around the cat's generated center pitch.")
 	var orchestrator_source := _read_text("res://scripts/orchestrators/game_orchestrator.gd")
 	if not orchestrator_source.contains("play_bullet_wall_hit") or not orchestrator_source.contains("reason == \"wall\"") or not orchestrator_source.contains("reason == \"bounds\""):
 		failures.append("Projectile wall and room-boundary expiry should route to the dedicated wall-hit SFX.")

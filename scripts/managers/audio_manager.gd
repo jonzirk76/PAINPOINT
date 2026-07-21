@@ -14,12 +14,15 @@ const FLOOR_START := preload("res://audio/floor_start.wav")
 const ROOM_ENTRY := preload("res://audio/room_entry.wav")
 const GAME_OVER := preload("res://audio/game_over.wav")
 const PLAYER_DAMAGE := preload("res://audio/player_damage.wav")
+const CAT_MEOW := preload("res://audio/meow.mp3")
 
 @export var max_active_players: int = 24
 ## Controls the center pitch used when the player takes damage.
 @export var player_damage_pitch_center: float = 1.1
 ## Controls the random pitch range above and below the player damage pitch center.
 @export var player_damage_pitch_variation: float = 0.08
+## Controls the playback volume for curious cat meows.
+@export var cat_meow_volume_db: float = -7.0
 
 var enabled: bool = false
 var _rng := RandomNumberGenerator.new()
@@ -100,6 +103,14 @@ func play_player_damage() -> void:
 	var pitch_min: float = max(player_damage_pitch_center - variation, 0.05)
 	var pitch_max: float = max(player_damage_pitch_center + variation, pitch_min)
 	_play(PLAYER_DAMAGE, pitch_min, pitch_max, -5.0)
+
+
+func play_cat_meow(pitch_center: float, pitch_variation: float) -> void:
+	var center: float = maxf(pitch_center, 0.05)
+	var variation: float = maxf(pitch_variation, 0.0)
+	var pitch_min: float = maxf(center - variation, 0.05)
+	var pitch_max: float = maxf(center + variation, pitch_min)
+	_play(CAT_MEOW, pitch_min, pitch_max, cat_meow_volume_db)
 
 
 func _play(stream: AudioStream, pitch_min: float, pitch_max: float, volume_db: float, force: bool = false) -> void:

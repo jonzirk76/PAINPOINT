@@ -1,6 +1,8 @@
 extends CharacterBody2D
 class_name CatEntity
 
+signal meowed(pitch_center: float, pitch_variation: float)
+
 const DEFAULT_CAT_TEXTURE := preload("res://art/characters/white_0.png")
 const FRAME_SIZE := Vector2i(32, 32)
 const COLLISION_MASK_WALLS_AND_VOID := 96
@@ -76,6 +78,18 @@ const INVALID_PATH_CELL := Vector2i(-999999, -999999)
 @export var curiosity_line_of_sight_margin: float = 6.0
 ## Controls how often curiosity refreshes line of sight while the cat and player are mostly steady.
 @export var curiosity_line_of_sight_check_seconds: float = 0.22
+## Controls how curious the cat must be before it starts meowing periodically.
+@export var curiosity_meow_threshold: float = 0.68
+## Controls the shortest delay between meows while the cat remains curious.
+@export var min_curiosity_meow_seconds: float = 5.5
+## Controls the longest delay between meows while the cat remains curious.
+@export var max_curiosity_meow_seconds: float = 12.0
+## Controls the lowest per-cat center pitch selected for meows.
+@export var meow_pitch_center_min: float = 0.86
+## Controls the highest per-cat center pitch selected for meows.
+@export var meow_pitch_center_max: float = 1.18
+## Controls how much each meow varies above or below this cat's center pitch.
+@export var meow_pitch_variation: float = 0.06
 ## Controls the wander target radius when curiosity first starts influencing movement.
 @export var curiosity_outer_target_radius: float = 300.0
 ## Controls the wander target radius when curiosity is full.
@@ -163,6 +177,8 @@ var _curiosity_line_of_sight_remaining: float = 0.0
 var _curiosity_line_of_sight_visible: bool = false
 var _curiosity_line_of_sight_cat_position: Vector2 = Vector2.INF
 var _curiosity_line_of_sight_player_position: Vector2 = Vector2.INF
+var _curiosity_meow_remaining: float = 0.0
+var _meow_pitch_center: float = 1.0
 var _motion_state: String = MOTION_STATE_GROUNDED
 var _movement_state_label: String = "idle"
 var _idle_state: String = IDLE_STATE_STANDING
@@ -211,6 +227,8 @@ func initialize(spawn_position: Vector2, movement_seed: int = 0) -> void:
 	_has_player_context = false
 	_player_projectile_points.clear()
 	_reset_curiosity_line_of_sight_cache()
+	_meow_pitch_center = _pick_meow_pitch_center()
+	_reset_curiosity_meow_timer()
 	_motion_state = MOTION_STATE_GROUNDED
 	_movement_state_label = "idle"
 	_idle_direction_index = _get_direction_index(_last_facing_direction)
@@ -289,6 +307,8 @@ func get_state_snapshot() -> Dictionary:
 		"jump_queued": _startle_jump_queued,
 		"is_fleeing": _is_fleeing,
 		"curiosity": _curiosity,
+		"meow_pitch_center": _meow_pitch_center,
+		"meow_cooldown": _curiosity_meow_remaining,
 		"speed": velocity.length(),
 		"target_distance": target_distance,
 		"path_points": _path_points.size(),
@@ -373,6 +393,7 @@ func _physics_process(delta: float) -> void:
 	_update_curiosity(delta, combat_avoidance.length_squared() > 0.001)
 	var desired_velocity := Vector2.ZERO
 	_is_fleeing = startle_avoidance.length_squared() > 0.001 or _startle_jump_queued or _startle_run_remaining > 0.0 or _is_jumping()
+	_update_curiosity_meow(delta)
 	if _is_jumping():
 		_movement_state_label = "jumping"
 		velocity = Vector2.ZERO
@@ -966,13 +987,41 @@ func _get_player_avoidance_vector() -> Vector2:
 
 
 func _update_curiosity(delta: float, combat_near: bool) -> void:
+	var was_meow_curious: bool = _curiosity >= clampf(curiosity_meow_threshold, 0.0, 1.0)
 	if _has_nearby_player_projectile():
 		_curiosity = 0.0
+		_reset_curiosity_meow_timer()
 		return
 	if _can_build_curiosity(combat_near, delta):
 		_curiosity = minf(1.0, _curiosity + maxf(curiosity_build_rate, 0.0) * delta)
 	else:
 		_curiosity = maxf(0.0, _curiosity - maxf(curiosity_decay_rate, 0.0) * delta)
+	if was_meow_curious and _curiosity < clampf(curiosity_meow_threshold, 0.0, 1.0):
+		_reset_curiosity_meow_timer()
+
+
+func _update_curiosity_meow(delta: float) -> void:
+	if _is_fleeing or _curiosity < clampf(curiosity_meow_threshold, 0.0, 1.0):
+		return
+	if not _can_build_curiosity(false, 0.0, false):
+		return
+	_curiosity_meow_remaining = maxf(_curiosity_meow_remaining - delta, 0.0)
+	if _curiosity_meow_remaining > 0.0:
+		return
+	meowed.emit(_meow_pitch_center, maxf(meow_pitch_variation, 0.0))
+	_reset_curiosity_meow_timer()
+
+
+func _pick_meow_pitch_center() -> float:
+	var pitch_min: float = maxf(minf(meow_pitch_center_min, meow_pitch_center_max), 0.05)
+	var pitch_max: float = maxf(maxf(meow_pitch_center_min, meow_pitch_center_max), pitch_min)
+	return _rng.randf_range(pitch_min, pitch_max)
+
+
+func _reset_curiosity_meow_timer() -> void:
+	var min_seconds: float = maxf(min_curiosity_meow_seconds, 0.1)
+	var max_seconds: float = maxf(max_curiosity_meow_seconds, min_seconds)
+	_curiosity_meow_remaining = _rng.randf_range(min_seconds, max_seconds)
 
 
 func _can_build_curiosity(combat_near: bool, delta: float = 0.0, refresh_line_of_sight: bool = true) -> bool:

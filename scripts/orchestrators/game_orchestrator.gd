@@ -359,6 +359,7 @@ func _connect_manager_signals() -> void:
 	_connect_once(upgrade_manager, &"permanent_upgrades_changed", _on_permanent_upgrades_changed)
 	_connect_once(upgrade_manager, &"overdrive_changed", _on_overdrive_changed)
 	_connect_once(room_manager, &"door_entered", _on_room_door_entered)
+	_connect_once(fauna_manager, &"cat_meowed", _on_cat_meowed)
 	if loading_screen != null:
 		_connect_once(loading_screen, &"continue_requested", _on_loading_continue_requested)
 
@@ -1491,6 +1492,10 @@ func _on_input_super_charge_released(direction: Vector2) -> void:
 
 func _on_input_overdrive_changed(is_held: bool) -> void:
 	upgrade_manager.set_overdrive_active(is_held and _is_gameplay_running())
+
+
+func _on_cat_meowed(pitch_center: float, pitch_variation: float) -> void:
+	audio_manager.play_cat_meow(pitch_center, pitch_variation)
 
 
 func _on_player_shoot_requested(origin: Vector2, direction: Vector2) -> void:
