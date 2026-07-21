@@ -50,6 +50,9 @@ process_mode = 1
 [node name="Arena" type="Node2D" parent="World"]
 script = ExtResource("2")
 
+[node name="DepthSortLayer" type="Node2D" parent="World"]
+y_sort_enabled = true
+
 [node name="DestructibleLayer" type="Node2D" parent="World"]
 
 [node name="SpawnerLayer" type="Node2D" parent="World"]

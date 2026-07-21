@@ -39,7 +39,8 @@ func reset_run() -> void:
 	_projectiles.clear()
 	if _projectile_layer != null:
 		for child in _projectile_layer.get_children():
-			_discard_projectile(child)
+			if child is ProjectileEntity:
+				_discard_projectile(child)
 	_projectiles.clear()
 
 

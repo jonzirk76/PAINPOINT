@@ -3,12 +3,18 @@ class_name ArenaView
 
 const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_builder.gd")
 const ARENA_WALL_TOP_OVERLAY_SCRIPT := preload("res://scripts/arena/arena_wall_top_overlay.gd")
+const ARENA_WALL_BODY_VISUAL_SCRIPT := preload("res://scripts/arena/arena_wall_body_visual.gd")
+const WALL_BODY_FILL_COLOR := Color(0.16, 0.17, 0.19)
+const WALL_BODY_OUTLINE_COLOR := Color(0.5, 0.58, 0.64)
+const WALL_TOP_FILL_COLOR := Color(0.09, 0.1, 0.12)
+const WALL_TOP_OUTLINE_COLOR := Color(0.72, 0.78, 0.82)
 
 @export var arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 @export var grid_size: float = 60.0
 @export var arena_shape: int = 0
 @export var wall_rects: Array[Rect2] = []
 @export var void_rects: Array[Rect2] = []
+@export var depth_sort_layer_path: NodePath = ^"../DepthSortLayer"
 
 var _wall_bodies: Array[StaticBody2D] = []
 var _void_bodies: Array[StaticBody2D] = []
@@ -22,6 +28,8 @@ var _void_draw_rects: Array[Rect2] = []
 var _footprint_cells: Array[Vector2i] = []
 var _fog_rects: Array[Rect2] = []
 var _wall_top_overlay = null
+var _wall_body_visuals: Array[Node2D] = []
+var _wall_body_depth_visuals_enabled: bool = false
 
 
 func configure(level_definition) -> void:
@@ -46,8 +54,13 @@ func configure(level_definition) -> void:
 	_footprint_cells = _get_meta_cells(level_definition, "footprint_cells")
 	_fog_rects = _get_meta_rects(level_definition, "fog_rects", [])
 	_configure_wall_top_overlay()
+	_configure_wall_body_depth_visuals()
 	_rebuild_blocker_bodies()
 	queue_redraw()
+
+
+func _exit_tree() -> void:
+	_clear_wall_body_depth_visuals()
 
 
 func _draw() -> void:
@@ -214,8 +227,8 @@ func _configure_wall_top_overlay() -> void:
 		_wall_top_tile_rects,
 		ROOM_GEOMETRY_BUILDER.merge_wall_tiles(_wall_top_tile_rects),
 		_fog_rects,
-		Color(0.16, 0.17, 0.19),
-		Color(0.72, 0.78, 0.82),
+		WALL_TOP_FILL_COLOR,
+		WALL_TOP_OUTLINE_COLOR,
 		2.0
 	)
 
@@ -228,6 +241,38 @@ func _ensure_wall_top_overlay():
 	_wall_top_overlay.z_index = 5
 	add_child(_wall_top_overlay)
 	return _wall_top_overlay
+
+
+func _configure_wall_body_depth_visuals() -> void:
+	_clear_wall_body_depth_visuals()
+	if not _uses_canonical_wall_tiles:
+		return
+	var depth_sort_layer := _get_depth_sort_layer()
+	if depth_sort_layer == null:
+		return
+	var wall_body_lookup := _build_tile_lookup(_wall_draw_tile_rects)
+	for index in range(_wall_draw_tile_rects.size()):
+		var visual: ArenaWallBodyVisual = ARENA_WALL_BODY_VISUAL_SCRIPT.new()
+		visual.name = "ArenaWallBodyVisual%d" % index
+		depth_sort_layer.add_child(visual)
+		visual.configure(_wall_draw_tile_rects[index], wall_body_lookup, WALL_BODY_FILL_COLOR, WALL_BODY_OUTLINE_COLOR, 3.0)
+		_wall_body_visuals.append(visual)
+	_wall_body_depth_visuals_enabled = true
+
+
+func _clear_wall_body_depth_visuals() -> void:
+	for visual in _wall_body_visuals:
+		if is_instance_valid(visual):
+			visual.visible = false
+			visual.queue_free()
+	_wall_body_visuals.clear()
+	_wall_body_depth_visuals_enabled = false
+
+
+func _get_depth_sort_layer() -> Node2D:
+	if String(depth_sort_layer_path).is_empty():
+		return null
+	return get_node_or_null(depth_sort_layer_path) as Node2D
 
 
 func _closed_points(points: PackedVector2Array) -> PackedVector2Array:
@@ -286,7 +331,8 @@ func _rebuild_blocker_bodies() -> void:
 
 func _draw_walls() -> void:
 	if _uses_canonical_wall_tiles:
-		_draw_tile_mass(_wall_draw_tile_rects, _wall_draw_rects, Color(0.09, 0.1, 0.12), Color(0.5, 0.58, 0.64), 3.0)
+		if not _wall_body_depth_visuals_enabled:
+			_draw_tile_mass(_wall_draw_tile_rects, _wall_draw_rects, WALL_BODY_FILL_COLOR, WALL_BODY_OUTLINE_COLOR, 3.0)
 	else:
 		for rect in _wall_draw_rects:
 			draw_rect(rect, Color(0.11, 0.12, 0.14), true)

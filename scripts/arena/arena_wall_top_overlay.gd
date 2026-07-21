@@ -6,7 +6,7 @@ const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_bu
 var _tile_rects: Array[Rect2] = []
 var _draw_rects: Array[Rect2] = []
 var _fog_rects: Array[Rect2] = []
-var _fill_color: Color = Color(0.16, 0.17, 0.19)
+var _fill_color: Color = Color(0.09, 0.1, 0.12)
 var _outline_color: Color = Color(0.72, 0.78, 0.82)
 var _outline_width: float = 2.0
 

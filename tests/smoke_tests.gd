@@ -27,6 +27,7 @@ const FORBIDDEN_ENTITY_SNIPPETS := [
 const SCRIPT_PATHS := [
 	"res://scripts/arena/arena_geometry.gd",
 	"res://scripts/arena/arena_view.gd",
+	"res://scripts/arena/arena_wall_body_visual.gd",
 	"res://scripts/arena/arena_wall_top_overlay.gd",
 	"res://scripts/entities/player_entity.gd",
 	"res://scripts/entities/enemy_entity.gd",
@@ -591,6 +592,7 @@ func _test_scene_loads(failures: Array[String]) -> void:
 					"UI/GameOverPanel/GameOverTallyLabel",
 					"UI/LevelSelectPanel/LevelListLabel",
 					"UI/WinPanel/WinPromptLabel",
+					"World/DepthSortLayer",
 					"World/DoorLayer",
 					"World/DestructibleLayer",
 					"World/FaunaLayer",
@@ -824,13 +826,25 @@ func _test_arena_wall_generation(failures: Array[String]) -> void:
 	arena.free()
 	var room_piece = load("res://resources/rooms/combat_cell.tres")
 	var generated_level = room_piece.create_level_definition()
+	var depth_sort_layer := Node2D.new()
+	depth_sort_layer.name = "DepthSortLayer"
+	depth_sort_layer.y_sort_enabled = true
+	root.add_child(depth_sort_layer)
 	var generated_arena = load("res://scripts/arena/arena_view.gd").new()
 	root.add_child(generated_arena)
 	generated_arena.configure(generated_level)
 	var wall_top_overlay = generated_arena.get_node_or_null("WallTopOverlay")
 	if wall_top_overlay == null or int(wall_top_overlay.z_index) <= 0:
 		failures.append("Generated room wall tops should render through a positive-z overlay above gameplay entities.")
+	var wall_body_visual_script = load("res://scripts/arena/arena_wall_body_visual.gd")
+	var wall_body_visual_count := 0
+	for child in depth_sort_layer.get_children():
+		if child.get_script() == wall_body_visual_script:
+			wall_body_visual_count += 1
+	if wall_body_visual_count <= 0:
+		failures.append("Generated room wall bodies should render as y-sorted depth visuals.")
 	generated_arena.free()
+	depth_sort_layer.free()
 
 
 func _test_character_hud_visibility(failures: Array[String]) -> void:
@@ -1075,9 +1089,12 @@ func _test_pause_menu_flow(failures: Array[String]) -> void:
 		failures.append("Starting gameplay should clear SceneTree.paused.")
 	main.projectile_manager.fire(Vector2.ZERO, Vector2.RIGHT, {})
 	var live_projectile = null
-	if main.get_node("World/ProjectileLayer").get_child_count() > 0:
-		live_projectile = main.get_node("World/ProjectileLayer").get_child(0)
-	else:
+	var projectile_script = load("res://scripts/entities/projectile_entity.gd")
+	for child in main.get_node("World/DepthSortLayer").get_children():
+		if child.get_script() == projectile_script:
+			live_projectile = child
+			break
+	if live_projectile == null:
 		failures.append("Pause test should be able to spawn a live projectile.")
 	main.effects_manager.play_explosion(Vector2(40.0, 0.0), 80.0)
 	var normal_effect = null
