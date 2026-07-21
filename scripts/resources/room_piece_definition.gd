@@ -46,9 +46,10 @@ func create_level_definition():
 	level.arena_bounds = ROOM_GEOMETRY_BUILDER.get_bounds(footprint_cells)
 	level.spawner_placements = spawner_placements.duplicate()
 	level.destructible_prop_placements = destructible_prop_placements.duplicate()
-	var wall_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_tile_rects(footprint_cells)
-	wall_tiles.append_array(ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(wall_rects))
-	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(wall_tiles)
+	var wall_top_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_tile_rects(footprint_cells)
+	wall_top_tiles.append_array(ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(wall_rects))
+	var wall_body_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(wall_top_tiles, footprint_cells)
+	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(wall_body_tiles)
 	var empty_voids: Array[Rect2] = []
 	level.void_rects = empty_voids
 	level.max_active_enemies = max_active_enemies
@@ -57,7 +58,9 @@ func create_level_definition():
 	level.boss_spawn_position = boss_spawn_position
 	level.set_meta("footprint_cells", footprint_cells.duplicate())
 	level.set_meta("connection_edges", {})
-	level.set_meta("wall_tile_rects", wall_tiles)
+	level.set_meta("wall_top_tile_rects", wall_top_tiles)
+	level.set_meta("wall_body_tile_rects", wall_body_tiles)
+	level.set_meta("wall_tile_rects", wall_top_tiles)
 	level.set_meta("void_tile_rects", empty_voids)
 	return level
 

@@ -2685,6 +2685,27 @@ func _validate_room_piece_geometry_rules(failures: Array[String]) -> void:
 		failures.append("Room shell generation should preserve exterior corner wall tiles when one cell has adjacent openings.")
 	if _rect_list_count_rect(multi_open_tiles, north_east_corner) != 1:
 		failures.append("Room shell generation should not duplicate exterior corner wall tiles shared by adjacent wall edges.")
+	var manual_wall_top_tiles: Array[Rect2] = [
+		Rect2(Vector2(-builder.WALL_TILE_SIZE, -builder.WALL_TILE_SIZE), Vector2(builder.WALL_TILE_SIZE, builder.WALL_TILE_SIZE))
+	]
+	var manual_wall_body_tiles: Array[Rect2] = builder.build_wall_body_tile_rects(manual_wall_top_tiles, corner_cells, {})
+	var expected_wall_body := Rect2(Vector2(-builder.WALL_TILE_SIZE, 0.0), Vector2(builder.WALL_TILE_SIZE, builder.WALL_TILE_SIZE))
+	if not _rect_list_has_rect(manual_wall_body_tiles, expected_wall_body):
+		failures.append("RPG-style wall tops should derive one blocking wall body tile directly below them.")
+	var bottom_wall_top_tiles: Array[Rect2] = [
+		Rect2(Vector2(0.0, builder.CELL_SIZE.y * 0.5 - builder.WALL_TILE_SIZE), Vector2(builder.WALL_TILE_SIZE, builder.WALL_TILE_SIZE))
+	]
+	if not builder.build_wall_body_tile_rects(bottom_wall_top_tiles, corner_cells, {}).is_empty():
+		failures.append("RPG-style wall bodies should not spawn outside the room footprint.")
+	var east_opening_body_source := Rect2(
+		Vector2(builder.CELL_SIZE.x * 0.5 - builder.WALL_TILE_SIZE, -builder.WALL_TILE_SIZE * 3.0),
+		Vector2(builder.WALL_TILE_SIZE, builder.WALL_TILE_SIZE)
+	)
+	var east_opening_blocked_body := Rect2(east_opening_body_source.position + Vector2(0.0, builder.WALL_TILE_SIZE), east_opening_body_source.size)
+	var east_opening_top_tiles: Array[Rect2] = [east_opening_body_source]
+	var east_opening_body_tiles: Array[Rect2] = builder.build_wall_body_tile_rects(east_opening_top_tiles, corner_cells, multi_open_edges)
+	if _rect_list_has_rect(east_opening_body_tiles, east_opening_blocked_body):
+		failures.append("RPG-style wall body derivation should keep connected door openings clear.")
 	var l_cells: Array[Vector2i] = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)]
 	var l_tiles: Array[Rect2] = builder.build_wall_tile_rects(l_cells, {})
 	var l_boundary_turn_corner := Rect2(Vector2(
@@ -3247,6 +3268,9 @@ func _level_generated_blockers_stay_inside_footprint(level) -> bool:
 	if level == null or not level.has_meta("footprint_cells"):
 		return false
 	for rect in _get_level_meta_rects(level, "wall_tile_rects", level.wall_rects):
+		if not _rect_fits_level_footprint(level, rect):
+			return false
+	for rect in _get_level_meta_rects(level, "wall_body_tile_rects", level.wall_rects):
 		if not _rect_fits_level_footprint(level, rect):
 			return false
 	for rect in _get_level_meta_rects(level, "void_tile_rects", level.void_rects):

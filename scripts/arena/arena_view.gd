@@ -13,8 +13,10 @@ var _wall_bodies: Array[StaticBody2D] = []
 var _void_bodies: Array[StaticBody2D] = []
 var _uses_canonical_wall_tiles: bool = false
 var _wall_tile_rects: Array[Rect2] = []
+var _wall_top_tile_rects: Array[Rect2] = []
 var _void_tile_rects: Array[Rect2] = []
 var _wall_draw_rects: Array[Rect2] = []
+var _wall_top_draw_rects: Array[Rect2] = []
 var _void_draw_rects: Array[Rect2] = []
 var _footprint_cells: Array[Vector2i] = []
 var _fog_rects: Array[Rect2] = []
@@ -28,13 +30,16 @@ func configure(level_definition) -> void:
 	wall_rects = level_definition.wall_rects
 	void_rects = level_definition.void_rects
 	_uses_canonical_wall_tiles = level_definition.has_meta("footprint_cells")
-	_wall_tile_rects = _get_meta_rects(level_definition, "wall_tile_rects", wall_rects)
+	_wall_tile_rects = _get_meta_rects(level_definition, "wall_body_tile_rects", ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(wall_rects))
+	_wall_top_tile_rects = _get_wall_top_tile_rects(level_definition)
 	_void_tile_rects = _get_meta_rects(level_definition, "void_tile_rects", ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(void_rects))
 	if _uses_canonical_wall_tiles:
 		_wall_draw_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(_wall_tile_rects)
+		_wall_top_draw_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(_wall_top_tile_rects)
 		_void_draw_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(_void_tile_rects)
 	else:
 		_wall_draw_rects = wall_rects.duplicate()
+		_wall_top_draw_rects = _wall_draw_rects.duplicate()
 		_void_draw_rects = void_rects.duplicate()
 	_footprint_cells = _get_meta_cells(level_definition, "footprint_cells")
 	_fog_rects = _get_meta_rects(level_definition, "fog_rects", [])
@@ -176,6 +181,14 @@ func _get_meta_cells(level_definition, meta_key: String) -> Array[Vector2i]:
 	return cells
 
 
+func _get_wall_top_tile_rects(level_definition) -> Array[Rect2]:
+	if level_definition.has_meta("wall_top_tile_rects"):
+		return _get_meta_rects(level_definition, "wall_top_tile_rects", [])
+	if level_definition.has_meta("wall_tile_rects"):
+		return _get_meta_rects(level_definition, "wall_tile_rects", [])
+	return _wall_tile_rects.duplicate()
+
+
 func _closed_points(points: PackedVector2Array) -> PackedVector2Array:
 	var closed := points.duplicate()
 	if not closed.is_empty():
@@ -232,7 +245,8 @@ func _rebuild_blocker_bodies() -> void:
 
 func _draw_walls() -> void:
 	if _uses_canonical_wall_tiles:
-		_draw_tile_mass(_wall_tile_rects, _wall_draw_rects, Color(0.11, 0.12, 0.14), Color(0.65, 0.72, 0.76), 3.0)
+		_draw_tile_mass(_wall_top_tile_rects, _wall_top_draw_rects, Color(0.16, 0.17, 0.19), Color(0.72, 0.78, 0.82), 2.0)
+		_draw_tile_mass(_wall_tile_rects, _wall_draw_rects, Color(0.09, 0.1, 0.12), Color(0.5, 0.58, 0.64), 3.0)
 	else:
 		for rect in _wall_draw_rects:
 			draw_rect(rect, Color(0.11, 0.12, 0.14), true)
