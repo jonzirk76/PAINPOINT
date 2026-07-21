@@ -165,7 +165,7 @@ func get_current_door_infos() -> Array:
 				"target_room_id": target_room_id,
 				"target_room_kind": _get_room_kind(target_room_id),
 				"trigger_rect": ROOM_GEOMETRY_BUILDER.get_trigger_rect(state["piece"].footprint_cells, source_cell, direction),
-				"opening_rect": ROOM_GEOMETRY_BUILDER.get_opening_rect(state["piece"].footprint_cells, source_cell, direction),
+				"opening_rect": ROOM_GEOMETRY_BUILDER.get_wall_body_opening_rect(state["piece"].footprint_cells, source_cell, direction),
 				"source_cell": source_cell,
 				"target_cell": edge.get("target_cell", Vector2i.ZERO)
 			})
@@ -406,7 +406,7 @@ func get_full_floor_traversal_door_infos() -> Array:
 			var edge: Dictionary = connection_edges.get(direction, {})
 			var source_cell: Vector2i = edge.get("source_cell", Vector2i.ZERO)
 			var trigger_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_trigger_rect(piece.footprint_cells, source_cell, direction)
-			var opening_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_opening_rect(piece.footprint_cells, source_cell, direction)
+			var opening_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_wall_body_opening_rect(piece.footprint_cells, source_cell, direction)
 			door_infos.append({
 				"direction": direction,
 				"target_room_id": target_room_id,
@@ -658,7 +658,7 @@ func _get_full_floor_door_infos_for_room(room_id: String) -> Array:
 		var edge: Dictionary = connection_edges.get(direction, {})
 		var source_cell: Vector2i = edge.get("source_cell", Vector2i.ZERO)
 		var trigger_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_trigger_rect(piece.footprint_cells, source_cell, direction)
-		var opening_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_opening_rect(piece.footprint_cells, source_cell, direction)
+		var opening_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_wall_body_opening_rect(piece.footprint_cells, source_cell, direction)
 		door_infos.append({
 			"direction": direction,
 			"target_room_id": target_room_id,

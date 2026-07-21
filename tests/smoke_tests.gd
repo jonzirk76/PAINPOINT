@@ -27,6 +27,7 @@ const FORBIDDEN_ENTITY_SNIPPETS := [
 const SCRIPT_PATHS := [
 	"res://scripts/arena/arena_geometry.gd",
 	"res://scripts/arena/arena_view.gd",
+	"res://scripts/arena/arena_wall_top_overlay.gd",
 	"res://scripts/entities/player_entity.gd",
 	"res://scripts/entities/enemy_entity.gd",
 	"res://scripts/entities/projectile_entity.gd",
@@ -821,6 +822,15 @@ func _test_arena_wall_generation(failures: Array[String]) -> void:
 	if wall_count != level.wall_rects.size():
 		failures.append("ArenaView did not create one wall body per maze wall rect.")
 	arena.free()
+	var room_piece = load("res://resources/rooms/combat_cell.tres")
+	var generated_level = room_piece.create_level_definition()
+	var generated_arena = load("res://scripts/arena/arena_view.gd").new()
+	root.add_child(generated_arena)
+	generated_arena.configure(generated_level)
+	var wall_top_overlay = generated_arena.get_node_or_null("WallTopOverlay")
+	if wall_top_overlay == null or int(wall_top_overlay.z_index) <= 0:
+		failures.append("Generated room wall tops should render through a positive-z overlay above gameplay entities.")
+	generated_arena.free()
 
 
 func _test_character_hud_visibility(failures: Array[String]) -> void:
@@ -2706,6 +2716,15 @@ func _validate_room_piece_geometry_rules(failures: Array[String]) -> void:
 	var east_opening_body_tiles: Array[Rect2] = builder.build_wall_body_tile_rects(east_opening_top_tiles, corner_cells, multi_open_edges)
 	if _rect_list_has_rect(east_opening_body_tiles, east_opening_blocked_body):
 		failures.append("RPG-style wall body derivation should keep connected door openings clear.")
+	var north_opening_top_source := builder.get_opening_rect(corner_cells, Vector2i.ZERO, "north")
+	var north_opening_blocked_body := Rect2(north_opening_top_source.position + Vector2(0.0, builder.WALL_TILE_SIZE), north_opening_top_source.size)
+	var north_opening_top_tiles: Array[Rect2] = [north_opening_top_source]
+	var north_opening_body_tiles: Array[Rect2] = builder.build_wall_body_tile_rects(north_opening_top_tiles, corner_cells, multi_open_edges)
+	if _rect_list_has_rect(north_opening_body_tiles, north_opening_blocked_body):
+		failures.append("North-facing wall body openings should be cut on the body row, not only the top row.")
+	var north_gate_rect: Rect2 = builder.get_wall_body_opening_rect(corner_cells, Vector2i.ZERO, "north")
+	if abs(north_gate_rect.position.y - (north_opening_top_source.position.y + builder.WALL_TILE_SIZE)) > 0.5:
+		failures.append("North-facing gate visuals should align with RPG-style wall body tiles.")
 	var l_cells: Array[Vector2i] = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)]
 	var l_tiles: Array[Rect2] = builder.build_wall_tile_rects(l_cells, {})
 	var l_boundary_turn_corner := Rect2(Vector2(
@@ -3319,16 +3338,30 @@ func _level_door_openings_are_unblocked(level, connections: Dictionary) -> bool:
 	if level == null:
 		return false
 	for direction_key in connections.keys():
-		var opening_rect := _get_level_connection_opening_rect(level, String(direction_key))
-		if opening_rect.size == Vector2.ZERO:
+		var opening_rects := _get_level_connection_opening_rects(level, String(direction_key))
+		if opening_rects.is_empty():
 			continue
 		for rect in level.wall_rects:
-			if rect.intersects(opening_rect):
-				return false
+			for opening_rect in opening_rects:
+				if rect.intersects(opening_rect):
+					return false
 		for rect in level.void_rects:
-			if rect.intersects(opening_rect):
-				return false
+			for opening_rect in opening_rects:
+				if rect.intersects(opening_rect):
+					return false
 	return true
+
+
+func _get_level_connection_opening_rects(level, direction: String) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	var top_opening := _get_level_connection_opening_rect(level, direction)
+	if top_opening.size == Vector2.ZERO:
+		return rects
+	rects.append(top_opening)
+	var body_opening := _get_level_connection_body_opening_rect(level, direction)
+	if body_opening.size != Vector2.ZERO and body_opening != top_opening:
+		rects.append(body_opening)
+	return rects
 
 
 func _get_level_connection_opening_rect(level, direction: String) -> Rect2:
@@ -3343,6 +3376,20 @@ func _get_level_connection_opening_rect(level, direction: String) -> Rect2:
 		cells.append(cell)
 	var edge: Dictionary = edges[direction]
 	return builder.get_opening_rect(cells, edge.get("source_cell", Vector2i.ZERO), direction)
+
+
+func _get_level_connection_body_opening_rect(level, direction: String) -> Rect2:
+	if level == null or not level.has_meta("connection_edges") or not level.has_meta("footprint_cells"):
+		return Rect2()
+	var edges: Dictionary = level.get_meta("connection_edges")
+	if not edges.has(direction):
+		return Rect2()
+	var builder = load("res://scripts/resources/room_geometry_builder.gd")
+	var cells: Array[Vector2i] = []
+	for cell in level.get_meta("footprint_cells"):
+		cells.append(cell)
+	var edge: Dictionary = edges[direction]
+	return builder.get_wall_body_opening_rect(cells, edge.get("source_cell", Vector2i.ZERO), direction)
 
 
 func _rect_is_tile_aligned(rect: Rect2, tile_size: float) -> bool:

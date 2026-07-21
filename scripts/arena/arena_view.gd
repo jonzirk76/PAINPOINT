@@ -2,6 +2,7 @@ extends Node2D
 class_name ArenaView
 
 const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_builder.gd")
+const ARENA_WALL_TOP_OVERLAY_SCRIPT := preload("res://scripts/arena/arena_wall_top_overlay.gd")
 
 @export var arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 @export var grid_size: float = 60.0
@@ -16,10 +17,11 @@ var _wall_tile_rects: Array[Rect2] = []
 var _wall_top_tile_rects: Array[Rect2] = []
 var _void_tile_rects: Array[Rect2] = []
 var _wall_draw_rects: Array[Rect2] = []
-var _wall_top_draw_rects: Array[Rect2] = []
+var _wall_draw_tile_rects: Array[Rect2] = []
 var _void_draw_rects: Array[Rect2] = []
 var _footprint_cells: Array[Vector2i] = []
 var _fog_rects: Array[Rect2] = []
+var _wall_top_overlay = null
 
 
 func configure(level_definition) -> void:
@@ -34,15 +36,16 @@ func configure(level_definition) -> void:
 	_wall_top_tile_rects = _get_wall_top_tile_rects(level_definition)
 	_void_tile_rects = _get_meta_rects(level_definition, "void_tile_rects", ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(void_rects))
 	if _uses_canonical_wall_tiles:
-		_wall_draw_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(_wall_tile_rects)
-		_wall_top_draw_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(_wall_top_tile_rects)
+		_wall_draw_tile_rects = _get_uncovered_wall_body_tiles(_wall_tile_rects, _wall_top_tile_rects)
+		_wall_draw_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(_wall_draw_tile_rects)
 		_void_draw_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(_void_tile_rects)
 	else:
+		_wall_draw_tile_rects = _wall_tile_rects.duplicate()
 		_wall_draw_rects = wall_rects.duplicate()
-		_wall_top_draw_rects = _wall_draw_rects.duplicate()
 		_void_draw_rects = void_rects.duplicate()
 	_footprint_cells = _get_meta_cells(level_definition, "footprint_cells")
 	_fog_rects = _get_meta_rects(level_definition, "fog_rects", [])
+	_configure_wall_top_overlay()
 	_rebuild_blocker_bodies()
 	queue_redraw()
 
@@ -58,7 +61,8 @@ func _draw() -> void:
 		_draw_clipped_grid(polygon)
 	_draw_voids()
 	_draw_walls()
-	_draw_fog()
+	if not _uses_canonical_wall_tiles:
+		_draw_fog()
 	if not _uses_canonical_wall_tiles:
 		draw_polyline(_closed_points(polygon), Color(0.52, 0.58, 0.62), 4.0, true)
 
@@ -189,6 +193,43 @@ func _get_wall_top_tile_rects(level_definition) -> Array[Rect2]:
 	return _wall_tile_rects.duplicate()
 
 
+func _get_uncovered_wall_body_tiles(body_tiles: Array[Rect2], wall_top_tiles: Array[Rect2]) -> Array[Rect2]:
+	var visible_tiles: Array[Rect2] = []
+	var wall_top_lookup := _build_tile_lookup(wall_top_tiles)
+	var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
+	for body_tile in body_tiles:
+		var body_key := _tile_key(_tile_key_vector(body_tile.position, tile_size))
+		if wall_top_lookup.has(body_key):
+			continue
+		visible_tiles.append(body_tile)
+	return visible_tiles
+
+
+func _configure_wall_top_overlay() -> void:
+	var overlay := _ensure_wall_top_overlay()
+	if not _uses_canonical_wall_tiles:
+		overlay.clear()
+		return
+	overlay.configure(
+		_wall_top_tile_rects,
+		ROOM_GEOMETRY_BUILDER.merge_wall_tiles(_wall_top_tile_rects),
+		_fog_rects,
+		Color(0.16, 0.17, 0.19),
+		Color(0.72, 0.78, 0.82),
+		2.0
+	)
+
+
+func _ensure_wall_top_overlay():
+	if _wall_top_overlay != null and is_instance_valid(_wall_top_overlay):
+		return _wall_top_overlay
+	_wall_top_overlay = ARENA_WALL_TOP_OVERLAY_SCRIPT.new()
+	_wall_top_overlay.name = "WallTopOverlay"
+	_wall_top_overlay.z_index = 5
+	add_child(_wall_top_overlay)
+	return _wall_top_overlay
+
+
 func _closed_points(points: PackedVector2Array) -> PackedVector2Array:
 	var closed := points.duplicate()
 	if not closed.is_empty():
@@ -245,8 +286,7 @@ func _rebuild_blocker_bodies() -> void:
 
 func _draw_walls() -> void:
 	if _uses_canonical_wall_tiles:
-		_draw_tile_mass(_wall_top_tile_rects, _wall_top_draw_rects, Color(0.16, 0.17, 0.19), Color(0.72, 0.78, 0.82), 2.0)
-		_draw_tile_mass(_wall_tile_rects, _wall_draw_rects, Color(0.09, 0.1, 0.12), Color(0.5, 0.58, 0.64), 3.0)
+		_draw_tile_mass(_wall_draw_tile_rects, _wall_draw_rects, Color(0.09, 0.1, 0.12), Color(0.5, 0.58, 0.64), 3.0)
 	else:
 		for rect in _wall_draw_rects:
 			draw_rect(rect, Color(0.11, 0.12, 0.14), true)

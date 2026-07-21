@@ -119,7 +119,7 @@ static func build_wall_tile_rects(cells: Array[Vector2i], connection_edges: Dict
 static func build_wall_body_tile_rects(wall_top_tiles: Array[Rect2], cells: Array[Vector2i], connection_edges: Dictionary = {}) -> Array[Rect2]:
 	var body_tiles: Array[Rect2] = []
 	var body_lookup := {}
-	var opening_rects := _get_connection_opening_rects(cells, connection_edges)
+	var opening_rects := _get_wall_body_connection_opening_rects(cells, connection_edges)
 	for wall_top in wall_top_tiles:
 		var body_tile := Rect2(wall_top.position + Vector2(0.0, WALL_TILE_SIZE), wall_top.size)
 		if not _rect_fits_footprint(cells, body_tile):
@@ -128,6 +128,15 @@ static func build_wall_body_tile_rects(wall_top_tiles: Array[Rect2], cells: Arra
 			continue
 		_append_unique_wall_tile(body_tiles, body_lookup, body_tile)
 	return body_tiles
+
+
+static func get_wall_body_opening_rect(cells: Array[Vector2i], local_cell: Vector2i, direction: String) -> Rect2:
+	var opening := get_opening_rect(cells, local_cell, direction)
+	if opening.size == Vector2.ZERO:
+		return opening
+	if direction == "north":
+		return Rect2(opening.position + Vector2(0.0, WALL_TILE_SIZE), opening.size)
+	return opening
 
 
 static func rects_to_wall_tiles(rects: Array[Rect2]) -> Array[Rect2]:
@@ -373,7 +382,7 @@ static func _tile_is_inside_any_opening(tile: Rect2, opening_rects: Array[Rect2]
 	return false
 
 
-static func _get_connection_opening_rects(cells: Array[Vector2i], connection_edges: Dictionary) -> Array[Rect2]:
+static func _get_wall_body_connection_opening_rects(cells: Array[Vector2i], connection_edges: Dictionary) -> Array[Rect2]:
 	var opening_rects: Array[Rect2] = []
 	for direction in DIRECTIONS:
 		if not connection_edges.has(direction):
@@ -381,7 +390,7 @@ static func _get_connection_opening_rects(cells: Array[Vector2i], connection_edg
 		var edge := Dictionary(connection_edges[direction])
 		if not edge.has("source_cell"):
 			continue
-		opening_rects.append(get_opening_rect(cells, edge.get("source_cell", Vector2i.ZERO), direction))
+		opening_rects.append(get_wall_body_opening_rect(cells, edge.get("source_cell", Vector2i.ZERO), direction))
 	return opening_rects
 
 
