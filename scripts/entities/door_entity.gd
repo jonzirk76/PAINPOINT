@@ -7,9 +7,9 @@ signal entered(door)
 
 const ARM_DELAY_SECONDS := 0.12
 const GATE_TOP_COLOR := Color(0.09, 0.1, 0.12, 1.0)
-const GATE_BODY_COLOR := Color(0.055, 0.062, 0.072, 1.0)
+const GATE_BODY_COLOR := Color(0.16, 0.17, 0.19, 1.0)
 const GATE_SPECIAL_TOP_COLOR := Color(0.105, 0.095, 0.12, 1.0)
-const GATE_SPECIAL_BODY_COLOR := Color(0.066, 0.058, 0.078, 1.0)
+const GATE_SPECIAL_BODY_COLOR := Color(0.18, 0.165, 0.195, 1.0)
 
 var direction: String = "north"
 var target_room_id: String = ""

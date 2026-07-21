@@ -247,17 +247,52 @@ func _configure_wall_body_depth_visuals() -> void:
 	_clear_wall_body_depth_visuals()
 	if not _uses_canonical_wall_tiles:
 		return
-	var depth_sort_layer := _get_depth_sort_layer()
+	var depth_sort_layer: Node2D = _get_depth_sort_layer()
 	if depth_sort_layer == null:
 		return
 	var wall_body_lookup := _build_tile_lookup(_wall_draw_tile_rects)
-	for index in range(_wall_draw_tile_rects.size()):
+	var wall_body_runs := _build_horizontal_wall_body_runs(_wall_draw_tile_rects)
+	for index in range(wall_body_runs.size()):
 		var visual: ArenaWallBodyVisual = ARENA_WALL_BODY_VISUAL_SCRIPT.new()
+		var run_tiles: Array[Rect2] = []
+		for tile in wall_body_runs[index]:
+			run_tiles.append(tile)
 		visual.name = "ArenaWallBodyVisual%d" % index
 		depth_sort_layer.add_child(visual)
-		visual.configure(_wall_draw_tile_rects[index], wall_body_lookup, WALL_BODY_FILL_COLOR, WALL_BODY_OUTLINE_COLOR, 3.0)
+		visual.configure(run_tiles, wall_body_lookup, WALL_BODY_FILL_COLOR, WALL_BODY_OUTLINE_COLOR, 3.0)
 		_wall_body_visuals.append(visual)
 	_wall_body_depth_visuals_enabled = true
+
+
+func _build_horizontal_wall_body_runs(tile_rects: Array[Rect2]) -> Array:
+	var rows := {}
+	for tile in tile_rects:
+		var key := "%d:%d" % [int(round(tile.position.y)), int(round(tile.size.y))]
+		var row: Array = rows.get(key, [])
+		row.append(tile)
+		rows[key] = row
+	var runs: Array = []
+	for key in rows.keys():
+		var row: Array = rows[key]
+		row.sort_custom(func(a: Rect2, b: Rect2) -> bool:
+			return a.position.x < b.position.x
+		)
+		var current_run: Array[Rect2] = []
+		for tile in row:
+			if current_run.is_empty():
+				current_run.append(tile)
+				continue
+			var previous: Rect2 = current_run[current_run.size() - 1]
+			var touches: bool = abs((previous.position.x + previous.size.x) - tile.position.x) <= 0.5
+			if touches:
+				current_run.append(tile)
+			else:
+				runs.append(current_run)
+				current_run = []
+				current_run.append(tile)
+		if not current_run.is_empty():
+			runs.append(current_run)
+	return runs
 
 
 func _clear_wall_body_depth_visuals() -> void:

@@ -4,45 +4,72 @@ class_name ArenaWallBodyVisual
 const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_builder.gd")
 
 var _local_rect: Rect2 = Rect2()
+var _edge_segments: Array[PackedVector2Array] = []
 var _fill_color: Color = Color(0.16, 0.17, 0.19)
 var _outline_color: Color = Color(0.5, 0.58, 0.64)
 var _outline_width: float = 3.0
-var _draw_top_edge: bool = true
-var _draw_bottom_edge: bool = true
-var _draw_left_edge: bool = true
-var _draw_right_edge: bool = true
 
 
-func configure(tile_rect: Rect2, wall_body_lookup: Dictionary, fill_color: Color, outline_color: Color, outline_width: float) -> void:
+func configure(tile_rects: Array[Rect2], wall_body_lookup: Dictionary, fill_color: Color, outline_color: Color, outline_width: float) -> void:
+	_edge_segments.clear()
+	if tile_rects.is_empty():
+		visible = false
+		queue_redraw()
+		return
+	var bounds: Rect2 = _get_bounds(tile_rects)
 	var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
-	var cell := _tile_key_vector(tile_rect.position, tile_size)
-	position = tile_rect.position + Vector2(tile_rect.size.x * 0.5, tile_rect.size.y)
-	_local_rect = Rect2(Vector2(-tile_rect.size.x * 0.5, -tile_rect.size.y), tile_rect.size)
+	position = Vector2(bounds.get_center().x, bounds.position.y + bounds.size.y)
+	_local_rect = Rect2(bounds.position - position, bounds.size)
 	_fill_color = fill_color
 	_outline_color = outline_color
 	_outline_width = outline_width
-	_draw_top_edge = not wall_body_lookup.has(_tile_key(cell + Vector2i(0, -1)))
-	_draw_bottom_edge = not wall_body_lookup.has(_tile_key(cell + Vector2i(0, 1)))
-	_draw_left_edge = not wall_body_lookup.has(_tile_key(cell + Vector2i(-1, 0)))
-	_draw_right_edge = not wall_body_lookup.has(_tile_key(cell + Vector2i(1, 0)))
-	visible = tile_rect.size.x > 0.0 and tile_rect.size.y > 0.0
+	for tile in tile_rects:
+		_add_exposed_tile_edges(tile, wall_body_lookup, tile_size)
+	visible = bounds.size.x > 0.0 and bounds.size.y > 0.0
 	queue_redraw()
 
 
 func _draw() -> void:
 	draw_rect(_local_rect, _fill_color, true)
-	var left := _local_rect.position.x
-	var top := _local_rect.position.y
-	var right := _local_rect.position.x + _local_rect.size.x
-	var bottom := _local_rect.position.y + _local_rect.size.y
-	if _draw_top_edge:
-		draw_line(Vector2(left, top), Vector2(right, top), _outline_color, _outline_width)
-	if _draw_bottom_edge:
-		draw_line(Vector2(left, bottom), Vector2(right, bottom), _outline_color, _outline_width)
-	if _draw_left_edge:
-		draw_line(Vector2(left, top), Vector2(left, bottom), _outline_color, _outline_width)
-	if _draw_right_edge:
-		draw_line(Vector2(right, top), Vector2(right, bottom), _outline_color, _outline_width)
+	for segment in _edge_segments:
+		if segment.size() >= 2:
+			draw_line(segment[0], segment[1], _outline_color, _outline_width)
+
+
+func _get_bounds(tile_rects: Array[Rect2]) -> Rect2:
+	var left := INF
+	var top := INF
+	var right := -INF
+	var bottom := -INF
+	for tile in tile_rects:
+		left = min(left, tile.position.x)
+		top = min(top, tile.position.y)
+		right = max(right, tile.position.x + tile.size.x)
+		bottom = max(bottom, tile.position.y + tile.size.y)
+	return Rect2(Vector2(left, top), Vector2(right - left, bottom - top))
+
+
+func _add_exposed_tile_edges(tile: Rect2, wall_body_lookup: Dictionary, tile_size: float) -> void:
+	var cell := _tile_key_vector(tile.position, tile_size)
+	var left := tile.position.x - position.x
+	var top := tile.position.y - position.y
+	var right := tile.position.x + tile.size.x - position.x
+	var bottom := tile.position.y + tile.size.y - position.y
+	if not wall_body_lookup.has(_tile_key(cell + Vector2i(0, -1))):
+		_append_edge(Vector2(left, top), Vector2(right, top))
+	if not wall_body_lookup.has(_tile_key(cell + Vector2i(0, 1))):
+		_append_edge(Vector2(left, bottom), Vector2(right, bottom))
+	if not wall_body_lookup.has(_tile_key(cell + Vector2i(-1, 0))):
+		_append_edge(Vector2(left, top), Vector2(left, bottom))
+	if not wall_body_lookup.has(_tile_key(cell + Vector2i(1, 0))):
+		_append_edge(Vector2(right, top), Vector2(right, bottom))
+
+
+func _append_edge(start: Vector2, end: Vector2) -> void:
+	var segment := PackedVector2Array()
+	segment.append(start)
+	segment.append(end)
+	_edge_segments.append(segment)
 
 
 func _tile_key_vector(position: Vector2, tile_size: float) -> Vector2i:

@@ -379,7 +379,7 @@ func _initialize_managers() -> void:
 		"player_layer": depth_sort_layer
 	})
 	projectile_manager.initialize({
-		"projectile_layer": depth_sort_layer
+		"projectile_layer": $World/ProjectileLayer
 	})
 	enemy_manager.initialize({
 		"enemy_layer": depth_sort_layer,

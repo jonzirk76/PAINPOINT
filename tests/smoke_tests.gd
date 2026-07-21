@@ -1089,11 +1089,8 @@ func _test_pause_menu_flow(failures: Array[String]) -> void:
 		failures.append("Starting gameplay should clear SceneTree.paused.")
 	main.projectile_manager.fire(Vector2.ZERO, Vector2.RIGHT, {})
 	var live_projectile = null
-	var projectile_script = load("res://scripts/entities/projectile_entity.gd")
-	for child in main.get_node("World/DepthSortLayer").get_children():
-		if child.get_script() == projectile_script:
-			live_projectile = child
-			break
+	if main.get_node("World/ProjectileLayer").get_child_count() > 0:
+		live_projectile = main.get_node("World/ProjectileLayer").get_child(0)
 	if live_projectile == null:
 		failures.append("Pause test should be able to spawn a live projectile.")
 	main.effects_manager.play_explosion(Vector2(40.0, 0.0), 80.0)
