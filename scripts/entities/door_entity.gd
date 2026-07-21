@@ -9,9 +9,9 @@ const DOOR_GATE_TOP_VISUAL_SCRIPT := preload("res://scripts/entities/door_gate_t
 const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_builder.gd")
 const ARM_DELAY_SECONDS := 0.12
 const WALL_TOP_Z_INDEX := 5
-const GATE_TOP_COLOR := Color(0.09, 0.1, 0.12, 1.0)
+const WALL_TOP_FILL_COLOR := Color(0.09, 0.1, 0.12, 1.0)
+const WALL_TOP_OUTLINE_COLOR := Color(0.72, 0.78, 0.82, 1.0)
 const GATE_BODY_COLOR := Color(0.16, 0.17, 0.19, 1.0)
-const GATE_SPECIAL_TOP_COLOR := Color(0.105, 0.095, 0.12, 1.0)
 const GATE_SPECIAL_BODY_COLOR := Color(0.18, 0.165, 0.195, 1.0)
 
 var direction: String = "north"
@@ -150,10 +150,10 @@ func _draw() -> void:
 
 func _draw_locked_gate_body(fill_rect: Rect2, detail_rect: Rect2, trim_color: Color) -> void:
 	var body_color := GATE_SPECIAL_BODY_COLOR if has_special_marker() else GATE_BODY_COLOR
-	# The cap overlay paints above this, but the full backplate prevents wall tiles from bleeding through the cap edges.
-	draw_rect(fill_rect, body_color, true)
-	draw_rect(detail_rect, trim_color, false, 2.0)
-	_draw_gate_detail_lines(detail_rect, trim_color)
+	for body_rect in _get_gate_body_rects(fill_rect):
+		draw_rect(body_rect, body_color, true)
+	for body_rect in _get_gate_body_rects(detail_rect):
+		draw_rect(body_rect, trim_color, false, 2.0)
 
 
 func _sync_gate_top_visual() -> void:
@@ -162,9 +162,7 @@ func _sync_gate_top_visual() -> void:
 		visual.clear()
 		return
 	var rect: Rect2 = _get_visual_fill_rect()
-	var top_color := GATE_SPECIAL_TOP_COLOR if has_special_marker() else GATE_TOP_COLOR
-	var trim_color := Color(0.16, 0.17, 0.18, 1.0)
-	visual.configure(_get_gate_top_rects(rect), top_color, trim_color, 2.0)
+	visual.configure(_get_gate_top_rects(rect), WALL_TOP_FILL_COLOR, WALL_TOP_OUTLINE_COLOR, 2.0)
 
 
 func _ensure_gate_top_visual():
@@ -203,16 +201,18 @@ func _get_gate_top_rects(rect: Rect2) -> Array[Rect2]:
 	return rects
 
 
-func _draw_gate_detail_lines(rect: Rect2, trim_color: Color) -> void:
+func _get_gate_body_rects(rect: Rect2) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
 	match direction:
 		"north":
-			draw_line(Vector2(rect.position.x, rect.get_center().y), Vector2(rect.position.x + rect.size.x, rect.get_center().y), trim_color, 1.0)
+			var north_cap_height: float = min(rect.size.y * 0.5, rect.size.x * 0.25)
+			rects.append(Rect2(rect.position + Vector2(0.0, north_cap_height), Vector2(rect.size.x, max(rect.size.y - north_cap_height, 1.0))))
 		"east", "west":
-			var cap_height: float = min(rect.size.y * 0.25, rect.size.x)
-			var first_y: float = rect.position.y + cap_height
-			var second_y: float = rect.position.y + rect.size.y - cap_height
-			draw_line(Vector2(rect.position.x, first_y), Vector2(rect.position.x + rect.size.x, first_y), trim_color, 1.0)
-			draw_line(Vector2(rect.position.x, second_y), Vector2(rect.position.x + rect.size.x, second_y), trim_color, 1.0)
+			var side_cap_height: float = min(rect.size.y * 0.25, rect.size.x)
+			rects.append(Rect2(rect.position + Vector2(0.0, side_cap_height), Vector2(rect.size.x, max(rect.size.y - side_cap_height * 2.0, 1.0))))
+		_:
+			pass
+	return rects
 
 
 func _get_passage_draw_rect(fallback_rect: Rect2) -> Rect2:
