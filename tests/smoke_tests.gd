@@ -12,6 +12,7 @@ const ENTITY_SCRIPT_PATHS := [
 	"res://scripts/entities/projectile_impact_effect.gd",
 	"res://scripts/entities/muzzle_flash_effect.gd",
 	"res://scripts/entities/door_entity.gd",
+	"res://scripts/entities/door_gate_top_visual.gd",
 	"res://scripts/entities/destructible_prop_entity.gd",
 	"res://scripts/entities/floor_exit_portal_entity.gd",
 	"res://scripts/entities/cat_entity.gd"
@@ -40,6 +41,7 @@ const SCRIPT_PATHS := [
 	"res://scripts/entities/projectile_impact_effect.gd",
 	"res://scripts/entities/muzzle_flash_effect.gd",
 	"res://scripts/entities/door_entity.gd",
+	"res://scripts/entities/door_gate_top_visual.gd",
 	"res://scripts/entities/destructible_prop_entity.gd",
 	"res://scripts/entities/floor_exit_portal_entity.gd",
 	"res://scripts/entities/cat_entity.gd",
@@ -2719,8 +2721,12 @@ func _validate_room_piece_geometry_rules(failures: Array[String]) -> void:
 	var bottom_wall_top_tiles: Array[Rect2] = [
 		Rect2(Vector2(0.0, builder.CELL_SIZE.y * 0.5 - builder.WALL_TILE_SIZE), Vector2(builder.WALL_TILE_SIZE, builder.WALL_TILE_SIZE))
 	]
-	if not builder.build_wall_body_tile_rects(bottom_wall_top_tiles, corner_cells, {}).is_empty():
-		failures.append("RPG-style wall bodies should not spawn outside the room footprint.")
+	var bottom_wall_body_tiles: Array[Rect2] = builder.build_wall_body_tile_rects(bottom_wall_top_tiles, corner_cells, {})
+	if not _rect_list_has_rect(bottom_wall_body_tiles, bottom_wall_top_tiles[0]):
+		failures.append("Bottom exterior wall tops should become blocking fallback tiles instead of leaving the map edge open.")
+	var outside_bottom_wall_body := Rect2(bottom_wall_top_tiles[0].position + Vector2(0.0, builder.WALL_TILE_SIZE), bottom_wall_top_tiles[0].size)
+	if _rect_list_has_rect(bottom_wall_body_tiles, outside_bottom_wall_body):
+		failures.append("Bottom exterior wall-top fallback collision should not spawn outside the room footprint.")
 	var east_opening_body_source := Rect2(
 		Vector2(builder.CELL_SIZE.x * 0.5 - builder.WALL_TILE_SIZE, -builder.WALL_TILE_SIZE * 3.0),
 		Vector2(builder.WALL_TILE_SIZE, builder.WALL_TILE_SIZE)
@@ -3921,6 +3927,9 @@ func _test_room_manager_doors(failures: Array[String]) -> void:
 	direct_door.set_unlocked(false)
 	if not direct_door.is_gate_blocking():
 		failures.append("Direct locked door should create blocking gate collision.")
+	var gate_top_visual = direct_door.get_node_or_null("GateTopVisual")
+	if gate_top_visual == null or int(gate_top_visual.z_index) != 5:
+		failures.append("Locked dungeon gates should draw their top cap on the wall-top z level.")
 	direct_door.set_unlocked(true)
 	if not direct_door.has_special_marker():
 		failures.append("Door entity should treat boss targets as special marked doors.")

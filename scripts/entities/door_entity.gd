@@ -5,8 +5,10 @@ signal entered(door)
 
 @export var door_size: Vector2 = Vector2(88.0, 28.0)
 
+const DOOR_GATE_TOP_VISUAL_SCRIPT := preload("res://scripts/entities/door_gate_top_visual.gd")
 const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_builder.gd")
 const ARM_DELAY_SECONDS := 0.12
+const WALL_TOP_Z_INDEX := 5
 const GATE_TOP_COLOR := Color(0.09, 0.1, 0.12, 1.0)
 const GATE_BODY_COLOR := Color(0.16, 0.17, 0.19, 1.0)
 const GATE_SPECIAL_TOP_COLOR := Color(0.105, 0.095, 0.12, 1.0)
@@ -23,6 +25,7 @@ var passage_offset: Vector2 = Vector2.ZERO
 var _collision_shape: CollisionShape2D = null
 var _gate_body: StaticBody2D = null
 var _gate_collision_shape: CollisionShape2D = null
+var _gate_top_visual = null
 var _armed: bool = false
 var _arm_delay_remaining: float = 0.0
 
@@ -49,6 +52,7 @@ func initialize(door_direction: String, target_id: String, center_position: Vect
 	_arm_delay_remaining = ARM_DELAY_SECONDS if unlocked else 0.0
 	_add_or_update_collision()
 	_add_or_update_gate_collision()
+	_sync_gate_top_visual()
 	set_physics_process(unlocked)
 	queue_redraw()
 
@@ -58,6 +62,7 @@ func set_visual_rect(center_position: Vector2, size: Vector2) -> void:
 	visual_offset = snapped_center - global_position
 	visual_size = Vector2(round(size.x), round(size.y))
 	_add_or_update_gate_collision()
+	_sync_gate_top_visual()
 	queue_redraw()
 
 
@@ -73,6 +78,7 @@ func set_unlocked(value: bool) -> void:
 	_armed = false
 	_arm_delay_remaining = ARM_DELAY_SECONDS if unlocked else 0.0
 	_set_gate_blocking_enabled(not unlocked)
+	_sync_gate_top_visual()
 	set_physics_process(unlocked and not _armed)
 	queue_redraw()
 
@@ -130,12 +136,10 @@ func _has_player_overlap() -> bool:
 
 
 func _draw() -> void:
-	var size := visual_size if visual_size != Vector2.ZERO else door_size
-	var rect := Rect2(visual_offset - size * 0.5, size)
-	var drawn_rect := rect.grow(-1.0) if rect.size.x > 2.0 and rect.size.y > 2.0 else rect
+	var drawn_rect := _get_visual_draw_rect()
 	var trim_color := Color(0.16, 0.17, 0.18, 1.0)
 	if not unlocked:
-		_draw_locked_gate(drawn_rect, trim_color)
+		_draw_locked_gate_body(drawn_rect, trim_color)
 		var locked_marker_rect := _get_passage_draw_rect(drawn_rect)
 		_draw_room_kind_marker(_get_floor_marker_center(locked_marker_rect), min(locked_marker_rect.size.x, locked_marker_rect.size.y))
 	elif has_special_marker():
@@ -143,30 +147,66 @@ func _draw() -> void:
 		_draw_room_kind_marker(_get_floor_marker_center(passage_rect), min(passage_rect.size.x, passage_rect.size.y))
 
 
-func _draw_locked_gate(rect: Rect2, trim_color: Color) -> void:
-	var top_color := GATE_SPECIAL_TOP_COLOR if has_special_marker() else GATE_TOP_COLOR
+func _draw_locked_gate_body(rect: Rect2, trim_color: Color) -> void:
 	var body_color := GATE_SPECIAL_BODY_COLOR if has_special_marker() else GATE_BODY_COLOR
 	match direction:
 		"north":
 			var north_cap_height: float = min(rect.size.y * 0.5, rect.size.x * 0.25)
-			var top_rect := Rect2(rect.position, Vector2(rect.size.x, north_cap_height))
 			var body_rect := Rect2(rect.position + Vector2(0.0, north_cap_height), Vector2(rect.size.x, max(rect.size.y - north_cap_height, 1.0)))
 			draw_rect(body_rect, body_color, true)
-			draw_rect(top_rect, top_color, true)
 		"south":
-			draw_rect(rect, top_color, true)
+			pass
 		"east", "west":
 			var side_cap_height: float = min(rect.size.y * 0.25, rect.size.x)
-			var side_top_rect := Rect2(rect.position, Vector2(rect.size.x, side_cap_height))
-			var bottom_rect := Rect2(Vector2(rect.position.x, rect.position.y + rect.size.y - side_cap_height), Vector2(rect.size.x, side_cap_height))
 			var side_body_rect := Rect2(rect.position + Vector2(0.0, side_cap_height), Vector2(rect.size.x, max(rect.size.y - side_cap_height * 2.0, 1.0)))
 			draw_rect(side_body_rect, body_color, true)
-			draw_rect(side_top_rect, top_color, true)
-			draw_rect(bottom_rect, top_color, true)
 		_:
 			draw_rect(rect, body_color, true)
 	draw_rect(rect, trim_color, false, 2.0)
 	_draw_gate_detail_lines(rect, trim_color)
+
+
+func _sync_gate_top_visual() -> void:
+	var visual = _ensure_gate_top_visual()
+	if unlocked:
+		visual.clear()
+		return
+	var rect: Rect2 = _get_visual_draw_rect()
+	var top_color := GATE_SPECIAL_TOP_COLOR if has_special_marker() else GATE_TOP_COLOR
+	var trim_color := Color(0.16, 0.17, 0.18, 1.0)
+	visual.configure(_get_gate_top_rects(rect), top_color, trim_color, 2.0)
+
+
+func _ensure_gate_top_visual():
+	if _gate_top_visual != null and is_instance_valid(_gate_top_visual):
+		return _gate_top_visual
+	_gate_top_visual = DOOR_GATE_TOP_VISUAL_SCRIPT.new()
+	_gate_top_visual.name = "GateTopVisual"
+	_gate_top_visual.z_index = WALL_TOP_Z_INDEX
+	_gate_top_visual.z_as_relative = false
+	add_child(_gate_top_visual)
+	return _gate_top_visual
+
+
+func _get_visual_draw_rect() -> Rect2:
+	var size := visual_size if visual_size != Vector2.ZERO else door_size
+	var rect := Rect2(visual_offset - size * 0.5, size)
+	return rect.grow(-1.0) if rect.size.x > 2.0 and rect.size.y > 2.0 else rect
+
+
+func _get_gate_top_rects(rect: Rect2) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	match direction:
+		"north":
+			var north_cap_height: float = min(rect.size.y * 0.5, rect.size.x * 0.25)
+			rects.append(Rect2(rect.position, Vector2(rect.size.x, north_cap_height)))
+		"south":
+			rects.append(rect)
+		"east", "west":
+			var side_cap_height: float = min(rect.size.y * 0.25, rect.size.x)
+			rects.append(Rect2(rect.position, Vector2(rect.size.x, side_cap_height)))
+			rects.append(Rect2(Vector2(rect.position.x, rect.position.y + rect.size.y - side_cap_height), Vector2(rect.size.x, side_cap_height)))
+	return rects
 
 
 func _draw_gate_detail_lines(rect: Rect2, trim_color: Color) -> void:
