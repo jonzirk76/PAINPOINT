@@ -1184,7 +1184,7 @@ func _get_connection_opening_rect(level, direction: String) -> Rect2:
 		if edges.has(direction):
 			var edge: Dictionary = edges[direction]
 			var cells: Array[Vector2i] = _get_level_footprint_cells(level)
-			return ROOM_GEOMETRY_BUILDER.get_opening_rect(cells, edge.get("source_cell", Vector2i.ZERO), direction)
+			return ROOM_GEOMETRY_BUILDER.get_gate_passage_rect(cells, edge.get("source_cell", Vector2i.ZERO), direction)
 	return Rect2()
 
 

@@ -136,6 +136,37 @@ static func get_wall_body_opening_rect(cells: Array[Vector2i], local_cell: Vecto
 		return opening
 	if direction == "north":
 		return Rect2(opening.position + Vector2(0.0, WALL_TILE_SIZE), opening.size)
+	if direction == "east" or direction == "west":
+		return Rect2(opening.position + Vector2(0.0, WALL_TILE_SIZE), Vector2(opening.size.x, max(opening.size.y - WALL_TILE_SIZE, WALL_TILE_SIZE)))
+	return opening
+
+
+static func get_wall_top_opening_rect(cells: Array[Vector2i], local_cell: Vector2i, direction: String) -> Rect2:
+	var opening := get_opening_rect(cells, local_cell, direction)
+	if opening.size == Vector2.ZERO:
+		return opening
+	if direction == "east" or direction == "west":
+		return Rect2(opening.position, Vector2(opening.size.x, max(opening.size.y - WALL_TILE_SIZE, WALL_TILE_SIZE)))
+	return opening
+
+
+static func get_gate_visual_rect(cells: Array[Vector2i], local_cell: Vector2i, direction: String) -> Rect2:
+	var opening := get_opening_rect(cells, local_cell, direction)
+	if opening.size == Vector2.ZERO:
+		return opening
+	if direction == "north":
+		return Rect2(opening.position, Vector2(opening.size.x, opening.size.y + WALL_TILE_SIZE))
+	return opening
+
+
+static func get_gate_passage_rect(cells: Array[Vector2i], local_cell: Vector2i, direction: String) -> Rect2:
+	var opening := get_opening_rect(cells, local_cell, direction)
+	if opening.size == Vector2.ZERO:
+		return opening
+	if direction == "north":
+		return get_wall_body_opening_rect(cells, local_cell, direction)
+	if direction == "east" or direction == "west":
+		return Rect2(opening.position + Vector2(0.0, WALL_TILE_SIZE), Vector2(opening.size.x, max(opening.size.y - WALL_TILE_SIZE, WALL_TILE_SIZE)))
 	return opening
 
 
@@ -372,7 +403,7 @@ static func _tile_is_inside_opening(tile: Rect2, opening: Rect2) -> bool:
 static func _tile_is_inside_connection_opening(tile: Rect2, cells: Array[Vector2i], local_cell: Vector2i, direction: String, connection_edges: Dictionary) -> bool:
 	if not _connection_uses_cell_edge(connection_edges, direction, local_cell):
 		return false
-	return _tile_is_inside_opening(tile, get_opening_rect(cells, local_cell, direction))
+	return _tile_is_inside_opening(tile, get_wall_top_opening_rect(cells, local_cell, direction))
 
 
 static func _tile_is_inside_any_opening(tile: Rect2, opening_rects: Array[Rect2]) -> bool:

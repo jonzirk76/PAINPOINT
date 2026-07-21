@@ -6,6 +6,10 @@ signal entered(door)
 @export var door_size: Vector2 = Vector2(88.0, 28.0)
 
 const ARM_DELAY_SECONDS := 0.12
+const GATE_TOP_COLOR := Color(0.09, 0.1, 0.12, 1.0)
+const GATE_BODY_COLOR := Color(0.055, 0.062, 0.072, 1.0)
+const GATE_SPECIAL_TOP_COLOR := Color(0.105, 0.095, 0.12, 1.0)
+const GATE_SPECIAL_BODY_COLOR := Color(0.066, 0.058, 0.078, 1.0)
 
 var direction: String = "north"
 var target_room_id: String = ""
@@ -13,6 +17,8 @@ var target_room_kind: String = ""
 var unlocked: bool = false
 var visual_size: Vector2 = Vector2.ZERO
 var visual_offset: Vector2 = Vector2.ZERO
+var passage_size: Vector2 = Vector2.ZERO
+var passage_offset: Vector2 = Vector2.ZERO
 var _collision_shape: CollisionShape2D = null
 var _gate_body: StaticBody2D = null
 var _gate_collision_shape: CollisionShape2D = null
@@ -51,6 +57,13 @@ func set_visual_rect(center_position: Vector2, size: Vector2) -> void:
 	visual_offset = snapped_center - global_position
 	visual_size = Vector2(round(size.x), round(size.y))
 	_add_or_update_gate_collision()
+	queue_redraw()
+
+
+func set_passage_rect(center_position: Vector2, size: Vector2) -> void:
+	var snapped_center := Vector2(round(center_position.x), round(center_position.y))
+	passage_offset = snapped_center - global_position
+	passage_size = Vector2(round(size.x), round(size.y))
 	queue_redraw()
 
 
@@ -121,14 +134,55 @@ func _draw() -> void:
 	var drawn_rect := rect.grow(-1.0) if rect.size.x > 2.0 and rect.size.y > 2.0 else rect
 	var trim_color := Color(0.16, 0.17, 0.18, 1.0)
 	if not unlocked:
-		var fill_color := Color(0.075, 0.08, 0.09, 1.0)
-		if has_special_marker():
-			fill_color = Color(0.095, 0.085, 0.105, 1.0)
-		draw_rect(drawn_rect, fill_color, true)
-		draw_rect(drawn_rect, trim_color, false, 2.0)
+		_draw_locked_gate(drawn_rect, trim_color)
 		_draw_room_kind_marker(drawn_rect.get_center(), min(drawn_rect.size.x, drawn_rect.size.y))
 	elif has_special_marker():
-		_draw_room_kind_marker(drawn_rect.get_center(), min(drawn_rect.size.x, drawn_rect.size.y))
+		var passage_rect := _get_passage_draw_rect(drawn_rect)
+		_draw_room_kind_marker(passage_rect.get_center(), min(passage_rect.size.x, passage_rect.size.y))
+
+
+func _draw_locked_gate(rect: Rect2, trim_color: Color) -> void:
+	var top_color := GATE_SPECIAL_TOP_COLOR if has_special_marker() else GATE_TOP_COLOR
+	var body_color := GATE_SPECIAL_BODY_COLOR if has_special_marker() else GATE_BODY_COLOR
+	match direction:
+		"north":
+			var north_cap_height: float = min(rect.size.y * 0.5, rect.size.x * 0.25)
+			var top_rect := Rect2(rect.position, Vector2(rect.size.x, north_cap_height))
+			var body_rect := Rect2(rect.position + Vector2(0.0, north_cap_height), Vector2(rect.size.x, max(rect.size.y - north_cap_height, 1.0)))
+			draw_rect(body_rect, body_color, true)
+			draw_rect(top_rect, top_color, true)
+		"south":
+			draw_rect(rect, top_color, true)
+		"east", "west":
+			var side_cap_height: float = min(rect.size.y * 0.25, rect.size.x)
+			var side_top_rect := Rect2(rect.position, Vector2(rect.size.x, side_cap_height))
+			var bottom_rect := Rect2(Vector2(rect.position.x, rect.position.y + rect.size.y - side_cap_height), Vector2(rect.size.x, side_cap_height))
+			var side_body_rect := Rect2(rect.position + Vector2(0.0, side_cap_height), Vector2(rect.size.x, max(rect.size.y - side_cap_height * 2.0, 1.0)))
+			draw_rect(side_body_rect, body_color, true)
+			draw_rect(side_top_rect, top_color, true)
+			draw_rect(bottom_rect, top_color, true)
+		_:
+			draw_rect(rect, body_color, true)
+	draw_rect(rect, trim_color, false, 2.0)
+	_draw_gate_detail_lines(rect, trim_color)
+
+
+func _draw_gate_detail_lines(rect: Rect2, trim_color: Color) -> void:
+	match direction:
+		"north":
+			draw_line(Vector2(rect.position.x, rect.get_center().y), Vector2(rect.position.x + rect.size.x, rect.get_center().y), trim_color, 1.0)
+		"east", "west":
+			var cap_height: float = min(rect.size.y * 0.25, rect.size.x)
+			var first_y: float = rect.position.y + cap_height
+			var second_y: float = rect.position.y + rect.size.y - cap_height
+			draw_line(Vector2(rect.position.x, first_y), Vector2(rect.position.x + rect.size.x, first_y), trim_color, 1.0)
+			draw_line(Vector2(rect.position.x, second_y), Vector2(rect.position.x + rect.size.x, second_y), trim_color, 1.0)
+
+
+func _get_passage_draw_rect(fallback_rect: Rect2) -> Rect2:
+	if passage_size == Vector2.ZERO:
+		return fallback_rect
+	return Rect2(passage_offset - passage_size * 0.5, passage_size)
 
 
 func has_special_marker() -> bool:

@@ -2731,8 +2731,21 @@ func _validate_room_piece_geometry_rules(failures: Array[String]) -> void:
 	var east_opening_blocked_body := Rect2(east_opening_body_source.position + Vector2(0.0, builder.WALL_TILE_SIZE), east_opening_body_source.size)
 	var east_opening_top_tiles: Array[Rect2] = [east_opening_body_source]
 	var east_opening_body_tiles: Array[Rect2] = builder.build_wall_body_tile_rects(east_opening_top_tiles, corner_cells, multi_open_edges)
-	if _rect_list_has_rect(east_opening_body_tiles, east_opening_blocked_body):
-		failures.append("RPG-style wall body derivation should keep connected door openings clear.")
+	if not _rect_list_has_rect(east_opening_body_tiles, east_opening_blocked_body):
+		failures.append("Side-facing gate openings should keep a wall body frame at the top of the four-tile opening.")
+	var east_opening := builder.get_opening_rect(corner_cells, Vector2i.ZERO, "east")
+	var east_wall_top_opening := builder.get_wall_top_opening_rect(corner_cells, Vector2i.ZERO, "east")
+	if abs(east_wall_top_opening.size.y - (east_opening.size.y - builder.WALL_TILE_SIZE)) > 0.5:
+		failures.append("Side-facing wall-top openings should leave the lowest opening tile as a passable wall top.")
+	var east_low_wall_top := Rect2(
+		Vector2(east_opening.position.x, east_opening.position.y + east_opening.size.y - builder.WALL_TILE_SIZE),
+		Vector2(builder.WALL_TILE_SIZE, builder.WALL_TILE_SIZE)
+	)
+	if not _rect_list_has_rect(multi_open_tiles, east_low_wall_top):
+		failures.append("Side-facing gate construction should draw the lowest opening tile as a wall top.")
+	var east_gate_passage := builder.get_gate_passage_rect(corner_cells, Vector2i.ZERO, "east")
+	if abs(east_gate_passage.position.y - (east_opening.position.y + builder.WALL_TILE_SIZE)) > 0.5 or abs(east_gate_passage.size.y - (east_opening.size.y - builder.WALL_TILE_SIZE)) > 0.5:
+		failures.append("Side-facing gate marker/passability should use the lower three tiles of the four-tile gate span.")
 	var north_opening_top_source := builder.get_opening_rect(corner_cells, Vector2i.ZERO, "north")
 	var north_opening_blocked_body := Rect2(north_opening_top_source.position + Vector2(0.0, builder.WALL_TILE_SIZE), north_opening_top_source.size)
 	var north_opening_top_tiles: Array[Rect2] = [north_opening_top_source]
@@ -2742,6 +2755,13 @@ func _validate_room_piece_geometry_rules(failures: Array[String]) -> void:
 	var north_gate_rect: Rect2 = builder.get_wall_body_opening_rect(corner_cells, Vector2i.ZERO, "north")
 	if abs(north_gate_rect.position.y - (north_opening_top_source.position.y + builder.WALL_TILE_SIZE)) > 0.5:
 		failures.append("North-facing gate visuals should align with RPG-style wall body tiles.")
+	var north_gate_visual := builder.get_gate_visual_rect(corner_cells, Vector2i.ZERO, "north")
+	if abs(north_gate_visual.position.y - north_opening_top_source.position.y) > 0.5 or abs(north_gate_visual.size.y - builder.WALL_TILE_SIZE * 2.0) > 0.5:
+		failures.append("North-facing locked gates should draw both a gate top and one body row.")
+	var south_gate_visual := builder.get_gate_visual_rect(corner_cells, Vector2i.ZERO, "south")
+	var south_opening := builder.get_opening_rect(corner_cells, Vector2i.ZERO, "south")
+	if south_gate_visual != south_opening:
+		failures.append("South-facing locked gates should draw only the gate top row.")
 	var l_cells: Array[Vector2i] = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)]
 	var l_tiles: Array[Rect2] = builder.build_wall_tile_rects(l_cells, {})
 	var l_boundary_turn_corner := Rect2(Vector2(
@@ -3392,7 +3412,7 @@ func _get_level_connection_opening_rect(level, direction: String) -> Rect2:
 	for cell in level.get_meta("footprint_cells"):
 		cells.append(cell)
 	var edge: Dictionary = edges[direction]
-	return builder.get_opening_rect(cells, edge.get("source_cell", Vector2i.ZERO), direction)
+	return builder.get_gate_passage_rect(cells, edge.get("source_cell", Vector2i.ZERO), direction)
 
 
 func _get_level_connection_body_opening_rect(level, direction: String) -> Rect2:
@@ -3818,6 +3838,8 @@ func _test_room_manager_doors(failures: Array[String]) -> void:
 	for door_info in dungeon.get_current_door_infos():
 		if not door_info.has("trigger_rect") or not door_info.has("opening_rect"):
 			failures.append("Dungeon door infos should expose derived trigger and opening rects.")
+		if not door_info.has("passage_rect"):
+			failures.append("Dungeon door infos should expose derived passable gate rects for marker placement.")
 		if not door_info.has("source_cell") or not door_info.has("target_cell"):
 			failures.append("Dungeon door infos should expose source and target cells.")
 	if manager.get_door_count() < 2:

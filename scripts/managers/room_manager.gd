@@ -45,6 +45,9 @@ func load_room(level_definition, door_infos: Array, doors_unlocked: bool) -> voi
 		if door_info.has("opening_rect") and door.has_method("set_visual_rect"):
 			var opening_rect: Rect2 = door_info["opening_rect"]
 			door.set_visual_rect(opening_rect.get_center(), opening_rect.size)
+		if door_info.has("passage_rect") and door.has_method("set_passage_rect"):
+			var passage_rect: Rect2 = door_info["passage_rect"]
+			door.set_passage_rect(passage_rect.get_center(), passage_rect.size)
 		door.entered.connect(_on_door_entered)
 		_doors.append(door)
 	set_enabled(enabled)
