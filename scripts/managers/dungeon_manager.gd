@@ -367,7 +367,7 @@ func _build_floor_level_definition(cleared_room_ids: Array[String], level_id: St
 	level.destructible_prop_placements = empty_props
 	level.void_rects = empty_voids
 	var wall_top_tiles: Array[Rect2] = _get_cleared_floor_wall_top_tiles(cleared_room_ids, min_world_cell, floor_cells)
-	var wall_body_tiles: Array[Rect2] = _get_cleared_floor_wall_tiles(cleared_room_ids, min_world_cell, floor_cells)
+	var wall_body_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(wall_top_tiles, floor_cells)
 	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(wall_body_tiles)
 	level.set_meta("footprint_cells", floor_cells.duplicate())
 	level.set_meta("connection_edges", {})
@@ -530,14 +530,8 @@ func get_room_ids() -> Array[String]:
 
 
 func _get_cleared_floor_wall_tiles(cleared_room_ids: Array[String], min_world_cell: Vector2i, floor_cells: Array[Vector2i]) -> Array[Rect2]:
-	var wall_tiles: Array[Rect2] = []
-	for room_id in cleared_room_ids:
-		var state: Dictionary = _rooms[room_id]
-		var offset: Vector2 = _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
-		var room_wall_tiles: Array[Rect2] = _get_room_wall_tiles(state)
-		for rect in room_wall_tiles:
-			wall_tiles.append(_translated_rect(rect, offset))
-	return wall_tiles
+	var wall_top_tiles: Array[Rect2] = _get_cleared_floor_wall_top_tiles(cleared_room_ids, min_world_cell, floor_cells)
+	return ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(wall_top_tiles, floor_cells)
 
 
 func _get_cleared_floor_wall_top_tiles(cleared_room_ids: Array[String], min_world_cell: Vector2i, floor_cells: Array[Vector2i]) -> Array[Rect2]:

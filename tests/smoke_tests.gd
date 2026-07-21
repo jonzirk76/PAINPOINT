@@ -2759,6 +2759,24 @@ func _validate_room_piece_geometry_rules(failures: Array[String]) -> void:
 	var south_opening := builder.get_opening_rect(corner_cells, Vector2i.ZERO, "south")
 	if south_gate_visual != south_opening:
 		failures.append("South-facing locked gates should draw only the gate top row.")
+	var stacked_floor_cells: Array[Vector2i] = [Vector2i.ZERO, Vector2i(0, 1)]
+	var upper_cell_rect: Rect2 = builder.get_cell_rect(stacked_floor_cells, Vector2i.ZERO)
+	var lower_cell_rect: Rect2 = builder.get_cell_rect(stacked_floor_cells, Vector2i(0, 1))
+	var stacked_upper_top := Rect2(
+		Vector2(upper_cell_rect.get_center().x - builder.WALL_TILE_SIZE * 0.5, upper_cell_rect.position.y + upper_cell_rect.size.y - builder.WALL_TILE_SIZE),
+		Vector2(builder.WALL_TILE_SIZE, builder.WALL_TILE_SIZE)
+	)
+	var stacked_lower_top := Rect2(
+		Vector2(lower_cell_rect.get_center().x - builder.WALL_TILE_SIZE * 0.5, lower_cell_rect.position.y),
+		Vector2(builder.WALL_TILE_SIZE, builder.WALL_TILE_SIZE)
+	)
+	var stacked_boundary_tops: Array[Rect2] = [stacked_upper_top, stacked_lower_top]
+	var stacked_boundary_bodies: Array[Rect2] = builder.build_wall_body_tile_rects(stacked_boundary_tops, stacked_floor_cells, {})
+	if not _rect_list_has_rect(stacked_boundary_bodies, stacked_lower_top):
+		failures.append("Combined room-boundary wall tops should block the lower stacked wall-top tile.")
+	var stacked_body_below_lower := Rect2(stacked_lower_top.position + Vector2(0.0, builder.WALL_TILE_SIZE), stacked_lower_top.size)
+	if not _rect_list_has_rect(stacked_boundary_bodies, stacked_body_below_lower):
+		failures.append("Combined room-boundary wall tops should create a second blocker tile below the lower stacked wall top.")
 	var l_cells: Array[Vector2i] = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)]
 	var l_tiles: Array[Rect2] = builder.build_wall_tile_rects(l_cells, {})
 	var l_boundary_turn_corner := Rect2(Vector2(
@@ -3906,6 +3924,11 @@ func _test_room_manager_doors(failures: Array[String]) -> void:
 	direct_door.set_unlocked(true)
 	if not direct_door.has_special_marker():
 		failures.append("Door entity should treat boss targets as special marked doors.")
+	var marker_passage_rect := Rect2(Vector2(80.0, 140.0), Vector2(40.0, 120.0))
+	var marker_tile_size: float = load("res://scripts/resources/room_geometry_builder.gd").WALL_TILE_SIZE
+	var expected_marker_center: Vector2 = marker_passage_rect.get_center() + Vector2(-marker_tile_size, 0.0)
+	if direct_door._get_floor_marker_center(marker_passage_rect).distance_squared_to(expected_marker_center) > 0.5:
+		failures.append("Door special markers should sit one tile in front of side-facing gate passages.")
 	direct_door.entered.connect(func(_door) -> void:
 		entered_count[0] += 1
 	)

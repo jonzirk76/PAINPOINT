@@ -5,6 +5,7 @@ signal entered(door)
 
 @export var door_size: Vector2 = Vector2(88.0, 28.0)
 
+const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_builder.gd")
 const ARM_DELAY_SECONDS := 0.12
 const GATE_TOP_COLOR := Color(0.09, 0.1, 0.12, 1.0)
 const GATE_BODY_COLOR := Color(0.16, 0.17, 0.19, 1.0)
@@ -135,10 +136,11 @@ func _draw() -> void:
 	var trim_color := Color(0.16, 0.17, 0.18, 1.0)
 	if not unlocked:
 		_draw_locked_gate(drawn_rect, trim_color)
-		_draw_room_kind_marker(drawn_rect.get_center(), min(drawn_rect.size.x, drawn_rect.size.y))
+		var locked_marker_rect := _get_passage_draw_rect(drawn_rect)
+		_draw_room_kind_marker(_get_floor_marker_center(locked_marker_rect), min(locked_marker_rect.size.x, locked_marker_rect.size.y))
 	elif has_special_marker():
 		var passage_rect := _get_passage_draw_rect(drawn_rect)
-		_draw_room_kind_marker(passage_rect.get_center(), min(passage_rect.size.x, passage_rect.size.y))
+		_draw_room_kind_marker(_get_floor_marker_center(passage_rect), min(passage_rect.size.x, passage_rect.size.y))
 
 
 func _draw_locked_gate(rect: Rect2, trim_color: Color) -> void:
@@ -183,6 +185,24 @@ func _get_passage_draw_rect(fallback_rect: Rect2) -> Rect2:
 	if passage_size == Vector2.ZERO:
 		return fallback_rect
 	return Rect2(passage_offset - passage_size * 0.5, passage_size)
+
+
+func _get_floor_marker_center(rect: Rect2) -> Vector2:
+	return rect.get_center() + _get_floor_marker_offset()
+
+
+func _get_floor_marker_offset() -> Vector2:
+	var offset: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
+	match direction:
+		"north":
+			return Vector2(0.0, offset)
+		"south":
+			return Vector2(0.0, -offset)
+		"east":
+			return Vector2(-offset, 0.0)
+		"west":
+			return Vector2(offset, 0.0)
+	return Vector2.ZERO
 
 
 func has_special_marker() -> bool:
