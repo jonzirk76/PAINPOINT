@@ -3434,6 +3434,7 @@ func _sync_fauna_roam_bounds(level_definition, current_room_cleared: bool = true
 	if level_definition == null or fauna_manager == null:
 		return
 	var roam_bounds: Rect2 = level_definition.arena_bounds
+	var visibility_bounds: Rect2 = level_definition.arena_bounds
 	if _is_dungeon_run:
 		var visible_bounds: Rect2 = Rect2()
 		var active_room_bounds: Rect2 = Rect2()
@@ -3445,15 +3446,16 @@ func _sync_fauna_roam_bounds(level_definition, current_room_cleared: bool = true
 			var active_room_bounds_value: Variant = level_definition.get_meta("active_room_bounds")
 			if active_room_bounds_value is Rect2:
 				active_room_bounds = active_room_bounds_value
-		if current_room_cleared and visible_bounds.size != Vector2.ZERO:
+		if visible_bounds.size != Vector2.ZERO:
 			roam_bounds = visible_bounds
-		elif active_room_bounds.size != Vector2.ZERO:
-			roam_bounds = active_room_bounds
-		elif visible_bounds.size != Vector2.ZERO:
-			roam_bounds = visible_bounds
+			visibility_bounds = visible_bounds
+		if not current_room_cleared and active_room_bounds.size != Vector2.ZERO:
+			visibility_bounds = active_room_bounds
 		fauna_manager.set_cat_activity_bounds(roam_bounds)
+		fauna_manager.set_cat_visibility_bounds(visibility_bounds)
 	else:
 		fauna_manager.clear_cat_activity_bounds()
+		fauna_manager.clear_cat_visibility_bounds()
 	fauna_manager.set_roam_bounds(roam_bounds)
 
 

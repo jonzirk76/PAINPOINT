@@ -435,7 +435,9 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 	if not manager_source.contains("get_cat_state_snapshot") or not manager_source.contains("has_active_cat"):
 		failures.append("FaunaManager should expose active cat state for cat-room debug logs.")
 	if not manager_source.contains("set_cat_activity_bounds") or not manager_source.contains("_cat_is_inside_activity_bounds") or not manager_source.contains("_sync_cat_simulation_state"):
-		failures.append("FaunaManager should pause cats outside current dungeon activity bounds.")
+		failures.append("FaunaManager should keep cat simulation scoped to the current dungeon activity envelope.")
+	if not manager_source.contains("set_cat_visibility_bounds") or not manager_source.contains("_cat_is_inside_visibility_bounds") or not manager_source.contains("_apply_cat_visibility_state"):
+		failures.append("FaunaManager should hide cats outside the active visibility bounds without pausing simulation.")
 	if not manager_source.contains("_filter_rects_for_cat_activity") or not manager_source.contains("_get_cat_playable_rects"):
 		failures.append("FaunaManager should filter full-floor geometry before syncing active cats.")
 	if not manager_source.contains("signal cat_meowed") or not manager_source.contains("_on_cat_meowed") or not manager_source.contains("meowed"):
@@ -448,8 +450,8 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("GameOrchestrator should show a cat state log in cat test rooms.")
 	if not orchestrator_source.contains("CAT_DEBUG_LEVEL_IDS") or not orchestrator_source.contains("cat_behavior_test") or not orchestrator_source.contains("cat_peaceful_test") or not orchestrator_source.contains("CAT_DEBUG_LEVEL_IDS.has"):
 		failures.append("GameOrchestrator should scope the cat state log to authored cat test rooms only.")
-	if not orchestrator_source.contains("_sync_fauna_roam_bounds(level_definition, room_is_cleared)") or not orchestrator_source.contains("set_cat_activity_bounds"):
-		failures.append("GameOrchestrator should scope dungeon cat activity to the current combat room until rooms are cleared.")
+	if not orchestrator_source.contains("_sync_fauna_roam_bounds(level_definition, room_is_cleared)") or not orchestrator_source.contains("set_cat_activity_bounds") or not orchestrator_source.contains("set_cat_visibility_bounds"):
+		failures.append("GameOrchestrator should separate dungeon cat simulation bounds from active-room visibility bounds.")
 	if not orchestrator_source.contains("cat_meowed") or not orchestrator_source.contains("play_cat_meow"):
 		failures.append("GameOrchestrator should route curious cat meows to AudioManager.")
 	var audio_source := _read_text("res://scripts/managers/audio_manager.gd")
@@ -838,6 +840,10 @@ func _test_arena_wall_generation(failures: Array[String]) -> void:
 	var wall_top_overlay = generated_arena.get_node_or_null("WallTopOverlay")
 	if wall_top_overlay == null or int(wall_top_overlay.z_index) <= 0:
 		failures.append("Generated room wall tops should render through a positive-z overlay above gameplay entities.")
+	var arena_view_source := _read_text("res://scripts/arena/arena_view.gd")
+	var wall_top_overlay_source := _read_text("res://scripts/arena/arena_wall_top_overlay.gd")
+	if not arena_view_source.contains("inactive_room_dim_rects") or not wall_top_overlay_source.contains("_draw_dim"):
+		failures.append("ArenaView should render dim overlays for visible inactive dungeon rooms through the wall-top overlay.")
 	var wall_body_visual_script = load("res://scripts/arena/arena_wall_body_visual.gd")
 	var wall_body_visual_count := 0
 	for child in depth_sort_layer.get_children():
@@ -3090,6 +3096,9 @@ func _test_dungeon_room_interiors_persist(failures: Array[String]) -> void:
 	first_level.destructible_prop_placements.append(persistent_prop)
 	manager.mark_current_room_cleared()
 	var full_floor_with_props = manager.get_current_full_floor_level_definition(false)
+	var inactive_room_dim_rects: Array = full_floor_with_props.get_meta("inactive_room_dim_rects") if full_floor_with_props.has_meta("inactive_room_dim_rects") else []
+	if inactive_room_dim_rects.is_empty():
+		failures.append("Full-floor dungeon levels should expose dim rects for visible inactive rooms.")
 	var copied_persistent_prop = null
 	for placement in full_floor_with_props.destructible_prop_placements:
 		if placement != null and placement.has_meta("source_placement") and placement.get_meta("source_placement") == persistent_prop:

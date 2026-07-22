@@ -120,6 +120,7 @@ func get_full_floor_level_definition(active_room_id: String = "", include_active
 	level.set_meta("full_floor", true)
 	level.set_meta("active_room_id", active_room_id)
 	level.set_meta("fog_rects", _get_full_floor_fog_rects(active_room_id, room_ids))
+	level.set_meta("inactive_room_dim_rects", _get_full_floor_inactive_room_dim_rects(active_room_id, room_ids))
 	level.set_meta("visible_bounds", get_full_floor_visible_bounds(active_room_id))
 	if not active_room_id.is_empty():
 		level.set_meta("active_room_bounds", get_full_floor_room_bounds(active_room_id))
@@ -756,6 +757,28 @@ func _get_full_floor_fog_rects(active_room_id: String, room_ids: Array[String]) 
 				continue
 			fog_rects.append(ROOM_GEOMETRY_BUILDER.get_cell_rect(floor_cells, floor_cell))
 	return fog_rects
+
+
+func _get_full_floor_inactive_room_dim_rects(active_room_id: String, room_ids: Array[String]) -> Array[Rect2]:
+	var dim_rects: Array[Rect2] = []
+	if active_room_id.is_empty() or room_ids.is_empty():
+		return dim_rects
+	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(room_ids)
+	if floor_cells.is_empty():
+		return dim_rects
+	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(room_ids)
+	for room_id in _get_full_floor_visible_room_ids(active_room_id):
+		if room_id == active_room_id or not _rooms.has(room_id):
+			continue
+		var state: Dictionary = _rooms[room_id]
+		var piece: RoomPieceDefinition = state["piece"] as RoomPieceDefinition
+		if piece == null:
+			continue
+		var offset: Vector2 = _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
+		for local_cell: Vector2i in piece.footprint_cells:
+			var cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(piece.footprint_cells, local_cell)
+			dim_rects.append(_translated_rect(cell_rect, offset))
+	return dim_rects
 
 
 func _get_full_floor_visible_cell_lookup(active_room_id: String, room_ids: Array[String], min_world_cell: Vector2i) -> Dictionary:

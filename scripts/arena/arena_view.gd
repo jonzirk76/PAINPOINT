@@ -27,6 +27,7 @@ var _wall_draw_tile_rects: Array[Rect2] = []
 var _void_draw_rects: Array[Rect2] = []
 var _footprint_cells: Array[Vector2i] = []
 var _fog_rects: Array[Rect2] = []
+var _inactive_room_dim_rects: Array[Rect2] = []
 var _wall_top_overlay = null
 var _wall_body_visuals: Array[Node2D] = []
 var _wall_body_depth_visuals_enabled: bool = false
@@ -53,6 +54,7 @@ func configure(level_definition) -> void:
 		_void_draw_rects = void_rects.duplicate()
 	_footprint_cells = _get_meta_cells(level_definition, "footprint_cells")
 	_fog_rects = _get_meta_rects(level_definition, "fog_rects", [])
+	_inactive_room_dim_rects = _get_meta_rects(level_definition, "inactive_room_dim_rects", [])
 	_configure_wall_top_overlay()
 	_configure_wall_body_depth_visuals()
 	_rebuild_blocker_bodies()
@@ -227,6 +229,7 @@ func _configure_wall_top_overlay() -> void:
 		_wall_top_tile_rects,
 		ROOM_GEOMETRY_BUILDER.merge_wall_tiles(_wall_top_tile_rects),
 		_fog_rects,
+		_inactive_room_dim_rects,
 		WALL_TOP_FILL_COLOR,
 		WALL_TOP_OUTLINE_COLOR,
 		2.0
