@@ -82,6 +82,8 @@ var _playable_rects: Array[Rect2] = []
 var _roam_bounds: Rect2 = Rect2()
 var _cat_activity_bounds: Rect2 = Rect2()
 var _has_cat_activity_bounds: bool = false
+var _cat_visibility_bounds: Rect2 = Rect2()
+var _has_cat_visibility_bounds: bool = false
 var _cat_texture_rng := RandomNumberGenerator.new()
 var _last_player_position: Vector2 = Vector2.INF
 var _has_last_player_position: bool = false
@@ -107,6 +109,7 @@ func clear_fauna() -> void:
 		_cat.queue_free()
 	_cat = null
 	clear_cat_activity_bounds()
+	clear_cat_visibility_bounds()
 	_last_player_position = Vector2.INF
 	_has_last_player_position = false
 
@@ -138,18 +141,31 @@ func set_roam_bounds(bounds: Rect2) -> void:
 	if _has_cat() and _cat_should_sync_geometry() and _cat.has_method("set_roam_bounds"):
 		_cat.set_roam_bounds(_roam_bounds)
 	_apply_cat_enabled_state()
+	_apply_cat_visibility_state()
 
 
 func set_cat_activity_bounds(bounds: Rect2) -> void:
 	_cat_activity_bounds = bounds
 	_has_cat_activity_bounds = bounds.size.x > 0.0 and bounds.size.y > 0.0
-	_apply_cat_enabled_state()
+	_sync_cat_simulation_state()
 
 
 func clear_cat_activity_bounds() -> void:
 	_cat_activity_bounds = Rect2()
 	_has_cat_activity_bounds = false
-	_apply_cat_enabled_state()
+	_sync_cat_simulation_state()
+
+
+func set_cat_visibility_bounds(bounds: Rect2) -> void:
+	_cat_visibility_bounds = bounds
+	_has_cat_visibility_bounds = bounds.size.x > 0.0 and bounds.size.y > 0.0
+	_apply_cat_visibility_state()
+
+
+func clear_cat_visibility_bounds() -> void:
+	_cat_visibility_bounds = Rect2()
+	_has_cat_visibility_bounds = false
+	_apply_cat_visibility_state()
 
 
 func spawn_cat(spawn_position: Vector2, movement_seed: int = 0):
@@ -196,6 +212,7 @@ func _process(delta: float) -> void:
 		return
 	if not _cat_is_inside_activity_bounds():
 		_apply_cat_enabled_state()
+		_apply_cat_visibility_state()
 		return
 	var player_position: Vector2 = _get_current_player_position()
 	if _cat.has_method("set_danger_points"):
@@ -204,6 +221,7 @@ func _process(delta: float) -> void:
 		_cat.set_player_context(player_position, _get_player_velocity(player_position, delta), player_avoidance_radius)
 	if _cat.has_method("set_player_projectile_points"):
 		_cat.set_player_projectile_points(_get_player_projectile_positions())
+	_apply_cat_visibility_state()
 
 
 func _has_cat() -> bool:
@@ -227,11 +245,13 @@ func _sync_cat_simulation_state() -> void:
 		return
 	if not _cat_should_sync_geometry():
 		_apply_cat_enabled_state()
+		_apply_cat_visibility_state()
 		return
 	_cat.set_arena_definition(_arena_bounds, _arena_shape, _get_cat_wall_rects(), _get_cat_void_rects(), _get_cat_playable_rects())
 	if _cat.has_method("set_roam_bounds"):
 		_cat.set_roam_bounds(_roam_bounds)
 	_apply_cat_enabled_state()
+	_apply_cat_visibility_state()
 
 
 func _apply_cat_enabled_state() -> void:
@@ -241,12 +261,26 @@ func _apply_cat_enabled_state() -> void:
 	_cat.set_enabled(enabled and inside_activity_bounds)
 
 
+func _apply_cat_visibility_state() -> void:
+	if not _has_cat():
+		return
+	_cat.visible = _cat_is_inside_visibility_bounds()
+
+
 func _cat_is_inside_activity_bounds() -> bool:
 	if not _has_cat():
 		return false
 	if not _has_cat_activity_bounds:
 		return true
 	return _cat_activity_bounds.grow(maxf(cat_activity_bounds_margin, 0.0)).has_point(_cat.global_position)
+
+
+func _cat_is_inside_visibility_bounds() -> bool:
+	if not _has_cat():
+		return false
+	if not _has_cat_visibility_bounds:
+		return true
+	return _cat_visibility_bounds.has_point(_cat.global_position)
 
 
 func _cat_should_sync_geometry() -> bool:

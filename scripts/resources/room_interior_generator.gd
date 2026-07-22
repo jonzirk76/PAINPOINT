@@ -161,10 +161,10 @@ func _make_base_level(piece, room_id: String, floor_number: int, connection_edge
 	level.spawner_positions = empty_positions
 	level.spawner_placements = empty_placements
 	level.destructible_prop_placements = empty_props
-	_apply_wall_tiles(level, shell_wall_tiles)
-	_apply_void_rects(level, empty_voids)
 	level.set_meta("footprint_cells", piece.footprint_cells.duplicate())
 	level.set_meta("connection_edges", connection_edges.duplicate())
+	_apply_wall_tiles(level, shell_wall_tiles)
+	_apply_void_rects(level, empty_voids)
 	return level
 
 
@@ -849,8 +849,20 @@ func _get_room_spawn_position(level) -> Vector2:
 
 func _apply_wall_tiles(level, wall_tiles: Array[Rect2]) -> void:
 	wall_tiles = _filter_rects_to_level_envelope(level, wall_tiles)
+	var wall_body_tiles := _build_wall_body_tiles(level, wall_tiles)
+	level.set_meta("wall_top_tile_rects", wall_tiles)
+	level.set_meta("wall_body_tile_rects", wall_body_tiles)
 	level.set_meta("wall_tile_rects", wall_tiles)
-	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(wall_tiles)
+	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(wall_body_tiles)
+
+
+func _build_wall_body_tiles(level, wall_top_tiles: Array[Rect2]) -> Array[Rect2]:
+	if level == null or not level.has_meta("footprint_cells"):
+		return wall_top_tiles.duplicate()
+	var connection_edges: Dictionary = {}
+	if level.has_meta("connection_edges"):
+		connection_edges = level.get_meta("connection_edges")
+	return ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(wall_top_tiles, _get_level_footprint_cells(level), connection_edges)
 
 
 func _apply_void_rects(level, void_rects: Array[Rect2]) -> void:
@@ -871,11 +883,16 @@ func _filter_rects_to_level_envelope(level, rects: Array[Rect2]) -> Array[Rect2]
 
 
 func _get_level_wall_tiles(level) -> Array[Rect2]:
-	if level != null and level.has_meta("wall_tile_rects"):
+	if level != null and level.has_meta("wall_top_tile_rects"):
 		var typed_tiles: Array[Rect2] = []
-		for rect in level.get_meta("wall_tile_rects"):
+		for rect in level.get_meta("wall_top_tile_rects"):
 			typed_tiles.append(rect)
 		return typed_tiles
+	if level != null and level.has_meta("wall_tile_rects"):
+		var legacy_tiles: Array[Rect2] = []
+		for rect in level.get_meta("wall_tile_rects"):
+			legacy_tiles.append(rect)
+		return legacy_tiles
 	return ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(level.wall_rects)
 
 
@@ -1167,7 +1184,7 @@ func _get_connection_opening_rect(level, direction: String) -> Rect2:
 		if edges.has(direction):
 			var edge: Dictionary = edges[direction]
 			var cells: Array[Vector2i] = _get_level_footprint_cells(level)
-			return ROOM_GEOMETRY_BUILDER.get_opening_rect(cells, edge.get("source_cell", Vector2i.ZERO), direction)
+			return ROOM_GEOMETRY_BUILDER.get_gate_passage_rect(cells, edge.get("source_cell", Vector2i.ZERO), direction)
 	return Rect2()
 
 
