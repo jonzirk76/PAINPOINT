@@ -2722,11 +2722,11 @@ func _validate_room_piece_geometry_rules(failures: Array[String]) -> void:
 		Rect2(Vector2(0.0, builder.CELL_SIZE.y * 0.5 - builder.WALL_TILE_SIZE), Vector2(builder.WALL_TILE_SIZE, builder.WALL_TILE_SIZE))
 	]
 	var bottom_wall_body_tiles: Array[Rect2] = builder.build_wall_body_tile_rects(bottom_wall_top_tiles, corner_cells, {})
-	if not _rect_list_has_rect(bottom_wall_body_tiles, bottom_wall_top_tiles[0]):
-		failures.append("Bottom exterior wall tops should become blocking fallback tiles instead of leaving the map edge open.")
 	var outside_bottom_wall_body := Rect2(bottom_wall_top_tiles[0].position + Vector2(0.0, builder.WALL_TILE_SIZE), bottom_wall_top_tiles[0].size)
-	if _rect_list_has_rect(bottom_wall_body_tiles, outside_bottom_wall_body):
-		failures.append("Bottom exterior wall-top fallback collision should not spawn outside the room footprint.")
+	if not _rect_list_has_rect(bottom_wall_body_tiles, outside_bottom_wall_body):
+		failures.append("Bottom exterior wall tops should use the shifted body envelope to spawn their normal body tile below the footprint.")
+	if _rect_list_has_rect(bottom_wall_body_tiles, bottom_wall_top_tiles[0]):
+		failures.append("Bottom exterior wall tops should not become self-blocking fallback body tiles.")
 	var east_opening_body_source := Rect2(
 		Vector2(builder.CELL_SIZE.x * 0.5 - builder.WALL_TILE_SIZE, -builder.WALL_TILE_SIZE * 3.0),
 		Vector2(builder.WALL_TILE_SIZE, builder.WALL_TILE_SIZE)

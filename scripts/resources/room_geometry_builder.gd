@@ -120,19 +120,13 @@ static func build_wall_body_tile_rects(wall_top_tiles: Array[Rect2], cells: Arra
 	var body_tiles: Array[Rect2] = []
 	var body_lookup := {}
 	var body_opening_rects := _get_wall_body_connection_opening_rects(cells, connection_edges)
-	var top_opening_rects := _get_wall_top_connection_opening_rects(cells, connection_edges)
 	for wall_top in wall_top_tiles:
 		var body_tile := Rect2(wall_top.position + Vector2(0.0, WALL_TILE_SIZE), wall_top.size)
-		if _rect_fits_footprint(cells, body_tile):
-			if _tile_is_inside_any_opening(body_tile, body_opening_rects):
-				continue
-			_append_unique_wall_tile(body_tiles, body_lookup, body_tile)
+		if not _rect_fits_wall_body_envelope(cells, body_tile):
 			continue
-		if not _rect_fits_footprint(cells, wall_top):
+		if _tile_is_inside_any_opening(body_tile, body_opening_rects):
 			continue
-		if _tile_is_inside_any_opening(wall_top, top_opening_rects):
-			continue
-		_append_unique_wall_tile(body_tiles, body_lookup, wall_top)
+		_append_unique_wall_tile(body_tiles, body_lookup, body_tile)
 	return body_tiles
 
 
@@ -431,19 +425,7 @@ static func _get_wall_body_connection_opening_rects(cells: Array[Vector2i], conn
 	return opening_rects
 
 
-static func _get_wall_top_connection_opening_rects(cells: Array[Vector2i], connection_edges: Dictionary) -> Array[Rect2]:
-	var opening_rects: Array[Rect2] = []
-	for direction in DIRECTIONS:
-		if not connection_edges.has(direction):
-			continue
-		var edge := Dictionary(connection_edges[direction])
-		if not edge.has("source_cell"):
-			continue
-		opening_rects.append(get_wall_top_opening_rect(cells, edge.get("source_cell", Vector2i.ZERO), direction))
-	return opening_rects
-
-
-static func _rect_fits_footprint(cells: Array[Vector2i], rect: Rect2) -> bool:
+static func _rect_fits_wall_body_envelope(cells: Array[Vector2i], rect: Rect2) -> bool:
 	if cells.is_empty() or rect.size.x <= 0.0 or rect.size.y <= 0.0:
 		return false
 	var inset: float = min(1.0, min(rect.size.x, rect.size.y) * 0.25)
@@ -455,7 +437,7 @@ static func _rect_fits_footprint(cells: Array[Vector2i], rect: Rect2) -> bool:
 		rect.get_center()
 	]
 	for point in points:
-		if not _point_is_in_footprint(cells, point):
+		if not _point_is_in_footprint(cells, point - Vector2(0.0, WALL_TILE_SIZE)):
 			return false
 	return true
 
