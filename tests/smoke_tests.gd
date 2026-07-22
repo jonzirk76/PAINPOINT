@@ -3085,6 +3085,10 @@ func _test_dungeon_room_interiors_persist(failures: Array[String]) -> void:
 		failures.append("Generated dungeon combat room should carry procedural cover walls.")
 	if _get_level_generation_signature(manager.get_current_level_definition()) != first_signature:
 		failures.append("DungeonManager should return the cached generated interior on repeated reads.")
+	var full_floor_during_combat = manager.get_current_full_floor_level_definition(true)
+	var combat_dim_rects: Array = full_floor_during_combat.get_meta("inactive_room_dim_rects") if full_floor_during_combat.has_meta("inactive_room_dim_rects") else []
+	if combat_dim_rects.is_empty():
+		failures.append("Full-floor dungeon combat levels should expose dim rects for visible inactive rooms.")
 
 	var persistent_prop = load("res://scripts/resources/destructible_prop_placement.gd").new()
 	persistent_prop.position = Vector2(36.0, 28.0)
@@ -3097,8 +3101,8 @@ func _test_dungeon_room_interiors_persist(failures: Array[String]) -> void:
 	manager.mark_current_room_cleared()
 	var full_floor_with_props = manager.get_current_full_floor_level_definition(false)
 	var inactive_room_dim_rects: Array = full_floor_with_props.get_meta("inactive_room_dim_rects") if full_floor_with_props.has_meta("inactive_room_dim_rects") else []
-	if inactive_room_dim_rects.is_empty():
-		failures.append("Full-floor dungeon levels should expose dim rects for visible inactive rooms.")
+	if not inactive_room_dim_rects.is_empty():
+		failures.append("Cleared full-floor traversal should not keep inactive-room dim rects after combat ends.")
 	var copied_persistent_prop = null
 	for placement in full_floor_with_props.destructible_prop_placements:
 		if placement != null and placement.has_meta("source_placement") and placement.get_meta("source_placement") == persistent_prop:

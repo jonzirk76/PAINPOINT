@@ -761,7 +761,10 @@ func _get_full_floor_fog_rects(active_room_id: String, room_ids: Array[String]) 
 
 func _get_full_floor_inactive_room_dim_rects(active_room_id: String, room_ids: Array[String]) -> Array[Rect2]:
 	var dim_rects: Array[Rect2] = []
-	if active_room_id.is_empty() or room_ids.is_empty():
+	if active_room_id.is_empty() or room_ids.is_empty() or not _rooms.has(active_room_id):
+		return dim_rects
+	var active_state: Dictionary = _rooms[active_room_id]
+	if bool(active_state.get("cleared", false)):
 		return dim_rects
 	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(room_ids)
 	if floor_cells.is_empty():
