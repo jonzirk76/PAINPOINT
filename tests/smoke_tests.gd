@@ -3930,11 +3930,20 @@ func _test_room_manager_doors(failures: Array[String]) -> void:
 	var gate_top_visual = direct_door.get_node_or_null("GateTopVisual")
 	if gate_top_visual == null or int(gate_top_visual.z_index) != 5:
 		failures.append("Locked dungeon gates should draw their top cap on the wall-top z level.")
+	var marker_tile_size: float = load("res://scripts/resources/room_geometry_builder.gd").WALL_TILE_SIZE
+	var side_gate_rect := Rect2(Vector2.ZERO, Vector2(marker_tile_size, marker_tile_size * 4.0))
+	var side_gate_top_rects: Array[Rect2] = direct_door._get_gate_top_rects(side_gate_rect)
+	var side_gate_lowest_top := Rect2(Vector2(0.0, marker_tile_size * 3.0), Vector2(marker_tile_size, marker_tile_size))
+	if side_gate_top_rects.size() != 4 or not _rect_list_has_rect(side_gate_top_rects, side_gate_lowest_top):
+		failures.append("Closed side gates should render as one continuous four-tile wall-top run.")
+	var side_gate_body_rects: Array[Rect2] = direct_door._get_gate_body_rects(side_gate_rect)
+	var side_gate_lowest_body := Rect2(Vector2(0.0, marker_tile_size * 4.0), Vector2(marker_tile_size, marker_tile_size))
+	if not _rect_list_has_rect(side_gate_body_rects, side_gate_lowest_body):
+		failures.append("Closed side gate bodies should derive from the lowest gate top tile, matching wall body rules.")
 	direct_door.set_unlocked(true)
 	if not direct_door.has_special_marker():
 		failures.append("Door entity should treat boss targets as special marked doors.")
 	var marker_passage_rect := Rect2(Vector2(80.0, 140.0), Vector2(40.0, 120.0))
-	var marker_tile_size: float = load("res://scripts/resources/room_geometry_builder.gd").WALL_TILE_SIZE
 	var expected_marker_center: Vector2 = marker_passage_rect.get_center() + Vector2(-marker_tile_size, 0.0)
 	if direct_door._get_floor_marker_center(marker_passage_rect).distance_squared_to(expected_marker_center) > 0.5:
 		failures.append("Door special markers should sit one tile in front of side-facing gate passages.")

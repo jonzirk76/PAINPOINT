@@ -140,7 +140,7 @@ func _draw() -> void:
 	var drawn_rect := _get_visual_draw_rect()
 	var trim_color := Color(0.16, 0.17, 0.18, 1.0)
 	if not unlocked:
-		_draw_locked_gate_body(fill_rect, drawn_rect, trim_color)
+		_draw_locked_gate_body(fill_rect, trim_color)
 		var locked_marker_rect := _get_passage_draw_rect(drawn_rect)
 		_draw_room_kind_marker(_get_floor_marker_center(locked_marker_rect), min(locked_marker_rect.size.x, locked_marker_rect.size.y))
 	elif has_special_marker():
@@ -148,12 +148,12 @@ func _draw() -> void:
 		_draw_room_kind_marker(_get_floor_marker_center(passage_rect), min(passage_rect.size.x, passage_rect.size.y))
 
 
-func _draw_locked_gate_body(fill_rect: Rect2, detail_rect: Rect2, trim_color: Color) -> void:
+func _draw_locked_gate_body(fill_rect: Rect2, trim_color: Color) -> void:
 	var body_color := GATE_SPECIAL_BODY_COLOR if has_special_marker() else GATE_BODY_COLOR
-	for body_rect in _get_gate_body_rects(fill_rect):
+	var body_rects := _get_gate_body_rects(fill_rect)
+	for body_rect in body_rects:
 		draw_rect(body_rect, body_color, true)
-	for body_rect in _get_gate_body_rects(detail_rect):
-		draw_rect(body_rect, trim_color, false, 2.0)
+	_draw_gate_rect_edges(body_rects, trim_color, 2.0)
 
 
 func _sync_gate_top_visual() -> void:
@@ -187,32 +187,80 @@ func _get_visual_fill_rect() -> Rect2:
 
 
 func _get_gate_top_rects(rect: Rect2) -> Array[Rect2]:
-	var rects: Array[Rect2] = []
 	match direction:
 		"north":
-			var north_cap_height: float = min(rect.size.y * 0.5, rect.size.x * 0.25)
-			rects.append(Rect2(rect.position, Vector2(rect.size.x, north_cap_height)))
+			var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
+			return _rect_to_gate_tiles(Rect2(rect.position, Vector2(rect.size.x, min(rect.size.y, tile_size))))
 		"south":
-			rects.append(rect)
+			return _rect_to_gate_tiles(rect)
 		"east", "west":
-			var side_cap_height: float = min(rect.size.y * 0.25, rect.size.x)
-			rects.append(Rect2(rect.position, Vector2(rect.size.x, side_cap_height)))
-			rects.append(Rect2(Vector2(rect.position.x, rect.position.y + rect.size.y - side_cap_height), Vector2(rect.size.x, side_cap_height)))
-	return rects
+			return _rect_to_gate_tiles(rect)
+	return []
 
 
 func _get_gate_body_rects(rect: Rect2) -> Array[Rect2]:
 	var rects: Array[Rect2] = []
 	match direction:
-		"north":
-			var north_cap_height: float = min(rect.size.y * 0.5, rect.size.x * 0.25)
-			rects.append(Rect2(rect.position + Vector2(0.0, north_cap_height), Vector2(rect.size.x, max(rect.size.y - north_cap_height, 1.0))))
-		"east", "west":
-			var side_cap_height: float = min(rect.size.y * 0.25, rect.size.x)
-			rects.append(Rect2(rect.position + Vector2(0.0, side_cap_height), Vector2(rect.size.x, max(rect.size.y - side_cap_height * 2.0, 1.0))))
-		_:
-			pass
+		"south":
+			return rects
+	var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
+	for top_rect in _get_gate_top_rects(rect):
+		rects.append(Rect2(top_rect.position + Vector2(0.0, tile_size), top_rect.size))
 	return rects
+
+
+func _rect_to_gate_tiles(rect: Rect2) -> Array[Rect2]:
+	var tiles: Array[Rect2] = []
+	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
+		return tiles
+	var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
+	var columns: int = max(1, int(ceil(rect.size.x / tile_size)))
+	var rows: int = max(1, int(ceil(rect.size.y / tile_size)))
+	for y in range(rows):
+		for x in range(columns):
+			var tile_position := rect.position + Vector2(float(x) * tile_size, float(y) * tile_size)
+			var tile_size_clipped := Vector2(
+				min(tile_size, rect.position.x + rect.size.x - tile_position.x),
+				min(tile_size, rect.position.y + rect.size.y - tile_position.y)
+			)
+			if tile_size_clipped.x > 0.0 and tile_size_clipped.y > 0.0:
+				tiles.append(Rect2(tile_position, tile_size_clipped))
+	return tiles
+
+
+func _draw_gate_rect_edges(rects: Array[Rect2], color: Color, width: float) -> void:
+	var lookup := _build_gate_rect_lookup(rects)
+	var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
+	for rect in rects:
+		var cell := _tile_key_vector(rect.position, tile_size)
+		var left := rect.position.x
+		var top := rect.position.y
+		var right := rect.position.x + rect.size.x
+		var bottom := rect.position.y + rect.size.y
+		if not lookup.has(_tile_key(cell + Vector2i(0, -1))):
+			draw_line(Vector2(left, top), Vector2(right, top), color, width)
+		if not lookup.has(_tile_key(cell + Vector2i(0, 1))):
+			draw_line(Vector2(left, bottom), Vector2(right, bottom), color, width)
+		if not lookup.has(_tile_key(cell + Vector2i(-1, 0))):
+			draw_line(Vector2(left, top), Vector2(left, bottom), color, width)
+		if not lookup.has(_tile_key(cell + Vector2i(1, 0))):
+			draw_line(Vector2(right, top), Vector2(right, bottom), color, width)
+
+
+func _build_gate_rect_lookup(rects: Array[Rect2]) -> Dictionary:
+	var lookup := {}
+	var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
+	for rect in rects:
+		lookup[_tile_key(_tile_key_vector(rect.position, tile_size))] = true
+	return lookup
+
+
+func _tile_key_vector(position: Vector2, tile_size: float) -> Vector2i:
+	return Vector2i(int(round(position.x / tile_size)), int(round(position.y / tile_size)))
+
+
+func _tile_key(cell: Vector2i) -> String:
+	return "%d:%d" % [cell.x, cell.y]
 
 
 func _get_passage_draw_rect(fallback_rect: Rect2) -> Rect2:
