@@ -194,7 +194,9 @@ func _get_gate_top_rects(rect: Rect2) -> Array[Rect2]:
 		"south":
 			return _rect_to_gate_tiles(rect)
 		"east", "west":
-			return _rect_to_gate_tiles(rect)
+			var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
+			var top_height: float = max(rect.size.y - tile_size, 0.0)
+			return _rect_to_gate_tiles(Rect2(rect.position, Vector2(rect.size.x, top_height)))
 	return []
 
 

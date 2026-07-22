@@ -3933,13 +3933,16 @@ func _test_room_manager_doors(failures: Array[String]) -> void:
 	var marker_tile_size: float = load("res://scripts/resources/room_geometry_builder.gd").WALL_TILE_SIZE
 	var side_gate_rect := Rect2(Vector2.ZERO, Vector2(marker_tile_size, marker_tile_size * 4.0))
 	var side_gate_top_rects: Array[Rect2] = direct_door._get_gate_top_rects(side_gate_rect)
-	var side_gate_lowest_top := Rect2(Vector2(0.0, marker_tile_size * 3.0), Vector2(marker_tile_size, marker_tile_size))
-	if side_gate_top_rects.size() != 4 or not _rect_list_has_rect(side_gate_top_rects, side_gate_lowest_top):
-		failures.append("Closed side gates should render as one continuous four-tile wall-top run.")
+	var side_gate_lowest_top := Rect2(Vector2(0.0, marker_tile_size * 2.0), Vector2(marker_tile_size, marker_tile_size))
+	var side_gate_passable_wall_top := Rect2(Vector2(0.0, marker_tile_size * 3.0), Vector2(marker_tile_size, marker_tile_size))
+	if side_gate_top_rects.size() != 3 or not _rect_list_has_rect(side_gate_top_rects, side_gate_lowest_top):
+		failures.append("Closed side gates should render as a continuous top run above the lowest passable wall-top tile.")
+	if _rect_list_has_rect(side_gate_top_rects, side_gate_passable_wall_top):
+		failures.append("Closed side gate tops should not overpaint the lowest passable wall-top tile.")
 	var side_gate_body_rects: Array[Rect2] = direct_door._get_gate_body_rects(side_gate_rect)
-	var side_gate_lowest_body := Rect2(Vector2(0.0, marker_tile_size * 4.0), Vector2(marker_tile_size, marker_tile_size))
+	var side_gate_lowest_body := Rect2(Vector2(0.0, marker_tile_size * 3.0), Vector2(marker_tile_size, marker_tile_size))
 	if not _rect_list_has_rect(side_gate_body_rects, side_gate_lowest_body):
-		failures.append("Closed side gate bodies should derive from the lowest gate top tile, matching wall body rules.")
+		failures.append("Closed side gate bodies should tuck under the lowest passable wall-top tile.")
 	direct_door.set_unlocked(true)
 	if not direct_door.has_special_marker():
 		failures.append("Door entity should treat boss targets as special marked doors.")
