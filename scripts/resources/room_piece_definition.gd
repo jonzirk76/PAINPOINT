@@ -29,6 +29,10 @@ const CONNECTOR_FALLBACKS := {
 @export var arena_shape: int = 0
 @export var wall_rects: Array[Rect2] = []
 @export var spawner_placements: Array[Resource] = []
+## Weighted non-spawner enemy entries copied to generated level definitions for this room piece.
+@export var encounter_table: Array[Resource] = []
+## Base opening non-spawner encounter budget copied to generated level definitions for this room piece.
+@export var encounter_budget: int = 0
 @export var destructible_prop_placements: Array[Resource] = []
 @export var max_active_enemies: int = 12
 @export var boss_profile: Resource = null
@@ -45,6 +49,8 @@ func create_level_definition():
 	level.arena_shape = 0
 	level.arena_bounds = ROOM_GEOMETRY_BUILDER.get_bounds(footprint_cells)
 	level.spawner_placements = spawner_placements.duplicate()
+	level.encounter_table = encounter_table.duplicate()
+	level.encounter_budget = encounter_budget
 	level.destructible_prop_placements = destructible_prop_placements.duplicate()
 	var wall_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_tile_rects(footprint_cells)
 	wall_tiles.append_array(ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(wall_rects))

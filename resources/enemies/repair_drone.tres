@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="EnemyProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/enemy_profile.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+behavior_kind = "repair_drone"
+max_health = 3
+speed = 118.0
+contact_damage = 0
+contact_radius = 0.0
+contact_cooldown = 0.85
+score_value = 28
+body_radius = 15.0
+knockback_multiplier = 1.2
+body_color = Color(0.24, 0.48, 0.74, 1)
+accent_color = Color(0.52, 1, 0.58, 1)
+preferred_distance = 330.0
+distance_band = 70.0
+strafe_speed = 82.0
+shot_cooldown = 1.55
+projectile_speed = 255.0
+projectile_damage = 1
+projectile_radius = 6.0
+repair_radius = 235.0
+repair_amount = 1
+repair_cooldown = 1.15
+repair_target_health_ratio = 0.95

@@ -6,6 +6,8 @@ class_name SpawnerProfile
 @export var spawn_interval: float = 3.4
 @export var spawn_batch_count: int = 1
 @export var body_radius: float = 31.0
+## Controls how strongly player projectile knockback moves this spawner body.
+@export var knockback_multiplier: float = 0.18
 @export var score_value: int = 75
 @export var base_color: Color = Color(0.34, 0.28, 0.38)
 @export var core_color: Color = Color(0.72, 0.24, 0.92)

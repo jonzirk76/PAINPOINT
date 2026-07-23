@@ -5,6 +5,7 @@ signal health_changed(enemy, old_value: int, new_value: int)
 signal health_depleted(enemy)
 signal death_animation_finished(enemy)
 signal shot_ready(enemy, origin: Vector2, direction: Vector2, shot_config: Dictionary)
+signal repair_ready(enemy, repair_target, amount: int)
 
 const BASIC_ENEMY_TEXTURE := preload("res://art/characters/basic_enemy_chaser.svg")
 const FAST_ENEMY_TEXTURE := preload("res://art/characters/fast_enemy_runner.svg")
@@ -35,6 +36,13 @@ const AGENT_SPECIAL_STAGE_TELEGRAPH := "telegraph"
 const AGENT_SPECIAL_STAGE_STREAM := "stream"
 const AGENT_HE_RETICLE_MIN_RADIUS := 26.0
 const AGENT_HE_RETICLE_MAX_RADIUS := 88.0
+const BEHAVIOR_REPAIR_DRONE := "repair_drone"
+const BEHAVIOR_SHIELD_DRONE := "shield_drone"
+const BEHAVIOR_POWER_ARMOR := "power_armor"
+const BEHAVIOR_CYBER_SOLDIER := "cyber_soldier"
+const BEHAVIOR_BOSS := "boss"
+const BEHAVIOR_SHOOTER := "shooter"
+const BEHAVIOR_CHASER := "chaser"
 
 @export var max_health: int = 3
 @export var speed: float = 85.0
@@ -60,6 +68,30 @@ const AGENT_HE_RETICLE_MAX_RADIUS := 88.0
 @export var projectile_radius: float = 7.0
 @export var shot_projectile_count: int = 1
 @export var shot_spread_degrees: float = 0.0
+## Controls how far repair drones can restore allied enemies.
+@export var repair_radius: float = 220.0
+## Controls how much health one repair pulse restores.
+@export var repair_amount: int = 1
+## Controls the delay between repair pulses.
+@export var repair_cooldown: float = 1.25
+## Controls the health ratio below which repair drones consider an ally worth repairing.
+@export_range(0.0, 1.0, 0.01) var repair_target_health_ratio: float = 0.92
+## Controls the cooldown between non-boss special attack or reposition phases.
+@export var special_cooldown: float = 3.0
+## Controls the warning duration before non-boss special attacks fire.
+@export var special_telegraph_seconds: float = 0.46
+## Selects the primary non-boss special attack pattern for elite enemies.
+@export_enum("", "minigun", "autocannon", "burst", "spread") var special_attack_kind: String = ""
+## Selects the occasional secondary explosive attack for elite enemies.
+@export_enum("", "rocket", "grenade") var secondary_attack_kind: String = ""
+## Selects the special movement phase used by tactical enemies.
+@export_enum("", "dash", "teleport") var special_movement_kind: String = ""
+## Controls how long minigun-style special streams last.
+@export var special_minigun_duration: float = 0.82
+## Controls the delay between individual minigun special bullets.
+@export var special_minigun_shot_interval: float = 0.065
+## Controls the total sweep angle of minigun special streams.
+@export var special_minigun_sweep_degrees: float = 76.0
 @export var projectile_shield_radius_bonus: float = 20.0
 @export var boss_special_cooldown: float = 5.4
 @export var boss_special_telegraph_seconds: float = 0.72
@@ -93,6 +125,17 @@ var _slow_multiplier: float = 1.0
 var _lightning_charge_remaining: float = 0.0
 var _lightning_charge_stacks: int = 0
 var _lightning_charge_max_stacks: int = 0
+var _repair_target: EnemyEntity = null
+var _repair_cooldown_remaining: float = 0.0
+var _repair_beam_remaining: float = 0.0
+var _behavior_special_timer: float = 0.0
+var _behavior_pattern_index: int = 0
+var _behavior_burst_shots_remaining: int = 0
+var _behavior_burst_interval_remaining: float = 0.0
+var _behavior_burst_base_direction: Vector2 = Vector2.RIGHT
+var _behavior_burst_config: Dictionary = {}
+var _behavior_reposition_target: Vector2 = Vector2.INF
+var _behavior_reposition_recovery_remaining: float = 0.0
 var _boss_special_timer: float = 0.0
 var _boss_special_telegraph_remaining: float = 0.0
 var _boss_special_telegraph_duration: float = 0.72
@@ -202,19 +245,51 @@ func initialize(profile) -> void:
 	projectile_radius = profile.projectile_radius
 	shot_projectile_count = profile.shot_projectile_count
 	shot_spread_degrees = profile.shot_spread_degrees
+	repair_radius = profile.repair_radius
+	repair_amount = profile.repair_amount
+	repair_cooldown = profile.repair_cooldown
+	repair_target_health_ratio = profile.repair_target_health_ratio
+	special_cooldown = profile.special_cooldown
+	special_telegraph_seconds = profile.special_telegraph_seconds
+	special_attack_kind = profile.special_attack_kind
+	secondary_attack_kind = profile.secondary_attack_kind
+	special_movement_kind = profile.special_movement_kind
+	special_minigun_duration = profile.special_minigun_duration
+	special_minigun_shot_interval = profile.special_minigun_shot_interval
+	special_minigun_sweep_degrees = profile.special_minigun_sweep_degrees
 	agent_program = profile.agent_program as AgentBossProgram if profile.get("agent_program") != null else null
 	if _is_agent_boss():
 		contact_damage = 0
 		contact_radius = 0.0
 		_configure_collision_identity()
+	elif _is_non_contact_specialist():
+		contact_damage = 0
+		contact_radius = 0.0
 	_visual_kind = _get_visual_kind(profile)
 	health = max_health
 	_shot_cooldown_remaining = shot_cooldown * 0.65
-	if behavior_kind == "boss":
+	_repair_cooldown_remaining = repair_cooldown * 0.45
+	_behavior_special_timer = special_cooldown * 0.55
+	_behavior_pattern_index = int(get_instance_id() % 4)
+	_behavior_burst_shots_remaining = 0
+	_behavior_burst_interval_remaining = 0.0
+	_behavior_reposition_target = Vector2.INF
+	_behavior_reposition_recovery_remaining = 0.0
+	if behavior_kind == BEHAVIOR_BOSS:
 		_boss_special_timer = boss_special_cooldown * 0.55
+		_boss_special_sequence_index = 0
+	elif behavior_kind == BEHAVIOR_POWER_ARMOR:
+		boss_special_cooldown = max(special_cooldown, 0.2)
+		boss_special_telegraph_seconds = max(special_telegraph_seconds, 0.1)
+		boss_minigun_duration = max(special_minigun_duration, 0.12)
+		boss_minigun_shot_interval = max(special_minigun_shot_interval, 0.025)
+		boss_minigun_sweep_degrees = max(special_minigun_sweep_degrees, 0.0)
+		_boss_special_timer = boss_special_cooldown * 0.7
 		_boss_special_sequence_index = 0
 	if _is_agent_boss():
 		_configure_agent_boss_state()
+	elif behavior_kind == BEHAVIOR_CYBER_SOLDIER:
+		_configure_cyber_soldier_state()
 
 
 func _physics_process(delta: float) -> void:
@@ -222,6 +297,8 @@ func _physics_process(delta: float) -> void:
 	_update_status_effects(delta)
 	if _hit_flash_remaining > 0.0:
 		_hit_flash_remaining = max(_hit_flash_remaining - delta, 0.0)
+	if _repair_beam_remaining > 0.0:
+		_repair_beam_remaining = max(_repair_beam_remaining - delta, 0.0)
 	if _shot_cooldown_remaining > 0.0:
 		_shot_cooldown_remaining = max(_shot_cooldown_remaining - delta, 0.0)
 	if _path_repath_remaining > 0.0:
@@ -250,14 +327,24 @@ func _physics_process(delta: float) -> void:
 	if _is_agent_boss():
 		intent_velocity = _update_agent_boss(delta, to_target)
 	else:
-		intent_velocity = _get_ranged_velocity(to_target) if behavior_kind == "shooter" or behavior_kind == "boss" else _get_chaser_velocity(to_target)
-		var special_active := _update_boss_special(delta, to_target)
-		if not special_active:
-			_try_emit_shot(to_target)
-		elif _boss_minigun_remaining > 0.0:
-			intent_velocity = Vector2.ZERO
-		else:
-			intent_velocity *= 0.38
+		match behavior_kind:
+			BEHAVIOR_REPAIR_DRONE:
+				intent_velocity = _update_repair_drone(delta, to_target)
+			BEHAVIOR_SHIELD_DRONE:
+				intent_velocity = _update_shield_drone(delta, to_target)
+			BEHAVIOR_POWER_ARMOR:
+				intent_velocity = _update_power_armor(delta, to_target)
+			BEHAVIOR_CYBER_SOLDIER:
+				intent_velocity = _update_cyber_soldier(delta, to_target)
+			_:
+				intent_velocity = _get_ranged_velocity(to_target) if _is_ranged_behavior() else _get_chaser_velocity(to_target)
+				var special_active := _update_boss_special(delta, to_target)
+				if not special_active:
+					_try_emit_shot(to_target)
+				elif _boss_minigun_remaining > 0.0:
+					intent_velocity = Vector2.ZERO
+				else:
+					intent_velocity *= 0.38
 	intent_velocity *= _get_status_speed_multiplier()
 	velocity = intent_velocity + _knockback_velocity + _crowd_separation_velocity
 	_update_agent_visual_state(delta, velocity)
@@ -265,18 +352,38 @@ func _physics_process(delta: float) -> void:
 	_knockback_velocity = _knockback_velocity.move_toward(Vector2.ZERO, 520.0 * delta)
 	_crowd_separation_velocity = _crowd_separation_velocity.move_toward(Vector2.ZERO, 900.0 * delta)
 	move_and_slide()
-	if (behavior_kind == "shooter" or behavior_kind == "boss") and get_slide_collision_count() > 0:
+	if _is_ranged_behavior() and get_slide_collision_count() > 0:
 		_strafe_sign *= -1.0
+		_agent_zigzag_sign *= -1.0
 	global_position = _constrain_to_playable(global_position)
-	if velocity.length_squared() > 1.0 or behavior_kind == "shooter" or behavior_kind == "boss" or _hit_flash_remaining > 0.0 or _knockback_velocity.length_squared() > 1.0 or is_projectile_shield_active() or _projectile_shield_block_flash_remaining > 0.0:
+	if velocity.length_squared() > 1.0 or _is_ranged_behavior() or _hit_flash_remaining > 0.0 or _repair_beam_remaining > 0.0 or _knockback_velocity.length_squared() > 1.0 or is_projectile_shield_active() or _projectile_shield_block_flash_remaining > 0.0:
 		queue_redraw()
 
 
 func set_target_position(position: Vector2) -> void:
 	var previous_position := target_position
 	target_position = position
-	if (behavior_kind == "shooter" or behavior_kind == "boss") and previous_position.distance_squared_to(target_position) > 1.0:
+	if _is_ranged_behavior() and previous_position.distance_squared_to(target_position) > 1.0:
 		queue_redraw()
+
+
+func set_repair_target(target) -> void:
+	var enemy_target := target as EnemyEntity
+	if enemy_target == self or enemy_target == null or not is_instance_valid(enemy_target):
+		_repair_target = null
+		return
+	_repair_target = enemy_target
+
+
+func apply_healing(amount: int) -> bool:
+	if amount <= 0 or health <= 0 or _is_dying or is_birth_animation_active() or health >= max_health:
+		return false
+	var old_health := health
+	health = min(health + amount, max_health)
+	health_changed.emit(self, old_health, health)
+	_hit_flash_remaining = max(_hit_flash_remaining, 0.06)
+	queue_redraw()
+	return health > old_health
 
 
 func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: Array = [], playable_regions: Array = []) -> void:
@@ -523,15 +630,17 @@ func _draw() -> void:
 	var draw_color := Color(1.0, 1.0, 1.0, birth_alpha)
 	if _hit_flash_remaining > 0.0:
 		draw_color = Color(1.0, 0.92, 0.86, birth_alpha)
-	if _is_agent_boss():
+	if _uses_agent_character_art():
 		_draw_agent_character_art(draw_color)
 	else:
 		_draw_enemy_character_art(draw_color)
+	if _repair_beam_remaining > 0.0:
+		_draw_repair_beam()
 	if _has_active_status_effects():
 		_draw_status_effects()
 	if is_projectile_shield_active() or _projectile_shield_block_flash_remaining > 0.0:
 		_draw_projectile_shield()
-	if _is_agent_boss() and _agent_teleport_cast_remaining > 0.0:
+	if _uses_agent_character_art() and _agent_teleport_cast_remaining > 0.0:
 		_draw_agent_teleport_cast()
 	if _is_agent_boss() and _agent_high_explosive_windup_remaining > 0.0:
 		_draw_agent_high_explosive_windup()
@@ -544,12 +653,12 @@ func _draw() -> void:
 	elif _boss_minigun_remaining > 0.0:
 		_draw_boss_minigun_sweep()
 	draw_line(Vector2(-body_radius, -body_radius - 8.0), Vector2(-body_radius + body_radius * 2.0 * health_ratio, -body_radius - 8.0), Color(0.4, 1.0, 0.35, birth_alpha), 3.0)
-	if behavior_kind == "shooter" or (behavior_kind == "boss" and not _is_agent_boss()):
+	if _is_ranged_behavior() and not _uses_agent_character_art():
 		var aim := (target_position - global_position).normalized()
 		if aim.length_squared() <= 0.001:
 			aim = Vector2.RIGHT
 		var aim_color := Color(accent_color.r, accent_color.g, accent_color.b, birth_alpha)
-		if behavior_kind == "boss":
+		if behavior_kind == BEHAVIOR_BOSS or behavior_kind == BEHAVIOR_POWER_ARMOR:
 			draw_arc(Vector2.ZERO, body_radius + 7.0, 0.0, TAU, 36, aim_color, 4.0)
 		draw_line(Vector2.ZERO, aim * (body_radius + 14.0), aim_color, 3.0)
 		draw_circle(aim * (body_radius + 14.0), 3.5, Color(0.06, 0.05, 0.08, birth_alpha))
@@ -592,6 +701,18 @@ func _draw_status_effects() -> void:
 			var angle_b: float = angle_a + 0.36 + pulse * 0.08
 			draw_line(Vector2.RIGHT.rotated(angle_a) * radius, Vector2.RIGHT.rotated(angle_b) * (radius + 5.0), Color(0.74, 0.48, 1.0, 0.5 + stack_ratio * 0.25), 2.4)
 		draw_arc(Vector2.ZERO, radius + 2.0, -PI * 0.5, -PI * 0.5 + TAU * stack_ratio, 38, Color(0.72, 1.0, 1.0, 0.34 + stack_ratio * 0.26), 2.6)
+
+
+func _draw_repair_beam() -> void:
+	var target := _repair_target as EnemyEntity
+	if target == null or not is_instance_valid(target):
+		return
+	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.045)
+	var target_offset: Vector2 = to_local(target.global_position)
+	var beam_color := Color(0.42, 1.0, 0.58, 0.44 + pulse * 0.24)
+	draw_line(Vector2.ZERO, target_offset, beam_color, 4.0)
+	draw_line(Vector2.ZERO, target_offset, Color(1.0, 1.0, 0.78, 0.32 + pulse * 0.22), 1.8)
+	draw_circle(target_offset, 6.0 + pulse * 2.0, Color(0.52, 1.0, 0.66, 0.26 + pulse * 0.18))
 
 
 func _draw_agent_character_art(tint: Color) -> void:
@@ -647,6 +768,8 @@ func _get_agent_body_tint(base_tint: Color) -> Color:
 	if agent_program != null:
 		var color: Color = agent_program.body_modulate
 		return Color(color.r, color.g, color.b, base_tint.a)
+	if behavior_kind == BEHAVIOR_CYBER_SOLDIER:
+		return Color(body_color.r, body_color.g, body_color.b, base_tint.a)
 	return base_tint
 
 
@@ -930,6 +1053,10 @@ func _draw_boss_special_telegraph() -> void:
 	var telegraph_color := Color(1.0, 0.92, 0.28, 0.78)
 	if _boss_special_kind == "rocket":
 		telegraph_color = Color(1.0, 0.32, 0.12, 0.86)
+	elif _boss_special_kind == "grenade":
+		telegraph_color = Color(1.0, 0.62, 0.16, 0.84)
+	elif _boss_special_kind == "autocannon":
+		telegraph_color = Color(0.52, 1.0, 1.0, 0.82)
 	var radius: float = body_radius + 16.0 + progress * 18.0 + pulse * 4.0
 	draw_circle(Vector2.ZERO, radius, Color(telegraph_color.r, telegraph_color.g, telegraph_color.b, 0.09 + pulse * 0.08))
 	draw_arc(Vector2.ZERO, radius, -PI * 0.5, -PI * 0.5 + TAU * progress, 54, telegraph_color, 5.0)
@@ -938,6 +1065,10 @@ func _draw_boss_special_telegraph() -> void:
 		var side := sweep_direction.orthogonal()
 		draw_line(side * -body_radius * 1.1, sweep_direction * (body_radius + 82.0), Color(1.0, 0.96, 0.58, 0.75), 4.0)
 		draw_line(side * body_radius * 1.1, sweep_direction * (body_radius + 82.0), Color(0.54, 1.0, 1.0, 0.45), 3.0)
+	elif _boss_special_kind == "autocannon":
+		var side := aim.orthogonal()
+		draw_line(side * -body_radius * 0.48, aim * (body_radius + 94.0), Color(0.54, 1.0, 1.0, 0.78), 5.0)
+		draw_line(side * body_radius * 0.48, aim * (body_radius + 94.0), Color(1.0, 0.96, 0.58, 0.72), 5.0)
 	else:
 		draw_line(Vector2.ZERO, aim * (body_radius + 92.0), Color(1.0, 0.42, 0.18, 0.85), 5.0)
 		draw_arc(aim * (body_radius + 78.0), 15.0 + pulse * 6.0, 0.0, TAU, 28, Color(1.0, 0.8, 0.28, 0.78), 3.0)
@@ -953,10 +1084,14 @@ func _draw_boss_minigun_sweep() -> void:
 
 
 func _get_visual_kind(profile) -> String:
-	if String(profile.behavior_kind) == "boss":
+	if String(profile.behavior_kind) == BEHAVIOR_BOSS:
 		return "boss"
-	if String(profile.behavior_kind) == "shooter":
+	if String(profile.behavior_kind) == BEHAVIOR_SHOOTER or String(profile.behavior_kind) == BEHAVIOR_REPAIR_DRONE:
 		return "shooter"
+	if String(profile.behavior_kind) == BEHAVIOR_SHIELD_DRONE:
+		return "fast"
+	if String(profile.behavior_kind) == BEHAVIOR_POWER_ARMOR:
+		return "tank"
 	if float(profile.knockback_multiplier) <= 0.0 or int(profile.max_health) >= 8 or float(profile.body_radius) >= 26.0:
 		return "tank"
 	if float(profile.speed) >= 120.0 or float(profile.body_radius) <= 14.0:
@@ -983,6 +1118,365 @@ func _should_reduce_shield_pierce_damage(packet) -> bool:
 	if packet == null or not is_projectile_shield_active():
 		return false
 	return bool(packet.pierces_projectile_shields) and String(packet.projectile_kind) != "hostile"
+
+
+func _is_non_contact_specialist() -> bool:
+	return behavior_kind == BEHAVIOR_REPAIR_DRONE or behavior_kind == BEHAVIOR_SHIELD_DRONE or behavior_kind == BEHAVIOR_POWER_ARMOR or behavior_kind == BEHAVIOR_CYBER_SOLDIER
+
+
+func _is_ranged_behavior() -> bool:
+	return behavior_kind == BEHAVIOR_SHOOTER or behavior_kind == BEHAVIOR_BOSS or _is_non_contact_specialist()
+
+
+func _uses_agent_character_art() -> bool:
+	return _is_agent_boss() or behavior_kind == BEHAVIOR_CYBER_SOLDIER
+
+
+func _configure_cyber_soldier_state() -> void:
+	_agent_aim_direction = Vector2.RIGHT
+	_agent_last_move_facing_direction = Vector2.DOWN
+	_agent_walk_cycle = 0.0
+	_agent_shoot_pose_remaining = 0.0
+	_agent_teleport_target = Vector2.INF
+	_agent_teleport_cast_remaining = 0.0
+	_agent_teleport_cast_duration = 0.0
+	_behavior_reposition_target = Vector2.INF
+	_behavior_reposition_recovery_remaining = 0.0
+	_behavior_special_timer = max(special_cooldown * 0.78, 0.35)
+	_agent_zigzag_sign = -1.0 if int(get_instance_id() % 2) == 0 else 1.0
+
+
+func _update_repair_drone(delta: float, to_target: Vector2) -> Vector2:
+	_repair_cooldown_remaining = max(_repair_cooldown_remaining - delta, 0.0)
+	var has_repair_target := _repair_target_is_valid()
+	if has_repair_target:
+		var to_repair_target: Vector2 = _repair_target.global_position - global_position
+		var repair_distance: float = to_repair_target.length()
+		if repair_distance <= repair_radius and not _wall_blocks_segment(global_position, _repair_target.global_position):
+			_try_emit_repair_pulse()
+			if to_target.length() < preferred_distance * 0.72:
+				return _get_slippery_escape_velocity(to_target, speed)
+			return to_repair_target.orthogonal().normalized() * _strafe_sign * strafe_speed
+		var steering_target := _get_path_steering_target(_repair_target.global_position)
+		var to_steering := steering_target - global_position
+		var repair_velocity := Vector2.ZERO
+		if to_steering.length_squared() > 4.0:
+			repair_velocity = to_steering.normalized() * speed
+		if to_target.length() < preferred_distance * 0.62:
+			repair_velocity += _get_slippery_escape_velocity(to_target, speed * 0.85)
+		return repair_velocity.limit_length(speed)
+	_try_emit_shot(to_target)
+	return _get_slippery_ranged_velocity(to_target, speed)
+
+
+func _repair_target_is_valid() -> bool:
+	var target := _repair_target as EnemyEntity
+	if target == null or not is_instance_valid(target):
+		return false
+	if target == self or not target.is_in_group("enemies"):
+		return false
+	if not target.has_method("apply_healing"):
+		return false
+	if target.health <= 0 or target.health >= target.max_health:
+		return false
+	var health_ratio: float = float(target.health) / float(max(target.max_health, 1))
+	return health_ratio <= clamp(repair_target_health_ratio, 0.0, 1.0)
+
+
+func _try_emit_repair_pulse() -> void:
+	if _repair_cooldown_remaining > 0.0 or not _repair_target_is_valid():
+		return
+	repair_ready.emit(self, _repair_target, max(repair_amount, 1))
+	_repair_cooldown_remaining = max(repair_cooldown, 0.1)
+	_repair_beam_remaining = 0.24
+	queue_redraw()
+
+
+func _update_shield_drone(delta: float, to_target: Vector2) -> Vector2:
+	if _update_behavior_burst(delta):
+		activate_projectile_shield(0.22)
+		return _get_slippery_ranged_velocity(to_target, speed * 0.72)
+	_behavior_special_timer = max(_behavior_special_timer - delta, 0.0)
+	if _behavior_special_timer <= 0.0 and _has_clear_player_shot(to_target):
+		activate_projectile_shield(max(special_telegraph_seconds, 0.2) + 0.56)
+		if _behavior_pattern_index % 2 == 0:
+			_start_behavior_burst(to_target, {
+				"count": 3,
+				"interval": 0.075,
+				"speed": max(projectile_speed * 1.12, 320.0),
+				"damage": projectile_damage,
+				"radius": max(projectile_radius * 0.78, 4.4),
+				"kind": "hostile_burst",
+				"lifetime": 1.1
+			})
+		else:
+			var shot_direction: Vector2 = to_target.normalized()
+			_emit_enemy_projectile(shot_direction, max(projectile_speed * 1.28, 360.0), projectile_damage, max(projectile_radius * 0.72, 4.2), 1, 0.0, 1.05, "hostile")
+		_behavior_pattern_index += 1
+		_behavior_special_timer = max(special_cooldown, 0.28)
+	return _get_slippery_ranged_velocity(to_target, speed)
+
+
+func _update_power_armor(delta: float, to_target: Vector2) -> Vector2:
+	if _boss_minigun_remaining > 0.0:
+		_update_boss_minigun(delta)
+		return Vector2.ZERO
+	if _boss_special_telegraph_remaining > 0.0:
+		_boss_special_telegraph_remaining = max(_boss_special_telegraph_remaining - delta, 0.0)
+		if _boss_special_telegraph_remaining <= 0.0:
+			if _boss_special_kind == "minigun":
+				_start_boss_minigun(to_target)
+			else:
+				_emit_boss_special(to_target)
+				_finish_boss_special()
+		queue_redraw()
+		return Vector2.ZERO
+	_boss_special_timer = max(_boss_special_timer - delta, 0.0)
+	if _boss_special_timer <= 0.0 and _has_clear_player_shot(to_target):
+		_boss_special_kind = _pick_power_armor_attack_kind()
+		_boss_special_telegraph_duration = max(special_telegraph_seconds, 0.18)
+		_boss_special_telegraph_remaining = _boss_special_telegraph_duration
+		queue_redraw()
+		return Vector2.ZERO
+	return _get_ranged_velocity(to_target) * 0.72
+
+
+func _pick_power_armor_attack_kind() -> String:
+	if not secondary_attack_kind.is_empty() and _boss_special_sequence_index % 3 == 2:
+		return secondary_attack_kind
+	if special_attack_kind.is_empty():
+		return "minigun"
+	return special_attack_kind
+
+
+func _update_cyber_soldier(delta: float, to_target: Vector2) -> Vector2:
+	if _agent_shoot_pose_remaining > 0.0:
+		_agent_shoot_pose_remaining = max(_agent_shoot_pose_remaining - delta, 0.0)
+	if _behavior_reposition_recovery_remaining > 0.0:
+		_behavior_reposition_recovery_remaining = max(_behavior_reposition_recovery_remaining - delta, 0.0)
+		_agent_aim_at_target(to_target)
+		return Vector2.ZERO
+	if _agent_teleport_cast_remaining > 0.0:
+		_update_cyber_teleport_cast(delta, to_target)
+		return Vector2.ZERO
+	if _behavior_reposition_target != Vector2.INF:
+		return _update_cyber_dash(to_target)
+	if _update_behavior_burst(delta):
+		_agent_aim_at_target(to_target)
+		return _get_ranged_velocity(to_target) * 0.55
+	_behavior_special_timer = max(_behavior_special_timer - delta, 0.0)
+	if _behavior_special_timer <= 0.0 and _try_start_cyber_reposition(to_target):
+		return Vector2.ZERO
+	_try_emit_cyber_shot(to_target)
+	_agent_aim_at_target(to_target)
+	return _get_ranged_velocity(to_target)
+
+
+func _try_start_cyber_reposition(to_target: Vector2) -> bool:
+	if special_movement_kind.is_empty() or to_target.length_squared() <= 4.0:
+		_behavior_special_timer = max(special_cooldown, 0.4)
+		return false
+	var target: Vector2 = _pick_behavior_reposition_target(to_target, max(preferred_distance, 220.0))
+	if target == Vector2.INF:
+		_behavior_special_timer = max(special_cooldown * 0.5, 0.35)
+		return false
+	if special_movement_kind == "teleport":
+		_agent_teleport_target = target
+		_agent_teleport_cast_duration = max(special_telegraph_seconds, 0.12)
+		_agent_teleport_cast_remaining = _agent_teleport_cast_duration
+		_agent_aim_at_target(to_target)
+		queue_redraw()
+	else:
+		_behavior_reposition_target = target
+		_agent_aim_at_target(to_target)
+	return true
+
+
+func _update_cyber_teleport_cast(delta: float, to_target: Vector2) -> void:
+	_agent_teleport_cast_remaining = max(_agent_teleport_cast_remaining - delta, 0.0)
+	_agent_aim_at_target(to_target)
+	if _agent_teleport_cast_remaining > 0.0:
+		queue_redraw()
+		return
+	if _agent_teleport_target != Vector2.INF:
+		global_position = _constrain_to_playable(_agent_teleport_target)
+	_agent_teleport_target = Vector2.INF
+	_agent_teleport_cast_duration = 0.0
+	_behavior_reposition_recovery_remaining = 0.24
+	_behavior_special_timer = max(special_cooldown, 0.4)
+	_invalidate_path_cache()
+	queue_redraw()
+
+
+func _update_cyber_dash(to_target: Vector2) -> Vector2:
+	var to_dash: Vector2 = _behavior_reposition_target - global_position
+	if to_dash.length_squared() <= 18.0 * 18.0 or _path_blocks_segment(global_position, _behavior_reposition_target, body_radius * 0.55):
+		_behavior_reposition_target = Vector2.INF
+		_behavior_reposition_recovery_remaining = 0.18
+		_behavior_special_timer = max(special_cooldown, 0.4)
+		return Vector2.ZERO
+	_agent_aim_at_target(to_target)
+	return to_dash.normalized() * max(speed * 3.15, 280.0)
+
+
+func _try_emit_cyber_shot(to_target: Vector2) -> void:
+	if _shot_cooldown_remaining > 0.0 or not _has_clear_player_shot(to_target):
+		return
+	var shot_direction: Vector2 = to_target.normalized()
+	match _behavior_pattern_index % 4:
+		1:
+			_start_behavior_burst(to_target, {
+				"count": 3,
+				"interval": 0.08,
+				"speed": max(projectile_speed * 1.08, 310.0),
+				"damage": projectile_damage,
+				"radius": max(projectile_radius * 0.82, 4.8),
+				"kind": "hostile_assault",
+				"lifetime": 1.14
+			})
+			_shot_cooldown_remaining = max(shot_cooldown * 1.25, 0.28)
+		2:
+			_emit_enemy_projectile(shot_direction, max(projectile_speed * 1.02, 285.0), projectile_damage, projectile_radius, 3, 30.0, 1.25, "hostile_scatter")
+			_shot_cooldown_remaining = max(shot_cooldown * 1.18, 0.3)
+		3:
+			_emit_enemy_projectile(shot_direction, max(projectile_speed * 1.32, 360.0), projectile_damage, max(projectile_radius * 0.76, 4.4), 1, 0.0, 1.05, "hostile")
+			_shot_cooldown_remaining = max(shot_cooldown * 0.62, 0.18)
+		_:
+			_emit_enemy_projectile(shot_direction, projectile_speed, projectile_damage, projectile_radius, 1, 0.0, 1.2, "hostile")
+			_shot_cooldown_remaining = max(shot_cooldown, 0.24)
+	_behavior_pattern_index += 1
+
+
+func _start_behavior_burst(to_target: Vector2, burst_config: Dictionary) -> void:
+	if to_target.length_squared() <= 4.0:
+		return
+	_behavior_burst_shots_remaining = max(int(burst_config.get("count", 3)), 1)
+	_behavior_burst_interval_remaining = 0.0
+	_behavior_burst_base_direction = to_target.normalized()
+	_behavior_burst_config = burst_config.duplicate()
+	_update_behavior_burst(0.0)
+
+
+func _update_behavior_burst(delta: float) -> bool:
+	if _behavior_burst_shots_remaining <= 0:
+		return false
+	_behavior_burst_interval_remaining -= delta
+	var was_active := true
+	var emitted_count := 0
+	while _behavior_burst_shots_remaining > 0 and _behavior_burst_interval_remaining <= 0.0 and emitted_count < 3:
+		var jitter: float = float(_behavior_burst_config.get("jitter_degrees", 4.0))
+		var direction: Vector2 = _behavior_burst_base_direction.rotated(deg_to_rad(sin(float(_behavior_burst_shots_remaining) * 2.17) * jitter)).normalized()
+		_emit_enemy_projectile(
+			direction,
+			float(_behavior_burst_config.get("speed", projectile_speed)),
+			int(_behavior_burst_config.get("damage", projectile_damage)),
+			float(_behavior_burst_config.get("radius", projectile_radius)),
+			1,
+			0.0,
+			float(_behavior_burst_config.get("lifetime", 1.1)),
+			String(_behavior_burst_config.get("kind", "hostile_burst"))
+		)
+		_behavior_burst_shots_remaining -= 1
+		_behavior_burst_interval_remaining += max(float(_behavior_burst_config.get("interval", 0.08)), 0.025)
+		emitted_count += 1
+	if _behavior_burst_shots_remaining <= 0:
+		_behavior_burst_config.clear()
+	return was_active
+
+
+func _pick_behavior_reposition_target(to_target: Vector2, distance: float) -> Vector2:
+	var directions: Array[Vector2] = _get_behavior_reposition_directions(to_target)
+	for direction in directions:
+		if direction.length_squared() <= 0.001:
+			continue
+		var candidate: Vector2 = global_position + direction.normalized() * distance
+		candidate = _constrain_to_playable(candidate)
+		if not _agent_point_is_valid(candidate):
+			continue
+		if _path_blocks_segment(global_position, candidate, body_radius * 0.55):
+			continue
+		return candidate
+	for direction in directions:
+		if direction.length_squared() <= 0.001:
+			continue
+		var candidate: Vector2 = global_position + direction.normalized() * distance * 0.55
+		candidate = _constrain_to_playable(candidate)
+		if _agent_point_is_valid(candidate) and not _path_blocks_segment(global_position, candidate, body_radius * 0.55):
+			return candidate
+	return Vector2.INF
+
+
+func _get_behavior_reposition_directions(to_target: Vector2) -> Array[Vector2]:
+	var target_direction: Vector2 = _get_target_direction(to_target)
+	var side_direction: Vector2 = target_direction.orthogonal() * _agent_zigzag_sign
+	return [
+		side_direction,
+		-side_direction,
+		(side_direction - target_direction * 0.35).normalized(),
+		(-side_direction - target_direction * 0.35).normalized(),
+		-target_direction,
+		target_direction
+	]
+
+
+func _get_slippery_ranged_velocity(to_target: Vector2, movement_speed: float) -> Vector2:
+	if to_target.length_squared() <= 4.0:
+		return Vector2.ZERO
+	var distance: float = to_target.length()
+	var target_direction: Vector2 = to_target / distance
+	var preferred_direction := target_direction.orthogonal() * _strafe_sign
+	if distance < preferred_distance - distance_band:
+		preferred_direction = _get_retreat_or_strafe_direction(target_direction, preferred_distance)
+	elif distance > preferred_distance + distance_band and not _wall_blocks_segment(global_position, target_position):
+		preferred_direction = (target_direction + preferred_direction * 0.55).normalized()
+	return _get_agent_path_velocity_for_direction(preferred_direction, max(preferred_distance * 0.7, 120.0), max(movement_speed, 0.0))
+
+
+func _get_slippery_escape_velocity(to_target: Vector2, movement_speed: float) -> Vector2:
+	if to_target.length_squared() <= 4.0:
+		return Vector2.ZERO
+	var target_direction: Vector2 = to_target.normalized()
+	var escape_direction := _get_retreat_or_strafe_direction(target_direction, max(preferred_distance, 120.0))
+	return _get_agent_path_velocity_for_direction(escape_direction, max(preferred_distance, 120.0), max(movement_speed, 0.0))
+
+
+func _has_clear_player_shot(to_target: Vector2) -> bool:
+	if to_target.length_squared() <= 4.0:
+		return false
+	var shot_direction: Vector2 = to_target.normalized()
+	var shot_origin := global_position + shot_direction * (body_radius + projectile_radius + 4.0)
+	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
+		return false
+	if _wall_blocks_segment(global_position, target_position) or _wall_blocks_segment(global_position, shot_origin):
+		return false
+	return true
+
+
+func _emit_enemy_projectile(shot_direction: Vector2, shot_speed: float, damage: int, radius: float, projectile_count: int, spread_degrees: float, lifetime: float, kind: String, knockback: float = 0.0) -> bool:
+	if shot_direction.length_squared() <= 0.001:
+		return false
+	var normalized_direction: Vector2 = shot_direction.normalized()
+	var shot_radius: float = max(radius, 1.0)
+	var shot_origin := global_position + normalized_direction * (body_radius + shot_radius + 4.0)
+	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
+		return false
+	if _wall_blocks_segment(global_position, target_position) or _wall_blocks_segment(global_position, shot_origin):
+		return false
+	var shot_config := {
+		"speed": max(shot_speed, 1.0),
+		"damage": max(damage, 1),
+		"radius": shot_radius,
+		"kind": kind,
+		"projectile_count": max(projectile_count, 1),
+		"spread_angle_degrees": max(spread_degrees, 0.0),
+		"knockback": max(knockback, 0.0)
+	}
+	if lifetime > 0.0:
+		shot_config["lifetime"] = lifetime
+	shot_ready.emit(self, shot_origin, normalized_direction, shot_config)
+	if _uses_agent_character_art():
+		_play_agent_shoot_pose(normalized_direction)
+	return true
 
 
 func _is_agent_boss() -> bool:
@@ -2273,7 +2767,7 @@ func _play_agent_shoot_pose(direction: Vector2) -> void:
 
 
 func _update_agent_visual_state(delta: float, movement: Vector2) -> void:
-	if not _is_agent_boss():
+	if not _uses_agent_character_art():
 		return
 	if movement.length_squared() > 1.0:
 		_agent_walk_cycle += delta * 9.0
@@ -2281,7 +2775,7 @@ func _update_agent_visual_state(delta: float, movement: Vector2) -> void:
 
 
 func _update_boss_special(delta: float, to_target: Vector2) -> bool:
-	if behavior_kind != "boss" or health <= 0 or _is_dying:
+	if behavior_kind != BEHAVIOR_BOSS or health <= 0 or _is_dying:
 		return false
 	if _boss_minigun_remaining > 0.0:
 		_update_boss_minigun(delta)
@@ -2318,7 +2812,7 @@ func _emit_boss_special(to_target: Vector2) -> void:
 	var shot_origin := global_position + shot_direction * (body_radius + radius + 6.0)
 	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
 		shot_origin = global_position
-	if _boss_special_kind == "rocket":
+	if _boss_special_kind == "rocket" or _boss_special_kind == "grenade":
 		var target_position_at_launch := global_position + to_target
 		var target_direction := target_position_at_launch - shot_origin
 		if target_direction.length_squared() > 4.0:
@@ -2327,6 +2821,9 @@ func _emit_boss_special(to_target: Vector2) -> void:
 		shot_config["target_position"] = target_position_at_launch
 		shot_config["lifetime"] = max(shot_origin.distance_to(target_position_at_launch) / rocket_speed, 0.08)
 		shot_config["exact_lifetime"] = true
+		if _boss_special_kind == "grenade":
+			shot_config["show_target_reticle"] = true
+			shot_config["target_reticle_radius"] = float(shot_config.get("explosion_radius", 58.0))
 	shot_ready.emit(self, shot_origin, shot_direction, shot_config)
 
 
@@ -2394,6 +2891,29 @@ func _get_boss_special_shot_config(special_kind: String) -> Dictionary:
 			"explosion_radius": 72.0,
 			"explosion_damage_multiplier": 1.0
 		}
+	if special_kind == "grenade":
+		return {
+			"speed": max(projectile_speed * 1.35, 300.0),
+			"damage": max(projectile_damage, 1),
+			"radius": max(projectile_radius * 1.2, 9.5),
+			"kind": "agent_grenade",
+			"projectile_count": 1,
+			"spread_angle_degrees": 0.0,
+			"knockback": 360.0,
+			"explosion_radius": 62.0,
+			"explosion_damage_multiplier": 1.0
+		}
+	if special_kind == "autocannon":
+		return {
+			"speed": max(projectile_speed * 2.1, 540.0),
+			"damage": max(projectile_damage + 1, 2),
+			"radius": max(projectile_radius * 1.25, 9.0),
+			"kind": "hostile_autocannon",
+			"projectile_count": 2,
+			"spread_angle_degrees": 5.0,
+			"lifetime": 1.12,
+			"knockback": 230.0
+		}
 	return {
 		"speed": projectile_speed * 1.38,
 		"damage": projectile_damage,
@@ -2436,26 +2956,13 @@ func _get_ranged_velocity(to_target: Vector2) -> Vector2:
 
 
 func _try_emit_shot(to_target: Vector2) -> void:
-	if behavior_kind != "shooter" and behavior_kind != "boss":
+	if behavior_kind != BEHAVIOR_SHOOTER and behavior_kind != BEHAVIOR_BOSS and behavior_kind != BEHAVIOR_REPAIR_DRONE:
 		return
 	if _shot_cooldown_remaining > 0.0 or to_target.length_squared() <= 4.0:
 		return
 	var shot_direction := to_target.normalized()
-	var shot_origin := global_position + shot_direction * (body_radius + projectile_radius + 4.0)
-	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
-		return
-	if _wall_blocks_segment(global_position, target_position) or _wall_blocks_segment(global_position, shot_origin):
-		return
-	var shot_config := {
-		"speed": projectile_speed,
-		"damage": projectile_damage,
-		"radius": projectile_radius,
-		"kind": "hostile",
-		"projectile_count": max(shot_projectile_count, 1),
-		"spread_angle_degrees": shot_spread_degrees
-	}
-	shot_ready.emit(self, shot_origin, shot_direction, shot_config)
-	_shot_cooldown_remaining = shot_cooldown
+	if _emit_enemy_projectile(shot_direction, projectile_speed, projectile_damage, projectile_radius, shot_projectile_count, shot_spread_degrees, 1.2, "hostile"):
+		_shot_cooldown_remaining = shot_cooldown
 
 
 func _update_projectile_shield(delta: float) -> void:

@@ -1124,6 +1124,7 @@ func _start_level(level_definition) -> void:
 	player_manager.reset_run()
 	_set_all_enabled(true)
 	_set_loading_progress(0.9, "Starting encounter")
+	_spawn_opening_encounter(level_definition)
 	if level_definition.boss_profile != null:
 		_spawn_level_boss(level_definition)
 	_queue_loading_floor_start_feedback()
@@ -1699,6 +1700,167 @@ func _on_spawn_requested(spawn_position: Vector2, profile) -> void:
 	enemy_manager.spawn_enemy(profile, spawn_position, {"birth": true})
 
 
+func _spawn_opening_encounter(level_definition, spawn_flags: Dictionary = {}) -> void:
+	if level_definition == null:
+		return
+	var requests: Array[Resource] = _roll_opening_encounter(level_definition)
+	if requests.is_empty():
+		return
+	var remaining_slots: int = max(int(level_definition.max_active_enemies) - enemy_manager.get_enemy_count(), 0)
+	if remaining_slots <= 0:
+		return
+	while requests.size() > remaining_slots:
+		requests.pop_back()
+	var positions: Array[Vector2] = _get_opening_encounter_positions(level_definition, requests.size())
+	for index in range(requests.size()):
+		var profile: Resource = requests[index]
+		if profile == null:
+			continue
+		var spawn_position: Vector2 = positions[index] if index < positions.size() else _find_safe_room_position(_get_opening_encounter_anchor(level_definition), level_definition)
+		var flags := spawn_flags.duplicate()
+		if not bool(flags.get("inactive", false)):
+			flags["birth"] = bool(flags.get("birth", true))
+		enemy_manager.spawn_enemy(profile, spawn_position, flags)
+
+
+func _roll_opening_encounter(level_definition) -> Array[Resource]:
+	var rolled: Array[Resource] = []
+	if level_definition == null:
+		return rolled
+	var table: Array = level_definition.encounter_table
+	var remaining_budget: int = max(int(level_definition.encounter_budget), 0)
+	if table.is_empty() or remaining_budget <= 0:
+		return rolled
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _get_opening_encounter_seed(level_definition)
+	var room_kind: String = _get_level_room_kind(level_definition)
+	var floor_number: int = max(int(level_definition.floor_number), 1)
+	for _roll_index in range(24):
+		var candidates: Array[Resource] = _get_available_encounter_entries(table, floor_number, room_kind, remaining_budget)
+		if candidates.is_empty():
+			break
+		var entry = _choose_weighted_encounter_entry(candidates, rng)
+		if entry == null:
+			break
+		var entry_cost: int = max(int(entry.budget_cost), 1)
+		var max_affordable_count: int = max(int(floor(float(remaining_budget) / float(entry_cost))), 0)
+		if max_affordable_count <= 0:
+			break
+		var min_count: int = clampi(int(entry.min_count), 1, max_affordable_count)
+		var max_count: int = clampi(int(entry.max_count), min_count, max_affordable_count)
+		var spawn_count: int = rng.randi_range(min_count, max_count)
+		for _spawn_index in range(spawn_count):
+			rolled.append(entry.enemy_profile)
+			remaining_budget -= entry_cost
+			if remaining_budget <= 0:
+				break
+		if remaining_budget <= 0:
+			break
+	return rolled
+
+
+func _get_available_encounter_entries(table: Array, floor_number: int, room_kind: String, remaining_budget: int) -> Array[Resource]:
+	var candidates: Array[Resource] = []
+	for raw_entry in table:
+		var entry: Resource = raw_entry as Resource
+		if entry == null or not entry.has_method("is_available"):
+			continue
+		if bool(entry.is_available(floor_number, room_kind, remaining_budget)):
+			candidates.append(entry)
+	return candidates
+
+
+func _choose_weighted_encounter_entry(candidates: Array[Resource], rng: RandomNumberGenerator):
+	var total_weight := 0
+	for entry in candidates:
+		total_weight += max(int(entry.weight), 1)
+	if total_weight <= 0:
+		return null
+	var roll := rng.randi_range(1, total_weight)
+	for entry in candidates:
+		roll -= max(int(entry.weight), 1)
+		if roll <= 0:
+			return entry
+	return candidates[candidates.size() - 1]
+
+
+func _get_opening_encounter_positions(level_definition, count: int) -> Array[Vector2]:
+	var positions: Array[Vector2] = []
+	if level_definition == null or count <= 0:
+		return positions
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _get_opening_encounter_seed(level_definition) + 7919
+	var bounds: Rect2 = _get_opening_encounter_bounds(level_definition)
+	var anchor: Vector2 = _get_opening_encounter_anchor(level_definition)
+	var min_distance: float = max(float(level_definition.encounter_min_spawn_distance), 96.0)
+	var center: Vector2 = bounds.get_center()
+	var angle_offset: float = rng.randf_range(0.0, TAU)
+	for index in range(count):
+		var chosen := Vector2.INF
+		for radius in [min_distance, min_distance + 86.0, min_distance + 168.0, min_distance + 250.0]:
+			for step in range(14):
+				var angle: float = angle_offset + TAU * float(step) / 14.0 + float(index) * 0.43
+				var candidate: Vector2 = center + Vector2.RIGHT.rotated(angle) * radius
+				candidate = ArenaGeometry.constrain_point(candidate, bounds, int(level_definition.arena_shape))
+				if _opening_encounter_position_is_clear(candidate, anchor, min_distance, positions, level_definition):
+					chosen = candidate
+					break
+			if chosen != Vector2.INF:
+				break
+		if chosen == Vector2.INF:
+			chosen = _find_safe_room_position(center + Vector2.RIGHT.rotated(angle_offset + float(index)) * min_distance, level_definition)
+		positions.append(chosen)
+	return positions
+
+
+func _opening_encounter_position_is_clear(position: Vector2, anchor: Vector2, min_distance: float, selected_positions: Array[Vector2], level_definition) -> bool:
+	if position.distance_squared_to(anchor) < min_distance * min_distance:
+		return false
+	if not _position_is_clear_of_room_walls(position, level_definition):
+		return false
+	for selected in selected_positions:
+		if position.distance_squared_to(selected) < 72.0 * 72.0:
+			return false
+	for spawner_position in spawner_manager.get_spawner_positions():
+		if position.distance_squared_to(spawner_position) < 92.0 * 92.0:
+			return false
+	for enemy_position in enemy_manager.get_enemy_positions():
+		if position.distance_squared_to(enemy_position) < 72.0 * 72.0:
+			return false
+	return true
+
+
+func _get_opening_encounter_bounds(level_definition) -> Rect2:
+	if _is_dungeon_run and dungeon_manager != null:
+		var room_bounds: Rect2 = dungeon_manager.get_full_floor_room_bounds(dungeon_manager.current_room_id)
+		if room_bounds.size != Vector2.ZERO:
+			return room_bounds
+	return level_definition.arena_bounds
+
+
+func _get_opening_encounter_anchor(level_definition) -> Vector2:
+	var player = _get_player_ref()
+	if player != null and is_instance_valid(player):
+		return player.global_position
+	if _is_dungeon_run and dungeon_manager != null:
+		var spawn_position: Vector2 = dungeon_manager.get_current_spawn_position()
+		return dungeon_manager.get_full_floor_position_for_room_position(dungeon_manager.current_room_id, spawn_position)
+	return level_definition.arena_bounds.get_center()
+
+
+func _get_level_room_kind(level_definition) -> String:
+	if level_definition != null and level_definition.has_meta("room_kind"):
+		return String(level_definition.get_meta("room_kind"))
+	return "combat"
+
+
+func _get_opening_encounter_seed(level_definition) -> int:
+	var level_id: String = String(level_definition.id) if level_definition != null else "level"
+	var floor_number: int = max(int(level_definition.floor_number), 1) if level_definition != null else 1
+	var seed_text := "%d:%d:%s:opening_encounter" % [_run_seed, floor_number, level_id]
+	return posmod(seed_text.hash(), 2147483646) + 1
+
+
 func _spawn_level_boss(level_definition, spawn_flags: Dictionary = {}):
 	if level_definition == null or level_definition.boss_profile == null:
 		return null
@@ -2174,6 +2336,7 @@ func _load_room_entry_transition(player_position: Vector2) -> bool:
 	_sync_gate_blockers_into_actors()
 	if not room_is_cleared:
 		_preload_pending_initial_spawner_enemies()
+		_spawn_opening_encounter(level_definition, {"inactive": true, "allow_when_disabled": true})
 	if not room_is_cleared and level_definition.boss_profile != null:
 		_spawn_level_boss(level_definition, {"inactive": true, "allow_when_disabled": true})
 		if _is_main_loop_run and dungeon_manager.is_current_boss_room():
@@ -3334,12 +3497,14 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool, ove
 		_preload_current_treasure_reward_choices()
 	if should_update_loading_screen and not room_is_cleared:
 		_preload_pending_initial_spawner_enemies_with_loading(LOADING_PROGRESS_INITIAL_ENEMIES_START, LOADING_PROGRESS_INITIAL_ENEMIES_DONE)
-	elif not room_is_cleared:
-		_preload_pending_initial_spawner_enemies()
+	if should_update_loading_screen and not room_is_cleared:
+		_spawn_opening_encounter(level_definition, {"inactive": true, "allow_when_disabled": true})
 	if should_update_loading_screen:
 		_set_room_combat_active(false)
 	else:
 		_set_all_enabled(true)
+		if not room_is_cleared:
+			_spawn_opening_encounter(level_definition, {"birth": true})
 	if not room_is_cleared and level_definition.boss_profile != null:
 		var boss_spawn_flags: Dictionary = {}
 		if should_update_loading_screen:

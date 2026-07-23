@@ -18,6 +18,12 @@ enum ArenaShape {
 @export var use_default_spawners: bool = true
 @export var spawner_positions: Array[Vector2] = []
 @export var spawner_placements: Array[Resource] = []
+## Weighted non-spawner enemy entries used to spawn the room's opening encounter.
+@export var encounter_table: Array[Resource] = []
+## Budget spent rolling the room's opening non-spawner encounter.
+@export var encounter_budget: int = 0
+## Minimum distance from the room entry/player spawn for opening encounter enemies.
+@export var encounter_min_spawn_distance: float = 210.0
 @export var destructible_prop_placements: Array[Resource] = []
 @export var wall_rects: Array[Rect2] = []
 @export var void_rects: Array[Rect2] = []
