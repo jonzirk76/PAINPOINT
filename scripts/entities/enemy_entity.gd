@@ -81,11 +81,11 @@ const BEHAVIOR_CHASER := "chaser"
 ## Controls the warning duration before non-boss special attacks fire.
 @export var special_telegraph_seconds: float = 0.46
 ## Selects the primary non-boss special attack pattern for elite enemies.
-@export_enum("", "minigun", "autocannon", "burst", "spread") var special_attack_kind: String = ""
+@export var special_attack_kind: String = ""
 ## Selects the occasional secondary explosive attack for elite enemies.
-@export_enum("", "rocket", "grenade") var secondary_attack_kind: String = ""
+@export var secondary_attack_kind: String = ""
 ## Selects the special movement phase used by tactical enemies.
-@export_enum("", "dash", "teleport") var special_movement_kind: String = ""
+@export var special_movement_kind: String = ""
 ## Controls how long minigun-style special streams last.
 @export var special_minigun_duration: float = 0.82
 ## Controls the delay between individual minigun special bullets.
