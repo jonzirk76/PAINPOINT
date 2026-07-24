@@ -325,7 +325,8 @@ func get_nearby_spawners(origin: Vector2, radius: float, excluded: Array[Node]) 
 
 func get_repairable_spawners(origin: Vector2, radius: float, health_ratio_threshold: float) -> Array:
 	var candidates: Array = []
-	var radius_squared := max(radius, 0.0) * max(radius, 0.0)
+	var effective_radius: float = max(radius, 0.0)
+	var radius_squared: float = effective_radius * effective_radius
 	var threshold: float = clamp(health_ratio_threshold, 0.0, 1.0)
 	for spawner in _spawners:
 		if not is_instance_valid(spawner) or not spawner.has_method("apply_healing"):
