@@ -12,6 +12,7 @@ const ENTITY_SCRIPT_PATHS := [
 	"res://scripts/entities/projectile_impact_effect.gd",
 	"res://scripts/entities/muzzle_flash_effect.gd",
 	"res://scripts/entities/door_entity.gd",
+	"res://scripts/entities/door_gate_top_visual.gd",
 	"res://scripts/entities/destructible_prop_entity.gd",
 	"res://scripts/entities/floor_exit_portal_entity.gd",
 	"res://scripts/entities/cat_entity.gd"
@@ -27,6 +28,8 @@ const FORBIDDEN_ENTITY_SNIPPETS := [
 const SCRIPT_PATHS := [
 	"res://scripts/arena/arena_geometry.gd",
 	"res://scripts/arena/arena_view.gd",
+	"res://scripts/arena/arena_wall_body_visual.gd",
+	"res://scripts/arena/arena_wall_top_overlay.gd",
 	"res://scripts/entities/player_entity.gd",
 	"res://scripts/entities/enemy_entity.gd",
 	"res://scripts/entities/projectile_entity.gd",
@@ -38,6 +41,7 @@ const SCRIPT_PATHS := [
 	"res://scripts/entities/projectile_impact_effect.gd",
 	"res://scripts/entities/muzzle_flash_effect.gd",
 	"res://scripts/entities/door_entity.gd",
+	"res://scripts/entities/door_gate_top_visual.gd",
 	"res://scripts/entities/destructible_prop_entity.gd",
 	"res://scripts/entities/floor_exit_portal_entity.gd",
 	"res://scripts/entities/cat_entity.gd",
@@ -431,7 +435,9 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 	if not manager_source.contains("get_cat_state_snapshot") or not manager_source.contains("has_active_cat"):
 		failures.append("FaunaManager should expose active cat state for cat-room debug logs.")
 	if not manager_source.contains("set_cat_activity_bounds") or not manager_source.contains("_cat_is_inside_activity_bounds") or not manager_source.contains("_sync_cat_simulation_state"):
-		failures.append("FaunaManager should pause cats outside current dungeon activity bounds.")
+		failures.append("FaunaManager should keep cat simulation scoped to the current dungeon activity envelope.")
+	if not manager_source.contains("set_cat_visibility_bounds") or not manager_source.contains("_cat_is_inside_visibility_bounds") or not manager_source.contains("_apply_cat_visibility_state"):
+		failures.append("FaunaManager should hide cats outside the active visibility bounds without pausing simulation.")
 	if not manager_source.contains("_filter_rects_for_cat_activity") or not manager_source.contains("_get_cat_playable_rects"):
 		failures.append("FaunaManager should filter full-floor geometry before syncing active cats.")
 	if not manager_source.contains("signal cat_meowed") or not manager_source.contains("_on_cat_meowed") or not manager_source.contains("meowed"):
@@ -444,8 +450,8 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("GameOrchestrator should show a cat state log in cat test rooms.")
 	if not orchestrator_source.contains("CAT_DEBUG_LEVEL_IDS") or not orchestrator_source.contains("cat_behavior_test") or not orchestrator_source.contains("cat_peaceful_test") or not orchestrator_source.contains("CAT_DEBUG_LEVEL_IDS.has"):
 		failures.append("GameOrchestrator should scope the cat state log to authored cat test rooms only.")
-	if not orchestrator_source.contains("_sync_fauna_roam_bounds(level_definition, room_is_cleared)") or not orchestrator_source.contains("set_cat_activity_bounds"):
-		failures.append("GameOrchestrator should scope dungeon cat activity to the current combat room until rooms are cleared.")
+	if not orchestrator_source.contains("_sync_fauna_roam_bounds(level_definition, room_is_cleared)") or not orchestrator_source.contains("set_cat_activity_bounds") or not orchestrator_source.contains("set_cat_visibility_bounds"):
+		failures.append("GameOrchestrator should separate dungeon cat simulation bounds from active-room visibility bounds.")
 	if not orchestrator_source.contains("cat_meowed") or not orchestrator_source.contains("play_cat_meow"):
 		failures.append("GameOrchestrator should route curious cat meows to AudioManager.")
 	var audio_source := _read_text("res://scripts/managers/audio_manager.gd")
@@ -590,6 +596,7 @@ func _test_scene_loads(failures: Array[String]) -> void:
 					"UI/GameOverPanel/GameOverTallyLabel",
 					"UI/LevelSelectPanel/LevelListLabel",
 					"UI/WinPanel/WinPromptLabel",
+					"World/DepthSortLayer",
 					"World/DoorLayer",
 					"World/DestructibleLayer",
 					"World/FaunaLayer",
@@ -821,6 +828,31 @@ func _test_arena_wall_generation(failures: Array[String]) -> void:
 	if wall_count != level.wall_rects.size():
 		failures.append("ArenaView did not create one wall body per maze wall rect.")
 	arena.free()
+	var room_piece = load("res://resources/rooms/combat_cell.tres")
+	var generated_level = room_piece.create_level_definition()
+	var depth_sort_layer := Node2D.new()
+	depth_sort_layer.name = "DepthSortLayer"
+	depth_sort_layer.y_sort_enabled = true
+	root.add_child(depth_sort_layer)
+	var generated_arena = load("res://scripts/arena/arena_view.gd").new()
+	root.add_child(generated_arena)
+	generated_arena.configure(generated_level)
+	var wall_top_overlay = generated_arena.get_node_or_null("WallTopOverlay")
+	if wall_top_overlay == null or int(wall_top_overlay.z_index) <= 0:
+		failures.append("Generated room wall tops should render through a positive-z overlay above gameplay entities.")
+	var arena_view_source := _read_text("res://scripts/arena/arena_view.gd")
+	var wall_top_overlay_source := _read_text("res://scripts/arena/arena_wall_top_overlay.gd")
+	if not arena_view_source.contains("inactive_room_dim_rects") or not wall_top_overlay_source.contains("_draw_dim"):
+		failures.append("ArenaView should render dim overlays for visible inactive dungeon rooms through the wall-top overlay.")
+	var wall_body_visual_script = load("res://scripts/arena/arena_wall_body_visual.gd")
+	var wall_body_visual_count := 0
+	for child in depth_sort_layer.get_children():
+		if child.get_script() == wall_body_visual_script:
+			wall_body_visual_count += 1
+	if wall_body_visual_count <= 0:
+		failures.append("Generated room wall bodies should render as y-sorted depth visuals.")
+	generated_arena.free()
+	depth_sort_layer.free()
 
 
 func _test_character_hud_visibility(failures: Array[String]) -> void:
@@ -1067,7 +1099,7 @@ func _test_pause_menu_flow(failures: Array[String]) -> void:
 	var live_projectile = null
 	if main.get_node("World/ProjectileLayer").get_child_count() > 0:
 		live_projectile = main.get_node("World/ProjectileLayer").get_child(0)
-	else:
+	if live_projectile == null:
 		failures.append("Pause test should be able to spawn a live projectile.")
 	main.effects_manager.play_explosion(Vector2(40.0, 0.0), 80.0)
 	var normal_effect = null
@@ -2685,6 +2717,78 @@ func _validate_room_piece_geometry_rules(failures: Array[String]) -> void:
 		failures.append("Room shell generation should preserve exterior corner wall tiles when one cell has adjacent openings.")
 	if _rect_list_count_rect(multi_open_tiles, north_east_corner) != 1:
 		failures.append("Room shell generation should not duplicate exterior corner wall tiles shared by adjacent wall edges.")
+	var manual_wall_top_tiles: Array[Rect2] = [
+		Rect2(Vector2(-builder.WALL_TILE_SIZE, -builder.WALL_TILE_SIZE), Vector2(builder.WALL_TILE_SIZE, builder.WALL_TILE_SIZE))
+	]
+	var manual_wall_body_tiles: Array[Rect2] = builder.build_wall_body_tile_rects(manual_wall_top_tiles, corner_cells, {})
+	var expected_wall_body := Rect2(Vector2(-builder.WALL_TILE_SIZE, 0.0), Vector2(builder.WALL_TILE_SIZE, builder.WALL_TILE_SIZE))
+	if not _rect_list_has_rect(manual_wall_body_tiles, expected_wall_body):
+		failures.append("RPG-style wall tops should derive one blocking wall body tile directly below them.")
+	var bottom_wall_top_tiles: Array[Rect2] = [
+		Rect2(Vector2(0.0, builder.CELL_SIZE.y * 0.5 - builder.WALL_TILE_SIZE), Vector2(builder.WALL_TILE_SIZE, builder.WALL_TILE_SIZE))
+	]
+	var bottom_wall_body_tiles: Array[Rect2] = builder.build_wall_body_tile_rects(bottom_wall_top_tiles, corner_cells, {})
+	var outside_bottom_wall_body := Rect2(bottom_wall_top_tiles[0].position + Vector2(0.0, builder.WALL_TILE_SIZE), bottom_wall_top_tiles[0].size)
+	if not _rect_list_has_rect(bottom_wall_body_tiles, outside_bottom_wall_body):
+		failures.append("Bottom exterior wall tops should use the shifted body envelope to spawn their normal body tile below the footprint.")
+	if _rect_list_has_rect(bottom_wall_body_tiles, bottom_wall_top_tiles[0]):
+		failures.append("Bottom exterior wall tops should not become self-blocking fallback body tiles.")
+	var east_opening_body_source := Rect2(
+		Vector2(builder.CELL_SIZE.x * 0.5 - builder.WALL_TILE_SIZE, -builder.WALL_TILE_SIZE * 3.0),
+		Vector2(builder.WALL_TILE_SIZE, builder.WALL_TILE_SIZE)
+	)
+	var east_opening_blocked_body := Rect2(east_opening_body_source.position + Vector2(0.0, builder.WALL_TILE_SIZE), east_opening_body_source.size)
+	var east_opening_top_tiles: Array[Rect2] = [east_opening_body_source]
+	var east_opening_body_tiles: Array[Rect2] = builder.build_wall_body_tile_rects(east_opening_top_tiles, corner_cells, multi_open_edges)
+	if not _rect_list_has_rect(east_opening_body_tiles, east_opening_blocked_body):
+		failures.append("Side-facing gate openings should keep a wall body frame at the top of the four-tile opening.")
+	var east_opening := builder.get_opening_rect(corner_cells, Vector2i.ZERO, "east")
+	var east_wall_top_opening := builder.get_wall_top_opening_rect(corner_cells, Vector2i.ZERO, "east")
+	if abs(east_wall_top_opening.size.y - (east_opening.size.y - builder.WALL_TILE_SIZE)) > 0.5:
+		failures.append("Side-facing wall-top openings should leave the lowest opening tile as a passable wall top.")
+	var east_low_wall_top := Rect2(
+		Vector2(east_opening.position.x, east_opening.position.y + east_opening.size.y - builder.WALL_TILE_SIZE),
+		Vector2(builder.WALL_TILE_SIZE, builder.WALL_TILE_SIZE)
+	)
+	if not _rect_list_has_rect(multi_open_tiles, east_low_wall_top):
+		failures.append("Side-facing gate construction should draw the lowest opening tile as a wall top.")
+	var east_gate_passage := builder.get_gate_passage_rect(corner_cells, Vector2i.ZERO, "east")
+	if abs(east_gate_passage.position.y - (east_opening.position.y + builder.WALL_TILE_SIZE)) > 0.5 or abs(east_gate_passage.size.y - (east_opening.size.y - builder.WALL_TILE_SIZE)) > 0.5:
+		failures.append("Side-facing gate marker/passability should use the lower three tiles of the four-tile gate span.")
+	var north_opening_top_source := builder.get_opening_rect(corner_cells, Vector2i.ZERO, "north")
+	var north_opening_blocked_body := Rect2(north_opening_top_source.position + Vector2(0.0, builder.WALL_TILE_SIZE), north_opening_top_source.size)
+	var north_opening_top_tiles: Array[Rect2] = [north_opening_top_source]
+	var north_opening_body_tiles: Array[Rect2] = builder.build_wall_body_tile_rects(north_opening_top_tiles, corner_cells, multi_open_edges)
+	if _rect_list_has_rect(north_opening_body_tiles, north_opening_blocked_body):
+		failures.append("North-facing wall body openings should be cut on the body row, not only the top row.")
+	var north_gate_rect: Rect2 = builder.get_wall_body_opening_rect(corner_cells, Vector2i.ZERO, "north")
+	if abs(north_gate_rect.position.y - (north_opening_top_source.position.y + builder.WALL_TILE_SIZE)) > 0.5:
+		failures.append("North-facing gate visuals should align with RPG-style wall body tiles.")
+	var north_gate_visual := builder.get_gate_visual_rect(corner_cells, Vector2i.ZERO, "north")
+	if abs(north_gate_visual.position.y - north_opening_top_source.position.y) > 0.5 or abs(north_gate_visual.size.y - builder.WALL_TILE_SIZE * 2.0) > 0.5:
+		failures.append("North-facing locked gates should draw both a gate top and one body row.")
+	var south_gate_visual := builder.get_gate_visual_rect(corner_cells, Vector2i.ZERO, "south")
+	var south_opening := builder.get_opening_rect(corner_cells, Vector2i.ZERO, "south")
+	if south_gate_visual != south_opening:
+		failures.append("South-facing locked gates should draw only the gate top row.")
+	var stacked_floor_cells: Array[Vector2i] = [Vector2i.ZERO, Vector2i(0, 1)]
+	var upper_cell_rect: Rect2 = builder.get_cell_rect(stacked_floor_cells, Vector2i.ZERO)
+	var lower_cell_rect: Rect2 = builder.get_cell_rect(stacked_floor_cells, Vector2i(0, 1))
+	var stacked_upper_top := Rect2(
+		Vector2(upper_cell_rect.get_center().x - builder.WALL_TILE_SIZE * 0.5, upper_cell_rect.position.y + upper_cell_rect.size.y - builder.WALL_TILE_SIZE),
+		Vector2(builder.WALL_TILE_SIZE, builder.WALL_TILE_SIZE)
+	)
+	var stacked_lower_top := Rect2(
+		Vector2(lower_cell_rect.get_center().x - builder.WALL_TILE_SIZE * 0.5, lower_cell_rect.position.y),
+		Vector2(builder.WALL_TILE_SIZE, builder.WALL_TILE_SIZE)
+	)
+	var stacked_boundary_tops: Array[Rect2] = [stacked_upper_top, stacked_lower_top]
+	var stacked_boundary_bodies: Array[Rect2] = builder.build_wall_body_tile_rects(stacked_boundary_tops, stacked_floor_cells, {})
+	if not _rect_list_has_rect(stacked_boundary_bodies, stacked_lower_top):
+		failures.append("Combined room-boundary wall tops should block the lower stacked wall-top tile.")
+	var stacked_body_below_lower := Rect2(stacked_lower_top.position + Vector2(0.0, builder.WALL_TILE_SIZE), stacked_lower_top.size)
+	if not _rect_list_has_rect(stacked_boundary_bodies, stacked_body_below_lower):
+		failures.append("Combined room-boundary wall tops should create a second blocker tile below the lower stacked wall top.")
 	var l_cells: Array[Vector2i] = [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)]
 	var l_tiles: Array[Rect2] = builder.build_wall_tile_rects(l_cells, {})
 	var l_boundary_turn_corner := Rect2(Vector2(
@@ -2981,6 +3085,10 @@ func _test_dungeon_room_interiors_persist(failures: Array[String]) -> void:
 		failures.append("Generated dungeon combat room should carry procedural cover walls.")
 	if _get_level_generation_signature(manager.get_current_level_definition()) != first_signature:
 		failures.append("DungeonManager should return the cached generated interior on repeated reads.")
+	var full_floor_during_combat = manager.get_current_full_floor_level_definition(true)
+	var combat_dim_rects: Array = full_floor_during_combat.get_meta("inactive_room_dim_rects") if full_floor_during_combat.has_meta("inactive_room_dim_rects") else []
+	if combat_dim_rects.is_empty():
+		failures.append("Full-floor dungeon combat levels should expose dim rects for visible inactive rooms.")
 
 	var persistent_prop = load("res://scripts/resources/destructible_prop_placement.gd").new()
 	persistent_prop.position = Vector2(36.0, 28.0)
@@ -2992,6 +3100,9 @@ func _test_dungeon_room_interiors_persist(failures: Array[String]) -> void:
 	first_level.destructible_prop_placements.append(persistent_prop)
 	manager.mark_current_room_cleared()
 	var full_floor_with_props = manager.get_current_full_floor_level_definition(false)
+	var inactive_room_dim_rects: Array = full_floor_with_props.get_meta("inactive_room_dim_rects") if full_floor_with_props.has_meta("inactive_room_dim_rects") else []
+	if not inactive_room_dim_rects.is_empty():
+		failures.append("Cleared full-floor traversal should not keep inactive-room dim rects after combat ends.")
 	var copied_persistent_prop = null
 	for placement in full_floor_with_props.destructible_prop_placements:
 		if placement != null and placement.has_meta("source_placement") and placement.get_meta("source_placement") == persistent_prop:
@@ -3249,6 +3360,9 @@ func _level_generated_blockers_stay_inside_footprint(level) -> bool:
 	for rect in _get_level_meta_rects(level, "wall_tile_rects", level.wall_rects):
 		if not _rect_fits_level_footprint(level, rect):
 			return false
+	for rect in _get_level_meta_rects(level, "wall_body_tile_rects", level.wall_rects):
+		if not _rect_fits_level_footprint(level, rect):
+			return false
 	for rect in _get_level_meta_rects(level, "void_tile_rects", level.void_rects):
 		if not _rect_fits_level_footprint(level, rect):
 			return false
@@ -3295,16 +3409,30 @@ func _level_door_openings_are_unblocked(level, connections: Dictionary) -> bool:
 	if level == null:
 		return false
 	for direction_key in connections.keys():
-		var opening_rect := _get_level_connection_opening_rect(level, String(direction_key))
-		if opening_rect.size == Vector2.ZERO:
+		var opening_rects := _get_level_connection_opening_rects(level, String(direction_key))
+		if opening_rects.is_empty():
 			continue
 		for rect in level.wall_rects:
-			if rect.intersects(opening_rect):
-				return false
+			for opening_rect in opening_rects:
+				if rect.intersects(opening_rect):
+					return false
 		for rect in level.void_rects:
-			if rect.intersects(opening_rect):
-				return false
+			for opening_rect in opening_rects:
+				if rect.intersects(opening_rect):
+					return false
 	return true
+
+
+func _get_level_connection_opening_rects(level, direction: String) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	var top_opening := _get_level_connection_opening_rect(level, direction)
+	if top_opening.size == Vector2.ZERO:
+		return rects
+	rects.append(top_opening)
+	var body_opening := _get_level_connection_body_opening_rect(level, direction)
+	if body_opening.size != Vector2.ZERO and body_opening != top_opening:
+		rects.append(body_opening)
+	return rects
 
 
 func _get_level_connection_opening_rect(level, direction: String) -> Rect2:
@@ -3318,7 +3446,21 @@ func _get_level_connection_opening_rect(level, direction: String) -> Rect2:
 	for cell in level.get_meta("footprint_cells"):
 		cells.append(cell)
 	var edge: Dictionary = edges[direction]
-	return builder.get_opening_rect(cells, edge.get("source_cell", Vector2i.ZERO), direction)
+	return builder.get_gate_passage_rect(cells, edge.get("source_cell", Vector2i.ZERO), direction)
+
+
+func _get_level_connection_body_opening_rect(level, direction: String) -> Rect2:
+	if level == null or not level.has_meta("connection_edges") or not level.has_meta("footprint_cells"):
+		return Rect2()
+	var edges: Dictionary = level.get_meta("connection_edges")
+	if not edges.has(direction):
+		return Rect2()
+	var builder = load("res://scripts/resources/room_geometry_builder.gd")
+	var cells: Array[Vector2i] = []
+	for cell in level.get_meta("footprint_cells"):
+		cells.append(cell)
+	var edge: Dictionary = edges[direction]
+	return builder.get_wall_body_opening_rect(cells, edge.get("source_cell", Vector2i.ZERO), direction)
 
 
 func _rect_is_tile_aligned(rect: Rect2, tile_size: float) -> bool:
@@ -3730,6 +3872,8 @@ func _test_room_manager_doors(failures: Array[String]) -> void:
 	for door_info in dungeon.get_current_door_infos():
 		if not door_info.has("trigger_rect") or not door_info.has("opening_rect"):
 			failures.append("Dungeon door infos should expose derived trigger and opening rects.")
+		if not door_info.has("passage_rect"):
+			failures.append("Dungeon door infos should expose derived passable gate rects for marker placement.")
 		if not door_info.has("source_cell") or not door_info.has("target_cell"):
 			failures.append("Dungeon door infos should expose source and target cells.")
 	if manager.get_door_count() < 2:
@@ -3796,9 +3940,29 @@ func _test_room_manager_doors(failures: Array[String]) -> void:
 	direct_door.set_unlocked(false)
 	if not direct_door.is_gate_blocking():
 		failures.append("Direct locked door should create blocking gate collision.")
+	var gate_top_visual = direct_door.get_node_or_null("GateTopVisual")
+	if gate_top_visual == null or int(gate_top_visual.z_index) != 5:
+		failures.append("Locked dungeon gates should draw their top cap on the wall-top z level.")
+	var marker_tile_size: float = load("res://scripts/resources/room_geometry_builder.gd").WALL_TILE_SIZE
+	var side_gate_rect := Rect2(Vector2.ZERO, Vector2(marker_tile_size, marker_tile_size * 4.0))
+	var side_gate_top_rects: Array[Rect2] = direct_door._get_gate_top_rects(side_gate_rect)
+	var side_gate_lowest_top := Rect2(Vector2(0.0, marker_tile_size * 2.0), Vector2(marker_tile_size, marker_tile_size))
+	var side_gate_passable_wall_top := Rect2(Vector2(0.0, marker_tile_size * 3.0), Vector2(marker_tile_size, marker_tile_size))
+	if side_gate_top_rects.size() != 3 or not _rect_list_has_rect(side_gate_top_rects, side_gate_lowest_top):
+		failures.append("Closed side gates should render as a continuous top run above the lowest passable wall-top tile.")
+	if _rect_list_has_rect(side_gate_top_rects, side_gate_passable_wall_top):
+		failures.append("Closed side gate tops should not overpaint the lowest passable wall-top tile.")
+	var side_gate_body_rects: Array[Rect2] = direct_door._get_gate_body_rects(side_gate_rect)
+	var side_gate_lowest_body := Rect2(Vector2(0.0, marker_tile_size * 3.0), Vector2(marker_tile_size, marker_tile_size))
+	if not _rect_list_has_rect(side_gate_body_rects, side_gate_lowest_body):
+		failures.append("Closed side gate bodies should tuck under the lowest passable wall-top tile.")
 	direct_door.set_unlocked(true)
 	if not direct_door.has_special_marker():
 		failures.append("Door entity should treat boss targets as special marked doors.")
+	var marker_passage_rect := Rect2(Vector2(80.0, 140.0), Vector2(40.0, 120.0))
+	var expected_marker_center: Vector2 = marker_passage_rect.get_center() + Vector2(-marker_tile_size, 0.0)
+	if direct_door._get_floor_marker_center(marker_passage_rect).distance_squared_to(expected_marker_center) > 0.5:
+		failures.append("Door special markers should sit one tile in front of side-facing gate passages.")
 	direct_door.entered.connect(func(_door) -> void:
 		entered_count[0] += 1
 	)

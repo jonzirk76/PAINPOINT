@@ -371,32 +371,33 @@ func _connect_once(source: Object, signal_name: StringName, target: Callable) ->
 
 func _initialize_managers() -> void:
 	_capture_hud_authoring_state()
+	var depth_sort_layer: Node2D = $World/DepthSortLayer
 	input_manager.initialize({
 		"aim_origin_provider": Callable(player_manager, "get_player_position")
 	})
 	player_manager.initialize({
-		"player_layer": $World/PlayerLayer
+		"player_layer": depth_sort_layer
 	})
 	projectile_manager.initialize({
 		"projectile_layer": $World/ProjectileLayer
 	})
 	enemy_manager.initialize({
-		"enemy_layer": $World/EnemyLayer,
+		"enemy_layer": depth_sort_layer,
 		"player_position_provider": Callable(player_manager, "get_player_position"),
 		"player_ref_provider": Callable(self, "_get_player_ref")
 	})
 	spawner_manager.initialize({
-		"spawner_layer": $World/SpawnerLayer,
+		"spawner_layer": depth_sort_layer,
 		"player_position_provider": Callable(player_manager, "get_player_position")
 	})
 	item_manager.initialize({
-		"pickup_layer": $World/PickupLayer
+		"pickup_layer": depth_sort_layer
 	})
 	destructible_manager.initialize({
-		"destructible_layer": $World/DestructibleLayer
+		"destructible_layer": depth_sort_layer
 	})
 	fauna_manager.initialize({
-		"fauna_layer": $World/FaunaLayer,
+		"fauna_layer": depth_sort_layer,
 		"player_position_provider": Callable(player_manager, "get_player_position"),
 		"enemy_positions_provider": Callable(enemy_manager, "get_enemy_positions"),
 		"spawner_positions_provider": Callable(spawner_manager, "get_spawner_positions"),
@@ -409,7 +410,7 @@ func _initialize_managers() -> void:
 	})
 	dungeon_manager.initialize({})
 	room_manager.initialize({
-		"door_layer": $World/DoorLayer
+		"door_layer": depth_sort_layer
 	})
 	audio_manager.initialize({})
 
@@ -3598,6 +3599,7 @@ func _sync_fauna_roam_bounds(level_definition, current_room_cleared: bool = true
 	if level_definition == null or fauna_manager == null:
 		return
 	var roam_bounds: Rect2 = level_definition.arena_bounds
+	var visibility_bounds: Rect2 = level_definition.arena_bounds
 	if _is_dungeon_run:
 		var visible_bounds: Rect2 = Rect2()
 		var active_room_bounds: Rect2 = Rect2()
@@ -3609,15 +3611,16 @@ func _sync_fauna_roam_bounds(level_definition, current_room_cleared: bool = true
 			var active_room_bounds_value: Variant = level_definition.get_meta("active_room_bounds")
 			if active_room_bounds_value is Rect2:
 				active_room_bounds = active_room_bounds_value
-		if current_room_cleared and visible_bounds.size != Vector2.ZERO:
+		if visible_bounds.size != Vector2.ZERO:
 			roam_bounds = visible_bounds
-		elif active_room_bounds.size != Vector2.ZERO:
-			roam_bounds = active_room_bounds
-		elif visible_bounds.size != Vector2.ZERO:
-			roam_bounds = visible_bounds
+			visibility_bounds = visible_bounds
+		if not current_room_cleared and active_room_bounds.size != Vector2.ZERO:
+			visibility_bounds = active_room_bounds
 		fauna_manager.set_cat_activity_bounds(roam_bounds)
+		fauna_manager.set_cat_visibility_bounds(visibility_bounds)
 	else:
 		fauna_manager.clear_cat_activity_bounds()
+		fauna_manager.clear_cat_visibility_bounds()
 	fauna_manager.set_roam_bounds(roam_bounds)
 
 
@@ -3958,7 +3961,7 @@ func _activate_boss_exit_portal(boss_position: Vector2, boss_radius: float) -> v
 			_floor_exit_portal.set_active(true)
 	else:
 		var portal = FLOOR_EXIT_PORTAL_SCENE.instantiate()
-		var portal_layer: Node = $World/DoorLayer
+		var portal_layer: Node = $World/DepthSortLayer
 		if portal_layer != null:
 			portal_layer.add_child(portal)
 		else:
@@ -3977,7 +3980,7 @@ func _show_boss_exit_portal_preview(level_definition) -> void:
 	if _floor_exit_portal != null and is_instance_valid(_floor_exit_portal):
 		return
 	var portal = FLOOR_EXIT_PORTAL_SCENE.instantiate()
-	var portal_layer: Node = $World/DoorLayer
+	var portal_layer: Node = $World/DepthSortLayer
 	if portal_layer != null:
 		portal_layer.add_child(portal)
 	else:

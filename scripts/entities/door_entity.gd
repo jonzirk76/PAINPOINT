@@ -5,7 +5,14 @@ signal entered(door)
 
 @export var door_size: Vector2 = Vector2(88.0, 28.0)
 
+const DOOR_GATE_TOP_VISUAL_SCRIPT := preload("res://scripts/entities/door_gate_top_visual.gd")
+const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_builder.gd")
 const ARM_DELAY_SECONDS := 0.12
+const WALL_TOP_Z_INDEX := 5
+const WALL_TOP_FILL_COLOR := Color(0.09, 0.1, 0.12, 1.0)
+const WALL_TOP_OUTLINE_COLOR := Color(0.72, 0.78, 0.82, 1.0)
+const GATE_BODY_COLOR := Color(0.16, 0.17, 0.19, 1.0)
+const GATE_SPECIAL_BODY_COLOR := Color(0.18, 0.165, 0.195, 1.0)
 
 var direction: String = "north"
 var target_room_id: String = ""
@@ -13,9 +20,12 @@ var target_room_kind: String = ""
 var unlocked: bool = false
 var visual_size: Vector2 = Vector2.ZERO
 var visual_offset: Vector2 = Vector2.ZERO
+var passage_size: Vector2 = Vector2.ZERO
+var passage_offset: Vector2 = Vector2.ZERO
 var _collision_shape: CollisionShape2D = null
 var _gate_body: StaticBody2D = null
 var _gate_collision_shape: CollisionShape2D = null
+var _gate_top_visual = null
 var _armed: bool = false
 var _arm_delay_remaining: float = 0.0
 
@@ -42,6 +52,7 @@ func initialize(door_direction: String, target_id: String, center_position: Vect
 	_arm_delay_remaining = ARM_DELAY_SECONDS if unlocked else 0.0
 	_add_or_update_collision()
 	_add_or_update_gate_collision()
+	_sync_gate_top_visual()
 	set_physics_process(unlocked)
 	queue_redraw()
 
@@ -51,6 +62,14 @@ func set_visual_rect(center_position: Vector2, size: Vector2) -> void:
 	visual_offset = snapped_center - global_position
 	visual_size = Vector2(round(size.x), round(size.y))
 	_add_or_update_gate_collision()
+	_sync_gate_top_visual()
+	queue_redraw()
+
+
+func set_passage_rect(center_position: Vector2, size: Vector2) -> void:
+	var snapped_center := Vector2(round(center_position.x), round(center_position.y))
+	passage_offset = snapped_center - global_position
+	passage_size = Vector2(round(size.x), round(size.y))
 	queue_redraw()
 
 
@@ -59,6 +78,7 @@ func set_unlocked(value: bool) -> void:
 	_armed = false
 	_arm_delay_remaining = ARM_DELAY_SECONDS if unlocked else 0.0
 	_set_gate_blocking_enabled(not unlocked)
+	_sync_gate_top_visual()
 	set_physics_process(unlocked and not _armed)
 	queue_redraw()
 
@@ -116,19 +136,157 @@ func _has_player_overlap() -> bool:
 
 
 func _draw() -> void:
-	var size := visual_size if visual_size != Vector2.ZERO else door_size
-	var rect := Rect2(visual_offset - size * 0.5, size)
-	var drawn_rect := rect.grow(-1.0) if rect.size.x > 2.0 and rect.size.y > 2.0 else rect
+	var fill_rect := _get_visual_fill_rect()
+	var drawn_rect := _get_visual_draw_rect()
 	var trim_color := Color(0.16, 0.17, 0.18, 1.0)
 	if not unlocked:
-		var fill_color := Color(0.075, 0.08, 0.09, 1.0)
-		if has_special_marker():
-			fill_color = Color(0.095, 0.085, 0.105, 1.0)
-		draw_rect(drawn_rect, fill_color, true)
-		draw_rect(drawn_rect, trim_color, false, 2.0)
-		_draw_room_kind_marker(drawn_rect.get_center(), min(drawn_rect.size.x, drawn_rect.size.y))
+		_draw_locked_gate_body(fill_rect, trim_color)
+		var locked_marker_rect := _get_passage_draw_rect(drawn_rect)
+		_draw_room_kind_marker(_get_floor_marker_center(locked_marker_rect), min(locked_marker_rect.size.x, locked_marker_rect.size.y))
 	elif has_special_marker():
-		_draw_room_kind_marker(drawn_rect.get_center(), min(drawn_rect.size.x, drawn_rect.size.y))
+		var passage_rect := _get_passage_draw_rect(drawn_rect)
+		_draw_room_kind_marker(_get_floor_marker_center(passage_rect), min(passage_rect.size.x, passage_rect.size.y))
+
+
+func _draw_locked_gate_body(fill_rect: Rect2, trim_color: Color) -> void:
+	var body_color := GATE_SPECIAL_BODY_COLOR if has_special_marker() else GATE_BODY_COLOR
+	var body_rects := _get_gate_body_rects(fill_rect)
+	for body_rect in body_rects:
+		draw_rect(body_rect, body_color, true)
+	_draw_gate_rect_edges(body_rects, trim_color, 2.0)
+
+
+func _sync_gate_top_visual() -> void:
+	var visual = _ensure_gate_top_visual()
+	if unlocked:
+		visual.clear()
+		return
+	var rect: Rect2 = _get_visual_fill_rect()
+	visual.configure(_get_gate_top_rects(rect), WALL_TOP_FILL_COLOR, WALL_TOP_OUTLINE_COLOR, 2.0)
+
+
+func _ensure_gate_top_visual():
+	if _gate_top_visual != null and is_instance_valid(_gate_top_visual):
+		return _gate_top_visual
+	_gate_top_visual = DOOR_GATE_TOP_VISUAL_SCRIPT.new()
+	_gate_top_visual.name = "GateTopVisual"
+	_gate_top_visual.z_index = WALL_TOP_Z_INDEX
+	_gate_top_visual.z_as_relative = false
+	add_child(_gate_top_visual)
+	return _gate_top_visual
+
+
+func _get_visual_draw_rect() -> Rect2:
+	var rect := _get_visual_fill_rect()
+	return rect.grow(-1.0) if rect.size.x > 2.0 and rect.size.y > 2.0 else rect
+
+
+func _get_visual_fill_rect() -> Rect2:
+	var size := visual_size if visual_size != Vector2.ZERO else door_size
+	return Rect2(visual_offset - size * 0.5, size)
+
+
+func _get_gate_top_rects(rect: Rect2) -> Array[Rect2]:
+	match direction:
+		"north":
+			var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
+			return _rect_to_gate_tiles(Rect2(rect.position, Vector2(rect.size.x, min(rect.size.y, tile_size))))
+		"south":
+			return _rect_to_gate_tiles(rect)
+		"east", "west":
+			var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
+			var top_height: float = max(rect.size.y - tile_size, 0.0)
+			return _rect_to_gate_tiles(Rect2(rect.position, Vector2(rect.size.x, top_height)))
+	return []
+
+
+func _get_gate_body_rects(rect: Rect2) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	match direction:
+		"south":
+			return rects
+	var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
+	for top_rect in _get_gate_top_rects(rect):
+		rects.append(Rect2(top_rect.position + Vector2(0.0, tile_size), top_rect.size))
+	return rects
+
+
+func _rect_to_gate_tiles(rect: Rect2) -> Array[Rect2]:
+	var tiles: Array[Rect2] = []
+	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
+		return tiles
+	var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
+	var columns: int = max(1, int(ceil(rect.size.x / tile_size)))
+	var rows: int = max(1, int(ceil(rect.size.y / tile_size)))
+	for y in range(rows):
+		for x in range(columns):
+			var tile_position := rect.position + Vector2(float(x) * tile_size, float(y) * tile_size)
+			var tile_size_clipped := Vector2(
+				min(tile_size, rect.position.x + rect.size.x - tile_position.x),
+				min(tile_size, rect.position.y + rect.size.y - tile_position.y)
+			)
+			if tile_size_clipped.x > 0.0 and tile_size_clipped.y > 0.0:
+				tiles.append(Rect2(tile_position, tile_size_clipped))
+	return tiles
+
+
+func _draw_gate_rect_edges(rects: Array[Rect2], color: Color, width: float) -> void:
+	var lookup := _build_gate_rect_lookup(rects)
+	var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
+	for rect in rects:
+		var cell := _tile_key_vector(rect.position, tile_size)
+		var left := rect.position.x
+		var top := rect.position.y
+		var right := rect.position.x + rect.size.x
+		var bottom := rect.position.y + rect.size.y
+		if not lookup.has(_tile_key(cell + Vector2i(0, -1))):
+			draw_line(Vector2(left, top), Vector2(right, top), color, width)
+		if not lookup.has(_tile_key(cell + Vector2i(0, 1))):
+			draw_line(Vector2(left, bottom), Vector2(right, bottom), color, width)
+		if not lookup.has(_tile_key(cell + Vector2i(-1, 0))):
+			draw_line(Vector2(left, top), Vector2(left, bottom), color, width)
+		if not lookup.has(_tile_key(cell + Vector2i(1, 0))):
+			draw_line(Vector2(right, top), Vector2(right, bottom), color, width)
+
+
+func _build_gate_rect_lookup(rects: Array[Rect2]) -> Dictionary:
+	var lookup := {}
+	var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
+	for rect in rects:
+		lookup[_tile_key(_tile_key_vector(rect.position, tile_size))] = true
+	return lookup
+
+
+func _tile_key_vector(position: Vector2, tile_size: float) -> Vector2i:
+	return Vector2i(int(round(position.x / tile_size)), int(round(position.y / tile_size)))
+
+
+func _tile_key(cell: Vector2i) -> String:
+	return "%d:%d" % [cell.x, cell.y]
+
+
+func _get_passage_draw_rect(fallback_rect: Rect2) -> Rect2:
+	if passage_size == Vector2.ZERO:
+		return fallback_rect
+	return Rect2(passage_offset - passage_size * 0.5, passage_size)
+
+
+func _get_floor_marker_center(rect: Rect2) -> Vector2:
+	return rect.get_center() + _get_floor_marker_offset()
+
+
+func _get_floor_marker_offset() -> Vector2:
+	var offset: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
+	match direction:
+		"north":
+			return Vector2(0.0, offset)
+		"south":
+			return Vector2(0.0, -offset)
+		"east":
+			return Vector2(-offset, 0.0)
+		"west":
+			return Vector2(offset, 0.0)
+	return Vector2.ZERO
 
 
 func has_special_marker() -> bool:

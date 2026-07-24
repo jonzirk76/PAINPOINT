@@ -77,7 +77,8 @@ static func get_cell_rect(cells: Array[Vector2i], local_cell: Vector2i) -> Rect2
 
 
 static func build_wall_rects(cells: Array[Vector2i], connection_edges: Dictionary = {}) -> Array[Rect2]:
-	return merge_wall_tiles(build_wall_tile_rects(cells, connection_edges))
+	var wall_top_tiles := build_wall_tile_rects(cells, connection_edges)
+	return merge_wall_tiles(build_wall_body_tile_rects(wall_top_tiles, cells, connection_edges))
 
 
 static func get_exposed_edges(cells: Array[Vector2i], facing_direction: String = "") -> Array[Dictionary]:
@@ -113,6 +114,60 @@ static func build_wall_tile_rects(cells: Array[Vector2i], connection_edges: Dict
 				if _envelope_tile_is_wall(cells, cell, tile, exposed_directions, connection_edges):
 					_append_unique_wall_tile(walls, wall_lookup, tile)
 	return walls
+
+
+static func build_wall_body_tile_rects(wall_top_tiles: Array[Rect2], cells: Array[Vector2i], connection_edges: Dictionary = {}) -> Array[Rect2]:
+	var body_tiles: Array[Rect2] = []
+	var body_lookup := {}
+	var body_opening_rects := _get_wall_body_connection_opening_rects(cells, connection_edges)
+	for wall_top in wall_top_tiles:
+		var body_tile := Rect2(wall_top.position + Vector2(0.0, WALL_TILE_SIZE), wall_top.size)
+		if not _rect_fits_wall_body_envelope(cells, body_tile):
+			continue
+		if _tile_is_inside_any_opening(body_tile, body_opening_rects):
+			continue
+		_append_unique_wall_tile(body_tiles, body_lookup, body_tile)
+	return body_tiles
+
+
+static func get_wall_body_opening_rect(cells: Array[Vector2i], local_cell: Vector2i, direction: String) -> Rect2:
+	var opening := get_opening_rect(cells, local_cell, direction)
+	if opening.size == Vector2.ZERO:
+		return opening
+	if direction == "north":
+		return Rect2(opening.position + Vector2(0.0, WALL_TILE_SIZE), opening.size)
+	if direction == "east" or direction == "west":
+		return Rect2(opening.position + Vector2(0.0, WALL_TILE_SIZE), Vector2(opening.size.x, max(opening.size.y - WALL_TILE_SIZE, WALL_TILE_SIZE)))
+	return opening
+
+
+static func get_wall_top_opening_rect(cells: Array[Vector2i], local_cell: Vector2i, direction: String) -> Rect2:
+	var opening := get_opening_rect(cells, local_cell, direction)
+	if opening.size == Vector2.ZERO:
+		return opening
+	if direction == "east" or direction == "west":
+		return Rect2(opening.position, Vector2(opening.size.x, max(opening.size.y - WALL_TILE_SIZE, WALL_TILE_SIZE)))
+	return opening
+
+
+static func get_gate_visual_rect(cells: Array[Vector2i], local_cell: Vector2i, direction: String) -> Rect2:
+	var opening := get_opening_rect(cells, local_cell, direction)
+	if opening.size == Vector2.ZERO:
+		return opening
+	if direction == "north":
+		return Rect2(opening.position, Vector2(opening.size.x, opening.size.y + WALL_TILE_SIZE))
+	return opening
+
+
+static func get_gate_passage_rect(cells: Array[Vector2i], local_cell: Vector2i, direction: String) -> Rect2:
+	var opening := get_opening_rect(cells, local_cell, direction)
+	if opening.size == Vector2.ZERO:
+		return opening
+	if direction == "north":
+		return get_wall_body_opening_rect(cells, local_cell, direction)
+	if direction == "east" or direction == "west":
+		return Rect2(opening.position + Vector2(0.0, WALL_TILE_SIZE), Vector2(opening.size.x, max(opening.size.y - WALL_TILE_SIZE, WALL_TILE_SIZE)))
+	return opening
 
 
 static func rects_to_wall_tiles(rects: Array[Rect2]) -> Array[Rect2]:
@@ -348,7 +403,52 @@ static func _tile_is_inside_opening(tile: Rect2, opening: Rect2) -> bool:
 static func _tile_is_inside_connection_opening(tile: Rect2, cells: Array[Vector2i], local_cell: Vector2i, direction: String, connection_edges: Dictionary) -> bool:
 	if not _connection_uses_cell_edge(connection_edges, direction, local_cell):
 		return false
-	return _tile_is_inside_opening(tile, get_opening_rect(cells, local_cell, direction))
+	return _tile_is_inside_opening(tile, get_wall_top_opening_rect(cells, local_cell, direction))
+
+
+static func _tile_is_inside_any_opening(tile: Rect2, opening_rects: Array[Rect2]) -> bool:
+	for opening in opening_rects:
+		if _tile_is_inside_opening(tile, opening):
+			return true
+	return false
+
+
+static func _get_wall_body_connection_opening_rects(cells: Array[Vector2i], connection_edges: Dictionary) -> Array[Rect2]:
+	var opening_rects: Array[Rect2] = []
+	for direction in DIRECTIONS:
+		if not connection_edges.has(direction):
+			continue
+		var edge := Dictionary(connection_edges[direction])
+		if not edge.has("source_cell"):
+			continue
+		opening_rects.append(get_wall_body_opening_rect(cells, edge.get("source_cell", Vector2i.ZERO), direction))
+	return opening_rects
+
+
+static func _rect_fits_wall_body_envelope(cells: Array[Vector2i], rect: Rect2) -> bool:
+	if cells.is_empty() or rect.size.x <= 0.0 or rect.size.y <= 0.0:
+		return false
+	var inset: float = min(1.0, min(rect.size.x, rect.size.y) * 0.25)
+	var points := [
+		rect.position + Vector2(inset, inset),
+		rect.position + Vector2(rect.size.x - inset, inset),
+		rect.position + rect.size - Vector2(inset, inset),
+		rect.position + Vector2(inset, rect.size.y - inset),
+		rect.get_center()
+	]
+	for point in points:
+		if not _point_is_in_footprint(cells, point - Vector2(0.0, WALL_TILE_SIZE)):
+			return false
+	return true
+
+
+static func _point_is_in_footprint(cells: Array[Vector2i], point: Vector2) -> bool:
+	var epsilon := 0.5
+	for cell in cells:
+		var rect := get_cell_rect(cells, cell)
+		if point.x >= rect.position.x - epsilon and point.y >= rect.position.y - epsilon and point.x <= rect.position.x + rect.size.x + epsilon and point.y <= rect.position.y + rect.size.y + epsilon:
+			return true
+	return false
 
 
 static func _append_unique_wall_tile(walls: Array[Rect2], wall_lookup: Dictionary, tile: Rect2) -> void:
