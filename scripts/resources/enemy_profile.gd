@@ -58,6 +58,6 @@ const BEHAVIOR_CYBER_SOLDIER := "cyber_soldier"
 ## Controls the most shots fired during autocannon special bursts.
 @export var special_autocannon_max_shots: int = 8
 ## Controls the delay between individual autocannon special shots.
-@export var special_autocannon_shot_interval: float = 0.115
+@export var special_autocannon_shot_interval: float = 0.18
 ## Enables procedural agent boss behavior when this profile is spawned as a boss.
 @export var agent_program: AgentBossProgram = null

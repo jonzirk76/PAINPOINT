@@ -97,7 +97,7 @@ const BEHAVIOR_CHASER := "chaser"
 ## Controls the most shots fired during autocannon special bursts.
 @export var special_autocannon_max_shots: int = 8
 ## Controls the delay between individual autocannon special shots.
-@export var special_autocannon_shot_interval: float = 0.115
+@export var special_autocannon_shot_interval: float = 0.18
 @export var projectile_shield_radius_bonus: float = 20.0
 @export var boss_special_cooldown: float = 5.4
 @export var boss_special_telegraph_seconds: float = 0.72
