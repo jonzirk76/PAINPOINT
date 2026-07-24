@@ -147,6 +147,8 @@ var _boss_minigun_remaining: float = 0.0
 var _boss_minigun_elapsed: float = 0.0
 var _boss_minigun_next_shot_remaining: float = 0.0
 var _boss_minigun_base_direction: Vector2 = Vector2.RIGHT
+var _boss_minigun_start_side: int = 1
+var _boss_autocannon_side_sign: int = 1
 var _path_blocker_rects: Array[Rect2] = []
 var _cached_steering_target: Vector2 = Vector2.INF
 var _path_cache_target_position: Vector2 = Vector2.INF
@@ -290,6 +292,8 @@ func initialize(profile) -> void:
 		boss_minigun_sweep_degrees = max(special_minigun_sweep_degrees, 0.0)
 		_boss_special_timer = boss_special_cooldown * 0.7
 		_boss_special_sequence_index = 0
+		_boss_minigun_start_side = -1 if int(get_instance_id()) % 2 == 0 else 1
+		_boss_autocannon_side_sign = 1 if int(get_instance_id()) % 2 == 0 else -1
 	if _is_agent_boss():
 		_configure_agent_boss_state()
 	elif behavior_kind == BEHAVIOR_CYBER_SOLDIER:
@@ -1083,14 +1087,15 @@ func _draw_boss_special_telegraph() -> void:
 	draw_circle(Vector2.ZERO, radius, Color(telegraph_color.r, telegraph_color.g, telegraph_color.b, 0.09 + pulse * 0.08))
 	draw_arc(Vector2.ZERO, radius, -PI * 0.5, -PI * 0.5 + TAU * progress, 54, telegraph_color, 5.0)
 	if _boss_special_kind == "minigun":
-		var sweep_direction := aim.rotated(sin(progress * PI * 4.0) * 0.55)
-		var side := sweep_direction.orthogonal()
+		var sweep_direction: Vector2 = _get_boss_minigun_direction_for_progress(aim, progress)
+		var side: Vector2 = sweep_direction.orthogonal()
 		draw_line(side * -body_radius * 1.1, sweep_direction * (body_radius + 82.0), Color(1.0, 0.96, 0.58, 0.75), 4.0)
 		draw_line(side * body_radius * 1.1, sweep_direction * (body_radius + 82.0), Color(0.54, 1.0, 1.0, 0.45), 3.0)
 	elif _boss_special_kind == "autocannon":
-		var side := aim.orthogonal()
-		draw_line(side * -body_radius * 0.48, aim * (body_radius + 94.0), Color(0.54, 1.0, 1.0, 0.78), 5.0)
-		draw_line(side * body_radius * 0.48, aim * (body_radius + 94.0), Color(1.0, 0.96, 0.58, 0.72), 5.0)
+		var side: Vector2 = aim.orthogonal() * float(_get_boss_autocannon_side_sign())
+		var muzzle_offset: Vector2 = side * body_radius * 0.58
+		draw_line(muzzle_offset, muzzle_offset + aim * (body_radius + 94.0), Color(0.54, 1.0, 1.0, 0.82), 5.0)
+		draw_circle(muzzle_offset + aim * (body_radius + 24.0), 5.0 + pulse * 2.0, Color(1.0, 0.96, 0.58, 0.72))
 	else:
 		draw_line(Vector2.ZERO, aim * (body_radius + 92.0), Color(1.0, 0.42, 0.18, 0.85), 5.0)
 		draw_arc(aim * (body_radius + 78.0), 15.0 + pulse * 6.0, 0.0, TAU, 28, Color(1.0, 0.8, 0.28, 0.78), 3.0)
@@ -1398,7 +1403,7 @@ func _get_shield_drone_dash_directions(to_target: Vector2) -> Array[Vector2]:
 func _update_power_armor(delta: float, to_target: Vector2) -> Vector2:
 	if _boss_minigun_remaining > 0.0:
 		_update_boss_minigun(delta)
-		return Vector2.ZERO
+		return _get_power_armor_special_velocity(to_target)
 	if _boss_special_telegraph_remaining > 0.0:
 		_boss_special_telegraph_remaining = max(_boss_special_telegraph_remaining - delta, 0.0)
 		if _boss_special_telegraph_remaining <= 0.0:
@@ -1408,14 +1413,16 @@ func _update_power_armor(delta: float, to_target: Vector2) -> Vector2:
 				_emit_boss_special(to_target)
 				_finish_boss_special()
 		queue_redraw()
-		return Vector2.ZERO
+		return _get_power_armor_special_velocity(to_target)
 	_boss_special_timer = max(_boss_special_timer - delta, 0.0)
 	if _boss_special_timer <= 0.0 and _has_clear_player_shot(to_target):
 		_boss_special_kind = _pick_power_armor_attack_kind()
+		if _boss_special_kind == "minigun":
+			_prepare_boss_minigun_start_side()
 		_boss_special_telegraph_duration = max(special_telegraph_seconds, 0.18)
 		_boss_special_telegraph_remaining = _boss_special_telegraph_duration
 		queue_redraw()
-		return Vector2.ZERO
+		return _get_power_armor_special_velocity(to_target)
 	return _get_ranged_velocity(to_target) * 0.72
 
 
@@ -1425,6 +1432,10 @@ func _pick_power_armor_attack_kind() -> String:
 	if special_attack_kind.is_empty():
 		return "minigun"
 	return special_attack_kind
+
+
+func _get_power_armor_special_velocity(to_target: Vector2) -> Vector2:
+	return _get_ranged_velocity(to_target) * 0.28
 
 
 func _update_cyber_soldier(delta: float, to_target: Vector2) -> Vector2:
@@ -2988,6 +2999,12 @@ func _emit_boss_special(to_target: Vector2) -> void:
 	var shot_config := _get_boss_special_shot_config(_boss_special_kind)
 	var radius: float = float(shot_config.get("radius", projectile_radius))
 	var shot_origin := global_position + shot_direction * (body_radius + radius + 6.0)
+	if _boss_special_kind == "autocannon":
+		shot_origin = _get_boss_autocannon_shot_origin(shot_direction, radius)
+		var autocannon_target_position: Vector2 = global_position + to_target
+		var autocannon_target_direction: Vector2 = autocannon_target_position - shot_origin
+		if autocannon_target_direction.length_squared() > 4.0:
+			shot_direction = autocannon_target_direction.normalized()
 	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
 		shot_origin = global_position
 	if _boss_special_kind == "rocket" or _boss_special_kind == "grenade":
@@ -3003,12 +3020,16 @@ func _emit_boss_special(to_target: Vector2) -> void:
 			shot_config["show_target_reticle"] = true
 			shot_config["target_reticle_radius"] = float(shot_config.get("explosion_radius", 58.0))
 	shot_ready.emit(self, shot_origin, shot_direction, shot_config)
+	if _boss_special_kind == "autocannon":
+		_boss_autocannon_side_sign *= -1
 
 
 func _start_boss_minigun(to_target: Vector2) -> void:
 	if to_target.length_squared() <= 4.0:
 		_finish_boss_special()
 		return
+	if behavior_kind == BEHAVIOR_POWER_ARMOR:
+		_prepare_boss_minigun_start_side()
 	_boss_minigun_base_direction = to_target.normalized()
 	_boss_minigun_elapsed = 0.0
 	_boss_minigun_remaining = max(boss_minigun_duration, 0.12)
@@ -3044,8 +3065,44 @@ func _emit_boss_minigun_shot() -> void:
 func _get_boss_minigun_direction() -> Vector2:
 	var duration: float = max(boss_minigun_duration, 0.12)
 	var progress: float = clamp(_boss_minigun_elapsed / duration, 0.0, 1.0)
-	var half_sweep := deg_to_rad(boss_minigun_sweep_degrees) * 0.5
-	return _boss_minigun_base_direction.rotated(lerp(-half_sweep, half_sweep, progress)).normalized()
+	return _get_boss_minigun_direction_for_progress(_boss_minigun_base_direction, progress)
+
+
+func _get_boss_minigun_direction_for_progress(base_direction: Vector2, progress: float) -> Vector2:
+	if base_direction.length_squared() <= 0.001:
+		base_direction = Vector2.RIGHT
+	var half_sweep: float = deg_to_rad(boss_minigun_sweep_degrees) * 0.5
+	if behavior_kind == BEHAVIOR_POWER_ARMOR:
+		var start_angle: float = half_sweep * float(_get_boss_minigun_start_side())
+		var phase: float = clamp(progress, 0.0, 1.0) * 2.0
+		var angle: float = lerp(start_angle, -start_angle, phase) if phase <= 1.0 else lerp(-start_angle, start_angle, phase - 1.0)
+		return base_direction.rotated(angle).normalized()
+	return base_direction.rotated(lerp(-half_sweep, half_sweep, progress)).normalized()
+
+
+func _prepare_boss_minigun_start_side() -> void:
+	var parity: int = int(abs(int(get_instance_id())) + _boss_special_sequence_index) % 2
+	_boss_minigun_start_side = -1 if parity == 0 else 1
+
+
+func _get_boss_minigun_start_side() -> int:
+	return -1 if _boss_minigun_start_side < 0 else 1
+
+
+func _get_boss_autocannon_side_sign() -> int:
+	return -1 if _boss_autocannon_side_sign < 0 else 1
+
+
+func _get_boss_autocannon_shot_origin(shot_direction: Vector2, radius: float) -> Vector2:
+	var side_offset: Vector2 = shot_direction.orthogonal() * float(_get_boss_autocannon_side_sign()) * body_radius * 0.62
+	var forward_offset: Vector2 = shot_direction * (body_radius + radius + 5.0)
+	var shot_origin: Vector2 = global_position + side_offset + forward_offset
+	if ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape) and not _point_inside_wall(shot_origin, radius * 0.65):
+		return shot_origin
+	shot_origin = global_position + forward_offset
+	if ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape) and not _point_inside_wall(shot_origin, radius * 0.65):
+		return shot_origin
+	return global_position
 
 
 func _finish_boss_special() -> void:
@@ -3087,8 +3144,8 @@ func _get_boss_special_shot_config(special_kind: String) -> Dictionary:
 			"damage": max(projectile_damage + 1, 2),
 			"radius": max(projectile_radius * 1.25, 9.0),
 			"kind": "hostile_autocannon",
-			"projectile_count": 2,
-			"spread_angle_degrees": 5.0,
+			"projectile_count": 1,
+			"spread_angle_degrees": 0.0,
 			"lifetime": 1.12,
 			"knockback": 230.0
 		}
