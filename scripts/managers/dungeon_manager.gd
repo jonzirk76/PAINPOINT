@@ -87,6 +87,22 @@ func reset_run(generation_floor: int = 1, generation_seed: int = 0) -> void:
 	_generate_layout()
 
 
+func reset_encounter_test(generation_floor: int, generation_seed: int, preferred_room_kind: String, forced_profiles: Array[Resource]) -> void:
+	floor_number = max(generation_floor, 1)
+	run_seed = max(generation_seed, 0)
+	_generate_layout()
+	var test_room_id := _get_encounter_test_room_id(preferred_room_kind)
+	if test_room_id.is_empty():
+		test_room_id = _get_encounter_test_room_id("combat")
+	if test_room_id.is_empty():
+		return
+	_configure_encounter_test_room(test_room_id, forced_profiles)
+	current_room_id = test_room_id
+	_reveal_room("start")
+	_reveal_room(current_room_id)
+	room_changed.emit(current_room_id)
+
+
 func set_enabled(value: bool) -> void:
 	enabled = value
 
@@ -815,11 +831,17 @@ func _apply_active_room_contents_to_full_floor_level(level: LevelDefinition, act
 	level.spawner_radius = float(active_level.spawner_radius)
 	level.spawn_interval = float(active_level.spawn_interval)
 	level.spawner_placements = _copy_offset_resource_placements(active_level.spawner_placements, offset)
+	level.encounter_table = active_level.encounter_table.duplicate()
+	level.encounter_budget = int(active_level.encounter_budget)
+	level.encounter_min_spawn_distance = float(active_level.encounter_min_spawn_distance)
 	level.destructible_prop_placements.append_array(_copy_offset_resource_placements(active_level.destructible_prop_placements, offset, active_room_id))
 	level.boss_profile = active_level.boss_profile
 	level.generate_agent_boss = bool(active_level.generate_agent_boss)
 	level.randomize_agent_boss_each_load = bool(active_level.randomize_agent_boss_each_load)
 	level.boss_spawn_position = active_level.boss_spawn_position + offset
+	level.set_meta("room_kind", _get_room_kind(active_room_id))
+	if active_level.has_meta("forced_opening_encounter_profiles"):
+		level.set_meta("forced_opening_encounter_profiles", active_level.get_meta("forced_opening_encounter_profiles"))
 
 
 func _copy_offset_resource_placements(source_placements: Array, offset: Vector2, source_room_id: String = "") -> Array[Resource]:
@@ -960,6 +982,42 @@ func _generate_layout() -> void:
 	_reveal_room(current_room_id)
 	dungeon_generated.emit(_rooms.size())
 	room_changed.emit(current_room_id)
+
+
+func _get_encounter_test_room_id(preferred_room_kind: String) -> String:
+	var best_room_id := ""
+	var best_cell_count := -1
+	for room_id in _room_order:
+		var state: Dictionary = _rooms[room_id]
+		var piece: RoomPieceDefinition = state.get("piece", null) as RoomPieceDefinition
+		if piece == null or String(piece.room_kind) != preferred_room_kind:
+			continue
+		var cell_count: int = piece.footprint_cells.size()
+		if cell_count > best_cell_count:
+			best_cell_count = cell_count
+			best_room_id = room_id
+	return best_room_id
+
+
+func _configure_encounter_test_room(room_id: String, forced_profiles: Array[Resource]) -> void:
+	if room_id.is_empty() or not _rooms.has(room_id):
+		return
+	var state: Dictionary = _rooms[room_id]
+	var level: LevelDefinition = state.get("level_definition", null) as LevelDefinition
+	if level == null:
+		return
+	var profiles: Array[Resource] = []
+	for profile in forced_profiles:
+		if profile != null:
+			profiles.append(profile)
+	if profiles.is_empty():
+		return
+	level.encounter_budget = max(int(level.encounter_budget), profiles.size())
+	level.encounter_min_spawn_distance = max(float(level.encounter_min_spawn_distance), 190.0)
+	level.max_active_enemies = max(int(level.max_active_enemies), 24 + profiles.size())
+	level.set_meta("forced_opening_encounter_profiles", profiles)
+	state["level_definition"] = level
+	_rooms[room_id] = state
 
 
 func _compute_floor_generation_seed() -> int:
