@@ -675,9 +675,21 @@ func _draw_enemy_character_art(tint: Color) -> void:
 		return
 	var visual_radius: float = body_radius * _get_visual_scale()
 	var rotation: float = _get_visual_rotation()
+	var body_tint: Color = _get_enemy_body_tint(tint)
 	draw_set_transform(Vector2.ZERO, rotation, Vector2.ONE)
-	draw_texture_rect(texture, Rect2(Vector2(-visual_radius, -visual_radius), Vector2(visual_radius * 2.0, visual_radius * 2.0)), false, tint)
+	draw_texture_rect(texture, Rect2(Vector2(-visual_radius, -visual_radius), Vector2(visual_radius * 2.0, visual_radius * 2.0)), false, body_tint)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+func _get_enemy_body_tint(base_tint: Color) -> Color:
+	if _hit_flash_remaining > 0.0 or not _is_non_contact_specialist():
+		return base_tint
+	return Color(
+		lerp(1.0, body_color.r, 0.72),
+		lerp(1.0, body_color.g, 0.72),
+		lerp(1.0, body_color.b, 0.72),
+		base_tint.a
+	)
 
 
 func _draw_status_effects() -> void:
