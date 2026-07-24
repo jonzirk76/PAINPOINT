@@ -136,6 +136,7 @@ var _behavior_burst_base_direction: Vector2 = Vector2.RIGHT
 var _behavior_burst_config: Dictionary = {}
 var _behavior_reposition_target: Vector2 = Vector2.INF
 var _behavior_reposition_recovery_remaining: float = 0.0
+var _behavior_reposition_attack_pending: bool = false
 var _boss_special_timer: float = 0.0
 var _boss_special_telegraph_remaining: float = 0.0
 var _boss_special_telegraph_duration: float = 0.72
@@ -275,6 +276,7 @@ func initialize(profile) -> void:
 	_behavior_burst_interval_remaining = 0.0
 	_behavior_reposition_target = Vector2.INF
 	_behavior_reposition_recovery_remaining = 0.0
+	_behavior_reposition_attack_pending = false
 	if behavior_kind == BEHAVIOR_BOSS:
 		_boss_special_timer = boss_special_cooldown * 0.55
 		_boss_special_sequence_index = 0
@@ -1208,25 +1210,73 @@ func _update_shield_drone(delta: float, to_target: Vector2) -> Vector2:
 	if _update_behavior_burst(delta):
 		activate_projectile_shield(0.22)
 		return _get_slippery_ranged_velocity(to_target, speed * 0.72)
+	if _behavior_reposition_target != Vector2.INF:
+		activate_projectile_shield(0.18)
+		return _update_shield_drone_dash(to_target)
+	if _behavior_reposition_recovery_remaining > 0.0:
+		_behavior_reposition_recovery_remaining = max(_behavior_reposition_recovery_remaining - delta, 0.0)
+		activate_projectile_shield(_behavior_reposition_recovery_remaining + 0.2)
+		if _behavior_reposition_recovery_remaining <= 0.0 and _behavior_reposition_attack_pending:
+			_emit_shield_drone_attack(to_target)
+		return Vector2.ZERO
 	_behavior_special_timer = max(_behavior_special_timer - delta, 0.0)
-	if _behavior_special_timer <= 0.0 and _has_clear_player_shot(to_target):
-		activate_projectile_shield(max(special_telegraph_seconds, 0.2) + 0.56)
-		if _behavior_pattern_index % 2 == 0:
-			_start_behavior_burst(to_target, {
-				"count": 3,
-				"interval": 0.075,
-				"speed": max(projectile_speed * 1.12, 320.0),
-				"damage": projectile_damage,
-				"radius": max(projectile_radius * 0.78, 4.4),
-				"kind": "hostile_burst",
-				"lifetime": 1.1
-			})
+	if _behavior_special_timer <= 0.0:
+		if special_movement_kind == "dash" and _try_start_shield_drone_dash(to_target):
+			return Vector2.ZERO
+		if _has_clear_player_shot(to_target):
+			_emit_shield_drone_attack(to_target)
 		else:
-			var shot_direction: Vector2 = to_target.normalized()
-			_emit_enemy_projectile(shot_direction, max(projectile_speed * 1.28, 360.0), projectile_damage, max(projectile_radius * 0.72, 4.2), 1, 0.0, 1.05, "hostile")
-		_behavior_pattern_index += 1
-		_behavior_special_timer = max(special_cooldown, 0.28)
+			_behavior_special_timer = max(special_cooldown * 0.45, 0.3)
 	return _get_slippery_ranged_velocity(to_target, speed)
+
+
+func _try_start_shield_drone_dash(to_target: Vector2) -> bool:
+	if to_target.length_squared() <= 4.0:
+		return false
+	var dash_distance: float = clamp(preferred_distance * 0.68, 150.0, 240.0)
+	var target: Vector2 = _pick_behavior_reposition_target(to_target, dash_distance)
+	if target == Vector2.INF:
+		return false
+	_behavior_reposition_target = target
+	_behavior_reposition_attack_pending = true
+	_behavior_special_timer = max(special_cooldown, 0.28)
+	_agent_zigzag_sign *= -1.0
+	activate_projectile_shield(max(special_telegraph_seconds, 0.2) + 0.68)
+	return true
+
+
+func _update_shield_drone_dash(to_target: Vector2) -> Vector2:
+	var to_dash: Vector2 = _behavior_reposition_target - global_position
+	if to_dash.length_squared() <= 16.0 * 16.0 or _path_blocks_segment(global_position, _behavior_reposition_target, body_radius * 0.55):
+		_behavior_reposition_target = Vector2.INF
+		_behavior_reposition_recovery_remaining = max(special_telegraph_seconds, 0.12)
+		activate_projectile_shield(_behavior_reposition_recovery_remaining + 0.32)
+		return Vector2.ZERO
+	_update_visual_direction(to_dash)
+	return to_dash.normalized() * max(speed * 3.1, 420.0)
+
+
+func _emit_shield_drone_attack(to_target: Vector2) -> void:
+	_behavior_reposition_attack_pending = false
+	activate_projectile_shield(max(special_telegraph_seconds, 0.2) + 0.56)
+	if not _has_clear_player_shot(to_target):
+		_behavior_special_timer = max(special_cooldown * 0.45, 0.3)
+		return
+	if _behavior_pattern_index % 2 == 0:
+		_start_behavior_burst(to_target, {
+			"count": 3,
+			"interval": 0.075,
+			"speed": max(projectile_speed * 1.12, 320.0),
+			"damage": projectile_damage,
+			"radius": max(projectile_radius * 0.78, 4.4),
+			"kind": "hostile_burst",
+			"lifetime": 1.1
+		})
+	else:
+		var shot_direction: Vector2 = to_target.normalized()
+		_emit_enemy_projectile(shot_direction, max(projectile_speed * 1.28, 360.0), projectile_damage, max(projectile_radius * 0.72, 4.2), 1, 0.0, 1.05, "hostile")
+	_behavior_pattern_index += 1
+	_behavior_special_timer = max(special_cooldown, 0.28)
 
 
 func _update_power_armor(delta: float, to_target: Vector2) -> Vector2:

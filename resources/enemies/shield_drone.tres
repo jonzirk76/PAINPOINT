@@ -24,3 +24,4 @@ projectile_damage = 1
 projectile_radius = 5.4
 special_cooldown = 1.35
 special_telegraph_seconds = 0.22
+special_movement_kind = "dash"
