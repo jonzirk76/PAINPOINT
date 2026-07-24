@@ -137,6 +137,7 @@ var _behavior_burst_config: Dictionary = {}
 var _behavior_reposition_target: Vector2 = Vector2.INF
 var _behavior_reposition_recovery_remaining: float = 0.0
 var _behavior_reposition_attack_pending: bool = false
+var _behavior_dash_steps_remaining: int = 0
 var _boss_special_timer: float = 0.0
 var _boss_special_telegraph_remaining: float = 0.0
 var _boss_special_telegraph_duration: float = 0.72
@@ -277,6 +278,7 @@ func initialize(profile) -> void:
 	_behavior_reposition_target = Vector2.INF
 	_behavior_reposition_recovery_remaining = 0.0
 	_behavior_reposition_attack_pending = false
+	_behavior_dash_steps_remaining = 0
 	if behavior_kind == BEHAVIOR_BOSS:
 		_boss_special_timer = boss_special_cooldown * 0.55
 		_boss_special_sequence_index = 0
@@ -1217,24 +1219,22 @@ func _try_emit_repair_pulse() -> void:
 
 
 func _update_shield_drone(delta: float, to_target: Vector2) -> Vector2:
-	if _update_behavior_burst(delta):
-		activate_projectile_shield(0.22)
-		return _get_slippery_ranged_velocity(to_target, speed * 0.72)
 	if _behavior_reposition_target != Vector2.INF:
-		activate_projectile_shield(0.18)
 		return _update_shield_drone_dash(to_target)
 	if _behavior_reposition_recovery_remaining > 0.0:
-		_behavior_reposition_recovery_remaining = max(_behavior_reposition_recovery_remaining - delta, 0.0)
-		activate_projectile_shield(_behavior_reposition_recovery_remaining + 0.2)
-		if _behavior_reposition_recovery_remaining <= 0.0 and _behavior_reposition_attack_pending:
-			_emit_shield_drone_attack(to_target)
+		return _update_shield_drone_stationary_fire(delta, to_target)
+	if _update_behavior_burst(delta):
+		if _behavior_burst_shots_remaining > 0:
+			activate_projectile_shield(0.06)
+		else:
+			_projectile_shield_remaining = 0.0
 		return Vector2.ZERO
 	_behavior_special_timer = max(_behavior_special_timer - delta, 0.0)
 	if _behavior_special_timer <= 0.0:
 		if special_movement_kind == "dash" and _try_start_shield_drone_dash(to_target):
 			return Vector2.ZERO
 		if _has_clear_player_shot(to_target):
-			_emit_shield_drone_attack(to_target)
+			_start_shield_drone_stationary_fire(to_target)
 		else:
 			_behavior_special_timer = max(special_cooldown * 0.45, 0.3)
 	return _get_slippery_ranged_velocity(to_target, speed)
@@ -1244,31 +1244,66 @@ func _try_start_shield_drone_dash(to_target: Vector2) -> bool:
 	if to_target.length_squared() <= 4.0:
 		return false
 	var dash_distance: float = clamp(preferred_distance * 0.68, 150.0, 240.0)
-	var target: Vector2 = _pick_behavior_reposition_target(to_target, dash_distance)
+	var target: Vector2 = _pick_shield_drone_dash_target(to_target, dash_distance)
 	if target == Vector2.INF:
 		return false
 	_behavior_reposition_target = target
-	_behavior_reposition_attack_pending = true
+	_behavior_reposition_attack_pending = false
+	_behavior_dash_steps_remaining = _get_shield_drone_dash_count(to_target)
 	_behavior_special_timer = max(special_cooldown, 0.28)
+	_projectile_shield_remaining = 0.0
+	_projectile_shield_block_flash_remaining = 0.0
 	_agent_zigzag_sign *= -1.0
-	activate_projectile_shield(max(special_telegraph_seconds, 0.2) + 0.68)
 	return true
 
 
 func _update_shield_drone_dash(to_target: Vector2) -> Vector2:
+	_projectile_shield_remaining = 0.0
+	_projectile_shield_block_flash_remaining = 0.0
 	var to_dash: Vector2 = _behavior_reposition_target - global_position
 	if to_dash.length_squared() <= 16.0 * 16.0 or _path_blocks_segment(global_position, _behavior_reposition_target, body_radius * 0.55):
+		_behavior_dash_steps_remaining -= 1
+		if _behavior_dash_steps_remaining > 0:
+			_agent_zigzag_sign *= -1.0
+			var next_target: Vector2 = _pick_shield_drone_dash_target(to_target, clamp(preferred_distance * 0.68, 150.0, 240.0))
+			if next_target != Vector2.INF:
+				_behavior_reposition_target = next_target
+				return Vector2.ZERO
 		_behavior_reposition_target = Vector2.INF
-		_behavior_reposition_recovery_remaining = max(special_telegraph_seconds, 0.12)
-		activate_projectile_shield(_behavior_reposition_recovery_remaining + 0.32)
+		_behavior_dash_steps_remaining = 0
+		_start_shield_drone_stationary_fire(to_target)
 		return Vector2.ZERO
 	_update_visual_direction(to_dash)
 	return to_dash.normalized() * max(speed * 3.1, 420.0)
 
 
+func _start_shield_drone_stationary_fire(to_target: Vector2) -> void:
+	_behavior_reposition_recovery_remaining = _get_shield_drone_stationary_seconds(to_target)
+	_behavior_reposition_attack_pending = true
+	activate_projectile_shield(max(_behavior_reposition_recovery_remaining, 0.06))
+	queue_redraw()
+
+
+func _update_shield_drone_stationary_fire(delta: float, to_target: Vector2) -> Vector2:
+	_behavior_reposition_recovery_remaining = max(_behavior_reposition_recovery_remaining - delta, 0.0)
+	if _behavior_reposition_recovery_remaining > 0.0 or _behavior_reposition_attack_pending or _behavior_burst_shots_remaining > 0:
+		activate_projectile_shield(max(_behavior_reposition_recovery_remaining, 0.06))
+	if _behavior_reposition_attack_pending and _has_clear_player_shot(to_target):
+		_emit_shield_drone_attack(to_target)
+	if _update_behavior_burst(delta):
+		if _behavior_reposition_recovery_remaining > 0.0 or _behavior_burst_shots_remaining > 0:
+			activate_projectile_shield(max(_behavior_reposition_recovery_remaining, 0.06))
+		else:
+			_projectile_shield_remaining = 0.0
+		return Vector2.ZERO
+	if _behavior_reposition_recovery_remaining <= 0.0:
+		_behavior_reposition_attack_pending = false
+		_projectile_shield_remaining = 0.0
+	return Vector2.ZERO
+
+
 func _emit_shield_drone_attack(to_target: Vector2) -> void:
 	_behavior_reposition_attack_pending = false
-	activate_projectile_shield(max(special_telegraph_seconds, 0.2) + 0.56)
 	if not _has_clear_player_shot(to_target):
 		_behavior_special_timer = max(special_cooldown * 0.45, 0.3)
 		return
@@ -1287,6 +1322,77 @@ func _emit_shield_drone_attack(to_target: Vector2) -> void:
 		_emit_enemy_projectile(shot_direction, max(projectile_speed * 1.28, 360.0), projectile_damage, max(projectile_radius * 0.72, 4.2), 1, 0.0, 1.05, "hostile")
 	_behavior_pattern_index += 1
 	_behavior_special_timer = max(special_cooldown, 0.28)
+
+
+func _get_shield_drone_dash_count(to_target: Vector2) -> int:
+	var distance: float = to_target.length()
+	var variant: int = int(abs(int(get_instance_id()) + _behavior_pattern_index)) % 3
+	if distance > preferred_distance + distance_band:
+		return 2 + int(variant % 2)
+	if distance < preferred_distance - distance_band:
+		return 1 + int(variant % 2)
+	return 1 + variant
+
+
+func _get_shield_drone_stationary_seconds(to_target: Vector2) -> float:
+	var distance: float = to_target.length()
+	var variant: float = float(int(abs(int(get_instance_id()) + _behavior_pattern_index * 17)) % 100) / 100.0
+	if distance > preferred_distance + distance_band:
+		return clamp(max(special_telegraph_seconds, 0.12) + lerp(0.08, 0.2, variant), 0.18, 0.42)
+	if distance < preferred_distance - distance_band:
+		return clamp(max(special_telegraph_seconds, 0.12) + lerp(0.06, 0.16, variant), 0.16, 0.36)
+	return clamp(max(special_telegraph_seconds, 0.12) + lerp(0.22, 0.42, variant), 0.34, 0.68)
+
+
+func _pick_shield_drone_dash_target(to_target: Vector2, distance: float) -> Vector2:
+	var directions: Array[Vector2] = _get_shield_drone_dash_directions(to_target)
+	for direction in directions:
+		if direction.length_squared() <= 0.001:
+			continue
+		var candidate: Vector2 = global_position + direction.normalized() * distance
+		candidate = _constrain_to_playable(candidate)
+		if _agent_point_is_valid(candidate) and not _path_blocks_segment(global_position, candidate, body_radius * 0.55):
+			return candidate
+	for direction in directions:
+		if direction.length_squared() <= 0.001:
+			continue
+		var candidate: Vector2 = global_position + direction.normalized() * distance * 0.55
+		candidate = _constrain_to_playable(candidate)
+		if _agent_point_is_valid(candidate) and not _path_blocks_segment(global_position, candidate, body_radius * 0.55):
+			return candidate
+	return Vector2.INF
+
+
+func _get_shield_drone_dash_directions(to_target: Vector2) -> Array[Vector2]:
+	var target_direction: Vector2 = _get_target_direction(to_target)
+	var side_direction: Vector2 = target_direction.orthogonal() * _agent_zigzag_sign
+	var distance: float = to_target.length()
+	if distance > preferred_distance + distance_band:
+		return [
+			target_direction,
+			(target_direction + side_direction * 0.55).normalized(),
+			(target_direction - side_direction * 0.55).normalized(),
+			side_direction,
+			-side_direction,
+			-target_direction
+		]
+	if distance < preferred_distance - distance_band:
+		return [
+			side_direction,
+			-side_direction,
+			(-target_direction + side_direction * 0.55).normalized(),
+			(-target_direction - side_direction * 0.55).normalized(),
+			-target_direction,
+			target_direction
+		]
+	return [
+		side_direction,
+		-side_direction,
+		(side_direction + target_direction * 0.35).normalized(),
+		(-side_direction + target_direction * 0.35).normalized(),
+		target_direction,
+		-target_direction
+	]
 
 
 func _update_power_armor(delta: float, to_target: Vector2) -> Vector2:
