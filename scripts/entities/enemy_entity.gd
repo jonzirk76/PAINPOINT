@@ -92,6 +92,12 @@ const BEHAVIOR_CHASER := "chaser"
 @export var special_minigun_shot_interval: float = 0.065
 ## Controls the total sweep angle of minigun special streams.
 @export var special_minigun_sweep_degrees: float = 76.0
+## Controls the fewest shots fired during autocannon special bursts.
+@export var special_autocannon_min_shots: int = 4
+## Controls the most shots fired during autocannon special bursts.
+@export var special_autocannon_max_shots: int = 8
+## Controls the delay between individual autocannon special shots.
+@export var special_autocannon_shot_interval: float = 0.115
 @export var projectile_shield_radius_bonus: float = 20.0
 @export var boss_special_cooldown: float = 5.4
 @export var boss_special_telegraph_seconds: float = 0.72
@@ -149,6 +155,8 @@ var _boss_minigun_next_shot_remaining: float = 0.0
 var _boss_minigun_base_direction: Vector2 = Vector2.RIGHT
 var _boss_minigun_start_side: int = 1
 var _boss_autocannon_side_sign: int = 1
+var _boss_autocannon_shots_remaining: int = 0
+var _boss_autocannon_next_shot_remaining: float = 0.0
 var _path_blocker_rects: Array[Rect2] = []
 var _cached_steering_target: Vector2 = Vector2.INF
 var _path_cache_target_position: Vector2 = Vector2.INF
@@ -261,6 +269,9 @@ func initialize(profile) -> void:
 	special_minigun_duration = profile.special_minigun_duration
 	special_minigun_shot_interval = profile.special_minigun_shot_interval
 	special_minigun_sweep_degrees = profile.special_minigun_sweep_degrees
+	special_autocannon_min_shots = profile.special_autocannon_min_shots
+	special_autocannon_max_shots = profile.special_autocannon_max_shots
+	special_autocannon_shot_interval = profile.special_autocannon_shot_interval
 	agent_program = profile.agent_program as AgentBossProgram if profile.get("agent_program") != null else null
 	if _is_agent_boss():
 		contact_damage = 0
@@ -294,6 +305,12 @@ func initialize(profile) -> void:
 		_boss_special_sequence_index = 0
 		_boss_minigun_start_side = -1 if int(get_instance_id()) % 2 == 0 else 1
 		_boss_autocannon_side_sign = 1 if int(get_instance_id()) % 2 == 0 else -1
+		var power_armor_rng_seed: int = int(get_instance_id())
+		if power_armor_rng_seed < 0:
+			power_armor_rng_seed = -power_armor_rng_seed
+		if power_armor_rng_seed <= 0:
+			power_armor_rng_seed = 1
+		_agent_rng.seed = power_armor_rng_seed
 	if _is_agent_boss():
 		_configure_agent_boss_state()
 	elif behavior_kind == BEHAVIOR_CYBER_SOLDIER:
@@ -1404,11 +1421,16 @@ func _update_power_armor(delta: float, to_target: Vector2) -> Vector2:
 	if _boss_minigun_remaining > 0.0:
 		_update_boss_minigun(delta)
 		return _get_power_armor_special_velocity(to_target)
+	if _boss_autocannon_shots_remaining > 0:
+		_update_boss_autocannon(delta, to_target)
+		return _get_power_armor_special_velocity(to_target)
 	if _boss_special_telegraph_remaining > 0.0:
 		_boss_special_telegraph_remaining = max(_boss_special_telegraph_remaining - delta, 0.0)
 		if _boss_special_telegraph_remaining <= 0.0:
 			if _boss_special_kind == "minigun":
 				_start_boss_minigun(to_target)
+			elif _boss_special_kind == "autocannon":
+				_start_boss_autocannon(to_target)
 			else:
 				_emit_boss_special(to_target)
 				_finish_boss_special()
@@ -3062,6 +3084,31 @@ func _emit_boss_minigun_shot() -> void:
 	shot_ready.emit(self, shot_origin, shot_direction, shot_config)
 
 
+func _start_boss_autocannon(to_target: Vector2) -> void:
+	if to_target.length_squared() <= 4.0:
+		_finish_boss_special()
+		return
+	var min_shots: int = clampi(special_autocannon_min_shots, 1, 24)
+	var max_shots: int = clampi(special_autocannon_max_shots, min_shots, 24)
+	_boss_autocannon_shots_remaining = _agent_rng.randi_range(min_shots, max_shots)
+	_boss_autocannon_next_shot_remaining = 0.0
+	_update_boss_autocannon(0.0, to_target)
+
+
+func _update_boss_autocannon(delta: float, to_target: Vector2) -> void:
+	_boss_autocannon_next_shot_remaining -= delta
+	var interval: float = max(special_autocannon_shot_interval, 0.035)
+	var emitted_count: int = 0
+	while _boss_autocannon_shots_remaining > 0 and _boss_autocannon_next_shot_remaining <= 0.0 and emitted_count < 4:
+		_emit_boss_special(to_target)
+		_boss_autocannon_shots_remaining -= 1
+		_boss_autocannon_next_shot_remaining += interval
+		emitted_count += 1
+	if _boss_autocannon_shots_remaining <= 0:
+		_finish_boss_special()
+	queue_redraw()
+
+
 func _get_boss_minigun_direction() -> Vector2:
 	var duration: float = max(boss_minigun_duration, 0.12)
 	var progress: float = clamp(_boss_minigun_elapsed / duration, 0.0, 1.0)
@@ -3109,6 +3156,8 @@ func _finish_boss_special() -> void:
 	_boss_minigun_remaining = 0.0
 	_boss_minigun_elapsed = 0.0
 	_boss_minigun_next_shot_remaining = 0.0
+	_boss_autocannon_shots_remaining = 0
+	_boss_autocannon_next_shot_remaining = 0.0
 	_boss_special_timer = boss_special_cooldown
 	_boss_special_sequence_index += 1
 
@@ -3140,7 +3189,7 @@ func _get_boss_special_shot_config(special_kind: String) -> Dictionary:
 		}
 	if special_kind == "autocannon":
 		return {
-			"speed": max(projectile_speed * 2.1, 540.0),
+			"speed": max(projectile_speed * 3.0, 720.0),
 			"damage": max(projectile_damage + 1, 2),
 			"radius": max(projectile_radius * 1.25, 9.0),
 			"kind": "hostile_autocannon",
