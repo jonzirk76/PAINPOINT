@@ -125,7 +125,7 @@ var _slow_multiplier: float = 1.0
 var _lightning_charge_remaining: float = 0.0
 var _lightning_charge_stacks: int = 0
 var _lightning_charge_max_stacks: int = 0
-var _repair_target: EnemyEntity = null
+var _repair_target: Node2D = null
 var _repair_cooldown_remaining: float = 0.0
 var _repair_beam_remaining: float = 0.0
 var _behavior_special_timer: float = 0.0
@@ -370,11 +370,17 @@ func set_target_position(position: Vector2) -> void:
 
 
 func set_repair_target(target) -> void:
-	var enemy_target := target as EnemyEntity
-	if enemy_target == self or enemy_target == null or not is_instance_valid(enemy_target):
+	var repair_target := target as Node2D
+	if repair_target == self or repair_target == null or not is_instance_valid(repair_target):
 		_repair_target = null
 		return
-	_repair_target = enemy_target
+	if not repair_target.is_in_group("enemies") and not repair_target.is_in_group("spawners"):
+		_repair_target = null
+		return
+	if not repair_target.has_method("apply_healing"):
+		_repair_target = null
+		return
+	_repair_target = repair_target
 
 
 func apply_healing(amount: int) -> bool:
@@ -718,7 +724,7 @@ func _draw_status_effects() -> void:
 
 
 func _draw_repair_beam() -> void:
-	var target := _repair_target as EnemyEntity
+	var target := _repair_target as Node2D
 	if target == null or not is_instance_valid(target):
 		return
 	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.045)
@@ -1184,16 +1190,20 @@ func _update_repair_drone(delta: float, to_target: Vector2) -> Vector2:
 
 
 func _repair_target_is_valid() -> bool:
-	var target := _repair_target as EnemyEntity
+	var target := _repair_target as Node2D
 	if target == null or not is_instance_valid(target):
 		return false
-	if target == self or not target.is_in_group("enemies"):
+	if target == self:
+		return false
+	if not target.is_in_group("enemies") and not target.is_in_group("spawners"):
 		return false
 	if not target.has_method("apply_healing"):
 		return false
-	if target.health <= 0 or target.health >= target.max_health:
+	var target_health: int = int(target.get("health"))
+	var target_max_health: int = int(target.get("max_health"))
+	if target_health <= 0 or target_max_health <= 0 or target_health >= target_max_health:
 		return false
-	var health_ratio: float = float(target.health) / float(max(target.max_health, 1))
+	var health_ratio: float = float(target_health) / float(max(target_max_health, 1))
 	return health_ratio <= clamp(repair_target_health_ratio, 0.0, 1.0)
 
 

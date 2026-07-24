@@ -263,6 +263,16 @@ func take_damage(packet) -> bool:
 	return true
 
 
+func apply_healing(amount: int) -> bool:
+	if amount <= 0 or health <= 0 or _is_destroyed or is_birth_animation_active() or health >= max_health:
+		return false
+	var old_health := health
+	health = min(health + amount, max_health)
+	health_changed.emit(self, old_health, health)
+	queue_redraw()
+	return health > old_health
+
+
 func _apply_damage_amount(damage_amount: int) -> void:
 	if damage_amount <= 0 or health <= 0 or _is_destroyed:
 		return

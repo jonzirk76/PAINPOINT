@@ -31,6 +31,8 @@ enum ArenaShape {
 @export var spawner_health: int = 16
 @export var spawner_radius: float = 32.0
 @export var spawn_interval: float = 3.2
+## Overrides the SpawnerManager opening spawn burst count for this level; -1 uses the manager default.
+@export var initial_spawn_batch_multiplier_override: int = -1
 @export var boss_profile: Resource = null
 ## Generates a procedural agent boss from boss_profile when this level spawns a boss.
 @export var generate_agent_boss: bool = false

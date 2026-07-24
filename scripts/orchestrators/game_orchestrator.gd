@@ -21,27 +21,43 @@ const ENCOUNTER_TEST_CYBER_SOLDIER_TELEPORT := preload("res://resources/enemies/
 const GENERATED_ENCOUNTER_TESTS := [
 	{
 		"label": "Generated Drone Test",
-		"summary": "floor 1 repair + shield",
+		"summary": "experimental repair + shield",
 		"floor": 1,
 		"seed": 41101,
 		"room_kind": "combat",
-		"profiles": [ENCOUNTER_TEST_REPAIR_DRONE, ENCOUNTER_TEST_SHIELD_DRONE, ENCOUNTER_TEST_SHIELD_DRONE]
+		"profiles": [ENCOUNTER_TEST_REPAIR_DRONE, ENCOUNTER_TEST_SHIELD_DRONE, ENCOUNTER_TEST_SHIELD_DRONE],
+		"options": {
+			"spawner_count": 2,
+			"disable_initial_spawns": true,
+			"passive_spawners": true,
+			"extra_enemy_slots": 1
+		}
 	},
 	{
 		"label": "Generated Armor Test",
-		"summary": "floor 3 power armor",
-		"floor": 3,
+		"summary": "experimental power armor",
+		"floor": 1,
 		"seed": 43303,
 		"room_kind": "combat",
-		"profiles": [ENCOUNTER_TEST_POWER_ARMOR_ROCKET, ENCOUNTER_TEST_POWER_ARMOR_GRENADE, ENCOUNTER_TEST_REPAIR_DRONE]
+		"profiles": [ENCOUNTER_TEST_POWER_ARMOR_ROCKET, ENCOUNTER_TEST_POWER_ARMOR_GRENADE, ENCOUNTER_TEST_REPAIR_DRONE],
+		"options": {
+			"spawner_count": 0,
+			"disable_initial_spawns": true,
+			"extra_enemy_slots": 1
+		}
 	},
 	{
 		"label": "Generated Cyber Test",
-		"summary": "floor 5 cyber soldiers",
-		"floor": 5,
+		"summary": "experimental cyber soldiers",
+		"floor": 1,
 		"seed": 45505,
 		"room_kind": "challenge",
-		"profiles": [ENCOUNTER_TEST_CYBER_SOLDIER, ENCOUNTER_TEST_CYBER_SOLDIER_TELEPORT, ENCOUNTER_TEST_SHIELD_DRONE]
+		"profiles": [ENCOUNTER_TEST_CYBER_SOLDIER, ENCOUNTER_TEST_CYBER_SOLDIER_TELEPORT, ENCOUNTER_TEST_SHIELD_DRONE],
+		"options": {
+			"spawner_count": 0,
+			"disable_initial_spawns": true,
+			"extra_enemy_slots": 1
+		}
 	}
 ]
 const CAT_DEBUG_LEVEL_IDS := ["cat_behavior_test", "cat_peaceful_test"]
@@ -379,6 +395,7 @@ func _connect_manager_signals() -> void:
 	_connect_once(enemy_manager, &"enemy_count_changed", _on_enemy_count_changed)
 	_connect_once(enemy_manager, &"player_contact_requested", _on_player_contact_requested)
 	_connect_once(enemy_manager, &"hostile_shot_requested", _on_hostile_shot_requested)
+	_connect_once(enemy_manager, &"repair_requested", _on_enemy_repair_requested)
 
 	_connect_once(spawner_manager, &"spawn_requested", _on_spawn_requested)
 	_connect_once(spawner_manager, &"spawner_destroyed", _on_spawner_destroyed)
@@ -417,7 +434,8 @@ func _initialize_managers() -> void:
 	enemy_manager.initialize({
 		"enemy_layer": depth_sort_layer,
 		"player_position_provider": Callable(player_manager, "get_player_position"),
-		"player_ref_provider": Callable(self, "_get_player_ref")
+		"player_ref_provider": Callable(self, "_get_player_ref"),
+		"spawner_repair_targets_provider": Callable(spawner_manager, "get_repairable_spawners")
 	})
 	spawner_manager.initialize({
 		"spawner_layer": depth_sort_layer,
@@ -1293,7 +1311,8 @@ func _start_generated_encounter_test(test_index: int) -> void:
 		var enemy_profile: Resource = profile as Resource
 		if enemy_profile != null:
 			profiles.append(enemy_profile)
-	dungeon_manager.reset_encounter_test(_main_loop_floor, _run_seed, String(test_config.get("room_kind", "combat")), profiles)
+	var test_options: Dictionary = test_config.get("options", {})
+	dungeon_manager.reset_encounter_test(_main_loop_floor, _run_seed, String(test_config.get("room_kind", "combat")), profiles, test_options)
 	_set_loading_progress(LOADING_PROGRESS_FLOOR_LAYOUT_DONE, "Floor layout ready")
 	projectile_manager.reset_run()
 	enemy_manager.reset_run()
@@ -1817,6 +1836,13 @@ func _on_player_damage_resolved(amount: int) -> void:
 
 func _on_spawn_requested(spawn_position: Vector2, profile) -> void:
 	enemy_manager.spawn_enemy(profile, spawn_position, {"birth": true})
+
+
+func _on_enemy_repair_requested(_enemy, repair_target, amount: int) -> void:
+	if repair_target == null or not is_instance_valid(repair_target) or amount <= 0:
+		return
+	if repair_target.is_in_group("spawners"):
+		spawner_manager.apply_healing(repair_target, amount)
 
 
 func _spawn_opening_encounter(level_definition, spawn_flags: Dictionary = {}) -> void:
