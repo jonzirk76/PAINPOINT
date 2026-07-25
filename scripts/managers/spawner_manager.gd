@@ -501,7 +501,7 @@ func _get_biased_spawn_position(spawner, spawn_index: int, spawn_count: int, bas
 		var candidate: Vector2 = _constrain_spawn_position(spawner.global_position + Vector2.RIGHT.rotated(angle) * distance, 24.0)
 		if _position_is_clear_of_walls(candidate):
 			return candidate
-	return spawner.global_position
+	return _constrain_spawn_position(spawner.global_position, 24.0)
 
 
 func _get_spawn_bias_direction(spawner) -> Vector2:

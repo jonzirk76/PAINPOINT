@@ -2854,6 +2854,8 @@ func _get_opening_encounter_positions(level_definition, count: int) -> Array[Vec
 
 
 func _opening_encounter_position_is_clear(candidate_position: Vector2, anchor: Vector2, min_distance: float, selected_positions: Array[Vector2], level_definition) -> bool:
+	if not _position_is_inside_room_playable_area(candidate_position, level_definition, 24.0):
+		return false
 	if candidate_position.distance_squared_to(anchor) < min_distance * min_distance:
 		return false
 	if not _position_is_clear_of_room_walls(candidate_position, level_definition):
@@ -4640,6 +4642,13 @@ func _get_room_entry_position(level_definition, entry_direction: String) -> Vect
 
 
 func _find_safe_room_position(preferred_position: Vector2, level_definition) -> Vector2:
+	if level_definition == null:
+		return preferred_position
+	var playable_rects: Array[Rect2] = _get_room_playable_rects(level_definition)
+	var blocker_rects: Array[Rect2] = _get_room_blocker_rects(level_definition)
+	var bounds: Rect2 = _get_room_safety_bounds(level_definition, playable_rects)
+	var shape: int = ArenaGeometry.SHAPE_RECTANGLE if not playable_rects.is_empty() else int(level_definition.arena_shape)
+	var clearance := 18.0
 	var offsets := [
 		Vector2.ZERO,
 		Vector2(0.0, -90.0),
@@ -4651,13 +4660,69 @@ func _find_safe_room_position(preferred_position: Vector2, level_definition) -> 
 		Vector2.ZERO
 	]
 	for offset in offsets:
-		var candidate := ArenaGeometry.constrain_point(preferred_position + offset, level_definition.arena_bounds, int(level_definition.arena_shape))
+		var candidate := ArenaGeometry.constrain_point_to_playable_regions(preferred_position + offset, bounds, shape, playable_rects, blocker_rects, clearance)
+		if not _position_is_inside_room_playable_area(candidate, level_definition, clearance):
+			continue
 		if _position_is_clear_of_room_walls(candidate, level_definition):
 			return candidate
-	return ArenaGeometry.constrain_point(preferred_position, level_definition.arena_bounds, int(level_definition.arena_shape))
+	return ArenaGeometry.constrain_point_to_playable_regions(preferred_position, bounds, shape, playable_rects, blocker_rects, clearance)
+
+
+func _get_room_playable_rects(level_definition) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if level_definition == null:
+		return rects
+	if level_definition.has_meta("active_room_playable_rects"):
+		var active_rects_value: Variant = level_definition.get_meta("active_room_playable_rects")
+		if active_rects_value is Array:
+			for active_rect in active_rects_value:
+				if active_rect is Rect2:
+					rects.append(active_rect)
+			if not rects.is_empty():
+				return rects
+	if level_definition.has_meta("footprint_cells"):
+		rects.append_array(ArenaGeometry.get_footprint_cell_rects(level_definition.arena_bounds, level_definition.get_meta("footprint_cells")))
+	return rects
+
+
+func _get_room_blocker_rects(level_definition) -> Array[Rect2]:
+	var blockers: Array[Rect2] = []
+	if level_definition == null:
+		return blockers
+	blockers.append_array(level_definition.wall_rects)
+	blockers.append_array(level_definition.void_rects)
+	return blockers
+
+
+func _get_room_safety_bounds(level_definition, playable_rects: Array[Rect2]) -> Rect2:
+	if not playable_rects.is_empty():
+		var bounds: Rect2 = playable_rects[0]
+		for index in range(1, playable_rects.size()):
+			bounds = bounds.merge(playable_rects[index])
+		return bounds
+	if level_definition == null:
+		return Rect2()
+	return level_definition.arena_bounds
+
+
+func _position_is_inside_room_playable_area(candidate_position: Vector2, level_definition, clearance: float = 0.0) -> bool:
+	var playable_rects: Array[Rect2] = _get_room_playable_rects(level_definition)
+	if playable_rects.is_empty():
+		if level_definition == null:
+			return false
+		return ArenaGeometry.contains_point(candidate_position, level_definition.arena_bounds, int(level_definition.arena_shape))
+	for rect in playable_rects:
+		var test_rect: Rect2 = rect.grow(-max(clearance, 0.0))
+		if test_rect.size.x < 1.0 or test_rect.size.y < 1.0:
+			test_rect = rect
+		if _rect_has_point_inclusive(test_rect, candidate_position):
+			return true
+	return false
 
 
 func _position_is_clear_of_room_walls(candidate_position: Vector2, level_definition) -> bool:
+	if level_definition == null:
+		return true
 	for wall_rect in level_definition.wall_rects:
 		if wall_rect.grow(34.0).has_point(candidate_position):
 			return false
@@ -4665,6 +4730,11 @@ func _position_is_clear_of_room_walls(candidate_position: Vector2, level_definit
 		if void_rect.grow(34.0).has_point(candidate_position):
 			return false
 	return true
+
+
+func _rect_has_point_inclusive(rect: Rect2, point: Vector2) -> bool:
+	var end: Vector2 = rect.position + rect.size
+	return point.x >= rect.position.x - 0.001 and point.x <= end.x + 0.001 and point.y >= rect.position.y - 0.001 and point.y <= end.y + 0.001
 
 
 func _sync_fauna_roam_bounds(level_definition, current_room_cleared: bool = true) -> void:
