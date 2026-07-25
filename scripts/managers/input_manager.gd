@@ -15,9 +15,16 @@ signal super_charge_pressed
 signal super_charge_released(direction: Vector2)
 signal overdrive_changed(is_held: bool)
 
+const AIM_SOURCE_NONE := 0
+const AIM_SOURCE_ANALOG := 1
+const AIM_SOURCE_DIGITAL := 2
+const AIM_SOURCE_MOUSE := 3
+
 @export var stick_deadzone: float = 0.25
 ## Controls how much the aim direction must change before requesting another shot.
 @export var aim_change_threshold: float = 0.18
+## Fires once in the previous right-stick direction when analog aim returns to neutral.
+@export var aim_release_fire_enabled: bool = true
 ## Snaps right-stick aim to a cardinal axis when the off-axis component is this small relative to the dominant axis.
 @export var aim_cardinal_snap_enter_ratio: float = 0.45
 ## Keeps right-stick aim snapped to a cardinal axis until the off-axis component drifts past this ratio.
@@ -31,6 +38,10 @@ var enabled: bool = false
 var _last_move: Vector2 = Vector2.ZERO
 var _last_aim: Vector2 = Vector2.ZERO
 var _last_cardinal_aim_snap: Vector2 = Vector2.ZERO
+var _last_active_aim_source: int = AIM_SOURCE_NONE
+var _last_read_aim_source: int = AIM_SOURCE_NONE
+var _pending_aim_fire_direction: Vector2 = Vector2.ZERO
+var _aim_release_fire_armed: bool = false
 var _super_held: bool = false
 var _overdrive_held: bool = false
 var _aim_origin_provider: Callable
@@ -48,12 +59,20 @@ func reset_run() -> void:
 	_last_move = Vector2.ZERO
 	_last_aim = Vector2.ZERO
 	_last_cardinal_aim_snap = Vector2.ZERO
+	_last_active_aim_source = AIM_SOURCE_NONE
+	_last_read_aim_source = AIM_SOURCE_NONE
+	_pending_aim_fire_direction = Vector2.ZERO
+	_aim_release_fire_armed = false
 	_super_held = false
 	_overdrive_held = false
 
 
 func set_enabled(value: bool) -> void:
 	enabled = value
+	if not enabled:
+		_pending_aim_fire_direction = Vector2.ZERO
+		_aim_release_fire_armed = false
+		_last_read_aim_source = AIM_SOURCE_NONE
 	if not enabled and _overdrive_held:
 		_overdrive_held = false
 		overdrive_changed.emit(false)
@@ -74,10 +93,11 @@ func _process(_delta: float) -> void:
 		_overdrive_held = overdrive_held
 		overdrive_changed.emit(_overdrive_held)
 	var aim_vector := _read_aim_vector()
-	if should_fire_for_aim_change(aim_vector):
-		aim_changed.emit(_last_aim)
+	if should_fire_for_aim_change(aim_vector, _last_read_aim_source):
+		var fire_direction := _consume_pending_aim_fire_direction()
+		aim_changed.emit(fire_direction)
 		if not super_held and not was_super_held:
-			aim_fire_requested.emit(_last_aim)
+			aim_fire_requested.emit(fire_direction)
 	if super_held and not was_super_held:
 		super_charge_pressed.emit()
 	elif was_super_held and not super_held:
@@ -125,16 +145,35 @@ func _is_pause_controller_button(button_index: int) -> bool:
 	return false
 
 
-func should_fire_for_aim_change(raw_direction: Vector2) -> bool:
+func should_fire_for_aim_change(raw_direction: Vector2, aim_source: int = AIM_SOURCE_ANALOG) -> bool:
+	_pending_aim_fire_direction = Vector2.ZERO
 	var direction := _apply_deadzone(raw_direction)
 	if direction.length_squared() <= 0.001:
+		var release_direction := _last_aim
+		var should_fire_on_release := aim_release_fire_enabled and _aim_release_fire_armed and _last_active_aim_source == AIM_SOURCE_ANALOG and release_direction.length_squared() > 0.001
 		_last_aim = Vector2.ZERO
 		_last_cardinal_aim_snap = Vector2.ZERO
+		_last_active_aim_source = AIM_SOURCE_NONE
+		_aim_release_fire_armed = false
+		if should_fire_on_release:
+			_pending_aim_fire_direction = release_direction.normalized()
+			return true
 		return false
+	_last_active_aim_source = aim_source
+	_aim_release_fire_armed = aim_source == AIM_SOURCE_ANALOG
 	if _last_aim.length_squared() <= 0.001 or direction.distance_to(_last_aim) >= aim_change_threshold:
 		_last_aim = direction
+		_pending_aim_fire_direction = direction
 		return true
 	return false
+
+
+func _consume_pending_aim_fire_direction() -> Vector2:
+	var direction := _pending_aim_fire_direction
+	_pending_aim_fire_direction = Vector2.ZERO
+	if direction.length_squared() > 0.001:
+		return direction.normalized()
+	return _last_aim
 
 
 func _read_move_vector() -> Vector2:
@@ -163,6 +202,7 @@ func _read_aim_vector() -> Vector2:
 		Input.get_joy_axis(0, JOY_AXIS_RIGHT_Y)
 	)
 	if joy_vector.length() >= stick_deadzone:
+		_last_read_aim_source = AIM_SOURCE_ANALOG
 		return _snap_analog_aim_to_cardinal(joy_vector)
 
 	var digital_vector := Vector2.ZERO
@@ -176,15 +216,18 @@ func _read_aim_vector() -> Vector2:
 		digital_vector.y += 1.0
 	if digital_vector.length_squared() > 0.001:
 		_last_cardinal_aim_snap = Vector2.ZERO
+		_last_read_aim_source = AIM_SOURCE_DIGITAL
 		return digital_vector.limit_length(1.0)
 
 	if (Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)) and _aim_origin_provider.is_valid():
 		_last_cardinal_aim_snap = Vector2.ZERO
+		_last_read_aim_source = AIM_SOURCE_MOUSE
 		var origin: Vector2 = _aim_origin_provider.call()
 		var mouse_world: Vector2 = get_viewport().get_canvas_transform().affine_inverse() * get_viewport().get_mouse_position()
 		return (mouse_world - origin).limit_length(1.0)
 
 	_last_cardinal_aim_snap = Vector2.ZERO
+	_last_read_aim_source = AIM_SOURCE_NONE
 	return Vector2.ZERO
 
 

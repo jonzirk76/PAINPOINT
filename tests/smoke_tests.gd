@@ -985,6 +985,17 @@ func _test_aim_change_logic(failures: Array[String]) -> void:
 		failures.append("Tiny aim drift should not request another fire.")
 	if not manager.should_fire_for_aim_change(Vector2.UP):
 		failures.append("Large aim state change should request fire.")
+	if not manager.should_fire_for_aim_change(Vector2.ZERO):
+		failures.append("Right-stick neutral return should request a flick release fire.")
+	elif manager._consume_pending_aim_fire_direction().distance_to(Vector2.UP) > 0.001:
+		failures.append("Right-stick neutral return should fire in the previous aim direction.")
+	if manager.should_fire_for_aim_change(Vector2.ZERO):
+		failures.append("Right-stick neutral return should not repeatedly request release fire.")
+	manager.reset_run()
+	if not manager.should_fire_for_aim_change(Vector2.RIGHT, InputManager.AIM_SOURCE_DIGITAL):
+		failures.append("Initial digital aim state should still request fire.")
+	if manager.should_fire_for_aim_change(Vector2.ZERO, InputManager.AIM_SOURCE_NONE):
+		failures.append("Digital aim release should not use the right-stick flick fire rule.")
 	var input_source := _read_text("res://scripts/managers/input_manager.gd")
 	if not input_source.contains("JOY_AXIS_TRIGGER_LEFT") or not input_source.contains("KEY_SHIFT") or not input_source.contains("overdrive_changed"):
 		failures.append("InputManager should expose Left Shift / left-trigger overdrive without replacing right-trigger super charge.")
