@@ -87,6 +87,22 @@ func reset_run(generation_floor: int = 1, generation_seed: int = 0) -> void:
 	_generate_layout()
 
 
+func reset_encounter_test(generation_floor: int, generation_seed: int, preferred_room_kind: String, forced_profiles: Array[Resource], test_options: Dictionary = {}) -> void:
+	floor_number = max(generation_floor, 1)
+	run_seed = max(generation_seed, 0)
+	_generate_layout()
+	var test_room_id := _get_encounter_test_room_id(preferred_room_kind)
+	if test_room_id.is_empty():
+		test_room_id = _get_encounter_test_room_id("combat")
+	if test_room_id.is_empty():
+		return
+	_configure_encounter_test_room(test_room_id, forced_profiles, test_options)
+	current_room_id = test_room_id
+	_reveal_room("start")
+	_reveal_room(current_room_id)
+	room_changed.emit(current_room_id)
+
+
 func set_enabled(value: bool) -> void:
 	enabled = value
 
@@ -124,6 +140,10 @@ func get_full_floor_level_definition(active_room_id: String = "", include_active
 	level.set_meta("visible_bounds", get_full_floor_visible_bounds(active_room_id))
 	if not active_room_id.is_empty():
 		level.set_meta("active_room_bounds", get_full_floor_room_bounds(active_room_id))
+		if _rooms.has(active_room_id):
+			var active_state: Dictionary = _rooms[active_room_id]
+			if not bool(active_state.get("cleared", false)):
+				level.set_meta("active_room_playable_rects", _get_full_floor_room_playable_rects(active_room_id, room_ids))
 	_apply_visible_floor_destructible_prop_placements(level, active_room_id, room_ids, include_active_contents)
 	if include_active_contents:
 		_apply_active_room_contents_to_full_floor_level(level, active_room_id, room_ids)
@@ -439,6 +459,25 @@ func get_full_floor_room_bounds(room_id: String) -> Rect2:
 	if room_id.is_empty() or not _rooms.has(room_id):
 		return Rect2()
 	return _get_floor_bounds_for_room_ids([room_id], _get_full_floor_room_ids())
+
+
+func _get_full_floor_room_playable_rects(room_id: String, room_ids: Array[String]) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if room_id.is_empty() or not _rooms.has(room_id) or room_ids.is_empty():
+		return rects
+	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(room_ids)
+	if floor_cells.is_empty():
+		return rects
+	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(room_ids)
+	var state: Dictionary = _rooms[room_id]
+	var piece: RoomPieceDefinition = state["piece"] as RoomPieceDefinition
+	if piece == null:
+		return rects
+	var offset: Vector2 = _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
+	for local_cell: Vector2i in piece.footprint_cells:
+		var cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(piece.footprint_cells, local_cell)
+		rects.append(_translated_rect(cell_rect, offset))
+	return rects
 
 
 func get_full_floor_visible_bounds(active_room_id: String = "") -> Rect2:
@@ -814,12 +853,19 @@ func _apply_active_room_contents_to_full_floor_level(level: LevelDefinition, act
 	level.spawner_health = int(active_level.spawner_health)
 	level.spawner_radius = float(active_level.spawner_radius)
 	level.spawn_interval = float(active_level.spawn_interval)
+	level.initial_spawn_batch_multiplier_override = int(active_level.initial_spawn_batch_multiplier_override)
 	level.spawner_placements = _copy_offset_resource_placements(active_level.spawner_placements, offset)
+	level.encounter_table = active_level.encounter_table.duplicate()
+	level.encounter_budget = int(active_level.encounter_budget)
+	level.encounter_min_spawn_distance = float(active_level.encounter_min_spawn_distance)
 	level.destructible_prop_placements.append_array(_copy_offset_resource_placements(active_level.destructible_prop_placements, offset, active_room_id))
 	level.boss_profile = active_level.boss_profile
 	level.generate_agent_boss = bool(active_level.generate_agent_boss)
 	level.randomize_agent_boss_each_load = bool(active_level.randomize_agent_boss_each_load)
 	level.boss_spawn_position = active_level.boss_spawn_position + offset
+	level.set_meta("room_kind", _get_room_kind(active_room_id))
+	if active_level.has_meta("forced_opening_encounter_profiles"):
+		level.set_meta("forced_opening_encounter_profiles", active_level.get_meta("forced_opening_encounter_profiles"))
 
 
 func _copy_offset_resource_placements(source_placements: Array, offset: Vector2, source_room_id: String = "") -> Array[Resource]:
@@ -960,6 +1006,91 @@ func _generate_layout() -> void:
 	_reveal_room(current_room_id)
 	dungeon_generated.emit(_rooms.size())
 	room_changed.emit(current_room_id)
+
+
+func _get_encounter_test_room_id(preferred_room_kind: String) -> String:
+	var best_room_id := ""
+	var best_cell_count := -1
+	for room_id in _room_order:
+		var state: Dictionary = _rooms[room_id]
+		var piece: RoomPieceDefinition = state.get("piece", null) as RoomPieceDefinition
+		if piece == null or String(piece.room_kind) != preferred_room_kind:
+			continue
+		var cell_count: int = piece.footprint_cells.size()
+		if cell_count > best_cell_count:
+			best_cell_count = cell_count
+			best_room_id = room_id
+	return best_room_id
+
+
+func _configure_encounter_test_room(room_id: String, forced_profiles: Array[Resource], test_options: Dictionary = {}) -> void:
+	if room_id.is_empty() or not _rooms.has(room_id):
+		return
+	var state: Dictionary = _rooms[room_id]
+	var level: LevelDefinition = state.get("level_definition", null) as LevelDefinition
+	if level == null:
+		return
+	var profiles: Array[Resource] = []
+	for profile in forced_profiles:
+		if profile != null:
+			profiles.append(profile)
+	if profiles.is_empty():
+		return
+	level.encounter_budget = profiles.size()
+	level.encounter_min_spawn_distance = max(float(level.encounter_min_spawn_distance), 170.0)
+	level.max_active_enemies = max(profiles.size() + max(int(test_options.get("extra_enemy_slots", 1)), 0), profiles.size())
+	level.initial_spawn_batch_multiplier_override = 0 if bool(test_options.get("disable_initial_spawns", true)) else -1
+	var spawner_count: int = max(int(test_options.get("spawner_count", 0)), 0)
+	level.spawner_placements = _build_encounter_test_spawner_placements(level, spawner_count, bool(test_options.get("passive_spawners", true)))
+	var empty_positions: Array[Vector2] = []
+	level.spawner_positions = empty_positions
+	level.set_meta("forced_opening_encounter_profiles", profiles)
+	state["level_definition"] = level
+	_rooms[room_id] = state
+
+
+func _build_encounter_test_spawner_placements(level: LevelDefinition, spawner_count: int, passive_spawners: bool) -> Array[Resource]:
+	var placements: Array[Resource] = []
+	if level == null or spawner_count <= 0:
+		return placements
+	var source_positions: Array[Vector2] = []
+	for source_placement in level.spawner_placements:
+		if source_placement == null:
+			continue
+		var source_position = source_placement.get("position")
+		if source_position is Vector2:
+			source_positions.append(source_position)
+	for index in range(spawner_count):
+		var placement = SPAWNER_PLACEMENT_SCRIPT.new()
+		placement.position = source_positions[index % source_positions.size()] if not source_positions.is_empty() else _get_encounter_test_spawner_fallback_position(level, index, spawner_count)
+		placement.profile = _make_encounter_test_spawner_profile(passive_spawners)
+		placement.warmup_seconds = 999.0 if passive_spawners else 2.8 + float(index) * 0.8
+		placements.append(placement)
+	return placements
+
+
+func _make_encounter_test_spawner_profile(passive_spawner: bool) -> Resource:
+	var profile: Resource = BASIC_SPAWNER.duplicate(true)
+	if passive_spawner:
+		profile.set("max_health", max(int(profile.get("max_health")), 28))
+		profile.set("spawn_interval", 999.0)
+		profile.set("spawn_batch_count", 1)
+		profile.set("shoots_projectiles", false)
+		profile.set("special_attack_kind", "")
+		profile.set("move_speed", 0.0)
+		profile.set("strafe_speed", 0.0)
+		profile.set("knockback_multiplier", min(float(profile.get("knockback_multiplier")), 0.06))
+		profile.set("base_color", Color(0.22, 0.34, 0.4, 1.0))
+		profile.set("core_color", Color(0.28, 0.78, 0.92, 1.0))
+		profile.set("accent_color", Color(0.62, 1.0, 0.72, 1.0))
+	return profile
+
+
+func _get_encounter_test_spawner_fallback_position(level: LevelDefinition, index: int, count: int) -> Vector2:
+	var bounds: Rect2 = level.arena_bounds
+	var radius: float = min(bounds.size.x, bounds.size.y) * 0.28
+	var angle: float = -PI * 0.18 + TAU * float(index) / float(max(count, 1))
+	return bounds.get_center() + Vector2.RIGHT.rotated(angle) * radius
 
 
 func _compute_floor_generation_seed() -> int:

@@ -47,7 +47,7 @@ The orchestrator receives those signals and decides which manager command runs n
 
 The game starts in `LEVEL_SELECT`. `GameOrchestrator` owns the selected level index, displays levels in increasing difficulty, and starts the selected `LevelDefinition` only after player confirmation.
 
-Level definitions configure arena bounds, arena shape, floor number, spawner positions, spawner health, spawn interval, and max active enemies. `ArenaView`, `PlayerManager`, and `SpawnerManager` consume those values through orchestrator commands.
+Level definitions configure arena bounds, arena shape, floor number, spawner positions, opening non-spawner encounter tables, spawner health, spawn interval, and max active enemies. `ArenaView`, `PlayerManager`, `EnemyManager`, and `SpawnerManager` consume those values through orchestrator commands.
 
 A level is won only when `SpawnerManager.get_spawner_count()` and `EnemyManager.get_enemy_count()` both reach zero. The win state disables gameplay managers and shows a return-to-level-select prompt.
 
@@ -154,6 +154,7 @@ Opening suppression:
 1. `SpawnerManager.reset_run(...)` creates room spawners and marks an opening wave as pending.
 2. When `GameOrchestrator` enables the room, `SpawnerManager` emits initial `spawn_requested` events for each spawner, respecting `max_active_enemies`.
 3. `GameOrchestrator` routes those requests to `EnemyManager.spawn_enemy(...)`, so spawners never directly create enemies.
+4. Generated combat and challenge rooms can also carry an `EncounterEntry` table. `GameOrchestrator` rolls that table from the run seed, floor number, and room id, then spawns one-time non-spawner enemies through `EnemyManager`.
 
 Player down/restart:
 

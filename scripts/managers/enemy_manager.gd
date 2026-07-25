@@ -6,6 +6,7 @@ signal enemy_health_changed(enemy, old_value: int, new_value: int)
 signal enemy_count_changed(count: int)
 signal player_contact_requested(enemy, player, damage: int)
 signal hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: Dictionary)
+signal repair_requested(enemy, repair_target, amount: int)
 
 @export var enemy_scene: PackedScene = preload("res://scenes/entities/enemy_entity.tscn")
 @export var default_enemy_profile: Resource = preload("res://resources/enemies/basic_enemy.tres")
@@ -21,6 +22,7 @@ var enabled: bool = false
 var _enemy_layer: Node = null
 var _player_provider: Callable
 var _player_ref_provider: Callable
+var _spawner_repair_targets_provider: Callable
 var _enemies: Array = []
 var _contact_timers: Dictionary = {}
 var _arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
@@ -36,6 +38,7 @@ func initialize(context: Dictionary) -> void:
 	_enemy_layer = context.get("enemy_layer", null)
 	_player_provider = context.get("player_position_provider", Callable())
 	_player_ref_provider = context.get("player_ref_provider", Callable())
+	_spawner_repair_targets_provider = context.get("spawner_repair_targets_provider", Callable())
 
 
 func reset_run() -> void:
@@ -107,6 +110,7 @@ func _physics_process(delta: float) -> void:
 		return
 	var player_position := _get_player_position()
 	var player = _get_player_ref()
+	_assign_repair_targets()
 	for enemy in _enemies.duplicate():
 		if not is_instance_valid(enemy):
 			_enemies.erase(enemy)
@@ -147,6 +151,8 @@ func spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary = {})
 	enemy.health_changed.connect(_on_enemy_health_changed)
 	enemy.health_depleted.connect(_on_enemy_health_depleted)
 	enemy.shot_ready.connect(_on_enemy_shot_ready)
+	if enemy.has_signal("repair_ready"):
+		enemy.repair_ready.connect(_on_enemy_repair_ready)
 	_enemies.append(enemy)
 	if bool(spawn_flags.get("inactive", false)):
 		enemy.velocity = Vector2.ZERO
@@ -237,6 +243,108 @@ func _on_enemy_shot_ready(_enemy, origin: Vector2, direction: Vector2, shot_conf
 	if not enabled or direction.length_squared() <= 0.001:
 		return
 	hostile_shot_requested.emit(origin, direction, shot_config)
+
+
+func _on_enemy_repair_ready(enemy, repair_target, amount: int) -> void:
+	var repair_drone := enemy as EnemyEntity
+	var target := repair_target as Node
+	if not enabled or repair_drone == null or target == null:
+		return
+	if not _enemies.has(repair_drone):
+		return
+	if not is_instance_valid(repair_drone) or not is_instance_valid(target):
+		return
+	if amount <= 0 or not target.has_method("apply_healing"):
+		return
+	if target.is_in_group("enemies"):
+		var enemy_target := target as EnemyEntity
+		if enemy_target == null or not _enemies.has(enemy_target):
+			return
+		enemy_target.apply_healing(amount)
+	elif target.is_in_group("spawners"):
+		repair_requested.emit(repair_drone, target, amount)
+
+
+func _assign_repair_targets() -> void:
+	for enemy in _enemies:
+		var repair_drone := enemy as EnemyEntity
+		if repair_drone == null or not is_instance_valid(repair_drone):
+			continue
+		if repair_drone.behavior_kind != "repair_drone" or not repair_drone.has_method("set_repair_target"):
+			continue
+		repair_drone.set_repair_target(_get_repair_target_for(repair_drone))
+
+
+func _get_repair_target_for(repair_drone: EnemyEntity) -> Node:
+	if repair_drone == null or not is_instance_valid(repair_drone):
+		return null
+	var repair_radius: float = max(float(repair_drone.repair_radius), 1.0)
+	var search_radius: float = max(repair_radius * 2.2, float(repair_drone.preferred_distance))
+	var health_ratio_threshold: float = clamp(float(repair_drone.repair_target_health_ratio), 0.0, 1.0)
+	var spawner_target := _get_spawner_repair_target_for(repair_drone, search_radius, health_ratio_threshold)
+	if spawner_target != null:
+		return spawner_target
+	return _get_large_enemy_repair_target_for(repair_drone, search_radius, health_ratio_threshold)
+
+
+func _get_spawner_repair_target_for(repair_drone: EnemyEntity, search_radius: float, health_ratio_threshold: float) -> Node:
+	if not _spawner_repair_targets_provider.is_valid():
+		return null
+	var candidates: Array = _spawner_repair_targets_provider.call(repair_drone.global_position, search_radius, health_ratio_threshold)
+	var best_target: Node = null
+	var best_score := INF
+	for candidate in candidates:
+		var target := candidate as Node2D
+		if target == null or not is_instance_valid(target) or not target.has_method("apply_healing"):
+			continue
+		var score: float = _get_repair_target_score(repair_drone, target)
+		if score < best_score:
+			best_score = score
+			best_target = target
+	return best_target
+
+
+func _get_large_enemy_repair_target_for(repair_drone: EnemyEntity, search_radius: float, health_ratio_threshold: float) -> EnemyEntity:
+	var search_radius_squared: float = search_radius * search_radius
+	var best_target: EnemyEntity = null
+	var best_score := INF
+	for candidate in _enemies:
+		var candidate_enemy := candidate as EnemyEntity
+		if candidate_enemy == null or not is_instance_valid(candidate_enemy) or candidate_enemy == repair_drone:
+			continue
+		if not _is_priority_repair_enemy(candidate_enemy):
+			continue
+		if not candidate_enemy.has_method("apply_healing"):
+			continue
+		if candidate_enemy.health <= 0 or candidate_enemy.health >= candidate_enemy.max_health:
+			continue
+		var distance_squared: float = repair_drone.global_position.distance_squared_to(candidate_enemy.global_position)
+		if distance_squared > search_radius_squared:
+			continue
+		var health_ratio: float = float(candidate_enemy.health) / float(max(candidate_enemy.max_health, 1))
+		if health_ratio > health_ratio_threshold:
+			continue
+		var score: float = health_ratio * 10000.0 + sqrt(distance_squared)
+		if score < best_score:
+			best_score = score
+			best_target = candidate_enemy
+	return best_target
+
+
+func _get_repair_target_score(repair_drone: EnemyEntity, target: Node2D) -> float:
+	var target_health: int = int(target.get("health"))
+	var target_max_health: int = max(int(target.get("max_health")), 1)
+	var health_ratio: float = float(target_health) / float(target_max_health)
+	return health_ratio * 10000.0 + sqrt(repair_drone.global_position.distance_squared_to(target.global_position))
+
+
+func _is_priority_repair_enemy(enemy: EnemyEntity) -> bool:
+	if enemy == null or not is_instance_valid(enemy):
+		return false
+	match String(enemy.behavior_kind):
+		"boss", "power_armor", "cyber_soldier":
+			return true
+	return float(enemy.body_radius) >= 24.0 or int(enemy.max_health) >= 8
 
 
 func _get_effective_contact_range(enemy, player) -> float:
@@ -382,7 +490,17 @@ func _constrain_spawn_position(position: Vector2, clearance: float) -> Vector2:
 
 func _get_playable_rects(level_definition) -> Array[Rect2]:
 	var rects: Array[Rect2] = []
-	if level_definition == null or not level_definition.has_meta("footprint_cells"):
+	if level_definition == null:
+		return rects
+	if level_definition.has_meta("active_room_playable_rects"):
+		var active_rects_value: Variant = level_definition.get_meta("active_room_playable_rects")
+		if active_rects_value is Array:
+			for active_rect in active_rects_value:
+				if active_rect is Rect2:
+					rects.append(active_rect)
+			if not rects.is_empty():
+				return rects
+	if not level_definition.has_meta("footprint_cells"):
 		return rects
 	rects.append_array(ArenaGeometry.get_footprint_cell_rects(level_definition.arena_bounds, level_definition.get_meta("footprint_cells")))
 	return rects

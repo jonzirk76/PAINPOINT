@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="EnemyProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/enemy_profile.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+behavior_kind = "cyber_soldier"
+max_health = 5
+speed = 104.0
+contact_damage = 0
+contact_radius = 0.0
+contact_cooldown = 0.85
+score_value = 48
+body_radius = 18.5
+knockback_multiplier = 0.76
+body_color = Color(0.42, 0.04, 0.08, 1)
+accent_color = Color(1, 0.2, 0.18, 1)
+preferred_distance = 270.0
+distance_band = 64.0
+strafe_speed = 92.0
+shot_cooldown = 1.02
+projectile_speed = 285.0
+projectile_damage = 1
+projectile_radius = 5.6
+special_cooldown = 4.8
+special_telegraph_seconds = 0.42
+special_movement_kind = "teleport"

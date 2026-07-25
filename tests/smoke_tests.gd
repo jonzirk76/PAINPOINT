@@ -73,6 +73,7 @@ const SCRIPT_PATHS := [
 	"res://scripts/resources/level_definition.gd",
 	"res://scripts/resources/spawner_profile.gd",
 	"res://scripts/resources/spawner_placement.gd",
+	"res://scripts/resources/encounter_entry.gd",
 	"res://scripts/resources/destructible_prop_placement.gd",
 	"res://scripts/resources/room_piece_definition.gd",
 	"res://scripts/resources/room_interior_generator.gd",
@@ -97,7 +98,13 @@ const ENEMY_PROFILE_PATHS := [
 	"res://resources/enemies/tank_enemy.tres",
 	"res://resources/enemies/fast_enemy.tres",
 	"res://resources/enemies/shooter_enemy.tres",
-	"res://resources/enemies/first_boss_enemy.tres"
+	"res://resources/enemies/first_boss_enemy.tres",
+	"res://resources/enemies/repair_drone.tres",
+	"res://resources/enemies/shield_drone.tres",
+	"res://resources/enemies/power_armor_rocket.tres",
+	"res://resources/enemies/power_armor_grenade.tres",
+	"res://resources/enemies/cyber_soldier.tres",
+	"res://resources/enemies/cyber_soldier_teleport.tres"
 ]
 
 const SPAWNER_PROFILE_PATHS := [
@@ -238,6 +245,7 @@ func _init() -> void:
 	_test_agent_boss_generation_and_behavior(failures)
 	_test_boss_add_replenishment(failures)
 	_test_boss_test_level_select(failures)
+	_test_generated_encounter_test_level_select(failures)
 	_test_orchestrator_dungeon_start_and_boss(failures)
 	_test_boss_exit_portal_preview_and_safe_position(failures)
 	_test_orchestrator_main_loop_floor_progression(failures)
@@ -2894,7 +2902,7 @@ func _test_room_interior_generator_determinism_and_budget(failures: Array[String
 		failures.append("Generated combat rooms should respect the v1 spawner count bounds.")
 	if floor_one.destructible_prop_placements.size() < 2:
 		failures.append("Generated combat rooms should include destructible crate/barrel cover.")
-	if int(floor_one.max_active_enemies) != clamp(18 + 2 * 5 + floor_one.get_spawner_count() * 2 + 1 * 3, 24, 60):
+	if int(floor_one.max_active_enemies) != clamp(18 + 2 * 5 + floor_one.get_spawner_count() * 2 + 1 * 3 + int(floor_one.encounter_budget), 24, 66):
 		failures.append("Generated combat rooms should compute floor-scaled max active enemies.")
 	if not _generated_room_has_non_basic_spawner(floor_one):
 		failures.append("Floor-one generated combat rooms should not collapse into only basic generals.")
@@ -2918,7 +2926,7 @@ func _test_room_interior_generator_determinism_and_budget(failures: Array[String
 	var challenge = generator.generate(challenge_piece, "challenge_1", 5, 5555, {"north": "start", "west": "path_1"})
 	if challenge.get_spawner_count() < 5 or challenge.get_spawner_count() > 7:
 		failures.append("Generated challenge rooms should respect the v1 spawner count bounds.")
-	if int(challenge.max_active_enemies) != clamp(18 + 3 * 5 + challenge.get_spawner_count() * 2 + 4 + 5 * 3, 24, 60):
+	if int(challenge.max_active_enemies) != clamp(18 + 3 * 5 + challenge.get_spawner_count() * 2 + 4 + 5 * 3 + int(challenge.encounter_budget), 24, 66):
 		failures.append("Generated challenge rooms should compute floor-scaled max active enemies.")
 	var boss = generator.generate(boss_piece, "boss", 4, 5555, {"west": "path_3"})
 	var repeated_boss = generator.generate(boss_piece, "boss", 4, 5555, {"west": "path_3"})
@@ -4397,6 +4405,9 @@ func _test_boss_test_level_select(failures: Array[String]) -> void:
 		main._enter_level_select()
 	if not main.level_list_label.text.contains("Cat Behavior Test") or not main.level_list_label.text.contains("Peaceful Cat Test"):
 		failures.append("Main level select should keep cat test rooms directly visible.")
+	for generated_test_name in ["Generated Drone Test", "Generated Armor Test", "Generated Cyber Test"]:
+		if not main.level_list_label.text.contains(generated_test_name):
+			failures.append("Main level select should expose generated encounter test room: %s" % generated_test_name)
 	if not main.level_list_label.text.contains("Archive"):
 		failures.append("Main level select should expose archived older arenas through an Archive option.")
 	if main.level_list_label.text.contains("Boss Test Chamber"):
@@ -4425,6 +4436,33 @@ func _test_boss_test_level_select(failures: Array[String]) -> void:
 				failures.append("Boss test chamber should spawn a generated agent boss.")
 	if not boss_found:
 		failures.append("Boss test chamber should spawn a boss enemy.")
+	main.free()
+
+
+func _test_generated_encounter_test_level_select(failures: Array[String]) -> void:
+	var scene = load("res://scenes/main.tscn")
+	if scene == null:
+		failures.append("Main scene failed to load for generated encounter test level-select test.")
+		return
+	var main = scene.instantiate()
+	root.add_child(main)
+	if main.dungeon_manager == null:
+		_prime_main_for_direct_test_calls(main)
+		main._connect_manager_signals()
+		main._initialize_managers()
+		main._enter_level_select()
+	main._start_generated_encounter_test(0)
+	if main._status != "DUNGEON" or not main._is_dungeon_run or main._is_main_loop_run:
+		failures.append("Generated encounter test should start as a generated dungeon room.")
+	if main._active_generated_encounter_test_index != 0:
+		failures.append("Generated encounter test should track the active test index for restart.")
+	if main.dungeon_manager.get_current_room_kind() != "combat":
+		failures.append("Generated drone test should start in a generated combat room.")
+	var current_level: LevelDefinition = main._current_level as LevelDefinition
+	if current_level == null:
+		failures.append("Generated encounter test did not load a current full-floor level.")
+	elif not current_level.has_meta("forced_opening_encounter_profiles"):
+		failures.append("Generated encounter test should force its opening enemy profiles on the generated room.")
 	main.free()
 
 

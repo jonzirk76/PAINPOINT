@@ -3,12 +3,19 @@ class_name RoomInteriorGenerator
 
 const LEVEL_DEFINITION_SCRIPT := preload("res://scripts/resources/level_definition.gd")
 const SPAWNER_PLACEMENT_SCRIPT := preload("res://scripts/resources/spawner_placement.gd")
+const ENCOUNTER_ENTRY_SCRIPT := preload("res://scripts/resources/encounter_entry.gd")
 const DESTRUCTIBLE_PROP_PLACEMENT_SCRIPT := preload("res://scripts/resources/destructible_prop_placement.gd")
 const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_builder.gd")
 const BASIC_SPAWNER := preload("res://resources/spawners/basic_spawner.tres")
 const FAST_SPAWNER := preload("res://resources/spawners/fast_spawner.tres")
 const SHOOTER_SPAWNER := preload("res://resources/spawners/shooter_spawner.tres")
 const TANK_SPAWNER := preload("res://resources/spawners/tank_spawner.tres")
+const REPAIR_DRONE := preload("res://resources/enemies/repair_drone.tres")
+const SHIELD_DRONE := preload("res://resources/enemies/shield_drone.tres")
+const POWER_ARMOR_ROCKET := preload("res://resources/enemies/power_armor_rocket.tres")
+const POWER_ARMOR_GRENADE := preload("res://resources/enemies/power_armor_grenade.tres")
+const CYBER_SOLDIER := preload("res://resources/enemies/cyber_soldier.tres")
+const CYBER_SOLDIER_TELEPORT := preload("res://resources/enemies/cyber_soldier_teleport.tres")
 
 const GRID_SIZE: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
 const MAX_ATTEMPTS := 40
@@ -63,6 +70,8 @@ func generate(piece, room_id: String, floor_number: int, floor_seed: int, connec
 		level.spawner_placements = generated_spawners
 		if level.spawner_placements.size() <= 0:
 			continue
+		level.encounter_table = _build_opening_encounter_table(room_kind, floor_number)
+		level.encounter_budget = _get_opening_encounter_budget(level, room_kind, floor_number)
 		level.destructible_prop_placements = _build_destructible_prop_placements(level, connections, room_kind, floor_number, rng)
 		level.max_active_enemies = _get_room_active_enemy_budget(level, room_kind, floor_number)
 		var result: Dictionary = validate_level(level, connections, room_kind)
@@ -163,6 +172,7 @@ func _make_base_level(piece, room_id: String, floor_number: int, connection_edge
 	level.destructible_prop_placements = empty_props
 	level.set_meta("footprint_cells", piece.footprint_cells.duplicate())
 	level.set_meta("connection_edges", connection_edges.duplicate())
+	level.set_meta("room_kind", String(piece.room_kind))
 	_apply_wall_tiles(level, shell_wall_tiles)
 	_apply_void_rects(level, empty_voids)
 	return level
@@ -840,7 +850,47 @@ func _get_room_active_enemy_budget(level, room_kind: String, floor_number: int) 
 		base_budget += 8
 	elif room_kind == "challenge":
 		base_budget += 4
-	return clamp(base_budget + floor_number * 3, 24, 60)
+	return clamp(base_budget + floor_number * 3 + max(int(level.encounter_budget), 0), 24, 66)
+
+
+func _build_opening_encounter_table(room_kind: String, floor_number: int) -> Array[Resource]:
+	var entries: Array[Resource] = []
+	if room_kind != "combat" and room_kind != "challenge":
+		return entries
+	entries.append(_make_encounter_entry(REPAIR_DRONE, 1, 0, 4, 2, 1, 1, ["combat", "challenge"]))
+	entries.append(_make_encounter_entry(SHIELD_DRONE, 1, 0, 5, 2, 1, 2, ["combat", "challenge"]))
+	entries.append(_make_encounter_entry(POWER_ARMOR_ROCKET, 2, 0, 2 + int(floor_number / 3), 4, 1, 1, ["combat", "challenge"]))
+	entries.append(_make_encounter_entry(POWER_ARMOR_GRENADE, 3, 0, 2 + int(floor_number / 4), 4, 1, 1, ["combat", "challenge"]))
+	entries.append(_make_encounter_entry(CYBER_SOLDIER, 3, 0, 2 + int(floor_number / 3), 3, 1, 1, ["combat", "challenge"]))
+	entries.append(_make_encounter_entry(CYBER_SOLDIER_TELEPORT, 5, 0, 1 + int(floor_number / 5), 4, 1, 1, ["combat", "challenge"]))
+	return entries
+
+
+func _make_encounter_entry(enemy_profile: Resource, min_floor: int, max_floor: int, weight: int, budget_cost: int, min_count: int, max_count: int, room_kinds: Array) -> Resource:
+	var entry = ENCOUNTER_ENTRY_SCRIPT.new()
+	entry.enemy_profile = enemy_profile
+	entry.min_floor = min_floor
+	entry.max_floor = max_floor
+	entry.weight = max(weight, 1)
+	entry.budget_cost = max(budget_cost, 1)
+	entry.min_count = max(min_count, 1)
+	entry.max_count = max(max_count, entry.min_count)
+	entry.room_kinds = PackedStringArray(room_kinds)
+	return entry
+
+
+func _get_opening_encounter_budget(level, room_kind: String, floor_number: int) -> int:
+	if room_kind != "combat" and room_kind != "challenge":
+		return 0
+	var cell_count: int = _get_level_cell_count(level)
+	var base_budget: int = 2 + int(floor(float(max(floor_number - 1, 0)) / 2.0))
+	if cell_count >= 3:
+		base_budget += 1
+	if cell_count >= 5:
+		base_budget += 1
+	if room_kind == "challenge":
+		base_budget += 2
+	return clamp(base_budget, 2, 8)
 
 
 func _get_room_spawn_position(level) -> Vector2:
@@ -1022,6 +1072,8 @@ func _apply_fallback_interior(level, room_kind: String, floor_number: int, rng: 
 		profiles.pop_back()
 	var fallback_placements: Array[Resource] = []
 	level.spawner_placements = fallback_placements
+	level.encounter_table = _build_opening_encounter_table(room_kind, floor_number)
+	level.encounter_budget = _get_opening_encounter_budget(level, room_kind, floor_number)
 	var points := _build_fallback_spawner_points(bounds, 7)
 	var selected_points := _select_fallback_spawner_points(level, points, min_count)
 	if selected_points.size() < min_count:

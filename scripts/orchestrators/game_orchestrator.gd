@@ -12,6 +12,54 @@ const LEVELS := [
 	preload("res://resources/levels/cat_peaceful_test.tres"),
 	preload("res://resources/levels/boss_test_chamber.tres")
 ]
+const ENCOUNTER_TEST_REPAIR_DRONE := preload("res://resources/enemies/repair_drone.tres")
+const ENCOUNTER_TEST_SHIELD_DRONE := preload("res://resources/enemies/shield_drone.tres")
+const ENCOUNTER_TEST_POWER_ARMOR_ROCKET := preload("res://resources/enemies/power_armor_rocket.tres")
+const ENCOUNTER_TEST_POWER_ARMOR_GRENADE := preload("res://resources/enemies/power_armor_grenade.tres")
+const ENCOUNTER_TEST_CYBER_SOLDIER := preload("res://resources/enemies/cyber_soldier.tres")
+const ENCOUNTER_TEST_CYBER_SOLDIER_TELEPORT := preload("res://resources/enemies/cyber_soldier_teleport.tres")
+const GENERATED_ENCOUNTER_TESTS := [
+	{
+		"label": "Generated Drone Test",
+		"summary": "experimental repair + shield",
+		"floor": 1,
+		"seed": 41101,
+		"room_kind": "combat",
+		"profiles": [ENCOUNTER_TEST_REPAIR_DRONE, ENCOUNTER_TEST_SHIELD_DRONE, ENCOUNTER_TEST_SHIELD_DRONE],
+		"options": {
+			"spawner_count": 2,
+			"disable_initial_spawns": true,
+			"passive_spawners": true,
+			"extra_enemy_slots": 1
+		}
+	},
+	{
+		"label": "Generated Armor Test",
+		"summary": "experimental power armor",
+		"floor": 1,
+		"seed": 43303,
+		"room_kind": "combat",
+		"profiles": [ENCOUNTER_TEST_POWER_ARMOR_ROCKET, ENCOUNTER_TEST_POWER_ARMOR_GRENADE, ENCOUNTER_TEST_REPAIR_DRONE],
+		"options": {
+			"spawner_count": 0,
+			"disable_initial_spawns": true,
+			"extra_enemy_slots": 1
+		}
+	},
+	{
+		"label": "Generated Cyber Test",
+		"summary": "experimental cyber soldiers",
+		"floor": 1,
+		"seed": 45505,
+		"room_kind": "challenge",
+		"profiles": [ENCOUNTER_TEST_CYBER_SOLDIER, ENCOUNTER_TEST_CYBER_SOLDIER_TELEPORT, ENCOUNTER_TEST_SHIELD_DRONE],
+		"options": {
+			"spawner_count": 0,
+			"disable_initial_spawns": true,
+			"extra_enemy_slots": 1
+		}
+	}
+]
 const CAT_DEBUG_LEVEL_IDS := ["cat_behavior_test", "cat_peaceful_test"]
 const FLOOR_EXIT_PORTAL_SCENE := preload("res://scenes/entities/floor_exit_portal_entity.tscn")
 const AGENT_BOSS_GENERATOR := preload("res://scripts/resources/agent_boss_generator.gd")
@@ -119,6 +167,7 @@ var _level_select_option_index: int = 0
 var _current_level = null
 var _is_dungeon_run: bool = false
 var _is_main_loop_run: bool = false
+var _active_generated_encounter_test_index: int = -1
 var _is_cleared_floor_map_active: bool = false
 var _is_loading_room: bool = false
 var _loading_transition_pending: bool = false
@@ -346,6 +395,7 @@ func _connect_manager_signals() -> void:
 	_connect_once(enemy_manager, &"enemy_count_changed", _on_enemy_count_changed)
 	_connect_once(enemy_manager, &"player_contact_requested", _on_player_contact_requested)
 	_connect_once(enemy_manager, &"hostile_shot_requested", _on_hostile_shot_requested)
+	_connect_once(enemy_manager, &"repair_requested", _on_enemy_repair_requested)
 
 	_connect_once(spawner_manager, &"spawn_requested", _on_spawn_requested)
 	_connect_once(spawner_manager, &"spawner_destroyed", _on_spawner_destroyed)
@@ -384,7 +434,8 @@ func _initialize_managers() -> void:
 	enemy_manager.initialize({
 		"enemy_layer": depth_sort_layer,
 		"player_position_provider": Callable(player_manager, "get_player_position"),
-		"player_ref_provider": Callable(self, "_get_player_ref")
+		"player_ref_provider": Callable(self, "_get_player_ref"),
+		"spawner_repair_targets_provider": Callable(spawner_manager, "get_repairable_spawners")
 	})
 	spawner_manager.initialize({
 		"spawner_layer": depth_sort_layer,
@@ -1050,9 +1101,14 @@ func _start_selected_level() -> void:
 	elif _selected_level_index == LEVELS.size():
 		await _show_loading_before_work("LOADING FLOOR", "Generating floor layout", 0.05)
 		_start_dungeon_run()
-	else:
+	elif _selected_level_index == LEVELS.size() + 1:
 		await _show_loading_before_work("LOADING FLOOR", "Generating floor layout", 0.05)
 		_start_main_loop_run()
+	else:
+		var test_index: int = _selected_level_index - (LEVELS.size() + 2)
+		if test_index >= 0 and test_index < GENERATED_ENCOUNTER_TESTS.size():
+			await _show_loading_before_work("LOADING TEST ROOM", "Generating floor layout", 0.05)
+			_start_generated_encounter_test(test_index)
 	_loading_transition_pending = false
 
 
@@ -1061,6 +1117,7 @@ func _start_level(level_definition) -> void:
 	_begin_loading_screen("LOADING", "Preparing arena", 0.05)
 	_is_dungeon_run = false
 	_is_main_loop_run = false
+	_active_generated_encounter_test_index = -1
 	_set_room_entry_transition_active(false)
 	_set_cleared_floor_map_active(false)
 	_current_level = level_definition
@@ -1125,6 +1182,7 @@ func _start_level(level_definition) -> void:
 	player_manager.reset_run()
 	_set_all_enabled(true)
 	_set_loading_progress(0.9, "Starting encounter")
+	_spawn_opening_encounter(level_definition)
 	if level_definition.boss_profile != null:
 		_spawn_level_boss(level_definition)
 	_queue_loading_floor_start_feedback()
@@ -1139,6 +1197,7 @@ func _start_dungeon_run() -> void:
 	_begin_loading_screen("LOADING FLOOR", "Generating floor layout", 0.05)
 	_is_dungeon_run = true
 	_is_main_loop_run = false
+	_active_generated_encounter_test_index = -1
 	_set_room_entry_transition_active(false)
 	_set_cleared_floor_map_active(false)
 	_score = 0
@@ -1199,11 +1258,88 @@ func _start_dungeon_run() -> void:
 	_update_hud()
 
 
+func _start_generated_encounter_test(test_index: int) -> void:
+	if test_index < 0 or test_index >= GENERATED_ENCOUNTER_TESTS.size():
+		return
+	var test_config: Dictionary = GENERATED_ENCOUNTER_TESTS[test_index]
+	_set_tree_paused(false)
+	_begin_loading_screen("LOADING TEST ROOM", "Generating floor layout", 0.05)
+	_is_dungeon_run = true
+	_is_main_loop_run = false
+	_active_generated_encounter_test_index = test_index
+	_set_room_entry_transition_active(false)
+	_set_cleared_floor_map_active(false)
+	_score = 0
+	_main_loop_floor = max(int(test_config.get("floor", 1)), 1)
+	_run_seed = max(int(test_config.get("seed", 0)), 1)
+	_paused_previous_status = ""
+	_reset_run_tally()
+	_status = "STARTING"
+	_last_health = 0
+	_last_max_health = 0
+	_last_invulnerability_remaining = 0.0
+	_last_invulnerability_duration = 0.0
+	_reset_parry_hud_state()
+	_last_super_meter = 0.0
+	_last_super_meter_max = player_manager.get_super_meter_max()
+	_last_super_is_charging = false
+	_last_super_charge_ratio = 0.0
+	_reset_overdrive_hud_state()
+	_ammo_refill_flash_remaining = 0.0
+	_ammo_refill_perfect_flash_remaining = 0.0
+	_reset_ammo_segment_refill_flash()
+	_super_meter_flash_remaining = 0.0
+	_super_meter_ready_flash_remaining = 0.0
+	_stop_perfect_parry_slowmo()
+	_clear_floor_exit_portal()
+	_attribute_modifiers = {}
+	_permanent_stats = []
+	_rewarded_room_ids.clear()
+	_reward_prompt_text = ""
+	if level_select_panel != null:
+		level_select_panel.visible = false
+	if game_over_panel != null:
+		game_over_panel.visible = false
+	if win_panel != null:
+		win_panel.visible = false
+	_set_cat_debug_panel_visible(false)
+	_set_character_hud_visible(true)
+	_set_loading_progress(LOADING_PROGRESS_FLOOR_LAYOUT_START, "Generating floor layout")
+	var raw_profiles: Array = test_config.get("profiles", [])
+	var profiles: Array[Resource] = []
+	for profile in raw_profiles:
+		var enemy_profile: Resource = profile as Resource
+		if enemy_profile != null:
+			profiles.append(enemy_profile)
+	var test_options: Dictionary = test_config.get("options", {})
+	dungeon_manager.reset_encounter_test(_main_loop_floor, _run_seed, String(test_config.get("room_kind", "combat")), profiles, test_options)
+	_set_loading_progress(LOADING_PROGRESS_FLOOR_LAYOUT_DONE, "Floor layout ready")
+	projectile_manager.reset_run()
+	enemy_manager.reset_run()
+	_clear_boss_health_hud()
+	spawner_manager.clear_spawners()
+	destructible_manager.clear_destructibles()
+	item_manager.clear_pickups()
+	item_manager.clear_floor_persistent_pickups()
+	upgrade_manager.reset_run()
+	combat_manager.reset_run()
+	effects_manager.reset_run()
+	room_manager.reset_run()
+	fauna_manager.reset_run()
+	input_manager.reset_run()
+	_status = "DUNGEON"
+	_load_dungeon_current_room("", true)
+	_queue_loading_floor_start_feedback()
+	_on_upgrade_changed(upgrade_manager.get_modifiers(), upgrade_manager.get_active_effects())
+	_update_hud()
+
+
 func _start_main_loop_run() -> void:
 	_set_tree_paused(false)
 	_begin_loading_screen("LOADING FLOOR", "Generating floor layout", 0.05)
 	_is_dungeon_run = true
 	_is_main_loop_run = true
+	_active_generated_encounter_test_index = -1
 	_set_room_entry_transition_active(false)
 	_set_cleared_floor_map_active(false)
 	_score = 0
@@ -1269,6 +1405,7 @@ func _advance_main_loop_floor() -> void:
 	await _show_loading_before_work("LOADING FLOOR", "Generating floor layout", 0.05)
 	_begin_loading_screen("LOADING FLOOR", "Generating floor layout", 0.05)
 	_main_loop_floor += 1
+	_active_generated_encounter_test_index = -1
 	_status = "STARTING"
 	_set_room_entry_transition_active(false)
 	_set_cleared_floor_map_active(false)
@@ -1302,6 +1439,7 @@ func _enter_level_select() -> void:
 	_current_level = null
 	_is_dungeon_run = false
 	_is_main_loop_run = false
+	_active_generated_encounter_test_index = -1
 	_level_select_page = LEVEL_SELECT_PAGE_MAIN
 	_level_select_option_index = 0
 	_set_room_entry_transition_active(false)
@@ -1700,6 +1838,181 @@ func _on_spawn_requested(spawn_position: Vector2, profile) -> void:
 	enemy_manager.spawn_enemy(profile, spawn_position, {"birth": true})
 
 
+func _on_enemy_repair_requested(_enemy, repair_target, amount: int) -> void:
+	if repair_target == null or not is_instance_valid(repair_target) or amount <= 0:
+		return
+	if repair_target.is_in_group("spawners"):
+		spawner_manager.apply_healing(repair_target, amount)
+
+
+func _spawn_opening_encounter(level_definition, spawn_flags: Dictionary = {}) -> void:
+	if level_definition == null:
+		return
+	var requests: Array[Resource] = _roll_opening_encounter(level_definition)
+	if requests.is_empty():
+		return
+	var remaining_slots: int = max(int(level_definition.max_active_enemies) - enemy_manager.get_enemy_count(), 0)
+	if remaining_slots <= 0:
+		return
+	while requests.size() > remaining_slots:
+		requests.pop_back()
+	var positions: Array[Vector2] = _get_opening_encounter_positions(level_definition, requests.size())
+	for index in range(requests.size()):
+		var profile: Resource = requests[index]
+		if profile == null:
+			continue
+		var spawn_position: Vector2 = positions[index] if index < positions.size() else _find_safe_room_position(_get_opening_encounter_anchor(level_definition), level_definition)
+		var flags := spawn_flags.duplicate()
+		if not bool(flags.get("inactive", false)):
+			flags["birth"] = bool(flags.get("birth", true))
+		enemy_manager.spawn_enemy(profile, spawn_position, flags)
+
+
+func _roll_opening_encounter(level_definition) -> Array[Resource]:
+	var rolled: Array[Resource] = []
+	if level_definition == null:
+		return rolled
+	if level_definition.has_meta("forced_opening_encounter_profiles"):
+		var forced_profiles: Array = level_definition.get_meta("forced_opening_encounter_profiles")
+		for profile in forced_profiles:
+			var enemy_profile: Resource = profile as Resource
+			if enemy_profile != null:
+				rolled.append(enemy_profile)
+		return rolled
+	var table: Array = level_definition.encounter_table
+	var remaining_budget: int = max(int(level_definition.encounter_budget), 0)
+	if table.is_empty() or remaining_budget <= 0:
+		return rolled
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _get_opening_encounter_seed(level_definition)
+	var room_kind: String = _get_level_room_kind(level_definition)
+	var floor_number: int = max(int(level_definition.floor_number), 1)
+	for _roll_index in range(24):
+		var candidates: Array[Resource] = _get_available_encounter_entries(table, floor_number, room_kind, remaining_budget)
+		if candidates.is_empty():
+			break
+		var entry = _choose_weighted_encounter_entry(candidates, rng)
+		if entry == null:
+			break
+		var entry_cost: int = max(int(entry.budget_cost), 1)
+		var max_affordable_count: int = max(int(floor(float(remaining_budget) / float(entry_cost))), 0)
+		if max_affordable_count <= 0:
+			break
+		var min_count: int = clampi(int(entry.min_count), 1, max_affordable_count)
+		var max_count: int = clampi(int(entry.max_count), min_count, max_affordable_count)
+		var spawn_count: int = rng.randi_range(min_count, max_count)
+		for _spawn_index in range(spawn_count):
+			rolled.append(entry.enemy_profile)
+			remaining_budget -= entry_cost
+			if remaining_budget <= 0:
+				break
+		if remaining_budget <= 0:
+			break
+	return rolled
+
+
+func _get_available_encounter_entries(table: Array, floor_number: int, room_kind: String, remaining_budget: int) -> Array[Resource]:
+	var candidates: Array[Resource] = []
+	for raw_entry in table:
+		var entry: Resource = raw_entry as Resource
+		if entry == null or not entry.has_method("is_available"):
+			continue
+		if bool(entry.is_available(floor_number, room_kind, remaining_budget)):
+			candidates.append(entry)
+	return candidates
+
+
+func _choose_weighted_encounter_entry(candidates: Array[Resource], rng: RandomNumberGenerator):
+	var total_weight := 0
+	for entry in candidates:
+		total_weight += max(int(entry.weight), 1)
+	if total_weight <= 0:
+		return null
+	var roll := rng.randi_range(1, total_weight)
+	for entry in candidates:
+		roll -= max(int(entry.weight), 1)
+		if roll <= 0:
+			return entry
+	return candidates[candidates.size() - 1]
+
+
+func _get_opening_encounter_positions(level_definition, count: int) -> Array[Vector2]:
+	var positions: Array[Vector2] = []
+	if level_definition == null or count <= 0:
+		return positions
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _get_opening_encounter_seed(level_definition) + 7919
+	var bounds: Rect2 = _get_opening_encounter_bounds(level_definition)
+	var anchor: Vector2 = _get_opening_encounter_anchor(level_definition)
+	var min_distance: float = max(float(level_definition.encounter_min_spawn_distance), 96.0)
+	var center: Vector2 = bounds.get_center()
+	var angle_offset: float = rng.randf_range(0.0, TAU)
+	for index in range(count):
+		var chosen := Vector2.INF
+		for radius in [min_distance, min_distance + 86.0, min_distance + 168.0, min_distance + 250.0]:
+			for step in range(14):
+				var angle: float = angle_offset + TAU * float(step) / 14.0 + float(index) * 0.43
+				var candidate: Vector2 = center + Vector2.RIGHT.rotated(angle) * radius
+				candidate = ArenaGeometry.constrain_point(candidate, bounds, int(level_definition.arena_shape))
+				if _opening_encounter_position_is_clear(candidate, anchor, min_distance, positions, level_definition):
+					chosen = candidate
+					break
+			if chosen != Vector2.INF:
+				break
+		if chosen == Vector2.INF:
+			chosen = _find_safe_room_position(center + Vector2.RIGHT.rotated(angle_offset + float(index)) * min_distance, level_definition)
+		positions.append(chosen)
+	return positions
+
+
+func _opening_encounter_position_is_clear(position: Vector2, anchor: Vector2, min_distance: float, selected_positions: Array[Vector2], level_definition) -> bool:
+	if position.distance_squared_to(anchor) < min_distance * min_distance:
+		return false
+	if not _position_is_clear_of_room_walls(position, level_definition):
+		return false
+	for selected in selected_positions:
+		if position.distance_squared_to(selected) < 72.0 * 72.0:
+			return false
+	for spawner_position in spawner_manager.get_spawner_positions():
+		if position.distance_squared_to(spawner_position) < 92.0 * 92.0:
+			return false
+	for enemy_position in enemy_manager.get_enemy_positions():
+		if position.distance_squared_to(enemy_position) < 72.0 * 72.0:
+			return false
+	return true
+
+
+func _get_opening_encounter_bounds(level_definition) -> Rect2:
+	if _is_dungeon_run and dungeon_manager != null:
+		var room_bounds: Rect2 = dungeon_manager.get_full_floor_room_bounds(dungeon_manager.current_room_id)
+		if room_bounds.size != Vector2.ZERO:
+			return room_bounds
+	return level_definition.arena_bounds
+
+
+func _get_opening_encounter_anchor(level_definition) -> Vector2:
+	var player = _get_player_ref()
+	if player != null and is_instance_valid(player):
+		return player.global_position
+	if _is_dungeon_run and dungeon_manager != null:
+		var spawn_position: Vector2 = dungeon_manager.get_current_spawn_position()
+		return dungeon_manager.get_full_floor_position_for_room_position(dungeon_manager.current_room_id, spawn_position)
+	return level_definition.arena_bounds.get_center()
+
+
+func _get_level_room_kind(level_definition) -> String:
+	if level_definition != null and level_definition.has_meta("room_kind"):
+		return String(level_definition.get_meta("room_kind"))
+	return "combat"
+
+
+func _get_opening_encounter_seed(level_definition) -> int:
+	var level_id: String = String(level_definition.id) if level_definition != null else "level"
+	var floor_number: int = max(int(level_definition.floor_number), 1) if level_definition != null else 1
+	var seed_text := "%d:%d:%s:opening_encounter" % [_run_seed, floor_number, level_id]
+	return posmod(seed_text.hash(), 2147483646) + 1
+
+
 func _spawn_level_boss(level_definition, spawn_flags: Dictionary = {}):
 	if level_definition == null or level_definition.boss_profile == null:
 		return null
@@ -1971,6 +2284,9 @@ func _on_restart_requested() -> void:
 		if _is_main_loop_run:
 			await _show_loading_before_work("LOADING FLOOR", "Generating floor layout", 0.05)
 			_start_main_loop_run()
+		elif _is_dungeon_run and _active_generated_encounter_test_index >= 0:
+			await _show_loading_before_work("LOADING TEST ROOM", "Generating floor layout", 0.05)
+			_start_generated_encounter_test(_active_generated_encounter_test_index)
 		elif _is_dungeon_run:
 			await _show_loading_before_work("LOADING FLOOR", "Generating floor layout", 0.05)
 			_start_dungeon_run()
@@ -2175,6 +2491,7 @@ func _load_room_entry_transition(player_position: Vector2) -> bool:
 	_sync_gate_blockers_into_actors()
 	if not room_is_cleared:
 		_preload_pending_initial_spawner_enemies()
+		_spawn_opening_encounter(level_definition, {"inactive": true, "allow_when_disabled": true})
 	if not room_is_cleared and level_definition.boss_profile != null:
 		_spawn_level_boss(level_definition, {"inactive": true, "allow_when_disabled": true})
 		if _is_main_loop_run and dungeon_manager.is_current_boss_room():
@@ -3238,10 +3555,16 @@ func _update_level_select_ui() -> void:
 		var level = LEVELS[level_index]
 		var marker := ">" if option_index == _level_select_option_index else " "
 		lines.append("%s %d. %s  [%s]" % [marker, option_index + 1, level.display_name, level.get_summary()])
-	var main_loop_option_index := MAIN_LEVEL_OPTION_LEVEL_INDICES.size()
+	var option_cursor := MAIN_LEVEL_OPTION_LEVEL_INDICES.size()
+	for test_index in range(GENERATED_ENCOUNTER_TESTS.size()):
+		var test_config: Dictionary = GENERATED_ENCOUNTER_TESTS[test_index]
+		var test_marker := ">" if option_cursor == _level_select_option_index else " "
+		lines.append("%s %d. %s  [%s]" % [test_marker, option_cursor + 1, String(test_config.get("label", "Generated Test")), String(test_config.get("summary", "generated encounter"))])
+		option_cursor += 1
+	var main_loop_option_index := option_cursor
 	var main_loop_marker := ">" if _level_select_option_index == main_loop_option_index else " "
 	lines.append("%s %d. Main Game Loop Test  [floor loop + tally]" % [main_loop_marker, main_loop_option_index + 1])
-	var archive_option_index := MAIN_LEVEL_OPTION_LEVEL_INDICES.size() + 1
+	var archive_option_index := main_loop_option_index + 1
 	var archive_marker := ">" if _level_select_option_index == archive_option_index else " "
 	lines.append("%s %d. Archive  [older arenas + prototype]" % [archive_marker, archive_option_index + 1])
 	level_list_label.text = "\n".join(lines)
@@ -3265,7 +3588,13 @@ func _activate_level_select_option() -> void:
 		_selected_level_index = int(MAIN_LEVEL_OPTION_LEVEL_INDICES[_level_select_option_index])
 		_start_selected_level()
 		return
-	if _level_select_option_index == MAIN_LEVEL_OPTION_LEVEL_INDICES.size():
+	var test_option_start_index := MAIN_LEVEL_OPTION_LEVEL_INDICES.size()
+	var test_option_end_index := test_option_start_index + GENERATED_ENCOUNTER_TESTS.size()
+	if _level_select_option_index >= test_option_start_index and _level_select_option_index < test_option_end_index:
+		_selected_level_index = LEVELS.size() + 2 + (_level_select_option_index - test_option_start_index)
+		_start_selected_level()
+		return
+	if _level_select_option_index == test_option_end_index:
 		_selected_level_index = LEVELS.size() + 1
 		_start_selected_level()
 		return
@@ -3335,12 +3664,14 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool, ove
 		_preload_current_treasure_reward_choices()
 	if should_update_loading_screen and not room_is_cleared:
 		_preload_pending_initial_spawner_enemies_with_loading(LOADING_PROGRESS_INITIAL_ENEMIES_START, LOADING_PROGRESS_INITIAL_ENEMIES_DONE)
-	elif not room_is_cleared:
-		_preload_pending_initial_spawner_enemies()
+	if should_update_loading_screen and not room_is_cleared:
+		_spawn_opening_encounter(level_definition, {"inactive": true, "allow_when_disabled": true})
 	if should_update_loading_screen:
 		_set_room_combat_active(false)
 	else:
 		_set_all_enabled(true)
+		if not room_is_cleared:
+			_spawn_opening_encounter(level_definition, {"birth": true})
 	if not room_is_cleared and level_definition.boss_profile != null:
 		var boss_spawn_flags: Dictionary = {}
 		if should_update_loading_screen:
@@ -3525,6 +3856,8 @@ func _get_dungeon_hud_suffix() -> String:
 	if _is_main_loop_run and _floor_exit_portal_active():
 		door_text = "press Enter/A in portal" if _floor_exit_portal_focused() else "exit portal open"
 	var floor_text := "  |  Floor %d" % _main_loop_floor if _is_main_loop_run else ""
+	if _active_generated_encounter_test_index >= 0:
+		floor_text = "  |  Test Floor %d" % _main_loop_floor
 	var seed_text := "  |  Seed %d" % _run_seed if _run_seed > 0 else ""
 	return "\nRoom: %s%s%s  |  %s" % [piece.display_name, floor_text, seed_text, door_text]
 
@@ -3532,7 +3865,7 @@ func _get_dungeon_hud_suffix() -> String:
 func _get_select_option_count() -> int:
 	if _level_select_page == LEVEL_SELECT_PAGE_ARCHIVE:
 		return ARCHIVE_LEVEL_OPTION_LEVEL_INDICES.size() + 2
-	return MAIN_LEVEL_OPTION_LEVEL_INDICES.size() + 2
+	return MAIN_LEVEL_OPTION_LEVEL_INDICES.size() + GENERATED_ENCOUNTER_TESTS.size() + 2
 
 
 func _update_minimap() -> void:

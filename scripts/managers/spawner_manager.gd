@@ -133,7 +133,7 @@ func set_spawners_active(value: bool, materialize_preloaded: bool = false) -> vo
 
 func consume_initial_spawn_requests() -> Array[Dictionary]:
 	var requests: Array[Dictionary] = []
-	if not _initial_spawns_pending or initial_spawn_batch_multiplier <= 0:
+	if not _initial_spawns_pending or _get_initial_spawn_batch_multiplier() <= 0:
 		_initial_spawns_pending = false
 		_initial_spawn_delay_remaining = 0.0
 		return requests
@@ -240,7 +240,7 @@ func _on_spawner_spawn_ready(_spawner, spawn_position: Vector2) -> void:
 
 
 func _begin_initial_spawn_sequence() -> void:
-	if initial_spawn_batch_multiplier <= 0:
+	if _get_initial_spawn_batch_multiplier() <= 0:
 		_initial_spawns_pending = false
 		_initial_spawn_delay_remaining = 0.0
 		return
@@ -272,7 +272,7 @@ func _activate_preloaded_initial_spawn_sequence() -> void:
 
 
 func _emit_initial_spawn_requests() -> void:
-	if initial_spawn_batch_multiplier <= 0:
+	if _get_initial_spawn_batch_multiplier() <= 0:
 		return
 	var projected_enemy_count := _current_enemy_count
 	for spawner_index in range(_spawners.size()):
@@ -302,6 +302,16 @@ func apply_damage(target: Node, packet) -> bool:
 	return bool(target.take_damage(damage_packet))
 
 
+func apply_healing(target: Node, amount: int) -> bool:
+	if target == null or amount <= 0 or not is_instance_valid(target):
+		return false
+	if not target.is_in_group("spawners") or not _spawners.has(target):
+		return false
+	if not target.has_method("apply_healing"):
+		return false
+	return bool(target.apply_healing(amount))
+
+
 func get_nearby_spawners(origin: Vector2, radius: float, excluded: Array[Node]) -> Array:
 	var candidates: Array = []
 	var radius_squared := radius * radius
@@ -310,6 +320,27 @@ func get_nearby_spawners(origin: Vector2, radius: float, excluded: Array[Node]) 
 			continue
 		if spawner.global_position.distance_squared_to(origin) <= radius_squared:
 			candidates.append(spawner)
+	return candidates
+
+
+func get_repairable_spawners(origin: Vector2, radius: float, health_ratio_threshold: float) -> Array:
+	var candidates: Array = []
+	var effective_radius: float = max(radius, 0.0)
+	var radius_squared: float = effective_radius * effective_radius
+	var threshold: float = clamp(health_ratio_threshold, 0.0, 1.0)
+	for spawner in _spawners:
+		if not is_instance_valid(spawner) or not spawner.has_method("apply_healing"):
+			continue
+		var spawner_health: int = int(spawner.get("health"))
+		var spawner_max_health: int = int(spawner.get("max_health"))
+		if spawner_health <= 0 or spawner_max_health <= 0 or spawner_health >= spawner_max_health:
+			continue
+		var health_ratio: float = float(spawner_health) / float(spawner_max_health)
+		if health_ratio > threshold:
+			continue
+		if spawner.global_position.distance_squared_to(origin) > radius_squared:
+			continue
+		candidates.append(spawner)
 	return candidates
 
 
@@ -411,7 +442,15 @@ func _get_spawner_spawn_batch_count(spawner) -> int:
 
 
 func _get_initial_spawn_batch_count(spawner) -> int:
-	return _get_spawner_spawn_batch_count(spawner) * max(initial_spawn_batch_multiplier, 1)
+	return _get_spawner_spawn_batch_count(spawner) * max(_get_initial_spawn_batch_multiplier(), 0)
+
+
+func _get_initial_spawn_batch_multiplier() -> int:
+	if _level_definition != null:
+		var override_value = _level_definition.get("initial_spawn_batch_multiplier_override")
+		if override_value != null and int(override_value) >= 0:
+			return int(override_value)
+	return max(initial_spawn_batch_multiplier, 0)
 
 
 func _get_initial_spawn_shield_delay() -> float:
@@ -498,7 +537,17 @@ func _constrain_spawn_position(position: Vector2, clearance: float) -> Vector2:
 
 func _get_playable_rects(level_definition) -> Array[Rect2]:
 	var rects: Array[Rect2] = []
-	if level_definition == null or not level_definition.has_meta("footprint_cells"):
+	if level_definition == null:
+		return rects
+	if level_definition.has_meta("active_room_playable_rects"):
+		var active_rects_value: Variant = level_definition.get_meta("active_room_playable_rects")
+		if active_rects_value is Array:
+			for active_rect in active_rects_value:
+				if active_rect is Rect2:
+					rects.append(active_rect)
+			if not rects.is_empty():
+				return rects
+	if not level_definition.has_meta("footprint_cells"):
 		return rects
 	rects.append_array(ArenaGeometry.get_footprint_cell_rects(level_definition.arena_bounds, level_definition.get_meta("footprint_cells")))
 	return rects

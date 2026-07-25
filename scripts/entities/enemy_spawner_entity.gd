@@ -11,6 +11,8 @@ signal shot_ready(spawner, origin: Vector2, direction: Vector2, shot_config: Dic
 @export var warmup_seconds: float = 1.0
 @export var active: bool = true
 @export var body_radius: float = 32.0
+## Controls how strongly player projectile knockback moves this spawner body.
+@export var knockback_multiplier: float = 0.18
 @export var max_health: int = 18
 @export var score_value: int = 75
 @export var base_color: Color = Color(0.34, 0.28, 0.38)
@@ -67,6 +69,14 @@ var _recoil_velocity: Vector2 = Vector2.ZERO
 var _crowd_separation_velocity: Vector2 = Vector2.ZERO
 var _birth_remaining: float = 0.0
 var _birth_duration: float = 0.42
+var _burn_remaining: float = 0.0
+var _burn_damage_per_second: float = 0.0
+var _burn_damage_remainder: float = 0.0
+var _slow_remaining: float = 0.0
+var _slow_multiplier: float = 1.0
+var _lightning_charge_remaining: float = 0.0
+var _lightning_charge_stacks: int = 0
+var _lightning_charge_max_stacks: int = 0
 
 
 func _init() -> void:
@@ -88,6 +98,7 @@ func _configure_collision_identity() -> void:
 
 
 func _process(delta: float) -> void:
+	_update_status_effects(delta)
 	if _hit_flash_remaining > 0.0:
 		_hit_flash_remaining = max(_hit_flash_remaining - delta, 0.0)
 		queue_redraw()
@@ -100,7 +111,8 @@ func _process(delta: float) -> void:
 		return
 	if _is_destroyed or not active:
 		return
-	_timer -= delta
+	var effective_delta: float = delta * _get_status_speed_multiplier()
+	_timer -= effective_delta
 	if _timer <= projectile_shield_lead_seconds:
 		activate_projectile_shield(max(_timer, 0.0) + projectile_shield_after_spawn_seconds)
 	if _timer <= 0.0:
@@ -108,9 +120,9 @@ func _process(delta: float) -> void:
 		spawn_ready.emit(self, global_position)
 		queue_redraw()
 	if shoots_projectiles:
-		var special_active: bool = _update_special_attack(delta)
+		var special_active: bool = _update_special_attack(effective_delta)
 		if not special_active:
-			_shot_timer -= delta
+			_shot_timer -= effective_delta
 			if _shot_timer <= 0.0:
 				_shot_timer = shot_cooldown
 				_try_emit_shot()
@@ -125,6 +137,7 @@ func _physics_process(_delta: float) -> void:
 		intent_velocity *= 0.45
 	if _minigun_remaining > 0.0:
 		intent_velocity = Vector2.ZERO
+	intent_velocity *= _get_status_speed_multiplier()
 	velocity = intent_velocity + _recoil_velocity + _crowd_separation_velocity
 	move_and_slide()
 	if get_slide_collision_count() > 0:
@@ -178,6 +191,7 @@ func initialize_from_profile(profile) -> void:
 	spawn_interval = profile.spawn_interval
 	spawn_batch_count = max(int(profile.spawn_batch_count), 1)
 	body_radius = profile.body_radius
+	knockback_multiplier = profile.knockback_multiplier
 	score_value = profile.score_value
 	base_color = profile.base_color
 	core_color = profile.core_color
@@ -238,12 +252,32 @@ func take_damage(packet) -> bool:
 	if blocks_projectile_damage(packet):
 		return false
 	var damage_amount: int = max(int(packet.damage), 0)
+	damage_amount = _apply_lightning_charge_damage_multiplier(packet, damage_amount)
 	if _should_reduce_shield_pierce_damage(packet):
 		damage_amount = max(roundi(float(damage_amount) * clamp(float(packet.shield_damage_multiplier), 0.05, 1.0)), 1)
 		_projectile_shield_block_flash_remaining = 0.22
+	_apply_knockback(packet)
+	_hit_flash_remaining = 0.18
+	_apply_damage_amount(damage_amount)
+	_apply_status_effects_from_packet(packet)
+	return true
+
+
+func apply_healing(amount: int) -> bool:
+	if amount <= 0 or health <= 0 or _is_destroyed or is_birth_animation_active() or health >= max_health:
+		return false
+	var old_health := health
+	health = min(health + amount, max_health)
+	health_changed.emit(self, old_health, health)
+	queue_redraw()
+	return health > old_health
+
+
+func _apply_damage_amount(damage_amount: int) -> void:
+	if damage_amount <= 0 or health <= 0 or _is_destroyed:
+		return
 	var old_health := health
 	health = max(health - damage_amount, 0)
-	_hit_flash_remaining = 0.18
 	health_changed.emit(self, old_health, health)
 	queue_redraw()
 	if health == 0:
@@ -254,7 +288,89 @@ func take_damage(packet) -> bool:
 		velocity = Vector2.ZERO
 		remove_from_group("spawners")
 		health_depleted.emit(self)
-	return true
+
+
+func _apply_knockback(packet) -> void:
+	if packet == null or _is_destroyed:
+		return
+	var effective_knockback: float = float(packet.knockback) * max(knockback_multiplier, 0.0)
+	if _should_reduce_shield_pierce_damage(packet):
+		effective_knockback *= clamp(float(packet.shield_knockback_multiplier), 0.0, 1.0)
+	if effective_knockback <= 0.0:
+		return
+	var push_direction: Vector2 = packet.knockback_direction
+	if push_direction.length_squared() <= 0.001 and packet.source_position.distance_squared_to(global_position) > 0.001:
+		push_direction = (global_position - packet.source_position).normalized()
+	if push_direction.length_squared() <= 0.001:
+		return
+	_recoil_velocity += push_direction.normalized() * effective_knockback
+	_recoil_velocity = _recoil_velocity.limit_length(max(effective_knockback, 180.0))
+
+
+func _apply_status_effects_from_packet(packet) -> void:
+	if packet == null or health <= 0 or _is_destroyed:
+		return
+	if float(packet.burn_damage_per_second) > 0.0 and float(packet.burn_duration_seconds) > 0.0:
+		_burn_damage_per_second = max(_burn_damage_per_second, float(packet.burn_damage_per_second))
+		_burn_remaining = max(_burn_remaining, float(packet.burn_duration_seconds))
+	if float(packet.slow_duration_seconds) > 0.0 and float(packet.slow_multiplier) < 1.0:
+		_slow_multiplier = min(_slow_multiplier, clamp(float(packet.slow_multiplier), 0.35, 1.0))
+		_slow_remaining = max(_slow_remaining, float(packet.slow_duration_seconds))
+	if float(packet.lightning_charge_damage_multiplier) > 1.0 and int(packet.lightning_charge_max_stacks) > 0:
+		_lightning_charge_max_stacks = max(_lightning_charge_max_stacks, int(packet.lightning_charge_max_stacks))
+		_lightning_charge_stacks = clampi(_lightning_charge_stacks + 1, 1, _lightning_charge_max_stacks)
+		_lightning_charge_remaining = max(_lightning_charge_remaining, float(packet.lightning_charge_duration_seconds))
+	queue_redraw()
+
+
+func _apply_lightning_charge_damage_multiplier(packet, damage_amount: int) -> int:
+	if packet == null or _lightning_charge_remaining <= 0.0 or _lightning_charge_stacks <= 0:
+		return damage_amount
+	var required_stacks: int = max(int(packet.lightning_charge_required_stacks), 1)
+	if _lightning_charge_stacks < required_stacks:
+		return damage_amount
+	var multiplier: float = max(float(packet.lightning_charge_damage_multiplier), 1.0)
+	return max(roundi(float(damage_amount) * multiplier), damage_amount)
+
+
+func _update_status_effects(delta: float) -> void:
+	if health <= 0 or _is_destroyed or is_birth_animation_active():
+		return
+	var had_status := _has_active_status_effects()
+	if _burn_remaining > 0.0:
+		_burn_remaining = max(_burn_remaining - delta, 0.0)
+		_burn_damage_remainder += max(_burn_damage_per_second, 0.0) * delta
+		var burn_damage: int = floori(_burn_damage_remainder)
+		if burn_damage > 0:
+			_burn_damage_remainder -= float(burn_damage)
+			_hit_flash_remaining = max(_hit_flash_remaining, 0.08)
+			_apply_damage_amount(burn_damage)
+			if health <= 0 or _is_destroyed:
+				return
+		if _burn_remaining <= 0.0:
+			_burn_damage_per_second = 0.0
+			_burn_damage_remainder = 0.0
+	if _slow_remaining > 0.0:
+		_slow_remaining = max(_slow_remaining - delta, 0.0)
+		if _slow_remaining <= 0.0:
+			_slow_multiplier = 1.0
+	if _lightning_charge_remaining > 0.0:
+		_lightning_charge_remaining = max(_lightning_charge_remaining - delta, 0.0)
+		if _lightning_charge_remaining <= 0.0:
+			_lightning_charge_stacks = 0
+			_lightning_charge_max_stacks = 0
+	if had_status or _has_active_status_effects():
+		queue_redraw()
+
+
+func _has_active_status_effects() -> bool:
+	return _burn_remaining > 0.0 or _slow_remaining > 0.0 or _lightning_charge_remaining > 0.0
+
+
+func _get_status_speed_multiplier() -> float:
+	if _slow_remaining <= 0.0:
+		return 1.0
+	return max(lerp(1.0, clamp(_slow_multiplier, 0.35, 1.0), 0.55), 0.58)
 
 
 func activate_projectile_shield(duration: float) -> void:
@@ -319,6 +435,8 @@ func _draw() -> void:
 	draw_colored_polygon(base_points, draw_base_color)
 	draw_polyline(_closed_points(base_points), Color(0.08, 0.06, 0.1), 3.0, true)
 	_draw_type_details(draw_core_color)
+	if _has_active_status_effects():
+		_draw_status_effects()
 	if is_projectile_shield_active() or _projectile_shield_block_flash_remaining > 0.0:
 		_draw_projectile_shield()
 	if _special_telegraph_remaining > 0.0:
@@ -389,6 +507,28 @@ func _draw_projectile_shield() -> void:
 	draw_circle(Vector2.ZERO, radius, Color(0.28, 0.9, 1.0, 0.09 + block_ratio * 0.12))
 	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 44, Color(0.52, 1.0, 0.95, 0.58 + block_ratio * 0.32), 3.0 + block_ratio * 1.5)
 	draw_arc(Vector2.ZERO, radius * 0.82, PI * 0.12, PI * 1.88, 36, Color(1.0, 1.0, 0.78, 0.36 + block_ratio * 0.34), 2.0)
+
+
+func _draw_status_effects() -> void:
+	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.035)
+	if _burn_remaining > 0.0:
+		var burn_ratio: float = clamp(_burn_remaining / 3.5, 0.0, 1.0)
+		draw_arc(Vector2.ZERO, body_radius + 8.0 + pulse * 3.0, -PI * 0.18, PI * 1.56, 38, Color(1.0, 0.34, 0.08, 0.44 + burn_ratio * 0.24), 3.4)
+		for index in range(5):
+			var ember_angle: float = TAU * float(index) / 5.0 + pulse * TAU
+			draw_circle(Vector2.RIGHT.rotated(ember_angle) * (body_radius + 5.0), 2.2 + pulse * 1.0, Color(1.0, 0.66, 0.12, 0.44))
+	if _slow_remaining > 0.0:
+		var slow_ratio: float = clamp(1.0 - _slow_multiplier, 0.0, 1.0)
+		draw_circle(Vector2.ZERO, body_radius + 10.0, Color(0.18, 0.62, 1.0, 0.07 + slow_ratio * 0.12))
+		draw_arc(Vector2.ZERO, body_radius + 12.0 + pulse * 2.0, PI * 0.05, PI * 1.92, 46, Color(0.48, 0.9, 1.0, 0.4 + slow_ratio * 0.2), 2.8)
+	if _lightning_charge_remaining > 0.0 and _lightning_charge_stacks > 0:
+		var stack_ratio: float = clamp(float(_lightning_charge_stacks) / float(max(_lightning_charge_max_stacks, 1)), 0.0, 1.0)
+		var radius: float = body_radius + 14.0 + stack_ratio * 7.0 + pulse * 2.0
+		for index in range(max(_lightning_charge_stacks, 1)):
+			var angle_a: float = TAU * float(index) / float(max(_lightning_charge_stacks, 1)) + pulse * TAU * 0.2
+			var angle_b: float = angle_a + 0.4 + pulse * 0.08
+			draw_line(Vector2.RIGHT.rotated(angle_a) * radius, Vector2.RIGHT.rotated(angle_b) * (radius + 5.0), Color(0.74, 0.48, 1.0, 0.48 + stack_ratio * 0.26), 2.6)
+		draw_arc(Vector2.ZERO, radius + 2.0, -PI * 0.5, -PI * 0.5 + TAU * stack_ratio, 42, Color(0.72, 1.0, 1.0, 0.34 + stack_ratio * 0.26), 2.8)
 
 
 func _draw_special_telegraph() -> void:
