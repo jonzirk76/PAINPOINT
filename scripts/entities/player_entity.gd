@@ -20,6 +20,10 @@ const PLAYER_RESTING_PISTOL_LEFT_TEXTURE := preload("res://art/characters/player
 @export var wall_rects: Array[Rect2] = []
 @export var void_rects: Array[Rect2] = []
 @export var shoot_pose_hold_seconds: float = 0.42
+## Controls how far forward player projectiles and muzzle flashes spawn along the drawn gun barrel.
+@export var muzzle_forward_offset: float = 35.0
+## Controls the small side offset used to line shots up with the drawn barrel.
+@export var muzzle_side_offset: float = -2.5
 
 var health: int = max_health
 var playable_rects: Array[Rect2] = []
@@ -38,6 +42,9 @@ var _perfect_parry_flash_duration: float = 0.36
 var _parry_ready_flash_remaining: float = 0.0
 var _parry_ready_flash_duration: float = 0.42
 var _parry_ready: bool = false
+var _parry_cooldown_remaining: float = 0.0
+var _parry_cooldown_duration: float = 0.0
+var _parry_graze_cooldown_active: bool = false
 var _parry_chain_grace_remaining: float = 0.0
 var _parry_chain_grace_duration: float = 4.0
 var _parry_chain_count: int = 0
@@ -52,10 +59,13 @@ var _is_dead: bool = false
 var _walk_cycle: float = 0.0
 var _shoot_pose_remaining: float = 0.0
 var _last_move_facing_direction: Vector2 = Vector2.DOWN
+var _collision_shape: CollisionShape2D = null
+var _collision_add_deferred: bool = false
 
 
 func _init() -> void:
 	_configure_collision_identity()
+	_add_collision()
 
 
 func _ready() -> void:
@@ -67,8 +77,8 @@ func _ready() -> void:
 
 
 func _configure_collision_identity() -> void:
-	collision_layer = 1
-	collision_mask = 98
+	_set_body_collision_property("collision_layer", 1)
+	_set_body_collision_property("collision_mask", 98)
 	add_to_group("player")
 
 
@@ -91,7 +101,7 @@ func _process(delta: float) -> void:
 		_parry_ready_flash_remaining = max(_parry_ready_flash_remaining - delta, 0.0)
 	if _is_dead:
 		_death_elapsed = min(_death_elapsed + delta, _death_duration)
-	if is_walking or was_shooting or _shoot_pose_remaining > 0.0 or _parry_ready or _parry_chain_grace_remaining > 0.0 or _super_charge_active or _parry_ready_flash_remaining > 0.0 or _parry_pulse_remaining > 0.0 or _perfect_parry_flash_remaining > 0.0 or _hit_flash_remaining > 0.0 or _heal_flash_remaining > 0.0 or _is_dead:
+	if is_walking or was_shooting or _shoot_pose_remaining > 0.0 or _parry_ready or _parry_cooldown_remaining > 0.0 or _parry_graze_cooldown_active or _parry_chain_grace_remaining > 0.0 or _super_charge_active or _parry_ready_flash_remaining > 0.0 or _parry_pulse_remaining > 0.0 or _perfect_parry_flash_remaining > 0.0 or _hit_flash_remaining > 0.0 or _heal_flash_remaining > 0.0 or _is_dead:
 		queue_redraw()
 
 
@@ -161,14 +171,22 @@ func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: A
 
 
 func get_fire_origin() -> Vector2:
-	var muzzle_offset: float = max(body_radius * 0.55, 8.0)
-	var desired_origin: Vector2 = global_position + aim_direction * muzzle_offset
+	var desired_origin: Vector2 = global_position + _get_local_muzzle_position()
 	return _constrain_to_playable(desired_origin, 2.0)
 
 
-func _constrain_to_playable(position: Vector2, clearance_override: float = -1.0) -> Vector2:
+func get_projectile_origin(shot_direction: Vector2 = Vector2.ZERO) -> Vector2:
+	var direction := shot_direction.normalized() if shot_direction.length_squared() > 0.001 else _get_muzzle_direction()
+	var side_offset_limit: float = max(body_radius - 0.5, 0.0)
+	var barrel_side_offset: float = clamp(muzzle_side_offset, -side_offset_limit, side_offset_limit)
+	var forward_offset: float = sqrt(max(body_radius * body_radius - barrel_side_offset * barrel_side_offset, 0.0))
+	var desired_origin: Vector2 = global_position + direction * forward_offset + _get_barrel_side(direction) * barrel_side_offset
+	return _constrain_to_playable(desired_origin, 2.0)
+
+
+func _constrain_to_playable(candidate_position: Vector2, clearance_override: float = -1.0) -> Vector2:
 	var clearance: float = body_radius if clearance_override < 0.0 else clearance_override
-	return ArenaGeometry.constrain_point_to_playable_regions(position, arena_bounds, arena_shape, playable_rects, [], clearance)
+	return ArenaGeometry.constrain_point_to_playable_regions(candidate_position, arena_bounds, arena_shape, playable_rects, [], clearance)
 
 
 func take_damage(amount: int) -> void:
@@ -242,6 +260,13 @@ func set_parry_ready_state(is_ready: bool) -> void:
 	queue_redraw()
 
 
+func set_parry_cooldown_state(remaining: float, duration: float, graze_active: bool) -> void:
+	_parry_cooldown_remaining = max(remaining, 0.0)
+	_parry_cooldown_duration = max(duration, 0.01)
+	_parry_graze_cooldown_active = graze_active and _parry_cooldown_remaining > 0.0 and not _is_dead
+	queue_redraw()
+
+
 func set_parry_chain_state(remaining: float, duration: float, chain_count: int) -> void:
 	_parry_chain_grace_remaining = max(remaining, 0.0)
 	_parry_chain_grace_duration = max(duration, 0.01)
@@ -281,14 +306,15 @@ func play_death_animation() -> void:
 	_knockback_velocity = Vector2.ZERO
 	invulnerable_remaining = 0.0
 	_parry_ready = false
+	_parry_cooldown_remaining = 0.0
+	_parry_graze_cooldown_active = false
 	_parry_chain_grace_remaining = 0.0
 	_parry_chain_count = 0
 	_super_charge_active = false
 	_super_charge_ratio = 0.0
 	_shoot_pose_remaining = 0.0
 	modulate.a = 1.0
-	collision_layer = 0
-	collision_mask = 0
+	_disable_collision_state()
 	queue_redraw()
 
 
@@ -304,6 +330,9 @@ func reset_health() -> void:
 	_perfect_parry_flash_remaining = 0.0
 	_parry_ready_flash_remaining = 0.0
 	_parry_ready = false
+	_parry_cooldown_remaining = 0.0
+	_parry_cooldown_duration = 0.0
+	_parry_graze_cooldown_active = false
 	_parry_chain_grace_remaining = 0.0
 	_parry_chain_count = 0
 	_super_charge_active = false
@@ -325,6 +354,8 @@ func _draw() -> void:
 	if _heal_flash_remaining > 0.0:
 		var heal_ratio: float = clamp(_heal_flash_remaining / 0.24, 0.0, 1.0)
 		draw_arc(Vector2.ZERO, body_radius + 8.0, 0.0, TAU, 32, Color(0.28, 1.0, 0.45, heal_ratio), 4.0)
+	if _parry_cooldown_remaining > 0.0:
+		_draw_parry_cooldown_meter()
 	if _parry_ready:
 		_draw_parry_ready_idle()
 	if _parry_chain_grace_remaining > 0.0:
@@ -400,6 +431,25 @@ func _get_visual_facing_direction() -> Vector2:
 	return Vector2.DOWN
 
 
+func _get_muzzle_direction() -> Vector2:
+	var direction := aim_direction.normalized()
+	if direction.length_squared() <= 0.001:
+		direction = _get_visual_facing_direction()
+	if direction.length_squared() <= 0.001:
+		direction = Vector2.RIGHT
+	return direction.normalized()
+
+
+func _get_local_muzzle_position(extra_forward_offset: float = 0.0) -> Vector2:
+	var direction := _get_muzzle_direction()
+	var forward_offset: float = max(max(muzzle_forward_offset + extra_forward_offset, body_radius * 0.55), 8.0)
+	return direction * forward_offset + _get_barrel_side(direction) * muzzle_side_offset
+
+
+func _get_barrel_side(direction: Vector2) -> Vector2:
+	return (-direction).rotated(PI / 2.0) if direction.x < -0.001 else direction.rotated(PI / 2.0)
+
+
 func _get_side_resting_pistol_rotation(facing: Vector2) -> float:
 	var is_walking := move_vector.length_squared() > 0.01
 	var base_tilt: float = clamp(facing.y * (0.16 if is_walking else 0.08), -0.16, 0.16)
@@ -439,16 +489,16 @@ func _draw_player_walk_feet() -> void:
 	_draw_oval(right_center - Vector2.DOWN * body_radius * 0.18, 0.0, right_scale * Vector2(0.3, 0.22), Color(0.13, 0.82, 1.0, 0.7))
 
 
-func _draw_centered_texture(texture: Texture2D, visual_radius: float, rotation: float, tint: Color = Color.WHITE, scale: Vector2 = Vector2.ONE) -> void:
+func _draw_centered_texture(texture: Texture2D, visual_radius: float, texture_rotation: float, tint: Color = Color.WHITE, texture_scale: Vector2 = Vector2.ONE) -> void:
 	if texture == null:
 		return
-	draw_set_transform(Vector2.ZERO, rotation, scale)
+	draw_set_transform(Vector2.ZERO, texture_rotation, texture_scale)
 	draw_texture_rect(texture, Rect2(Vector2(-visual_radius, -visual_radius), Vector2(visual_radius * 2.0, visual_radius * 2.0)), false, tint)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
-func _draw_oval(center: Vector2, rotation: float, scale: Vector2, color: Color) -> void:
-	draw_set_transform(center, rotation, scale)
+func _draw_oval(center: Vector2, oval_rotation: float, oval_scale: Vector2, color: Color) -> void:
+	draw_set_transform(center, oval_rotation, oval_scale)
 	draw_circle(Vector2.ZERO, 1.0, color)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
@@ -495,6 +545,21 @@ func _draw_parry_ready_idle() -> void:
 	draw_arc(Vector2.ZERO, body_radius + 18.0, PI * 0.15, PI * 1.85, 32, Color(1.0, 1.0, 0.72, alpha * 0.7), 2.0)
 
 
+func _draw_parry_cooldown_meter() -> void:
+	var ready_ratio: float = 1.0 - clamp(_parry_cooldown_remaining / max(_parry_cooldown_duration, 0.01), 0.0, 1.0)
+	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.018)
+	var radius: float = body_radius + 21.0 + (1.4 if _parry_graze_cooldown_active else 0.0) * pulse
+	var start_angle := -PI * 0.5
+	var end_angle := start_angle + TAU * ready_ratio
+	var fill_color := Color(0.38, 0.92, 1.0, 0.78)
+	if _parry_graze_cooldown_active:
+		fill_color = Color(1.0, 0.93, 0.35, 0.9)
+	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 48, Color(0.02, 0.08, 0.1, 0.34), 3.0)
+	draw_arc(Vector2.ZERO, radius, start_angle, end_angle, 48, fill_color, 4.2)
+	if _parry_graze_cooldown_active:
+		draw_arc(Vector2.ZERO, radius + 5.0, start_angle, end_angle, 48, Color(1.0, 1.0, 0.72, 0.55 + pulse * 0.25), 2.2)
+
+
 func _draw_parry_ready_flash() -> void:
 	var remaining_ratio: float = clamp(_parry_ready_flash_remaining / _parry_ready_flash_duration, 0.0, 1.0)
 	var progress: float = 1.0 - remaining_ratio
@@ -529,7 +594,7 @@ func _draw_super_charge() -> void:
 		aim = Vector2.RIGHT
 	var ratio: float = clamp(_super_charge_ratio, 0.0, 1.0)
 	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.026)
-	var muzzle: Vector2 = aim * (body_radius + 15.0 + ratio * 8.0)
+	var muzzle: Vector2 = _get_local_muzzle_position(ratio * 8.0)
 	var side := aim.orthogonal()
 	var orb_radius: float = lerp(8.0, 31.0, ratio) + pulse * lerp(1.5, 4.0, ratio)
 	var hot_color := Color(1.0, lerp(0.68, 0.95, ratio), 0.22, 0.82)
@@ -544,9 +609,45 @@ func _draw_super_charge() -> void:
 
 
 func _add_collision() -> void:
+	if _collision_shape != null:
+		_sync_collision_radius()
+		return
+	if _is_dead:
+		return
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		if not _collision_add_deferred:
+			_collision_add_deferred = true
+			call_deferred("_add_collision")
+		return
+	_collision_add_deferred = false
 	var shape := CircleShape2D.new()
 	shape.radius = body_radius
 	var collision_shape := CollisionShape2D.new()
 	collision_shape.name = "CollisionShape2D"
 	collision_shape.shape = shape
 	add_child(collision_shape)
+	_collision_shape = collision_shape
+	_sync_collision_radius()
+
+
+func _sync_collision_radius() -> void:
+	if _collision_shape == null:
+		return
+	var shape := _collision_shape.shape as CircleShape2D
+	if shape == null:
+		shape = CircleShape2D.new()
+		_collision_shape.shape = shape
+	shape.radius = body_radius
+
+
+func _disable_collision_state() -> void:
+	_collision_add_deferred = false
+	_set_body_collision_property("collision_layer", 0)
+	_set_body_collision_property("collision_mask", 0)
+
+
+func _set_body_collision_property(property_name: StringName, value: Variant) -> void:
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		set_deferred(property_name, value)
+		return
+	set(property_name, value)

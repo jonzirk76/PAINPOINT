@@ -55,6 +55,7 @@ var _hit_flash_remaining: float = 0.0
 var _is_destroyed: bool = false
 var _strafe_sign: float = 1.0
 var _collision_shape: CollisionShape2D = null
+var _collision_add_deferred: bool = false
 var _projectile_shield_remaining: float = 0.0
 var _projectile_shield_block_flash_remaining: float = 0.0
 var _special_timer: float = 0.0
@@ -81,6 +82,7 @@ var _lightning_charge_max_stacks: int = 0
 
 func _init() -> void:
 	_configure_collision_identity()
+	_add_collision()
 
 
 func _ready() -> void:
@@ -92,8 +94,8 @@ func _ready() -> void:
 
 
 func _configure_collision_identity() -> void:
-	collision_layer = 16
-	collision_mask = 112
+	_set_body_collision_property("collision_layer", 16)
+	_set_body_collision_property("collision_mask", 112)
 	add_to_group("spawners")
 
 
@@ -164,8 +166,7 @@ func play_birth_animation(duration: float = 0.42) -> void:
 		return
 	_birth_duration = max(duration, 0.08)
 	_birth_remaining = _birth_duration
-	collision_layer = 0
-	collision_mask = 0
+	_disable_collision_state()
 	queue_redraw()
 
 
@@ -223,8 +224,8 @@ func initialize_from_profile(profile) -> void:
 	_crowd_separation_velocity = Vector2.ZERO
 
 
-func set_target_position(position: Vector2) -> void:
-	target_position = position
+func set_target_position(new_target_position: Vector2) -> void:
+	target_position = new_target_position
 	queue_redraw()
 
 
@@ -283,8 +284,7 @@ func _apply_damage_amount(damage_amount: int) -> void:
 	if health == 0:
 		_is_destroyed = true
 		active = false
-		collision_layer = 0
-		collision_mask = 0
+		_disable_collision_state()
 		velocity = Vector2.ZERO
 		remove_from_group("spawners")
 		health_depleted.emit(self)
@@ -409,8 +409,8 @@ func apply_crowd_separation(push_vector: Vector2) -> void:
 	_crowd_separation_velocity = _crowd_separation_velocity.limit_length(120.0)
 
 
-func _constrain_to_playable(position: Vector2) -> Vector2:
-	return ArenaGeometry.constrain_point_to_playable_regions(position, arena_bounds, arena_shape, playable_rects, [], body_radius)
+func _constrain_to_playable(candidate_position: Vector2) -> Vector2:
+	return ArenaGeometry.constrain_point_to_playable_regions(candidate_position, arena_bounds, arena_shape, playable_rects, [], body_radius)
 
 
 func _draw() -> void:
@@ -457,6 +457,17 @@ func _draw() -> void:
 
 
 func _add_collision() -> void:
+	if _collision_shape != null:
+		_sync_collision_radius()
+		return
+	if _is_destroyed:
+		return
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		if not _collision_add_deferred:
+			_collision_add_deferred = true
+			call_deferred("_add_collision")
+		return
+	_collision_add_deferred = false
 	var shape := CircleShape2D.new()
 	shape.radius = body_radius
 	var collision_shape := CollisionShape2D.new()
@@ -464,6 +475,30 @@ func _add_collision() -> void:
 	collision_shape.shape = shape
 	add_child(collision_shape)
 	_collision_shape = collision_shape
+	_sync_collision_radius()
+
+
+func _sync_collision_radius() -> void:
+	if _collision_shape == null:
+		return
+	var shape := _collision_shape.shape as CircleShape2D
+	if shape == null:
+		shape = CircleShape2D.new()
+		_collision_shape.shape = shape
+	shape.radius = body_radius
+
+
+func _disable_collision_state() -> void:
+	_collision_add_deferred = false
+	_set_body_collision_property("collision_layer", 0)
+	_set_body_collision_property("collision_mask", 0)
+
+
+func _set_body_collision_property(property_name: StringName, value: Variant) -> void:
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		set_deferred(property_name, value)
+		return
+	set(property_name, value)
 
 
 func _closed_points(points: PackedVector2Array) -> PackedVector2Array:

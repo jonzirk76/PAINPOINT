@@ -16,13 +16,19 @@ var persistent_until_floor_change: bool = false
 var _age: float = 0.0
 var _is_expired: bool = false
 var _focused_body: Node = null
+var _collision_shape: CollisionShape2D = null
+var _collision_add_deferred: bool = false
+
+
+func _init() -> void:
+	_add_collision()
 
 
 func _ready() -> void:
-	collision_layer = 8
-	collision_mask = 1
-	monitoring = true
-	monitorable = false
+	_set_area_collision_property("collision_layer", 8)
+	_set_area_collision_property("collision_mask", 1)
+	_set_area_collision_property("monitoring", true)
+	_set_area_collision_property("monitorable", false)
 	_add_collision()
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
@@ -77,10 +83,7 @@ func confirm_collect() -> void:
 
 func _collect(body: Node) -> void:
 	_is_expired = true
-	monitoring = false
-	monitorable = false
-	collision_layer = 0
-	collision_mask = 0
+	_disable_collision_state()
 	collected.emit(self, body, upgrade_effect)
 	queue_free()
 
@@ -89,12 +92,23 @@ func expire() -> void:
 	if _is_expired:
 		return
 	_is_expired = true
+	_disable_collision_state()
+	expired.emit(self)
+	queue_free()
+
+
+func _disable_collision_state() -> void:
+	_collision_add_deferred = false
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		set_deferred("monitoring", false)
+		set_deferred("monitorable", false)
+		set_deferred("collision_layer", 0)
+		set_deferred("collision_mask", 0)
+		return
 	monitoring = false
 	monitorable = false
 	collision_layer = 0
 	collision_mask = 0
-	expired.emit(self)
-	queue_free()
 
 
 func _draw() -> void:
@@ -122,16 +136,16 @@ func _draw() -> void:
 			is_overdrive_ammo = true
 			color = Color(0.22, 0.58, 1.0)
 		else:
-			match int(upgrade_effect.upgrade_type):
-				0:
+			match upgrade_effect.upgrade_type:
+				UpgradeEffect.UpgradeType.SPREAD:
 					color = Color(1.0, 0.78, 0.25)
-				1:
+				UpgradeEffect.UpgradeType.PIERCING:
 					color = Color(0.28, 1.0, 0.86)
-				2:
+				UpgradeEffect.UpgradeType.CHAIN_LIGHTNING:
 					color = Color(0.86, 0.58, 1.0)
-				3:
+				UpgradeEffect.UpgradeType.FIRE:
 					color = Color(1.0, 0.25, 0.08)
-				4:
+				UpgradeEffect.UpgradeType.WATER:
 					color = Color(0.22, 0.66, 1.0)
 	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.01)
 	var flash_radius: float = body_radius + 4.0 + pulse * 5.0
@@ -171,9 +185,39 @@ func _draw() -> void:
 
 
 func _add_collision() -> void:
+	if _collision_shape != null:
+		_sync_collision_radius()
+		return
+	if _is_expired:
+		return
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		if not _collision_add_deferred:
+			_collision_add_deferred = true
+			call_deferred("_add_collision")
+		return
+	_collision_add_deferred = false
 	var shape := CircleShape2D.new()
 	shape.radius = body_radius
 	var collision_shape := CollisionShape2D.new()
 	collision_shape.name = "CollisionShape2D"
 	collision_shape.shape = shape
 	add_child(collision_shape)
+	_collision_shape = collision_shape
+	_sync_collision_radius()
+
+
+func _sync_collision_radius() -> void:
+	if _collision_shape == null:
+		return
+	var shape := _collision_shape.shape as CircleShape2D
+	if shape == null:
+		shape = CircleShape2D.new()
+		_collision_shape.shape = shape
+	shape.radius = body_radius
+
+
+func _set_area_collision_property(property_name: StringName, value: Variant) -> void:
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		set_deferred(property_name, value)
+		return
+	set(property_name, value)

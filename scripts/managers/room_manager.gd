@@ -24,7 +24,10 @@ func set_enabled(value: bool) -> void:
 	enabled = value
 	for door in _doors:
 		if is_instance_valid(door):
-			door.monitoring = value
+			if door.has_method("set_monitoring_enabled"):
+				door.set_monitoring_enabled(value)
+			elif door is Area2D:
+				door.set_deferred("monitoring", value)
 
 
 func load_room(level_definition, door_infos: Array, doors_unlocked: bool) -> void:
@@ -37,10 +40,6 @@ func load_room(level_definition, door_infos: Array, doors_unlocked: bool) -> voi
 		var target_kind := String(door_info.get("target_room_kind", ""))
 		var door = door_scene.instantiate()
 		var rect: Rect2 = door_info.get("trigger_rect", _get_door_rect(level_definition.arena_bounds, direction))
-		if _door_layer != null:
-			_door_layer.add_child(door)
-		else:
-			add_child(door)
 		door.initialize(direction, target_id, rect.get_center(), rect.size, doors_unlocked, target_kind)
 		if door_info.has("opening_rect") and door.has_method("set_visual_rect"):
 			var opening_rect: Rect2 = door_info["opening_rect"]
@@ -50,6 +49,7 @@ func load_room(level_definition, door_infos: Array, doors_unlocked: bool) -> voi
 			door.set_passage_rect(passage_rect.get_center(), passage_rect.size)
 		door.entered.connect(_on_door_entered)
 		_doors.append(door)
+		_add_child_safely(_get_door_parent(), door)
 	set_enabled(enabled)
 
 
@@ -90,6 +90,19 @@ func _on_door_entered(door) -> void:
 	if not enabled or door == null or not is_instance_valid(door):
 		return
 	door_entered.emit(door.direction, door.target_room_id)
+
+
+func _get_door_parent() -> Node:
+	return _door_layer if _door_layer != null else self
+
+
+func _add_child_safely(parent: Node, child: Node) -> void:
+	if parent == null or child == null or child.get_parent() != null:
+		return
+	if parent.is_inside_tree() and Engine.is_in_physics_frame():
+		parent.call_deferred("add_child", child)
+		return
+	parent.add_child(child)
 
 
 func _get_door_rect(bounds: Rect2, direction: String) -> Rect2:

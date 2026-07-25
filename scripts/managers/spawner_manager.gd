@@ -164,9 +164,9 @@ func set_arena_definition(level_definition) -> void:
 		return
 	_arena_bounds = level_definition.arena_bounds
 	_arena_shape = int(level_definition.arena_shape)
-	_level_wall_rects = level_definition.wall_rects
+	_level_wall_rects = _get_level_collision_rects(level_definition, "active_room_wall_rects", level_definition.wall_rects)
 	_wall_rects = _level_wall_rects.duplicate()
-	_void_rects = level_definition.void_rects
+	_void_rects = _get_level_collision_rects(level_definition, "active_room_void_rects", level_definition.void_rects)
 	_playable_rects = _get_playable_rects(level_definition)
 	for spawner in _spawners:
 		if is_instance_valid(spawner) and spawner.has_method("set_arena_definition"):
@@ -216,16 +216,13 @@ func _spawn_spawner(placement, index: int) -> void:
 	spawner.spawn_ready.connect(_on_spawner_spawn_ready)
 	spawner.health_depleted.connect(_on_spawner_health_depleted)
 	spawner.shot_ready.connect(_on_spawner_shot_ready)
-	if _spawner_layer != null:
-		_spawner_layer.add_child(spawner)
-	else:
-		add_child(spawner)
 	if spawner_birth_animation_seconds > 0.0 and spawner.has_method("play_birth_animation"):
 		spawner.play_birth_animation(spawner_birth_animation_seconds)
 	_spawners.append(spawner)
+	_add_child_safely(_get_spawner_parent(), spawner)
 
 
-func _on_spawner_spawn_ready(_spawner, spawn_position: Vector2) -> void:
+func _on_spawner_spawn_ready(_spawner, _spawn_position: Vector2) -> void:
 	if not enabled or _current_enemy_count >= max_active_enemies:
 		return
 	var profile = _spawner.enemy_profile if _spawner != null and _spawner.enemy_profile != null else default_enemy_profile
@@ -237,6 +234,19 @@ func _on_spawner_spawn_ready(_spawner, spawn_position: Vector2) -> void:
 		var batch_position := _get_spawn_position_around_spawner(_spawner, spawn_index, batch_count)
 		spawn_requested.emit(batch_position, profile)
 		projected_enemy_count += 1
+
+
+func _get_spawner_parent() -> Node:
+	return _spawner_layer if _spawner_layer != null else self
+
+
+func _add_child_safely(parent: Node, child: Node) -> void:
+	if parent == null or child == null or child.get_parent() != null:
+		return
+	if parent.is_inside_tree() and Engine.is_in_physics_frame():
+		parent.call_deferred("add_child", child)
+		return
+	parent.add_child(child)
 
 
 func _begin_initial_spawn_sequence() -> void:
@@ -484,14 +494,14 @@ func _get_biased_spawn_position(spawner, spawn_index: int, spawn_count: int, bas
 	for attempt in range(14):
 		var side_step: float = 0.0
 		if attempt > 0:
-			var sign: float = -1.0 if attempt % 2 == 1 else 1.0
-			side_step = sign * floor(float(attempt + 1) * 0.5) * 0.24
+			var side_sign: float = -1.0 if attempt % 2 == 1 else 1.0
+			side_step = side_sign * floor(float(attempt + 1) * 0.5) * 0.24
 		var distance: float = max(base_distance + radial_stagger + floor(float(attempt) / 4.0) * 18.0, float(spawner.body_radius) + 28.0)
 		var angle: float = bias_direction.angle() + fan_offset + side_step
 		var candidate: Vector2 = _constrain_spawn_position(spawner.global_position + Vector2.RIGHT.rotated(angle) * distance, 24.0)
 		if _position_is_clear_of_walls(candidate):
 			return candidate
-	return spawner.global_position
+	return _constrain_spawn_position(spawner.global_position, 24.0)
 
 
 func _get_spawn_bias_direction(spawner) -> Vector2:
@@ -519,10 +529,10 @@ func _get_spawn_radial_stagger(spawn_index: int, spawn_count: int) -> float:
 func _position_is_clear_of_walls(position: Vector2) -> bool:
 	if _level_definition == null:
 		return true
-	for wall_rect in _level_definition.wall_rects:
+	for wall_rect in _wall_rects:
 		if wall_rect.grow(24.0).has_point(position):
 			return false
-	for void_rect in _level_definition.void_rects:
+	for void_rect in _void_rects:
 		if void_rect.grow(24.0).has_point(position):
 			return false
 	return true
@@ -550,6 +560,20 @@ func _get_playable_rects(level_definition) -> Array[Rect2]:
 	if not level_definition.has_meta("footprint_cells"):
 		return rects
 	rects.append_array(ArenaGeometry.get_footprint_cell_rects(level_definition.arena_bounds, level_definition.get_meta("footprint_cells")))
+	return rects
+
+
+func _get_level_collision_rects(level_definition, meta_key: String, fallback: Array[Rect2]) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if level_definition != null and level_definition.has_meta(meta_key):
+		var meta_value: Variant = level_definition.get_meta(meta_key)
+		if meta_value is Array:
+			for rect in meta_value:
+				if rect is Rect2:
+					rects.append(rect)
+			if not rects.is_empty():
+				return rects
+	rects.append_array(fallback)
 	return rects
 
 

@@ -31,6 +31,7 @@ var _inactive_room_dim_rects: Array[Rect2] = []
 var _wall_top_overlay = null
 var _wall_body_visuals: Array[Node2D] = []
 var _wall_body_depth_visuals_enabled: bool = false
+var _blocker_rebuild_deferred: bool = false
 
 
 func configure(level_definition) -> void:
@@ -321,6 +322,12 @@ func _closed_points(points: PackedVector2Array) -> PackedVector2Array:
 
 
 func _rebuild_blocker_bodies() -> void:
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		if not _blocker_rebuild_deferred:
+			_blocker_rebuild_deferred = true
+			call_deferred("_rebuild_blocker_bodies")
+		return
+	_blocker_rebuild_deferred = false
 	for wall_body in _wall_bodies:
 		if is_instance_valid(wall_body):
 			wall_body.collision_layer = 0
@@ -423,8 +430,8 @@ func _build_tile_lookup(tile_rects: Array[Rect2]) -> Dictionary:
 	return lookup
 
 
-func _tile_key_vector(position: Vector2, tile_size: float) -> Vector2i:
-	return Vector2i(int(round(position.x / tile_size)), int(round(position.y / tile_size)))
+func _tile_key_vector(world_position: Vector2, tile_size: float) -> Vector2i:
+	return Vector2i(int(round(world_position.x / tile_size)), int(round(world_position.y / tile_size)))
 
 
 func _tile_key(cell: Vector2i) -> String:

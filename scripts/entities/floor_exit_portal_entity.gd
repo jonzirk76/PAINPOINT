@@ -12,13 +12,18 @@ var _active: bool = true
 var _triggered: bool = false
 var _focused_body: Node = null
 var _collision_shape: CollisionShape2D = null
+var _collision_add_deferred: bool = false
+
+
+func _init() -> void:
+	_add_collision()
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_PAUSABLE
-	collision_layer = 0
-	collision_mask = 1
-	monitorable = false
+	_set_area_property("collision_layer", 0)
+	_set_area_property("collision_mask", 1)
+	_set_area_property("monitorable", false)
 	add_to_group("floor_portals")
 	_add_collision()
 	_sync_active_state()
@@ -111,14 +116,24 @@ func _on_body_exited(body: Node) -> void:
 
 func _add_collision() -> void:
 	if _collision_shape != null:
+		_update_collision_radius()
+		_sync_active_state()
 		return
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		if not _collision_add_deferred:
+			_collision_add_deferred = true
+			call_deferred("_add_collision")
+		return
+	_collision_add_deferred = false
 	var shape := CircleShape2D.new()
 	shape.radius = portal_radius
 	var collision_shape := CollisionShape2D.new()
 	collision_shape.name = "CollisionShape2D"
 	collision_shape.shape = shape
+	collision_shape.disabled = not _active
 	add_child(collision_shape)
 	_collision_shape = collision_shape
+	_sync_active_state()
 
 
 func _update_collision_radius() -> void:
@@ -128,6 +143,22 @@ func _update_collision_radius() -> void:
 
 
 func _sync_active_state() -> void:
-	monitoring = _active
+	_set_area_property("monitoring", _active)
 	if _collision_shape != null:
-		_collision_shape.disabled = not _active
+		_set_collision_shape_disabled(not _active)
+
+
+func _set_collision_shape_disabled(value: bool) -> void:
+	if _collision_shape == null:
+		return
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		_collision_shape.set_deferred("disabled", value)
+		return
+	_collision_shape.disabled = value
+
+
+func _set_area_property(property_name: StringName, value: Variant) -> void:
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		set_deferred(property_name, value)
+		return
+	set(property_name, value)

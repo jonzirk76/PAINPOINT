@@ -1,4 +1,4 @@
-[gd_scene load_steps=28 format=3 uid="uid://beu8j4ocyaju8"]
+[gd_scene format=3 uid="uid://beu8j4ocyaju8"]
 
 [ext_resource type="Script" uid="uid://wt5kiqqk3ets" path="res://scripts/orchestrators/game_orchestrator.gd" id="1"]
 [ext_resource type="Script" uid="uid://bp4ssjl06eeir" path="res://scripts/arena/arena_view.gd" id="2"]
@@ -16,13 +16,14 @@
 [ext_resource type="Script" uid="uid://bdlfxool4aqai" path="res://scripts/ui/dungeon_minimap.gd" id="14"]
 [ext_resource type="Script" uid="uid://bhbn1qa7duxll" path="res://scripts/managers/audio_manager.gd" id="15"]
 [ext_resource type="Script" uid="uid://d2y6e6jpmklag" path="res://scripts/managers/destructible_manager.gd" id="16"]
-[ext_resource type="Script" uid="uid://ckhvmsa01m725" path="res://scripts/managers/fauna_manager.gd" id="17"]
 [ext_resource type="FontFile" uid="uid://ni13aeviyq7l" path="res://art/fonts/BoldPixels.ttf" id="16_yc10j"]
+[ext_resource type="Script" uid="uid://ckhvmsa01m725" path="res://scripts/managers/fauna_manager.gd" id="17"]
 [ext_resource type="Shader" uid="uid://b176a8d5tdc54" path="res://scenes/circular_portrait_mask.gdshader" id="18_0ld40"]
 [ext_resource type="Script" uid="uid://bbyh4kn6adeog" path="res://scenes/character_portrait.gd" id="18_dp3eg"]
 [ext_resource type="Texture2D" uid="uid://dmmnsmupy476b" path="res://art/concept_art/portraitcropped2.png" id="18_gqmmt"]
 [ext_resource type="Texture2D" uid="uid://cjvw5hc5udne8" path="res://art/character_UI.png" id="20_gqmmt"]
 [ext_resource type="PackedScene" uid="uid://cprl8lufwm42b" path="res://scenes/ui/loading_screen.tscn" id="21_loading"]
+[ext_resource type="Script" path="res://scripts/ui/parry_portrait_meter.gd" id="22_parry"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_jscy8"]
 font = ExtResource("16_yc10j")
@@ -39,91 +40,91 @@ shader_parameter/softness = 0.01
 [sub_resource type="LabelSettings" id="LabelSettings_y6deb"]
 font = ExtResource("16_yc10j")
 
-[node name="Main" type="Node2D"]
+[node name="Main" type="Node2D" unique_id=1787021698]
 script = ExtResource("1")
 
-[node name="Camera2D" type="Camera2D" parent="."]
+[node name="Camera2D" type="Camera2D" parent="." unique_id=101537814]
 
-[node name="World" type="Node2D" parent="."]
+[node name="World" type="Node2D" parent="." unique_id=2141027598]
 process_mode = 1
 
-[node name="Arena" type="Node2D" parent="World"]
+[node name="Arena" type="Node2D" parent="World" unique_id=170118555]
 script = ExtResource("2")
 
-[node name="DepthSortLayer" type="Node2D" parent="World"]
+[node name="DepthSortLayer" type="Node2D" parent="World" unique_id=2044705905]
 y_sort_enabled = true
 
-[node name="DestructibleLayer" type="Node2D" parent="World"]
+[node name="DestructibleLayer" type="Node2D" parent="World" unique_id=1789689169]
 
-[node name="SpawnerLayer" type="Node2D" parent="World"]
+[node name="SpawnerLayer" type="Node2D" parent="World" unique_id=467906492]
 
-[node name="PickupLayer" type="Node2D" parent="World"]
+[node name="PickupLayer" type="Node2D" parent="World" unique_id=1105290679]
 
-[node name="FaunaLayer" type="Node2D" parent="World"]
+[node name="FaunaLayer" type="Node2D" parent="World" unique_id=1669947988]
 
-[node name="EnemyLayer" type="Node2D" parent="World"]
+[node name="EnemyLayer" type="Node2D" parent="World" unique_id=1519581291]
 
-[node name="ProjectileLayer" type="Node2D" parent="World"]
+[node name="ProjectileLayer" type="Node2D" parent="World" unique_id=2138429026]
 
-[node name="DoorLayer" type="Node2D" parent="World"]
+[node name="DoorLayer" type="Node2D" parent="World" unique_id=1507090742]
 
-[node name="EffectLayer" type="Node2D" parent="World"]
+[node name="EffectLayer" type="Node2D" parent="World" unique_id=428252759]
 
-[node name="PlayerLayer" type="Node2D" parent="World"]
+[node name="PlayerLayer" type="Node2D" parent="World" unique_id=1249735317]
 
-[node name="Managers" type="Node" parent="."]
+[node name="Managers" type="Node" parent="." unique_id=2069661646]
 process_mode = 1
 
-[node name="InputManager" type="Node" parent="Managers"]
+[node name="InputManager" type="Node" parent="Managers" unique_id=1322860251]
 process_mode = 3
 script = ExtResource("3")
 
-[node name="PlayerManager" type="Node" parent="Managers"]
+[node name="PlayerManager" type="Node" parent="Managers" unique_id=1033022451]
 script = ExtResource("4")
 
-[node name="ProjectileManager" type="Node" parent="Managers"]
+[node name="ProjectileManager" type="Node" parent="Managers" unique_id=470491194]
 script = ExtResource("5")
 
-[node name="EnemyManager" type="Node" parent="Managers"]
+[node name="EnemyManager" type="Node" parent="Managers" unique_id=359150371]
 script = ExtResource("6")
 
-[node name="SpawnerManager" type="Node" parent="Managers"]
+[node name="SpawnerManager" type="Node" parent="Managers" unique_id=2236406]
 script = ExtResource("7")
 
-[node name="ItemManager" type="Node" parent="Managers"]
+[node name="ItemManager" type="Node" parent="Managers" unique_id=729945986]
 script = ExtResource("8")
 
-[node name="UpgradeManager" type="Node" parent="Managers"]
+[node name="UpgradeManager" type="Node" parent="Managers" unique_id=1971400199]
 script = ExtResource("9")
 
-[node name="CombatManager" type="Node" parent="Managers"]
+[node name="CombatManager" type="Node" parent="Managers" unique_id=1133704261]
 script = ExtResource("10")
 
-[node name="EffectsManager" type="Node" parent="Managers"]
+[node name="EffectsManager" type="Node" parent="Managers" unique_id=1592790101]
 script = ExtResource("11")
 
-[node name="DungeonManager" type="Node" parent="Managers"]
+[node name="DungeonManager" type="Node" parent="Managers" unique_id=500447121]
 script = ExtResource("12")
 
-[node name="RoomManager" type="Node" parent="Managers"]
+[node name="RoomManager" type="Node" parent="Managers" unique_id=442889674]
 script = ExtResource("13")
 
-[node name="DestructibleManager" type="Node" parent="Managers"]
+[node name="DestructibleManager" type="Node" parent="Managers" unique_id=2061304546]
 script = ExtResource("16")
 
-[node name="FaunaManager" type="Node" parent="Managers"]
+[node name="FaunaManager" type="Node" parent="Managers" unique_id=1509050132]
 script = ExtResource("17")
 
-[node name="AudioManager" type="Node" parent="Managers"]
+[node name="AudioManager" type="Node" parent="Managers" unique_id=678886531]
 script = ExtResource("15")
 
-[node name="UI" type="CanvasLayer" parent="."]
+[node name="UI" type="CanvasLayer" parent="." unique_id=1437530209]
 process_mode = 3
 
-[node name="LoadingScreen" parent="UI" instance=ExtResource("21_loading")]
+[node name="LoadingScreen" parent="UI" unique_id=2015829845 instance=ExtResource("21_loading")]
 visible = false
 
-[node name="HUDBackground" type="ColorRect" parent="UI"]
+[node name="HUDBackground" type="ColorRect" parent="UI" unique_id=1833481760]
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
@@ -133,7 +134,7 @@ offset_right = 548.0
 offset_bottom = -16.0
 color = Color(0.012, 0.014, 0.018, 0.76)
 
-[node name="HUDLabel" type="Label" parent="UI"]
+[node name="HUDLabel" type="Label" parent="UI" unique_id=1958024641]
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
@@ -144,7 +145,7 @@ offset_bottom = -26.0
 text = "SHOOTY"
 label_settings = SubResource("LabelSettings_jscy8")
 
-[node name="ScorePanel" type="Control" parent="UI"]
+[node name="ScorePanel" type="Control" parent="UI" unique_id=1822185766]
 layout_mode = 3
 anchors_preset = 1
 anchor_left = 1.0
@@ -155,13 +156,13 @@ offset_right = -16.0
 offset_bottom = 46.0
 grow_horizontal = 0
 
-[node name="ScoreBackground" type="ColorRect" parent="UI/ScorePanel"]
+[node name="ScoreBackground" type="ColorRect" parent="UI/ScorePanel" unique_id=110706964]
 layout_mode = 0
 offset_right = 182.0
 offset_bottom = 32.0
 color = Color(0.015, 0.017, 0.02, 0.86)
 
-[node name="ScoreLabel" type="Label" parent="UI/ScorePanel"]
+[node name="ScoreLabel" type="Label" parent="UI/ScorePanel" unique_id=1432852013]
 layout_mode = 0
 offset_left = 8.0
 offset_right = 174.0
@@ -172,7 +173,7 @@ label_settings = SubResource("LabelSettings_pm3ni")
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="DungeonMinimap" type="Control" parent="UI"]
+[node name="DungeonMinimap" type="Control" parent="UI" unique_id=2077365740]
 visible = false
 layout_mode = 3
 anchors_preset = 1
@@ -185,7 +186,7 @@ offset_bottom = 204.0
 grow_horizontal = 0
 script = ExtResource("14")
 
-[node name="CombatPanel" type="Control" parent="UI"]
+[node name="CombatPanel" type="Control" parent="UI" unique_id=1318020400]
 layout_mode = 3
 anchors_preset = 0
 offset_left = 16.0
@@ -194,14 +195,14 @@ offset_right = 288.0
 offset_bottom = 142.0
 metadata/_edit_use_anchors_ = true
 
-[node name="PanelBackground" type="ColorRect" parent="UI/CombatPanel"]
+[node name="PanelBackground" type="ColorRect" parent="UI/CombatPanel" unique_id=658915571]
 visible = false
 layout_mode = 0
 offset_right = 272.0
 offset_bottom = 120.0
 metadata/_edit_use_anchors_ = true
 
-[node name="CircularPortraitMask" type="Control" parent="UI/CombatPanel"]
+[node name="CircularPortraitMask" type="Control" parent="UI/CombatPanel" unique_id=1625091127]
 clip_children = 1
 anchors_preset = 0
 offset_left = 17.5
@@ -210,7 +211,7 @@ offset_right = 73.5
 offset_bottom = 73.75
 metadata/_edit_use_anchors_ = true
 
-[node name="CharacterPortrait" type="TextureRect" parent="UI/CombatPanel/CircularPortraitMask"]
+[node name="CharacterPortrait" type="TextureRect" parent="UI/CombatPanel/CircularPortraitMask" unique_id=229267787]
 material = SubResource("ShaderMaterial_0ld40")
 layout_mode = 0
 offset_left = -6.0
@@ -222,7 +223,43 @@ texture = ExtResource("18_gqmmt")
 script = ExtResource("18_dp3eg")
 metadata/_edit_use_anchors_ = true
 
-[node name="HealthLabel" type="Label" parent="UI/CombatPanel"]
+[node name="ParryPortraitMeter" type="Control" parent="UI/CombatPanel" unique_id=1643672674]
+z_index = 4
+layout_mode = 1
+anchor_left = -0.02757353
+anchor_top = -0.0625
+anchor_right = 0.04963235
+anchor_bottom = 0.1125
+offset_left = 7.5
+offset_top = 7.5
+offset_right = 83.5
+offset_bottom = 83.5
+mouse_filter = 2
+script = ExtResource("22_parry")
+metadata/_edit_use_anchors_ = true
+
+[node name="ParryReadyLabel" type="Label" parent="UI/CombatPanel" unique_id=173894112]
+z_index = 5
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.0036764706
+anchor_top = -0.125
+anchor_right = 0.018382354
+anchor_bottom = -0.125
+offset_right = 92.0
+offset_bottom = 15.0
+theme_override_colors/font_color = Color(0.62, 1, 0.92, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.9)
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 9
+text = "PARRY READY"
+label_settings = SubResource("LabelSettings_y6deb")
+horizontal_alignment = 1
+vertical_alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="HealthLabel" type="Label" parent="UI/CombatPanel" unique_id=20656891]
 visible = false
 layout_mode = 0
 offset_left = 132.0
@@ -231,7 +268,7 @@ offset_right = 474.0
 offset_bottom = 28.0
 text = "LIFE"
 
-[node name="HealthBarBack" type="ColorRect" parent="UI/CombatPanel"]
+[node name="HealthBarBack" type="ColorRect" parent="UI/CombatPanel" unique_id=506104033]
 layout_mode = 1
 anchors_preset = -1
 anchor_left = -0.011029412
@@ -245,7 +282,7 @@ offset_bottom = 35.5
 color = Color(0.004, 0.006, 0.005, 1)
 metadata/_edit_use_anchors_ = true
 
-[node name="HealthBarFill" type="ColorRect" parent="UI/CombatPanel/HealthBarBack"]
+[node name="HealthBarFill" type="ColorRect" parent="UI/CombatPanel/HealthBarBack" unique_id=818113685]
 layout_mode = 1
 anchors_preset = -1
 anchor_left = 0.0061728423
@@ -257,7 +294,7 @@ offset_bottom = 10.5
 color = Color(0.18, 0.92, 0.28, 1)
 metadata/_edit_use_anchors_ = true
 
-[node name="HealthTickLayer" type="Control" parent="UI/CombatPanel/HealthBarBack"]
+[node name="HealthTickLayer" type="Control" parent="UI/CombatPanel/HealthBarBack" unique_id=762122055]
 layout_mode = 1
 anchor_left = -0.0064935065
 anchor_top = -0.1904762
@@ -267,7 +304,7 @@ offset_right = 154.0
 offset_bottom = 10.5
 metadata/_edit_use_anchors_ = true
 
-[node name="InvulnerabilityBarBack" type="ColorRect" parent="UI/CombatPanel"]
+[node name="InvulnerabilityBarBack" type="ColorRect" parent="UI/CombatPanel" unique_id=517382811]
 visible = false
 layout_mode = 0
 offset_left = 104.0
@@ -276,12 +313,12 @@ offset_right = 258.0
 offset_bottom = 39.0
 color = Color(0.035, 0.08, 0.09, 1)
 
-[node name="InvulnerabilityBarFill" type="ColorRect" parent="UI/CombatPanel/InvulnerabilityBarBack"]
+[node name="InvulnerabilityBarFill" type="ColorRect" parent="UI/CombatPanel/InvulnerabilityBarBack" unique_id=196688608]
 layout_mode = 0
 offset_bottom = 2.0
 color = Color(0.3, 1, 1, 1)
 
-[node name="OverdriveLabel" type="Label" parent="UI/CombatPanel"]
+[node name="OverdriveLabel" type="Label" parent="UI/CombatPanel" unique_id=984660728]
 visible = false
 layout_mode = 0
 offset_left = 132.0
@@ -290,7 +327,7 @@ offset_right = 474.0
 offset_bottom = 76.0
 text = "OVERDRIVE"
 
-[node name="OverdriveBarBack" type="ColorRect" parent="UI/CombatPanel"]
+[node name="OverdriveBarBack" type="ColorRect" parent="UI/CombatPanel" unique_id=147844214]
 layout_mode = 0
 offset_left = 109.0
 offset_top = 51.0
@@ -299,7 +336,7 @@ offset_bottom = 62.5
 color = Color(0.004, 0.005, 0.008, 1)
 metadata/_edit_use_anchors_ = true
 
-[node name="OverdriveBarFill" type="ColorRect" parent="UI/CombatPanel/OverdriveBarBack"]
+[node name="OverdriveBarFill" type="ColorRect" parent="UI/CombatPanel/OverdriveBarBack" unique_id=1237933809]
 layout_mode = 1
 anchors_preset = -1
 anchor_top = -0.17391305
@@ -308,14 +345,14 @@ offset_bottom = 11.5
 color = Color(0.16, 0.52, 1, 1)
 metadata/_edit_use_anchors_ = true
 
-[node name="OverdriveTickLayer" type="Control" parent="UI/CombatPanel/OverdriveBarBack"]
+[node name="OverdriveTickLayer" type="Control" parent="UI/CombatPanel/OverdriveBarBack" unique_id=1141532412]
 layout_mode = 1
 anchor_top = -0.17391305
 offset_right = 139.0
 offset_bottom = 11.5
 metadata/_edit_use_anchors_ = true
 
-[node name="SuperLabel" type="Label" parent="UI/CombatPanel"]
+[node name="SuperLabel" type="Label" parent="UI/CombatPanel" unique_id=120084086]
 visible = false
 layout_mode = 0
 offset_left = 132.0
@@ -324,7 +361,7 @@ offset_right = 474.0
 offset_bottom = 124.0
 text = "SPECIAL"
 
-[node name="SuperBarBack" type="ColorRect" parent="UI/CombatPanel"]
+[node name="SuperBarBack" type="ColorRect" parent="UI/CombatPanel" unique_id=250542111]
 layout_mode = 0
 offset_left = 108.0
 offset_top = 74.0
@@ -333,7 +370,7 @@ offset_bottom = 84.5
 color = Color(0.11, 0.085, 0.025, 1)
 metadata/_edit_use_anchors_ = true
 
-[node name="SuperBarFill" type="ColorRect" parent="UI/CombatPanel/SuperBarBack"]
+[node name="SuperBarFill" type="ColorRect" parent="UI/CombatPanel/SuperBarBack" unique_id=1915440998]
 layout_mode = 1
 anchors_preset = -1
 anchor_left = -0.016806724
@@ -345,7 +382,7 @@ offset_bottom = 10.5
 color = Color(1, 0.76, 0.16, 1)
 metadata/_edit_use_anchors_ = true
 
-[node name="AttributeLabel" type="Label" parent="UI/CombatPanel"]
+[node name="AttributeLabel" type="Label" parent="UI/CombatPanel" unique_id=610750393]
 visible = false
 layout_mode = 0
 offset_left = 18.0
@@ -354,7 +391,7 @@ offset_right = 342.0
 offset_bottom = 192.0
 text = "Attributes"
 
-[node name="StatsLabel" type="Label" parent="UI/CombatPanel"]
+[node name="StatsLabel" type="Label" parent="UI/CombatPanel" unique_id=461440903]
 visible = false
 layout_mode = 0
 offset_left = 18.0
@@ -363,7 +400,7 @@ offset_right = 342.0
 offset_bottom = 226.0
 text = "Bullet Upgrade Ammo"
 
-[node name="AmmoCounterPanel" type="Control" parent="UI"]
+[node name="AmmoCounterPanel" type="Control" parent="UI" unique_id=272153000]
 visible = false
 layout_mode = 3
 anchors_preset = 1
@@ -375,7 +412,7 @@ offset_right = -16.0
 offset_bottom = 520.0
 grow_horizontal = 0
 
-[node name="PausePanel" type="Control" parent="UI"]
+[node name="PausePanel" type="Control" parent="UI" unique_id=14432458]
 process_mode = 2
 visible = false
 layout_mode = 3
@@ -391,13 +428,13 @@ offset_bottom = 230.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="PauseBackground" type="ColorRect" parent="UI/PausePanel"]
+[node name="PauseBackground" type="ColorRect" parent="UI/PausePanel" unique_id=927803696]
 layout_mode = 0
 offset_right = 680.0
 offset_bottom = 460.0
 color = Color(0.012, 0.014, 0.018, 0.94)
 
-[node name="PauseTitle" type="Label" parent="UI/PausePanel"]
+[node name="PauseTitle" type="Label" parent="UI/PausePanel" unique_id=771639235]
 layout_mode = 0
 offset_left = 40.0
 offset_top = 28.0
@@ -407,7 +444,7 @@ theme_override_font_sizes/font_size = 30
 text = "PAUSED"
 horizontal_alignment = 1
 
-[node name="PauseStatsLabel" type="Label" parent="UI/PausePanel"]
+[node name="PauseStatsLabel" type="Label" parent="UI/PausePanel" unique_id=1862464438]
 layout_mode = 0
 offset_left = 54.0
 offset_top = 98.0
@@ -415,7 +452,7 @@ offset_right = 626.0
 offset_bottom = 340.0
 text = "Stats"
 
-[node name="PausePromptLabel" type="Label" parent="UI/PausePanel"]
+[node name="PausePromptLabel" type="Label" parent="UI/PausePanel" unique_id=462117500]
 layout_mode = 0
 offset_left = 54.0
 offset_top = 378.0
@@ -424,7 +461,7 @@ offset_bottom = 430.0
 text = "Esc/Start resumes. Enter/A opens exit prompt."
 horizontal_alignment = 1
 
-[node name="PauseConfirmPanel" type="Control" parent="UI/PausePanel"]
+[node name="PauseConfirmPanel" type="Control" parent="UI/PausePanel" unique_id=883868231]
 visible = false
 anchors_preset = 0
 offset_left = 110.0
@@ -432,13 +469,13 @@ offset_top = 150.0
 offset_right = 570.0
 offset_bottom = 310.0
 
-[node name="ConfirmBackground" type="ColorRect" parent="UI/PausePanel/PauseConfirmPanel"]
+[node name="ConfirmBackground" type="ColorRect" parent="UI/PausePanel/PauseConfirmPanel" unique_id=943464173]
 layout_mode = 0
 offset_right = 460.0
 offset_bottom = 160.0
 color = Color(0.05, 0.018, 0.018, 0.96)
 
-[node name="ConfirmLabel" type="Label" parent="UI/PausePanel/PauseConfirmPanel"]
+[node name="ConfirmLabel" type="Label" parent="UI/PausePanel/PauseConfirmPanel" unique_id=2120230188]
 layout_mode = 0
 offset_left = 28.0
 offset_top = 30.0
@@ -447,7 +484,7 @@ offset_bottom = 82.0
 text = "Exit to main menu?"
 horizontal_alignment = 1
 
-[node name="ConfirmPromptLabel" type="Label" parent="UI/PausePanel/PauseConfirmPanel"]
+[node name="ConfirmPromptLabel" type="Label" parent="UI/PausePanel/PauseConfirmPanel" unique_id=916272936]
 layout_mode = 0
 offset_left = 28.0
 offset_top = 98.0
@@ -456,7 +493,7 @@ offset_bottom = 142.0
 text = "Enter/A confirms. R/Esc cancels."
 horizontal_alignment = 1
 
-[node name="GameOverPanel" type="Control" parent="UI"]
+[node name="GameOverPanel" type="Control" parent="UI" unique_id=75127010]
 visible = false
 layout_mode = 3
 anchors_preset = 8
@@ -471,13 +508,13 @@ offset_bottom = 220.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="GameOverBackground" type="ColorRect" parent="UI/GameOverPanel"]
+[node name="GameOverBackground" type="ColorRect" parent="UI/GameOverPanel" unique_id=375758682]
 layout_mode = 0
 offset_right = 500.0
 offset_bottom = 440.0
 color = Color(0.015, 0.012, 0.018, 0.9)
 
-[node name="GameOverTitle" type="Label" parent="UI/GameOverPanel"]
+[node name="GameOverTitle" type="Label" parent="UI/GameOverPanel" unique_id=1932710893]
 layout_mode = 0
 offset_left = 36.0
 offset_top = 34.0
@@ -486,7 +523,7 @@ offset_bottom = 84.0
 text = "GAME OVER"
 horizontal_alignment = 1
 
-[node name="GameOverScoreLabel" type="Label" parent="UI/GameOverPanel"]
+[node name="GameOverScoreLabel" type="Label" parent="UI/GameOverPanel" unique_id=1842979032]
 layout_mode = 0
 offset_left = 36.0
 offset_top = 102.0
@@ -495,7 +532,7 @@ offset_bottom = 138.0
 text = "Score: 0"
 horizontal_alignment = 1
 
-[node name="GameOverTallyLabel" type="Label" parent="UI/GameOverPanel"]
+[node name="GameOverTallyLabel" type="Label" parent="UI/GameOverPanel" unique_id=1900360703]
 layout_mode = 0
 offset_left = 36.0
 offset_top = 150.0
@@ -504,7 +541,7 @@ offset_bottom = 318.0
 text = "Run tally"
 horizontal_alignment = 1
 
-[node name="GameOverPromptLabel" type="Label" parent="UI/GameOverPanel"]
+[node name="GameOverPromptLabel" type="Label" parent="UI/GameOverPanel" unique_id=855414889]
 layout_mode = 0
 offset_left = 36.0
 offset_top = 360.0
@@ -513,7 +550,7 @@ offset_bottom = 410.0
 text = "Press R or Start/A to restart"
 horizontal_alignment = 1
 
-[node name="LevelSelectPanel" type="Control" parent="UI"]
+[node name="LevelSelectPanel" type="Control" parent="UI" unique_id=1426038507]
 visible = false
 layout_mode = 3
 anchors_preset = 8
@@ -528,13 +565,13 @@ offset_bottom = 260.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="LevelSelectBackground" type="ColorRect" parent="UI/LevelSelectPanel"]
+[node name="LevelSelectBackground" type="ColorRect" parent="UI/LevelSelectPanel" unique_id=2016952999]
 layout_mode = 0
 offset_right = 840.0
 offset_bottom = 520.0
 color = Color(0.012, 0.014, 0.018, 0.94)
 
-[node name="LevelSelectTitle" type="Label" parent="UI/LevelSelectPanel"]
+[node name="LevelSelectTitle" type="Label" parent="UI/LevelSelectPanel" unique_id=288966941]
 layout_mode = 0
 offset_left = 44.0
 offset_top = 34.0
@@ -543,7 +580,7 @@ offset_bottom = 82.0
 text = "SELECT LEVEL"
 horizontal_alignment = 1
 
-[node name="LevelListLabel" type="Label" parent="UI/LevelSelectPanel"]
+[node name="LevelListLabel" type="Label" parent="UI/LevelSelectPanel" unique_id=2092984663]
 layout_mode = 0
 offset_left = 72.0
 offset_top = 112.0
@@ -551,7 +588,7 @@ offset_right = 768.0
 offset_bottom = 380.0
 text = "Levels"
 
-[node name="LevelSelectPromptLabel" type="Label" parent="UI/LevelSelectPanel"]
+[node name="LevelSelectPromptLabel" type="Label" parent="UI/LevelSelectPanel" unique_id=1237405365]
 layout_mode = 0
 offset_left = 72.0
 offset_top = 426.0
@@ -560,7 +597,7 @@ offset_bottom = 478.0
 text = "Up/Down or D-pad to choose. Enter/A to start."
 horizontal_alignment = 1
 
-[node name="WinPanel" type="Control" parent="UI"]
+[node name="WinPanel" type="Control" parent="UI" unique_id=1763087723]
 visible = false
 layout_mode = 3
 anchors_preset = 8
@@ -575,13 +612,13 @@ offset_bottom = 245.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="WinBackground" type="ColorRect" parent="UI/WinPanel"]
+[node name="WinBackground" type="ColorRect" parent="UI/WinPanel" unique_id=1824021043]
 layout_mode = 0
 offset_right = 720.0
 offset_bottom = 490.0
 color = Color(0.014, 0.02, 0.018, 0.92)
 
-[node name="WinTitle" type="Label" parent="UI/WinPanel"]
+[node name="WinTitle" type="Label" parent="UI/WinPanel" unique_id=103506600]
 layout_mode = 0
 offset_left = 52.0
 offset_top = 34.0
@@ -591,7 +628,7 @@ theme_override_font_sizes/font_size = 30
 text = "LEVEL CLEARED"
 horizontal_alignment = 1
 
-[node name="WinScoreLabel" type="Label" parent="UI/WinPanel"]
+[node name="WinScoreLabel" type="Label" parent="UI/WinPanel" unique_id=1314918890]
 layout_mode = 0
 offset_left = 52.0
 offset_top = 102.0
@@ -602,7 +639,7 @@ text = "Score: 0"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="WinPromptLabel" type="Label" parent="UI/WinPanel"]
+[node name="WinPromptLabel" type="Label" parent="UI/WinPanel" unique_id=818173381]
 layout_mode = 0
 offset_left = 52.0
 offset_top = 404.0
@@ -613,12 +650,12 @@ text = "Press R or Start to return to level select"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="CharacterUi" type="Sprite2D" parent="UI"]
+[node name="CharacterUi" type="Sprite2D" parent="UI" unique_id=1596757509]
 position = Vector2(147.67, 82.36)
 scale = Vector2(0.19030759, 0.19030762)
 texture = ExtResource("20_gqmmt")
 
-[node name="CharacterNameLabel" type="Label" parent="UI/CharacterUi"]
+[node name="CharacterNameLabel" type="Label" parent="UI/CharacterUi" unique_id=90066937]
 anchors_preset = -1
 anchor_top = 0.425
 anchor_bottom = 0.425

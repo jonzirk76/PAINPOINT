@@ -62,6 +62,7 @@ const SCRIPT_PATHS := [
 	"res://scripts/ui/dungeon_minimap.gd",
 	"res://scripts/ui/loading_screen.gd",
 	"res://scripts/ui/circular_portrait.gd",
+	"res://scripts/ui/parry_portrait_meter.gd",
 	"res://scripts/orchestrators/game_orchestrator.gd",
 	"res://scripts/resources/agent_boss_program.gd",
 	"res://scripts/resources/agent_boss_generator.gd",
@@ -206,6 +207,7 @@ func _init() -> void:
 	_test_parry_absorbs_hostile_projectiles_for_ammo(failures)
 	_test_parry_absorb_visuals_and_ammo_flash(failures)
 	_test_projectile_impact_visuals(failures)
+	_test_projectile_visual_reveal_delay(failures)
 	_test_audio_assets_and_pitch_variation(failures)
 	_test_reward_driven_pickup_drops(failures)
 	_test_health_pickup_and_player_healing(failures)
@@ -247,6 +249,7 @@ func _init() -> void:
 	_test_boss_test_level_select(failures)
 	_test_generated_encounter_test_level_select(failures)
 	_test_orchestrator_dungeon_start_and_boss(failures)
+	_test_dungeon_room_clear_resolution_is_deferred(failures)
 	_test_boss_exit_portal_preview_and_safe_position(failures)
 	_test_orchestrator_main_loop_floor_progression(failures)
 
@@ -450,6 +453,28 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("FaunaManager should filter full-floor geometry before syncing active cats.")
 	if not manager_source.contains("signal cat_meowed") or not manager_source.contains("_on_cat_meowed") or not manager_source.contains("meowed"):
 		failures.append("FaunaManager should relay cat meow requests upward.")
+	var fauna_manager = load("res://scripts/managers/fauna_manager.gd").new()
+	root.add_child(fauna_manager)
+	var builder = load("res://scripts/resources/room_geometry_builder.gd")
+	var full_floor_cells: Array[Vector2i] = [Vector2i.ZERO, Vector2i(1, 0)]
+	var full_floor_level = load("res://scripts/resources/level_definition.gd").new()
+	full_floor_level.arena_bounds = builder.get_bounds(full_floor_cells)
+	full_floor_level.arena_shape = 0
+	full_floor_level.wall_rects = []
+	full_floor_level.void_rects = []
+	full_floor_level.set_meta("full_floor", true)
+	full_floor_level.set_meta("footprint_cells", full_floor_cells)
+	var left_floor_cell_rect: Rect2 = builder.get_cell_rect(full_floor_cells, Vector2i.ZERO)
+	var right_floor_cell_rect: Rect2 = builder.get_cell_rect(full_floor_cells, Vector2i(1, 0))
+	full_floor_level.set_meta("active_room_playable_rects", [right_floor_cell_rect])
+	fauna_manager.set_cat_activity_bounds(full_floor_level.arena_bounds)
+	fauna_manager.set_roam_bounds(full_floor_level.arena_bounds)
+	fauna_manager.set_arena_definition(full_floor_level)
+	var cat_floor_spawn_position: Vector2 = left_floor_cell_rect.get_center()
+	fauna_manager.spawn_cat(cat_floor_spawn_position, 321)
+	if fauna_manager.get_cat_position().distance_squared_to(cat_floor_spawn_position) > 1.0:
+		failures.append("Dungeon cats should not be constrained into the active combat room by active_room_playable_rects.")
+	fauna_manager.free()
 	var projectile_manager_source := _read_text("res://scripts/managers/projectile_manager.gd")
 	if not projectile_manager_source.contains("get_player_projectile_positions"):
 		failures.append("ProjectileManager should expose active player projectile positions for background fauna awareness.")
@@ -516,6 +541,35 @@ func _test_player_shoot_pose_relaxes_to_movement(failures: Array[String]) -> voi
 		failures.append("Player shooting pose should expire after its short hold window.")
 	if player._get_visual_facing_direction().distance_to(Vector2.DOWN) > 0.001:
 		failures.append("Player visual facing should return to movement after shooting pose expires.")
+	player.global_position = Vector2(20.0, -12.0)
+	player.play_shoot_pose(Vector2.RIGHT)
+	var right_origin: Vector2 = player.get_fire_origin()
+	var expected_right_origin := player.global_position + Vector2(player.muzzle_forward_offset, player.muzzle_side_offset)
+	if right_origin.distance_to(expected_right_origin) > 0.001:
+		failures.append("Player fire origin should line up with the right-facing gun muzzle.")
+	var projectile_forward_offset: float = sqrt(player.body_radius * player.body_radius - player.muzzle_side_offset * player.muzzle_side_offset)
+	var right_projectile_origin: Vector2 = player.get_projectile_origin(Vector2.RIGHT)
+	var expected_right_projectile_origin := player.global_position + Vector2(projectile_forward_offset, player.muzzle_side_offset)
+	if right_projectile_origin.distance_to(expected_right_projectile_origin) > 0.001:
+		failures.append("Player projectile origin should start on the collision edge behind the right-facing muzzle.")
+	player.play_shoot_pose(Vector2.LEFT)
+	var left_origin: Vector2 = player.get_fire_origin()
+	var expected_left_origin := player.global_position + Vector2(-player.muzzle_forward_offset, player.muzzle_side_offset)
+	if left_origin.distance_to(expected_left_origin) > 0.001:
+		failures.append("Player fire origin should line up with the mirrored left-facing gun muzzle.")
+	var left_projectile_origin: Vector2 = player.get_projectile_origin(Vector2.LEFT)
+	var expected_left_projectile_origin := player.global_position + Vector2(-projectile_forward_offset, player.muzzle_side_offset)
+	if left_projectile_origin.distance_to(expected_left_projectile_origin) > 0.001:
+		failures.append("Player projectile origin should start on the collision edge behind the left-facing muzzle.")
+	player.play_shoot_pose(Vector2.UP)
+	var up_origin: Vector2 = player.get_fire_origin()
+	var expected_up_origin := player.global_position + Vector2(player.muzzle_side_offset, -player.muzzle_forward_offset)
+	if up_origin.distance_to(expected_up_origin) > 0.001:
+		failures.append("Player fire origin should rotate with the gun barrel.")
+	var up_projectile_origin: Vector2 = player.get_projectile_origin(Vector2.UP)
+	var expected_up_projectile_origin := player.global_position + Vector2(player.muzzle_side_offset, -projectile_forward_offset)
+	if up_projectile_origin.distance_to(expected_up_projectile_origin) > 0.001:
+		failures.append("Player projectile origin should start on the collision edge behind the upward muzzle.")
 	player.free()
 
 
@@ -950,6 +1004,21 @@ func _test_character_hud_feedback_and_manual_layout(failures: Array[String]) -> 
 	main._update_super_bar(super_rect)
 	if main.super_bar_back.get_node_or_null("SuperCrackle") == null:
 		failures.append("Ready special meter should draw a white crackle overlay.")
+	if main.combat_panel.get_node_or_null("ParryPortraitMeter") == null or main.combat_panel.get_node_or_null("ParryReadyLabel") == null:
+		failures.append("Parry portrait meter and ready label should be authored in main.tscn for inspector placement.")
+	main._last_parry_cooldown_duration = 8.0
+	main._last_parry_cooldown_remaining = 4.0
+	main._last_parry_graze_cooldown_active = true
+	main._update_combat_panel([])
+	if main._parry_portrait_meter == null or not main._parry_portrait_meter.visible:
+		failures.append("Combat HUD should draw a parry cooldown meter around the portrait.")
+	if main._parry_portrait_status_label == null or main._parry_portrait_status_label.text != "PARRY GRAZE":
+		failures.append("Combat HUD should label graze-accelerated parry cooldown recovery.")
+	main._last_parry_cooldown_remaining = 0.0
+	main._last_parry_graze_cooldown_active = false
+	main._update_combat_panel([])
+	if main._parry_portrait_status_label == null or main._parry_portrait_status_label.text != "PARRY READY":
+		failures.append("Combat HUD should label the portrait meter when parry is ready.")
 	main.free()
 
 
@@ -963,6 +1032,46 @@ func _test_aim_change_logic(failures: Array[String]) -> void:
 		failures.append("Tiny aim drift should not request another fire.")
 	if not manager.should_fire_for_aim_change(Vector2.UP):
 		failures.append("Large aim state change should request fire.")
+	if not manager.should_fire_for_aim_change(Vector2.ZERO):
+		failures.append("Right-stick neutral return should request a flick release fire.")
+	elif manager._consume_pending_aim_fire_direction().distance_to(Vector2.UP) > 0.001:
+		failures.append("Right-stick neutral return should fire in the previous aim direction.")
+	if manager.should_fire_for_aim_change(Vector2.ZERO):
+		failures.append("Right-stick neutral return should not repeatedly request release fire.")
+	manager.reset_run()
+	manager.stick_deadzone = 0.25
+	manager.aim_release_deadzone_fire_rate_bonus = 0.25
+	manager.set_fire_cooldown_multiplier(1.0)
+	if not manager.should_fire_for_aim_change(Vector2.RIGHT):
+		failures.append("Base fire-rate right-stick aim should still arm release fire.")
+	if manager.should_fire_for_aim_change(Vector2(0.36, 0.0)):
+		failures.append("Base fire-rate release radius should not grow beyond the normal stick deadzone.")
+	manager.reset_run()
+	manager.stick_deadzone = 0.25
+	manager.aim_release_deadzone_fire_rate_bonus = 0.25
+	manager.set_fire_cooldown_multiplier(0.4)
+	if not manager.should_fire_for_aim_change(Vector2(0.34, 0.0)):
+		failures.append("Expanded release radius should not raise the initial right-stick aim entry deadzone.")
+	if not manager.should_fire_for_aim_change(Vector2(0.36, 0.0)):
+		failures.append("Fast fire-rate right-stick return should use the expanded release radius.")
+	elif manager._consume_pending_aim_fire_direction().distance_to(Vector2.RIGHT) > 0.001:
+		failures.append("Fast fire-rate right-stick release should fire in the previous aim direction.")
+	if manager.should_fire_for_aim_change(Vector2(0.36, 0.0)):
+		failures.append("Expanded release radius should latch neutral until the stick moves outward again.")
+	if not manager.should_fire_for_aim_change(Vector2(0.52, 0.0)):
+		failures.append("Right-stick aim should re-arm after leaving the expanded release radius.")
+	manager.set_fire_cooldown_multiplier(0.4)
+	manager.reset_run()
+	if not manager.should_fire_for_aim_change(Vector2.RIGHT):
+		failures.append("Input reset should keep the current fire-rate release tuning armed for floor transitions.")
+	if not manager.should_fire_for_aim_change(Vector2(0.36, 0.0)):
+		failures.append("Input reset should preserve fire-rate-based release radius during floor transitions.")
+	manager.set_fire_cooldown_multiplier(1.0)
+	manager.reset_run()
+	if not manager.should_fire_for_aim_change(Vector2.RIGHT, InputManager.AIM_SOURCE_DIGITAL):
+		failures.append("Initial digital aim state should still request fire.")
+	if manager.should_fire_for_aim_change(Vector2.ZERO, InputManager.AIM_SOURCE_NONE):
+		failures.append("Digital aim release should not use the right-stick flick fire rule.")
 	var input_source := _read_text("res://scripts/managers/input_manager.gd")
 	if not input_source.contains("JOY_AXIS_TRIGGER_LEFT") or not input_source.contains("KEY_SHIFT") or not input_source.contains("overdrive_changed"):
 		failures.append("InputManager should expose Left Shift / left-trigger overdrive without replacing right-trigger super charge.")
@@ -1043,6 +1152,16 @@ func _test_parry_input_and_cooldown(failures: Array[String]) -> void:
 		failures.append("Player parry-ready indicator should clear while parry is on cooldown.")
 	if manager.get_parry_cooldown_remaining() <= 0.0:
 		failures.append("PlayerManager parry should start a long cooldown.")
+	manager._process(0.5)
+	var normal_cooldown_remaining: float = manager.get_parry_cooldown_remaining()
+	manager.set_parry_graze_cooldown_active(true)
+	manager._process(0.5)
+	var graze_cooldown_remaining: float = manager.get_parry_cooldown_remaining()
+	if normal_cooldown_remaining - graze_cooldown_remaining < 0.95:
+		failures.append("Graze-active parry cooldown should recover at double speed by default.")
+	if not bool(manager.player._parry_graze_cooldown_active):
+		failures.append("Player should show the graze-accelerated parry cooldown state.")
+	manager.set_parry_graze_cooldown_active(false)
 	manager._process(2.1)
 	manager.request_parry()
 	if parry_count[0] != 2:
@@ -1384,6 +1503,10 @@ func _test_parry_absorbs_hostile_projectiles_for_ammo(failures: Array[String]) -
 	projectile_manager.fire_hostile(Vector2(82.0, 0.0), Vector2.RIGHT, {"speed": 250.0, "damage": 1, "radius": 7.0})
 	projectile_manager.fire_hostile(Vector2(220.0, 0.0), Vector2.RIGHT, {"speed": 250.0, "damage": 1, "radius": 7.0})
 	projectile_manager.fire(Vector2(12.0, 12.0), Vector2.RIGHT, {})
+	if not projectile_manager.has_hostile_projectile_in_radius(Vector2.ZERO, 24.0):
+		failures.append("Graze detection should find hostile projectiles inside the perfect-parry radius.")
+	if projectile_manager.has_hostile_projectile_in_radius(Vector2(400.0, 0.0), 24.0):
+		failures.append("Graze detection should ignore hostile projectiles outside the perfect-parry radius.")
 	var absorbed: Dictionary = projectile_manager.absorb_hostile_projectiles(Vector2.ZERO, 100.0, 24.0)
 	if int(absorbed["absorbed_count"]) != 2:
 		failures.append("Parry should erase hostile projectiles inside the effect radius only.")
@@ -1518,6 +1641,21 @@ func _test_projectile_impact_visuals(failures: Array[String]) -> void:
 		failures.append("Projectile expiry routing should play impact frames for wall, boundary, and dissipating bullets.")
 	effects_manager.free()
 	effect_layer.free()
+
+
+func _test_projectile_visual_reveal_delay(failures: Array[String]) -> void:
+	var projectile = load("res://scenes/entities/projectile_entity.tscn").instantiate()
+	root.add_child(projectile)
+	projectile.initialize(Vector2.ZERO, Vector2.RIGHT, null, 100.0, 10.0)
+	if projectile.visible:
+		failures.append("Projectile visuals should start hidden when a reveal distance is configured.")
+	projectile._physics_process(0.05)
+	if projectile.visible:
+		failures.append("Projectile visuals should remain hidden before reaching the reveal distance.")
+	projectile._physics_process(0.06)
+	if not projectile.visible:
+		failures.append("Projectile visuals should appear once the reveal distance is reached.")
+	projectile.free()
 
 
 func _test_audio_assets_and_pitch_variation(failures: Array[String]) -> void:
@@ -3094,9 +3232,30 @@ func _test_dungeon_room_interiors_persist(failures: Array[String]) -> void:
 	if _get_level_generation_signature(manager.get_current_level_definition()) != first_signature:
 		failures.append("DungeonManager should return the cached generated interior on repeated reads.")
 	var full_floor_during_combat = manager.get_current_full_floor_level_definition(true)
+	if manager._full_floor_base_level_cache == null:
+		failures.append("DungeonManager should cache stable full-floor geometry after building a full-floor level.")
+	var full_floor_signature := _get_level_generation_signature(full_floor_during_combat)
+	var repeated_full_floor = manager.get_current_full_floor_level_definition(true)
+	if _get_level_generation_signature(repeated_full_floor) != full_floor_signature:
+		failures.append("Repeated full-floor level requests should reuse stable cached geometry.")
+	full_floor_during_combat.wall_rects.clear()
+	var isolated_full_floor = manager.get_current_full_floor_level_definition(true)
+	if isolated_full_floor.wall_rects.is_empty():
+		failures.append("Mutating a returned full-floor level should not mutate the cached full-floor geometry.")
 	var combat_dim_rects: Array = full_floor_during_combat.get_meta("inactive_room_dim_rects") if full_floor_during_combat.has_meta("inactive_room_dim_rects") else []
 	if combat_dim_rects.is_empty():
 		failures.append("Full-floor dungeon combat levels should expose dim rects for visible inactive rooms.")
+	var active_combat_wall_rects: Array[Rect2] = _get_level_meta_rects(isolated_full_floor, "active_room_wall_rects", [])
+	if active_combat_wall_rects.is_empty():
+		failures.append("Full-floor dungeon combat levels should expose active-room wall blockers for gameplay managers.")
+	elif active_combat_wall_rects.size() >= isolated_full_floor.wall_rects.size():
+		failures.append("Active combat wall blockers should be a smaller room-local subset of full-floor wall blockers.")
+	var active_combat_bounds: Rect2 = isolated_full_floor.get_meta("active_room_bounds") if isolated_full_floor.has_meta("active_room_bounds") else Rect2()
+	if active_combat_bounds.size != Vector2.ZERO:
+		for rect in active_combat_wall_rects:
+			if not rect.intersects(active_combat_bounds.grow(96.0), true):
+				failures.append("Active combat wall blockers should stay near the active room bounds.")
+				break
 
 	var persistent_prop = load("res://scripts/resources/destructible_prop_placement.gd").new()
 	persistent_prop.position = Vector2(36.0, 28.0)
@@ -3964,6 +4123,32 @@ func _test_room_manager_doors(failures: Array[String]) -> void:
 	var side_gate_lowest_body := Rect2(Vector2(0.0, marker_tile_size * 3.0), Vector2(marker_tile_size, marker_tile_size))
 	if not _rect_list_has_rect(side_gate_body_rects, side_gate_lowest_body):
 		failures.append("Closed side gate bodies should tuck under the lowest passable wall-top tile.")
+	var south_door = load("res://scenes/entities/door_entity.tscn").instantiate()
+	root.add_child(south_door)
+	var south_gate_visual_rect := Rect2(Vector2(120.0, 320.0), Vector2(marker_tile_size * 4.0, marker_tile_size))
+	var expected_south_gate_blocker := Rect2(south_gate_visual_rect.position + Vector2(0.0, marker_tile_size), south_gate_visual_rect.size)
+	south_door.initialize("south", "next", Vector2.ZERO, south_gate_visual_rect.size, false)
+	south_door.set_visual_rect(south_gate_visual_rect.get_center(), south_gate_visual_rect.size)
+	if not _rects_are_same(south_door.get_gate_blocker_rect(), expected_south_gate_blocker):
+		failures.append("Closed south gates should place their blocker on the wall body row below the visible gate top.")
+	var south_gate_body := south_door.get_node_or_null("GateBlocker") as Node2D
+	var south_gate_collision: CollisionShape2D = null
+	if south_gate_body != null:
+		south_gate_collision = south_gate_body.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	var south_gate_shape: RectangleShape2D = null
+	if south_gate_collision != null:
+		south_gate_shape = south_gate_collision.shape as RectangleShape2D
+	if south_gate_body == null or south_gate_shape == null or south_gate_body.global_position.distance_squared_to(expected_south_gate_blocker.get_center()) > 0.25 or south_gate_shape.size.distance_squared_to(expected_south_gate_blocker.size) > 0.25:
+		failures.append("Closed south gate collision should match the shifted wall body blocker, not the visible top strip.")
+	var south_gate_body_visual = south_door.get_node_or_null("GateBodyVisual")
+	var south_gate_body_overlay_rects: Array[Rect2] = south_door._get_gate_body_overlay_rects(south_gate_visual_rect)
+	if south_gate_body_visual == null or int(south_gate_body_visual.z_index) != 5 or not south_gate_body_visual.visible:
+		failures.append("Closed south gates should draw a visible body overlay for the shifted blocker row above fog.")
+	elif not _rect_list_has_rect(south_gate_body_overlay_rects, expected_south_gate_blocker):
+		failures.append("Closed south gate body overlay should align with the shifted blocker row.")
+	south_door.set_unlocked(true)
+	if south_gate_body_visual != null and south_gate_body_visual.visible:
+		failures.append("Unlocked south gates should clear the shifted body overlay.")
 	direct_door.set_unlocked(true)
 	if not direct_door.has_special_marker():
 		failures.append("Door entity should treat boss targets as special marked doors.")
@@ -3981,6 +4166,7 @@ func _test_room_manager_doors(failures: Array[String]) -> void:
 	direct_door._on_body_entered(player)
 	if entered_count[0] != 1:
 		failures.append("Door should trigger normally after it has armed.")
+	south_door.free()
 	direct_door.free()
 	player.free()
 	manager.free()
@@ -4531,6 +4717,58 @@ func _test_orchestrator_dungeon_start_and_boss(failures: Array[String]) -> void:
 	main.free()
 
 
+func _test_dungeon_room_clear_resolution_is_deferred(failures: Array[String]) -> void:
+	var scene = load("res://scenes/main.tscn")
+	if scene == null:
+		failures.append("Main scene failed to load for deferred room-clear test.")
+		return
+	var main = scene.instantiate()
+	root.add_child(main)
+	if main.dungeon_manager == null:
+		_prime_main_for_direct_test_calls(main)
+		main._connect_manager_signals()
+		main._initialize_managers()
+		main._enter_level_select()
+	main.enemy_manager.reset_run()
+	main.spawner_manager.clear_spawners()
+	main.dungeon_manager.reset_run(1, 61291)
+	var combat_path := _get_path_to_room_kind(main.dungeon_manager, "combat")
+	if combat_path.size() < 2:
+		failures.append("Deferred room-clear test could not find a generated combat room.")
+		main.free()
+		return
+	var direction := _get_connection_direction_between_rooms(main.dungeon_manager, combat_path[0], combat_path[1])
+	if direction.is_empty() or not main.dungeon_manager.enter_direction(direction):
+		failures.append("Deferred room-clear test could not enter the first generated combat room.")
+		main.free()
+		return
+	main._is_dungeon_run = true
+	main._is_main_loop_run = false
+	main._status = "DUNGEON"
+	main._set_cleared_floor_map_active(false)
+	main._set_room_entry_transition_active(false)
+	main._is_loading_room = false
+	main.room_clear_resolution_delay_seconds = 0.38
+	main._check_level_clear()
+	if not bool(main._room_clear_resolution_pending):
+		failures.append("Generated combat room clear should schedule delayed resolution.")
+	if main.dungeon_manager.is_current_room_cleared():
+		failures.append("Generated combat room should not clear before the delayed room-clear resolution.")
+	main._update_room_clear_resolution(0.37)
+	if not bool(main._room_clear_resolution_pending):
+		failures.append("Generated combat room clear should remain pending before the delay elapses.")
+	if main.dungeon_manager.is_current_room_cleared():
+		failures.append("Generated combat room should stay uncleared until the room-clear delay elapses.")
+	main._update_room_clear_resolution(0.02)
+	if bool(main._room_clear_resolution_pending):
+		failures.append("Generated combat room clear should resolve once the room-clear delay elapses.")
+	if not main.dungeon_manager.is_current_room_cleared():
+		failures.append("Generated combat room should be marked cleared after delayed room-clear resolution.")
+	if not bool(main._is_cleared_floor_map_active):
+		failures.append("Generated combat room should enter the cleared floor map after delayed resolution.")
+	main.free()
+
+
 func _test_boss_exit_portal_preview_and_safe_position(failures: Array[String]) -> void:
 	var scene = load("res://scenes/main.tscn")
 	if scene == null:
@@ -4680,6 +4918,8 @@ func _prime_main_for_direct_test_calls(main) -> void:
 	main.dungeon_minimap = main.get_node("UI/DungeonMinimap")
 	main.combat_panel = main.get_node("UI/CombatPanel")
 	main.character_ui = main.get_node("UI/CharacterUi")
+	main._parry_portrait_meter = main.get_node("UI/CombatPanel/ParryPortraitMeter")
+	main._parry_portrait_status_label = main.get_node("UI/CombatPanel/ParryReadyLabel")
 	main.health_bar_back = main.get_node("UI/CombatPanel/HealthBarBack")
 	main.health_fill = main.get_node("UI/CombatPanel/HealthBarBack/HealthBarFill")
 	main.health_tick_layer = main.get_node("UI/CombatPanel/HealthBarBack/HealthTickLayer")

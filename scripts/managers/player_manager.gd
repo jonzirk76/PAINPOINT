@@ -15,12 +15,16 @@ signal super_shot_requested(origin: Vector2, direction: Vector2, charge_ratio: f
 @export var player_scene: PackedScene = preload("res://scenes/entities/player_entity.tscn")
 @export var spawn_position: Vector2 = Vector2.ZERO
 @export var base_fire_cooldown: float = 0.09
+## Controls how long an aim-change shot is remembered when it arrives during fire cooldown.
+@export var fire_input_buffer_seconds: float = 0.12
 @export var damage_invulnerability_seconds: float = 0.6
 @export var parry_cooldown_seconds: float = 8.0
 @export var parry_chain_cooldown_seconds: float = 0.5
 @export var parry_chain_grace_seconds: float = 4.0
 @export var parry_effect_radius: float = 154.0
 @export var parry_perfect_radius: float = 42.0
+## Extra parry cooldown seconds recovered per second while a hostile projectile grazes the perfect parry radius.
+@export var parry_graze_cooldown_recovery_per_second: float = 1.0
 @export var parry_enemy_knockback: float = 430.0
 @export var super_meter_max: float = 100.0
 @export var super_meter_enemy_kill_gain: float = 6.0
@@ -33,6 +37,8 @@ var player = null
 var enabled: bool = false
 var _player_layer: Node = null
 var _fire_cooldown_remaining: float = 0.0
+var _queued_fire_direction: Vector2 = Vector2.ZERO
+var _queued_fire_remaining: float = 0.0
 var _fire_cooldown_multiplier: float = 1.0
 var _move_speed_multiplier: float = 1.0
 var _context_speed_multiplier: float = 1.0
@@ -41,6 +47,7 @@ var _last_invulnerability_remaining: float = -1.0
 var _parry_cooldown_remaining: float = 0.0
 var _active_parry_cooldown_duration: float = 8.0
 var _last_parry_cooldown_remaining: float = -1.0
+var _parry_graze_cooldown_active: bool = false
 var _parry_chain_count: int = 0
 var _longest_parry_chain: int = 0
 var _parry_chain_grace_remaining: float = 0.0
@@ -70,18 +77,16 @@ func reset_run() -> void:
 	player = player_scene.instantiate()
 	player.global_position = spawn_position
 	player.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
-	if _player_layer != null:
-		_player_layer.add_child(player)
-	else:
-		add_child(player)
 	player.health_changed.connect(_on_player_health_changed)
 	player.health_depleted.connect(_on_player_health_depleted)
+	_add_child_safely(_get_player_parent(), player)
 	_fire_cooldown_remaining = 0.0
 	_damage_cooldown_remaining = 0.0
 	_last_invulnerability_remaining = -1.0
 	_parry_cooldown_remaining = 0.0
 	_active_parry_cooldown_duration = parry_cooldown_seconds
 	_last_parry_cooldown_remaining = -1.0
+	_parry_graze_cooldown_active = false
 	_parry_chain_count = 0
 	_longest_parry_chain = 0
 	_parry_chain_grace_remaining = 0.0
@@ -97,8 +102,22 @@ func reset_run() -> void:
 	_sync_parry_chain_state()
 	_sync_player_speed()
 	_sync_super_meter_state()
+	_clear_queued_fire()
 	player_spawned.emit(player)
 	player_health_changed.emit(player.health, player.health)
+
+
+func _get_player_parent() -> Node:
+	return _player_layer if _player_layer != null else self
+
+
+func _add_child_safely(parent: Node, child: Node) -> void:
+	if parent == null or child == null or child.get_parent() != null:
+		return
+	if parent.is_inside_tree() and Engine.is_in_physics_frame():
+		parent.call_deferred("add_child", child)
+		return
+	parent.add_child(child)
 
 
 func clear_player() -> void:
@@ -107,9 +126,11 @@ func clear_player() -> void:
 	player = null
 	_spawn_feedback_queued = false
 	_fire_cooldown_remaining = 0.0
+	_clear_queued_fire()
 	_damage_cooldown_remaining = 0.0
 	_parry_cooldown_remaining = 0.0
 	_active_parry_cooldown_duration = parry_cooldown_seconds
+	_parry_graze_cooldown_active = false
 	_parry_chain_count = 0
 	_parry_chain_grace_remaining = 0.0
 	_context_speed_multiplier = 1.0
@@ -126,7 +147,9 @@ func clear_player() -> void:
 func set_enabled(value: bool) -> void:
 	enabled = value
 	if not enabled:
+		_clear_queued_fire()
 		_cancel_super_charge(true)
+		set_parry_graze_cooldown_active(false)
 		if _has_player():
 			player.stop_movement()
 
@@ -149,12 +172,18 @@ func play_queued_spawn_feedback() -> void:
 func _process(delta: float) -> void:
 	if _fire_cooldown_remaining > 0.0:
 		_fire_cooldown_remaining = max(_fire_cooldown_remaining - delta, 0.0)
+	_update_queued_fire(delta)
 	if _damage_cooldown_remaining > 0.0:
 		_damage_cooldown_remaining = max(_damage_cooldown_remaining - delta, 0.0)
 	if _damage_cooldown_remaining > 0.0 or _last_invulnerability_remaining > 0.0:
 		_sync_invulnerability_state()
 	if _parry_cooldown_remaining > 0.0:
-		_parry_cooldown_remaining = max(_parry_cooldown_remaining - delta, 0.0)
+		var cooldown_recovery := delta
+		if _parry_graze_cooldown_active:
+			cooldown_recovery += delta * max(parry_graze_cooldown_recovery_per_second, 0.0)
+		_parry_cooldown_remaining = max(_parry_cooldown_remaining - cooldown_recovery, 0.0)
+	if _parry_cooldown_remaining <= 0.0 and _parry_graze_cooldown_active:
+		_parry_graze_cooldown_active = false
 	if _parry_cooldown_remaining > 0.0 or _last_parry_cooldown_remaining > 0.0:
 		_sync_parry_state()
 	if _parry_chain_grace_remaining > 0.0:
@@ -187,15 +216,56 @@ func request_fire(direction: Vector2) -> void:
 	if not enabled or not _has_player():
 		return
 	if _super_is_charging:
+		_clear_queued_fire()
 		return
-	if direction.length_squared() <= 0.001 or _fire_cooldown_remaining > 0.0:
+	if direction.length_squared() <= 0.001:
+		_clear_queued_fire()
 		return
+	if _fire_cooldown_remaining > 0.0:
+		_queue_fire(direction)
+		return
+	_clear_queued_fire()
+	_fire_player_shot(direction)
+
+
+func _fire_player_shot(direction: Vector2) -> void:
+	if not enabled or not _has_player() or _super_is_charging:
+		return
+	if direction.length_squared() <= 0.001:
+		return
+	var shot_direction := direction.normalized()
 	if player.has_method("play_shoot_pose"):
-		player.play_shoot_pose(direction)
+		player.play_shoot_pose(shot_direction)
 	else:
-		player.set_aim_direction(direction)
+		player.set_aim_direction(shot_direction)
 	_fire_cooldown_remaining = base_fire_cooldown * _fire_cooldown_multiplier
-	shoot_requested.emit(player.get_fire_origin(), direction.normalized())
+	shoot_requested.emit(player.get_projectile_origin(shot_direction), shot_direction)
+
+
+func _queue_fire(direction: Vector2) -> void:
+	if direction.length_squared() <= 0.001 or fire_input_buffer_seconds <= 0.0:
+		_clear_queued_fire()
+		return
+	_queued_fire_direction = direction.normalized()
+	_queued_fire_remaining = max(fire_input_buffer_seconds, 0.0)
+
+
+func _update_queued_fire(delta: float) -> void:
+	if _queued_fire_remaining <= 0.0:
+		return
+	if _fire_cooldown_remaining <= 0.0:
+		var direction := _queued_fire_direction
+		_clear_queued_fire()
+		_fire_player_shot(direction)
+		return
+	_queued_fire_remaining = max(_queued_fire_remaining - delta, 0.0)
+	if _queued_fire_remaining <= 0.0:
+		_clear_queued_fire()
+
+
+func _clear_queued_fire() -> void:
+	_queued_fire_direction = Vector2.ZERO
+	_queued_fire_remaining = 0.0
 
 
 func request_parry() -> void:
@@ -226,6 +296,7 @@ func request_super_charge_start() -> void:
 		return
 	if not is_super_ready():
 		return
+	_clear_queued_fire()
 	_super_is_charging = true
 	_super_charge_elapsed = 0.0
 	if player.has_method("set_super_charge_state"):
@@ -253,7 +324,7 @@ func request_super_charge_release(direction: Vector2) -> void:
 		player.play_shoot_pose(shot_direction)
 	_sync_player_speed()
 	_sync_super_meter_state()
-	super_shot_requested.emit(player.get_fire_origin(), shot_direction, charge_ratio)
+	super_shot_requested.emit(player.get_projectile_origin(shot_direction), shot_direction, charge_ratio)
 
 
 func apply_damage(amount: int) -> void:
@@ -309,9 +380,9 @@ func set_arena_definition(level_definition) -> void:
 		return
 	_arena_bounds = level_definition.arena_bounds
 	_arena_shape = int(level_definition.arena_shape)
-	_level_wall_rects = level_definition.wall_rects
+	_level_wall_rects = _get_level_collision_rects(level_definition, "active_room_wall_rects", level_definition.wall_rects)
 	_wall_rects = _level_wall_rects.duplicate()
-	_void_rects = level_definition.void_rects
+	_void_rects = _get_level_collision_rects(level_definition, "active_room_void_rects", level_definition.void_rects)
 	_playable_rects = _get_playable_rects(level_definition)
 	if _has_player():
 		player.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
@@ -340,6 +411,12 @@ func get_player_position() -> Vector2:
 	return spawn_position
 
 
+func get_player_muzzle_origin() -> Vector2:
+	if _has_player() and player.has_method("get_fire_origin"):
+		return player.get_fire_origin()
+	return get_player_position()
+
+
 func get_player_health() -> int:
 	if _has_player():
 		return player.health
@@ -366,6 +443,22 @@ func get_parry_cooldown_remaining() -> float:
 
 func get_parry_cooldown_duration() -> float:
 	return _active_parry_cooldown_duration
+
+
+func get_parry_perfect_radius() -> float:
+	return parry_perfect_radius
+
+
+func is_parry_graze_cooldown_active() -> bool:
+	return _parry_graze_cooldown_active
+
+
+func set_parry_graze_cooldown_active(value: bool) -> void:
+	var next_active := value and enabled and _has_player() and _parry_cooldown_remaining > 0.0
+	if _parry_graze_cooldown_active == next_active:
+		return
+	_parry_graze_cooldown_active = next_active
+	_sync_parry_state()
 
 
 func get_parry_chain_count() -> int:
@@ -413,9 +506,33 @@ func _has_player() -> bool:
 
 func _get_playable_rects(level_definition) -> Array[Rect2]:
 	var rects: Array[Rect2] = []
-	if level_definition == null or not level_definition.has_meta("footprint_cells"):
+	if level_definition == null:
+		return rects
+	if level_definition.has_meta("active_room_playable_rects"):
+		var active_rects_value: Variant = level_definition.get_meta("active_room_playable_rects")
+		if active_rects_value is Array:
+			for active_rect in active_rects_value:
+				if active_rect is Rect2:
+					rects.append(active_rect)
+			if not rects.is_empty():
+				return rects
+	if not level_definition.has_meta("footprint_cells"):
 		return rects
 	rects.append_array(ArenaGeometry.get_footprint_cell_rects(level_definition.arena_bounds, level_definition.get_meta("footprint_cells")))
+	return rects
+
+
+func _get_level_collision_rects(level_definition, meta_key: String, fallback: Array[Rect2]) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if level_definition != null and level_definition.has_meta(meta_key):
+		var meta_value: Variant = level_definition.get_meta(meta_key)
+		if meta_value is Array:
+			for rect in meta_value:
+				if rect is Rect2:
+					rects.append(rect)
+			if not rects.is_empty():
+				return rects
+	rects.append_array(fallback)
 	return rects
 
 
@@ -427,6 +544,7 @@ func _on_player_health_depleted(entity) -> void:
 	enabled = false
 	_damage_cooldown_remaining = 0.0
 	_parry_cooldown_remaining = 0.0
+	_parry_graze_cooldown_active = false
 	_super_meter = 0.0
 	_super_is_charging = false
 	_super_charge_elapsed = 0.0
@@ -454,6 +572,8 @@ func _sync_parry_state() -> void:
 		var is_ready := _parry_cooldown_remaining <= 0.0
 		if player.has_method("set_parry_ready_state"):
 			player.set_parry_ready_state(is_ready)
+		if player.has_method("set_parry_cooldown_state"):
+			player.set_parry_cooldown_state(_parry_cooldown_remaining, _active_parry_cooldown_duration, _parry_graze_cooldown_active)
 		if is_ready and (previous_remaining > 0.0 or previous_remaining < 0.0) and player.has_method("play_parry_ready_response"):
 			if _defer_spawn_feedback and previous_remaining < 0.0:
 				_spawn_feedback_queued = true

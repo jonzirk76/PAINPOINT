@@ -114,6 +114,8 @@ const BOSS_REWARD_CHOICE_CLEARANCE := 30.0
 @onready var dungeon_minimap: Control = $UI/DungeonMinimap
 @onready var combat_panel: Control = $UI/CombatPanel
 @onready var character_ui: CanvasItem = $UI/CharacterUi
+@onready var _parry_portrait_meter: Control = $UI/CombatPanel/ParryPortraitMeter
+@onready var _parry_portrait_status_label: Label = $UI/CombatPanel/ParryReadyLabel
 @onready var health_bar_back: ColorRect = $UI/CombatPanel/HealthBarBack
 @onready var health_fill: ColorRect = $UI/CombatPanel/HealthBarBack/HealthBarFill
 @onready var health_tick_layer: Control = $UI/CombatPanel/HealthBarBack/HealthTickLayer
@@ -149,6 +151,8 @@ const BOSS_REWARD_CHOICE_CLEARANCE := 30.0
 
 ## Multiplies player movement speed while walking through the composed cleared-floor traversal map.
 @export var cleared_floor_speed_multiplier: float = 1.45
+## Delays dungeon combat-room clear resolution so floor-map rebuilds happen after the last death animation.
+@export var room_clear_resolution_delay_seconds: float = 0.38
 ## Optional NobodyWho GGUF path, HuggingFace reference, or URL used for generated agent intro taunts.
 @export var agent_taunt_llm_model_path: String = ""
 ## Allows generated taunts to use the smallest cached NobodyWho GGUF model when no explicit model path is set.
@@ -170,6 +174,7 @@ var _last_parry_cooldown_duration: float = 0.0
 var _last_parry_chain_count: int = 0
 var _last_parry_chain_grace_remaining: float = 0.0
 var _last_parry_chain_grace_duration: float = 0.0
+var _last_parry_graze_cooldown_active: bool = false
 var _last_super_meter: float = 0.0
 var _last_super_meter_max: float = 100.0
 var _last_super_is_charging: bool = false
@@ -193,6 +198,8 @@ var _is_main_loop_run: bool = false
 var _active_generated_encounter_test_index: int = -1
 var _is_cleared_floor_map_active: bool = false
 var _is_loading_room: bool = false
+var _room_clear_resolution_pending: bool = false
+var _room_clear_resolution_remaining: float = 0.0
 var _loading_transition_pending: bool = false
 var _loading_completion_floor_start_pending: bool = false
 var _paused_previous_status: String = ""
@@ -410,7 +417,7 @@ func _process(delta: float) -> void:
 	if _status == "BOSS_CLEARING":
 		_update_boss_clear_transition(delta)
 	_update_perfect_parry_slowmo()
-	var hud_feedback_changed := false
+	var hud_feedback_changed := _update_parry_graze_cooldown_state()
 	if _should_advance_gameplay_feedback():
 		if _ammo_refill_flash_remaining > 0.0:
 			_ammo_refill_flash_remaining = max(_ammo_refill_flash_remaining - delta, 0.0)
@@ -436,6 +443,7 @@ func _process(delta: float) -> void:
 	if _update_boss_health_feedback(delta):
 		_update_boss_health_panel()
 	if _is_gameplay_running():
+		_update_room_clear_resolution(delta)
 		_update_camera(delta)
 		_update_cat_debug_panel()
 		if _is_room_entry_transition_active:
@@ -728,13 +736,13 @@ func _update_cat_debug_panel() -> void:
 	var target_distance: float = float(snapshot.get("target_distance", -1.0))
 	var path_points: int = int(snapshot.get("path_points", 0))
 	var position_value: Variant = snapshot.get("position", Vector2.INF)
-	var position: Vector2 = position_value if position_value is Vector2 else Vector2.INF
+	var cat_position: Vector2 = position_value if position_value is Vector2 else Vector2.INF
 	var target_text: String = "--"
 	if target_distance >= 0.0:
 		target_text = "%4.0f" % target_distance
 	var position_text: String = "--"
-	if position != Vector2.INF:
-		position_text = "%4.0f,%4.0f" % [position.x, position.y]
+	if cat_position != Vector2.INF:
+		position_text = "%4.0f,%4.0f" % [cat_position.x, cat_position.y]
 	_cat_debug_label.text = "CAT LOG\nMove %s  Motion %s\nIdle %s  Sit %s  Lay %s\nLookExit %s  JumpQ %s  Flee %s\nCuriosity %.2f  Speed %4.0f\nTarget %s  Path %d  Pos %s" % [
 		movement_state,
 		motion_state,
@@ -1393,8 +1401,8 @@ func _object_has_property(target: Object, property_name: String) -> bool:
 	for property_info in target.get_property_list():
 		if not property_info is Dictionary:
 			continue
-		var name: String = String(property_info.get("name", ""))
-		if name == property_name:
+		var candidate_name: String = String(property_info.get("name", ""))
+		if candidate_name == property_name:
 			return true
 	return false
 
@@ -1721,6 +1729,8 @@ func _get_agent_special_attack_label(verb: String) -> String:
 
 
 func _update_boss_health_feedback(delta: float) -> bool:
+	if _is_user_pause_menu_active() and not _agent_taunt_active:
+		return false
 	var changed: bool = false
 	if _boss_intro_taunt_pending:
 		_boss_intro_taunt_delay_remaining = max(_boss_intro_taunt_delay_remaining - delta, 0.0)
@@ -2325,6 +2335,7 @@ func _enter_level_select() -> void:
 	_last_super_meter_max = player_manager.get_super_meter_max()
 	_last_super_is_charging = false
 	_last_super_charge_ratio = 0.0
+	_reset_parry_hud_state()
 	_reset_overdrive_hud_state()
 	_stop_perfect_parry_slowmo()
 	_clear_floor_exit_portal()
@@ -2350,6 +2361,7 @@ func _enter_level_select() -> void:
 
 
 func _clear_gameplay() -> void:
+	_clear_pending_room_clear_resolution()
 	_clear_floor_exit_portal()
 	_set_agent_debug_panel_visible(false)
 	_set_cat_debug_panel_visible(false)
@@ -2470,6 +2482,7 @@ func _reset_parry_hud_state() -> void:
 	_last_parry_chain_count = 0
 	_last_parry_chain_grace_remaining = 0.0
 	_last_parry_chain_grace_duration = 0.0
+	_last_parry_graze_cooldown_active = false
 
 
 func _reset_ammo_segment_refill_flash() -> void:
@@ -2483,8 +2496,26 @@ func _should_advance_gameplay_feedback() -> bool:
 	return not _tree_pause_requested and (_is_gameplay_running() or _status == "DOWN")
 
 
+func _update_parry_graze_cooldown_state() -> bool:
+	var graze_active := false
+	if _is_gameplay_running() and not _tree_pause_requested and player_manager != null and projectile_manager != null:
+		if player_manager.get_parry_cooldown_remaining() > 0.0:
+			graze_active = projectile_manager.has_hostile_projectile_in_radius(
+				player_manager.get_player_position(),
+				player_manager.get_parry_perfect_radius()
+			)
+	var actual_active := graze_active
+	if player_manager != null and player_manager.has_method("set_parry_graze_cooldown_active"):
+		player_manager.set_parry_graze_cooldown_active(graze_active)
+		if player_manager.has_method("is_parry_graze_cooldown_active"):
+			actual_active = player_manager.is_parry_graze_cooldown_active()
+	var changed := _last_parry_graze_cooldown_active != actual_active
+	_last_parry_graze_cooldown_active = actual_active
+	return changed
+
+
 func _is_gameplay_input_allowed() -> bool:
-	return _is_gameplay_running() and not _tree_pause_requested and not _agent_taunt_active
+	return _is_gameplay_running() and not _tree_pause_requested and not _agent_taunt_active and not _loading_overlay_blocks_game_input()
 
 
 func _on_move_changed(move_vector: Vector2) -> void:
@@ -2527,16 +2558,25 @@ func _on_cat_meowed(pitch_center: float, pitch_variation: float) -> void:
 
 func _on_player_shoot_requested(origin: Vector2, direction: Vector2) -> void:
 	audio_manager.play_player_shot()
-	effects_manager.play_muzzle_flash(origin, direction, 16.0)
+	var muzzle_origin: Vector2 = player_manager.get_player_muzzle_origin()
+	effects_manager.play_muzzle_flash(muzzle_origin, direction, 16.0)
 	var shot_modifiers: Dictionary = upgrade_manager.get_modifiers()
+	shot_modifiers["visual_reveal_distance"] = _get_projectile_visual_reveal_distance(origin, muzzle_origin, direction)
 	projectile_manager.fire(origin, direction, shot_modifiers)
 	upgrade_manager.consume_overdrive_shot()
 
 
 func _on_player_super_shot_requested(origin: Vector2, direction: Vector2, charge_ratio: float) -> void:
 	audio_manager.play_player_shot()
-	effects_manager.play_muzzle_flash(origin, direction, 22.0)
-	projectile_manager.fire_super_shot(origin, direction, charge_ratio)
+	var muzzle_origin: Vector2 = player_manager.get_player_muzzle_origin()
+	effects_manager.play_muzzle_flash(muzzle_origin, direction, 22.0)
+	projectile_manager.fire_super_shot(origin, direction, charge_ratio, _get_projectile_visual_reveal_distance(origin, muzzle_origin, direction))
+
+
+func _get_projectile_visual_reveal_distance(origin: Vector2, muzzle_origin: Vector2, direction: Vector2) -> float:
+	if direction.length_squared() <= 0.001:
+		return 0.0
+	return max((muzzle_origin - origin).dot(direction.normalized()), 0.0)
 
 
 func _on_projectile_hit(projectile, target: Node, packet) -> void:
@@ -2853,19 +2893,21 @@ func _get_opening_encounter_positions(level_definition, count: int) -> Array[Vec
 	return positions
 
 
-func _opening_encounter_position_is_clear(position: Vector2, anchor: Vector2, min_distance: float, selected_positions: Array[Vector2], level_definition) -> bool:
-	if position.distance_squared_to(anchor) < min_distance * min_distance:
+func _opening_encounter_position_is_clear(candidate_position: Vector2, anchor: Vector2, min_distance: float, selected_positions: Array[Vector2], level_definition) -> bool:
+	if not _position_is_inside_room_playable_area(candidate_position, level_definition, 24.0):
 		return false
-	if not _position_is_clear_of_room_walls(position, level_definition):
+	if candidate_position.distance_squared_to(anchor) < min_distance * min_distance:
+		return false
+	if not _position_is_clear_of_room_walls(candidate_position, level_definition):
 		return false
 	for selected in selected_positions:
-		if position.distance_squared_to(selected) < 72.0 * 72.0:
+		if candidate_position.distance_squared_to(selected) < 72.0 * 72.0:
 			return false
 	for spawner_position in spawner_manager.get_spawner_positions():
-		if position.distance_squared_to(spawner_position) < 92.0 * 92.0:
+		if candidate_position.distance_squared_to(spawner_position) < 92.0 * 92.0:
 			return false
 	for enemy_position in enemy_manager.get_enemy_positions():
-		if position.distance_squared_to(enemy_position) < 72.0 * 72.0:
+		if candidate_position.distance_squared_to(enemy_position) < 72.0 * 72.0:
 			return false
 	return true
 
@@ -3033,6 +3075,8 @@ func _on_player_parry_cooldown_changed(remaining: float, duration: float) -> voi
 	var was_on_cooldown := _last_parry_cooldown_remaining > 0.0
 	_last_parry_cooldown_remaining = remaining
 	_last_parry_cooldown_duration = duration
+	if player_manager != null and player_manager.has_method("is_parry_graze_cooldown_active"):
+		_last_parry_graze_cooldown_active = player_manager.is_parry_graze_cooldown_active()
 	if was_on_cooldown and remaining <= 0.0:
 		audio_manager.play_parry_ready()
 	_update_hud()
@@ -3170,6 +3214,8 @@ func _on_player_defeated(_player) -> void:
 
 
 func _on_restart_requested() -> void:
+	if _loading_overlay_blocks_game_input():
+		return
 	if _status == "DOWN" and _current_level != null:
 		if _is_main_loop_run:
 			await _show_loading_before_work("LOADING FLOOR", "Generating floor layout", 0.05)
@@ -3188,6 +3234,7 @@ func _on_restart_requested() -> void:
 func _on_upgrade_changed(modifiers: Dictionary, _active_effects: Array) -> void:
 	_latest_modifiers = modifiers
 	player_manager.set_weapon_modifiers(modifiers)
+	input_manager.set_fire_cooldown_multiplier(float(modifiers.get("fire_cooldown_multiplier", 1.0)))
 	_update_hud()
 
 
@@ -3462,6 +3509,7 @@ func _enter_cleared_floor_map_after_current_room_clear() -> bool:
 
 
 func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = false, smooth_camera: bool = false) -> bool:
+	_clear_pending_room_clear_resolution()
 	var level_definition = dungeon_manager.get_current_full_floor_level_definition(false)
 	if level_definition == null:
 		return false
@@ -3508,7 +3556,9 @@ func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = 
 
 
 func _on_pause_requested() -> void:
-	if _agent_taunt_active:
+	if _loading_overlay_blocks_game_input():
+		return
+	if _agent_intro_blocks_pause_input() and not _is_user_pause_menu_active():
 		return
 	if _is_gameplay_running():
 		_stop_perfect_parry_slowmo()
@@ -3625,7 +3675,34 @@ func _update_combat_panel(active_effects: Array) -> void:
 	if attribute_label != null:
 		attribute_label.visible = false
 		attribute_label.text = _get_attribute_text()
+	_update_parry_portrait_hud()
 	_update_ammo_counter_panel(active_effects)
+
+
+func _update_parry_portrait_hud() -> void:
+	if _parry_portrait_meter == null or not is_instance_valid(_parry_portrait_meter):
+		return
+	if _parry_portrait_status_label == null or not is_instance_valid(_parry_portrait_status_label):
+		return
+	var should_show := combat_panel != null and combat_panel.visible and _status != "LEVEL_SELECT" and _last_max_health > 0
+	_parry_portrait_meter.visible = should_show
+	_parry_portrait_status_label.visible = should_show
+	if not should_show:
+		return
+	var cooldown_duration: float = max(_last_parry_cooldown_duration, 0.01)
+	var cooldown_remaining: float = max(_last_parry_cooldown_remaining, 0.0)
+	if _parry_portrait_meter.has_method("set_parry_state"):
+		_parry_portrait_meter.set_parry_state(cooldown_remaining, cooldown_duration, _last_parry_graze_cooldown_active)
+	if cooldown_remaining <= 0.0:
+		_parry_portrait_status_label.text = "PARRY READY"
+		_parry_portrait_status_label.add_theme_color_override("font_color", Color(0.62, 1.0, 0.92, 1.0))
+	elif _last_parry_graze_cooldown_active:
+		_parry_portrait_status_label.text = "PARRY GRAZE"
+		_parry_portrait_status_label.add_theme_color_override("font_color", Color(1.0, 0.92, 0.38, 1.0))
+	else:
+		var ready_percent := roundi((1.0 - clamp(cooldown_remaining / cooldown_duration, 0.0, 1.0)) * 100.0)
+		_parry_portrait_status_label.text = "PARRY %d%%" % ready_percent
+		_parry_portrait_status_label.add_theme_color_override("font_color", Color(0.56, 0.9, 1.0, 1.0))
 
 
 func _get_meter_full_rect(fill: Control, bar_back: Control, fallback_width: float) -> Rect2:
@@ -3899,7 +3976,7 @@ func _build_super_crackle_points(fill_rect: Rect2) -> PackedVector2Array:
 	return points
 
 
-func _update_ammo_counter_panel(active_effects: Array) -> void:
+func _update_ammo_counter_panel(_active_effects: Array) -> void:
 	if ammo_counter_panel == null:
 		return
 	for child in ammo_counter_panel.get_children():
@@ -4174,6 +4251,8 @@ func _get_pause_stats_text() -> String:
 
 func _get_parry_status_text() -> String:
 	if _last_parry_cooldown_remaining > 0.0:
+		if _last_parry_graze_cooldown_active:
+			return "GRAZE %.1fs" % _last_parry_cooldown_remaining
 		return "%.1fs" % _last_parry_cooldown_remaining
 	if _last_parry_chain_count > 0 and _last_parry_chain_grace_remaining > 0.0:
 		return "CHAIN x%d  %.1fs" % [_last_parry_chain_count, _last_parry_chain_grace_remaining]
@@ -4302,15 +4381,15 @@ func _reward_choice_group_position_is_clear(center_position: Vector2, bounds: Re
 		Vector2(BOSS_REWARD_CHOICE_SPACING, 0.0)
 	]
 	for offset: Vector2 in offsets:
-		var position: Vector2 = center_position + offset
-		if not ArenaGeometry.contains_point(position, bounds, int(_current_level.arena_shape)):
+		var choice_position: Vector2 = center_position + offset
+		if not ArenaGeometry.contains_point(choice_position, bounds, int(_current_level.arena_shape)):
 			return false
-		if _room_reward_position_is_blocked(position, BOSS_REWARD_CHOICE_CLEARANCE):
+		if _room_reward_position_is_blocked(choice_position, BOSS_REWARD_CHOICE_CLEARANCE):
 			return false
 	return true
 
 
-func _room_reward_position_is_blocked(position: Vector2, clearance: float) -> bool:
+func _room_reward_position_is_blocked(candidate_position: Vector2, clearance: float) -> bool:
 	if _current_level == null:
 		return false
 	var blocker_rects: Array[Rect2] = []
@@ -4319,7 +4398,7 @@ func _room_reward_position_is_blocked(position: Vector2, clearance: float) -> bo
 	if destructible_manager != null and destructible_manager.has_method("get_blocker_rects"):
 		blocker_rects.append_array(destructible_manager.get_blocker_rects())
 	for blocker_rect: Rect2 in blocker_rects:
-		if blocker_rect.grow(clearance).has_point(position):
+		if blocker_rect.grow(clearance).has_point(candidate_position):
 			return true
 	return false
 
@@ -4329,15 +4408,71 @@ func _get_current_room_reward_key() -> String:
 
 
 func _check_level_clear() -> void:
+	if not _level_clear_conditions_met():
+		return
+	if _should_delay_level_clear_resolution():
+		_schedule_room_clear_resolution()
+		return
+	_resolve_level_clear()
+
+
+func _level_clear_conditions_met() -> bool:
 	if _is_loading_room:
-		return
+		return false
 	if not _is_gameplay_running():
-		return
+		return false
 	if _is_room_entry_transition_active:
-		return
+		return false
 	if _is_cleared_floor_map_active:
-		return
+		return false
 	if spawner_manager.get_spawner_count() > 0 or enemy_manager.get_enemy_count() > 0:
+		return false
+	return true
+
+
+func _should_delay_level_clear_resolution() -> bool:
+	if _room_clear_resolution_pending:
+		return true
+	if room_clear_resolution_delay_seconds <= 0.0:
+		return false
+	if not _is_dungeon_run or dungeon_manager == null:
+		return false
+	var current_room_kind: String = dungeon_manager.get_current_room_kind()
+	if current_room_kind != "combat" and current_room_kind != "challenge" and current_room_kind != "boss":
+		return false
+	if _is_main_loop_run and current_room_kind == "boss" and _floor_exit_portal_active():
+		return false
+	return true
+
+
+func _schedule_room_clear_resolution() -> void:
+	if _room_clear_resolution_pending:
+		return
+	_room_clear_resolution_pending = true
+	_room_clear_resolution_remaining = max(room_clear_resolution_delay_seconds, 0.0)
+
+
+func _update_room_clear_resolution(delta: float) -> void:
+	if not _room_clear_resolution_pending:
+		return
+	if not _level_clear_conditions_met():
+		if _status != "PAUSED" and _status != "PAUSE_EXIT_CONFIRM":
+			_clear_pending_room_clear_resolution()
+		return
+	_room_clear_resolution_remaining = max(_room_clear_resolution_remaining - delta, 0.0)
+	if _room_clear_resolution_remaining > 0.0:
+		return
+	_resolve_level_clear()
+
+
+func _clear_pending_room_clear_resolution() -> void:
+	_room_clear_resolution_pending = false
+	_room_clear_resolution_remaining = 0.0
+
+
+func _resolve_level_clear() -> void:
+	_clear_pending_room_clear_resolution()
+	if not _level_clear_conditions_met():
 		return
 	if _is_dungeon_run:
 		if _is_main_loop_run and dungeon_manager.is_current_boss_room() and _floor_exit_portal_active():
@@ -4375,6 +4510,8 @@ func _check_level_clear() -> void:
 
 
 func _on_menu_up_requested() -> void:
+	if _loading_overlay_blocks_game_input():
+		return
 	if _status != "LEVEL_SELECT":
 		return
 	_level_select_option_index = wrapi(_level_select_option_index - 1, 0, _get_select_option_count())
@@ -4382,6 +4519,8 @@ func _on_menu_up_requested() -> void:
 
 
 func _on_menu_down_requested() -> void:
+	if _loading_overlay_blocks_game_input():
+		return
 	if _status != "LEVEL_SELECT":
 		return
 	_level_select_option_index = wrapi(_level_select_option_index + 1, 0, _get_select_option_count())
@@ -4389,6 +4528,8 @@ func _on_menu_down_requested() -> void:
 
 
 func _on_menu_confirm_requested() -> void:
+	if _loading_overlay_blocks_game_input():
+		return
 	if _agent_taunt_active:
 		if not _agent_taunt_continue_enabled:
 			return
@@ -4414,6 +4555,8 @@ func _on_menu_confirm_requested() -> void:
 
 
 func _on_menu_back_requested() -> void:
+	if _loading_overlay_blocks_game_input():
+		return
 	if _status == "LEVEL_SELECT" and _level_select_page == LEVEL_SELECT_PAGE_ARCHIVE:
 		_level_select_page = LEVEL_SELECT_PAGE_MAIN
 		_level_select_option_index = 0
@@ -4510,6 +4653,7 @@ func _get_level_select_option_label(option: Dictionary) -> String:
 
 
 func _load_dungeon_current_room(entry_direction: String, reset_player: bool, override_player_position: Vector2 = Vector2.INF) -> void:
+	_clear_pending_room_clear_resolution()
 	var level_definition = dungeon_manager.get_current_full_floor_level_definition(true)
 	if level_definition == null:
 		return
@@ -4626,20 +4770,27 @@ func _get_room_entry_position(level_definition, entry_direction: String) -> Vect
 	if bounds.size == Vector2.ZERO:
 		bounds = level_definition.arena_bounds
 	var margin := 96.0
-	var position := bounds.get_center()
+	var entry_position := bounds.get_center()
 	match entry_direction:
 		"north":
-			position = Vector2(bounds.get_center().x, bounds.position.y + bounds.size.y - margin)
+			entry_position = Vector2(bounds.get_center().x, bounds.position.y + bounds.size.y - margin)
 		"south":
-			position = Vector2(bounds.get_center().x, bounds.position.y + margin)
+			entry_position = Vector2(bounds.get_center().x, bounds.position.y + margin)
 		"east":
-			position = Vector2(bounds.position.x + margin, bounds.get_center().y)
+			entry_position = Vector2(bounds.position.x + margin, bounds.get_center().y)
 		"west":
-			position = Vector2(bounds.position.x + bounds.size.x - margin, bounds.get_center().y)
-	return _find_safe_room_position(position, level_definition)
+			entry_position = Vector2(bounds.position.x + bounds.size.x - margin, bounds.get_center().y)
+	return _find_safe_room_position(entry_position, level_definition)
 
 
 func _find_safe_room_position(preferred_position: Vector2, level_definition) -> Vector2:
+	if level_definition == null:
+		return preferred_position
+	var playable_rects: Array[Rect2] = _get_room_playable_rects(level_definition)
+	var blocker_rects: Array[Rect2] = _get_room_blocker_rects(level_definition)
+	var bounds: Rect2 = _get_room_safety_bounds(level_definition, playable_rects)
+	var shape: int = ArenaGeometry.SHAPE_RECTANGLE if not playable_rects.is_empty() else int(level_definition.arena_shape)
+	var clearance := 18.0
 	var offsets := [
 		Vector2.ZERO,
 		Vector2(0.0, -90.0),
@@ -4651,20 +4802,95 @@ func _find_safe_room_position(preferred_position: Vector2, level_definition) -> 
 		Vector2.ZERO
 	]
 	for offset in offsets:
-		var candidate := ArenaGeometry.constrain_point(preferred_position + offset, level_definition.arena_bounds, int(level_definition.arena_shape))
+		var candidate := ArenaGeometry.constrain_point_to_playable_regions(preferred_position + offset, bounds, shape, playable_rects, blocker_rects, clearance)
+		if not _position_is_inside_room_playable_area(candidate, level_definition, clearance):
+			continue
 		if _position_is_clear_of_room_walls(candidate, level_definition):
 			return candidate
-	return ArenaGeometry.constrain_point(preferred_position, level_definition.arena_bounds, int(level_definition.arena_shape))
+	return ArenaGeometry.constrain_point_to_playable_regions(preferred_position, bounds, shape, playable_rects, blocker_rects, clearance)
 
 
-func _position_is_clear_of_room_walls(position: Vector2, level_definition) -> bool:
-	for wall_rect in level_definition.wall_rects:
-		if wall_rect.grow(34.0).has_point(position):
+func _get_room_playable_rects(level_definition) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if level_definition == null:
+		return rects
+	if level_definition.has_meta("active_room_playable_rects"):
+		var active_rects_value: Variant = level_definition.get_meta("active_room_playable_rects")
+		if active_rects_value is Array:
+			for active_rect in active_rects_value:
+				if active_rect is Rect2:
+					rects.append(active_rect)
+			if not rects.is_empty():
+				return rects
+	if level_definition.has_meta("footprint_cells"):
+		rects.append_array(ArenaGeometry.get_footprint_cell_rects(level_definition.arena_bounds, level_definition.get_meta("footprint_cells")))
+	return rects
+
+
+func _get_room_blocker_rects(level_definition) -> Array[Rect2]:
+	var blockers: Array[Rect2] = []
+	if level_definition == null:
+		return blockers
+	blockers.append_array(_get_level_collision_rects(level_definition, "active_room_wall_rects", level_definition.wall_rects))
+	blockers.append_array(_get_level_collision_rects(level_definition, "active_room_void_rects", level_definition.void_rects))
+	return blockers
+
+
+func _get_room_safety_bounds(level_definition, playable_rects: Array[Rect2]) -> Rect2:
+	if not playable_rects.is_empty():
+		var bounds: Rect2 = playable_rects[0]
+		for index in range(1, playable_rects.size()):
+			bounds = bounds.merge(playable_rects[index])
+		return bounds
+	if level_definition == null:
+		return Rect2()
+	return level_definition.arena_bounds
+
+
+func _position_is_inside_room_playable_area(candidate_position: Vector2, level_definition, clearance: float = 0.0) -> bool:
+	var playable_rects: Array[Rect2] = _get_room_playable_rects(level_definition)
+	if playable_rects.is_empty():
+		if level_definition == null:
 			return false
-	for void_rect in level_definition.void_rects:
-		if void_rect.grow(34.0).has_point(position):
+		return ArenaGeometry.contains_point(candidate_position, level_definition.arena_bounds, int(level_definition.arena_shape))
+	for rect in playable_rects:
+		var test_rect: Rect2 = rect.grow(-max(clearance, 0.0))
+		if test_rect.size.x < 1.0 or test_rect.size.y < 1.0:
+			test_rect = rect
+		if _rect_has_point_inclusive(test_rect, candidate_position):
+			return true
+	return false
+
+
+func _position_is_clear_of_room_walls(candidate_position: Vector2, level_definition) -> bool:
+	if level_definition == null:
+		return true
+	for wall_rect in _get_level_collision_rects(level_definition, "active_room_wall_rects", level_definition.wall_rects):
+		if wall_rect.grow(34.0).has_point(candidate_position):
+			return false
+	for void_rect in _get_level_collision_rects(level_definition, "active_room_void_rects", level_definition.void_rects):
+		if void_rect.grow(34.0).has_point(candidate_position):
 			return false
 	return true
+
+
+func _get_level_collision_rects(level_definition, meta_key: String, fallback: Array[Rect2]) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if level_definition != null and level_definition.has_meta(meta_key):
+		var meta_value: Variant = level_definition.get_meta(meta_key)
+		if meta_value is Array:
+			for rect in meta_value:
+				if rect is Rect2:
+					rects.append(rect)
+			if not rects.is_empty():
+				return rects
+	rects.append_array(fallback)
+	return rects
+
+
+func _rect_has_point_inclusive(rect: Rect2, point: Vector2) -> bool:
+	var end: Vector2 = rect.position + rect.size
+	return point.x >= rect.position.x - 0.001 and point.x <= end.x + 0.001 and point.y >= rect.position.y - 0.001 and point.y <= end.y + 0.001
 
 
 func _sync_fauna_roam_bounds(level_definition, current_room_cleared: bool = true) -> void:
@@ -4867,6 +5093,18 @@ func _loading_screen_is_visible() -> bool:
 	return loading_screen != null and loading_screen.visible
 
 
+func _loading_overlay_blocks_game_input() -> bool:
+	return _loading_transition_pending or _is_loading_room or _loading_screen_is_visible()
+
+
+func _agent_intro_blocks_pause_input() -> bool:
+	return _pending_agent_boss_presentation != null or _boss_intro_taunt_pending or _agent_taunt_active
+
+
+func _is_user_pause_menu_active() -> bool:
+	return _status == "PAUSED" or _status == "PAUSE_EXIT_CONFIRM"
+
+
 func _set_loading_progress(progress: float, message: String = "") -> void:
 	if loading_screen != null and loading_screen.has_method("set_progress"):
 		loading_screen.call("set_progress", progress, message)
@@ -5033,16 +5271,12 @@ func _activate_boss_exit_portal(boss_position: Vector2, boss_radius: float) -> v
 			_floor_exit_portal.set_active(true)
 	else:
 		var portal = FLOOR_EXIT_PORTAL_SCENE.instantiate()
-		var portal_layer: Node = $World/DepthSortLayer
-		if portal_layer != null:
-			portal_layer.add_child(portal)
-		else:
-			add_child(portal)
 		var portal_position := _get_boss_exit_portal_position(boss_position)
 		if portal.has_method("initialize"):
 			portal.initialize(portal_position, max(boss_radius * 1.05, 48.0), true)
 		_connect_floor_exit_portal(portal)
 		_floor_exit_portal = portal
+		_add_child_safely(_get_depth_sort_parent(), portal)
 	_update_minimap()
 
 
@@ -5052,11 +5286,6 @@ func _show_boss_exit_portal_preview(level_definition) -> void:
 	if _floor_exit_portal != null and is_instance_valid(_floor_exit_portal):
 		return
 	var portal = FLOOR_EXIT_PORTAL_SCENE.instantiate()
-	var portal_layer: Node = $World/DepthSortLayer
-	if portal_layer != null:
-		portal_layer.add_child(portal)
-	else:
-		add_child(portal)
 	var portal_radius := 48.0
 	if level_definition.boss_profile != null:
 		portal_radius = max(float(level_definition.boss_profile.body_radius) * 1.05, 48.0)
@@ -5064,6 +5293,21 @@ func _show_boss_exit_portal_preview(level_definition) -> void:
 		portal.initialize(_get_boss_exit_portal_position(level_definition.boss_spawn_position), portal_radius, false)
 	_connect_floor_exit_portal(portal)
 	_floor_exit_portal = portal
+	_add_child_safely(_get_depth_sort_parent(), portal)
+
+
+func _get_depth_sort_parent() -> Node:
+	var layer: Node = get_node_or_null("World/DepthSortLayer")
+	return layer if layer != null else self
+
+
+func _add_child_safely(parent: Node, child: Node) -> void:
+	if parent == null or child == null or child.get_parent() != null:
+		return
+	if parent.is_inside_tree() and Engine.is_in_physics_frame():
+		parent.call_deferred("add_child", child)
+		return
+	parent.add_child(child)
 
 
 func _get_boss_exit_portal_position(boss_position: Vector2) -> Vector2:

@@ -137,10 +137,6 @@ func _process(delta: float) -> void:
 func spawn_pickup(effect, spawn_position: Vector2, requires_confirm: bool = false, choice_group_id: String = "", persist_for_floor: bool = false):
 	persist_for_floor = persist_for_floor or _should_persist_for_floor(effect)
 	var pickup = pickup_scene.instantiate()
-	if _pickup_layer != null:
-		_pickup_layer.add_child(pickup)
-	else:
-		add_child(pickup)
 	pickup.initialize(effect, spawn_position, requires_confirm, choice_group_id, persist_for_floor)
 	pickup.collected.connect(_on_pickup_collected)
 	pickup.expired.connect(_on_pickup_expired)
@@ -156,6 +152,7 @@ func spawn_pickup(effect, spawn_position: Vector2, requires_confirm: bool = fals
 	if persist_for_floor:
 		_register_persistent_pickup(pickup, effect, spawn_position, requires_confirm, choice_group_id)
 	pickup_count_changed.emit(_pickups.size())
+	_add_child_safely(_get_pickup_parent(), pickup)
 	return pickup
 
 
@@ -353,10 +350,6 @@ func _register_persistent_pickup(pickup, effect, spawn_position: Vector2, requir
 
 func _spawn_pickup_from_persistent_data(data: Dictionary):
 	var pickup = pickup_scene.instantiate()
-	if _pickup_layer != null:
-		_pickup_layer.add_child(pickup)
-	else:
-		add_child(pickup)
 	var effect = data.get("effect", null)
 	var spawn_position: Vector2 = data.get("position", Vector2.ZERO)
 	var requires_confirm := bool(data.get("requires_confirm", false))
@@ -374,7 +367,21 @@ func _spawn_pickup_from_persistent_data(data: Dictionary):
 		var group: Array = _choice_groups.get(choice_group_id, [])
 		group.append(pickup)
 		_choice_groups[choice_group_id] = group
+	_add_child_safely(_get_pickup_parent(), pickup)
 	return pickup
+
+
+func _get_pickup_parent() -> Node:
+	return _pickup_layer if _pickup_layer != null else self
+
+
+func _add_child_safely(parent: Node, child: Node) -> void:
+	if parent == null or child == null or child.get_parent() != null:
+		return
+	if parent.is_inside_tree() and Engine.is_in_physics_frame():
+		parent.call_deferred("add_child", child)
+		return
+	parent.add_child(child)
 
 
 func _clear_persistent_pickup(pickup) -> void:

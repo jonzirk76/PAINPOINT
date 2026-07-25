@@ -352,7 +352,7 @@ func _draw_room_outline(occupied: Dictionary, origin: Vector2, pitch: float, vie
 			_draw_clipped_room_edge(Vector2(left, top), Vector2(left, bottom), viewport)
 
 
-func _get_room_cell_mass_rect(cell: Vector2i, occupied: Dictionary, origin: Vector2, pitch: float) -> Rect2:
+func _get_room_cell_mass_rect(cell: Vector2i, _occupied: Dictionary, origin: Vector2, pitch: float) -> Rect2:
 	return Rect2(origin + Vector2(cell) * pitch - Vector2(cell_gap, cell_gap) * 0.5, Vector2(pitch, pitch))
 
 

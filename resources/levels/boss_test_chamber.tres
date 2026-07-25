@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="LevelDefinition" load_steps=6 format=3 uid="uid://ykjixpdn5408"]
+[gd_resource type="Resource" script_class="LevelDefinition" format=3 uid="uid://ykjixpdn5408"]
 
 [ext_resource type="Script" uid="uid://ch0sx5oaq1deo" path="res://scripts/resources/level_definition.gd" id="1"]
 [ext_resource type="Resource" uid="uid://c7lsas62p4ss8" path="res://resources/enemies/first_boss_enemy.tres" id="2"]
