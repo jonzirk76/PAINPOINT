@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="LevelDefinition" load_steps=12 format=3 uid="uid://dmn2odj5317el"]
+[gd_resource type="Resource" script_class="LevelDefinition" format=3 uid="uid://dmn2odj5317el"]
 
 [ext_resource type="Script" uid="uid://ch0sx5oaq1deo" path="res://scripts/resources/level_definition.gd" id="1"]
 [ext_resource type="Script" uid="uid://dfk7vbsy2c2ax" path="res://scripts/resources/spawner_placement.gd" id="2"]

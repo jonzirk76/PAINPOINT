@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="RoomPieceDefinition" load_steps=12 format=3 uid="uid://s55go76231no"]
+[gd_resource type="Resource" script_class="RoomPieceDefinition" format=3 uid="uid://s55go76231no"]
 
 [ext_resource type="Script" uid="uid://bag7c3y3fh8ng" path="res://scripts/resources/room_piece_definition.gd" id="1"]
 [ext_resource type="Script" uid="uid://dfk7vbsy2c2ax" path="res://scripts/resources/spawner_placement.gd" id="2"]
