@@ -155,6 +155,10 @@ const BOSS_REWARD_CHOICE_CLEARANCE := 30.0
 @export var agent_taunt_llm_use_cached_model: bool = true
 ## Controls how long the boss intro waits for a generated taunt before showing the procedural fallback.
 @export var agent_taunt_llm_timeout_seconds: float = 2.5
+## Optional Ollama model name used for generated agent intro taunts before trying NobodyWho.
+@export var agent_taunt_ollama_model: String = ""
+## Local Ollama generate endpoint used when agent_taunt_ollama_model is set.
+@export var agent_taunt_ollama_generate_url: String = "http://127.0.0.1:11434/api/generate"
 
 var _score: int = 0
 var _last_health: int = 0
@@ -281,7 +285,9 @@ var _agent_taunt_active: bool = false
 var _agent_taunt_continue_enabled: bool = false
 var _agent_taunt_llm_model: Object = null
 var _agent_taunt_llm_chat: Object = null
+var _agent_taunt_http_request: HTTPRequest = null
 var _agent_taunt_llm_model_path_in_use: String = ""
+var _agent_taunt_llm_source_in_use: String = ""
 var _agent_taunt_llm_pending: bool = false
 var _agent_taunt_llm_generation_active: bool = false
 var _agent_taunt_llm_elapsed: float = 0.0
@@ -290,6 +296,7 @@ var _agent_taunt_llm_response: String = ""
 var _agent_taunt_llm_unavailable_warned: bool = false
 var _agent_taunt_llm_missing_model_warned: bool = false
 var _agent_taunt_llm_missing_property_warned: bool = false
+var _agent_taunt_ollama_request_warned: bool = false
 var _boss_intro_name_fade_remaining: float = 0.0
 var _boss_intro_name_fade_duration: float = 0.0
 var _boss_health_pending_reveal_duration: float = 0.0
@@ -968,9 +975,11 @@ func _clear_boss_health_hud() -> void:
 	_agent_taunt_continue_enabled = false
 	_agent_taunt_llm_pending = false
 	_agent_taunt_llm_generation_active = false
+	_cancel_agent_taunt_http_request()
 	_agent_taunt_llm_elapsed = 0.0
 	_agent_taunt_llm_fallback_line = ""
 	_agent_taunt_llm_response = ""
+	_agent_taunt_llm_source_in_use = ""
 	_last_boss_health = 0
 	_last_boss_max_health = 0
 	_boss_health_display_count = 0
@@ -1010,9 +1019,11 @@ func _track_level_boss(boss: EnemyEntity) -> void:
 	_agent_taunt_continue_enabled = false
 	_agent_taunt_llm_pending = false
 	_agent_taunt_llm_generation_active = false
+	_cancel_agent_taunt_http_request()
 	_agent_taunt_llm_elapsed = 0.0
 	_agent_taunt_llm_fallback_line = ""
 	_agent_taunt_llm_response = ""
+	_agent_taunt_llm_source_in_use = ""
 	_hide_agent_dialogue_box()
 	if boss.agent_program != null:
 		if _loading_screen_is_visible() or _is_room_entry_transition_active:
@@ -1161,6 +1172,7 @@ func _dismiss_agent_intro_taunt() -> void:
 	_agent_taunt_continue_enabled = false
 	_agent_taunt_llm_pending = false
 	_agent_taunt_llm_generation_active = false
+	_cancel_agent_taunt_http_request()
 	_boss_intro_taunt_boss = null
 	_hide_agent_dialogue_box()
 	_set_tree_paused(false)
@@ -1172,6 +1184,55 @@ func _dismiss_agent_intro_taunt() -> void:
 func _request_agent_intro_taunt_from_llm(program: AgentBossProgram, fallback_line: String) -> bool:
 	if program == null or _agent_taunt_llm_generation_active:
 		return false
+	if _request_agent_intro_taunt_from_ollama(program, fallback_line):
+		return true
+	return _request_agent_intro_taunt_from_nobodywho(program, fallback_line)
+
+
+func _request_agent_intro_taunt_from_ollama(program: AgentBossProgram, fallback_line: String) -> bool:
+	var model_name: String = agent_taunt_ollama_model.strip_edges()
+	if model_name.is_empty():
+		return false
+	var endpoint: String = agent_taunt_ollama_generate_url.strip_edges()
+	if endpoint.is_empty():
+		if not _agent_taunt_ollama_request_warned:
+			_agent_taunt_ollama_request_warned = true
+			push_warning("Agent taunt Ollama unavailable: agent_taunt_ollama_generate_url is empty.")
+		return false
+	var request: HTTPRequest = _get_agent_taunt_http_request()
+	if request == null or not is_instance_valid(request):
+		return false
+	_agent_taunt_llm_pending = true
+	_agent_taunt_llm_generation_active = true
+	_agent_taunt_llm_elapsed = 0.0
+	_agent_taunt_llm_fallback_line = fallback_line
+	_agent_taunt_llm_response = ""
+	_agent_taunt_llm_source_in_use = "Ollama %s" % model_name
+	var body: Dictionary = {
+		"model": model_name,
+		"prompt": _build_agent_taunt_llm_prompt(program, fallback_line),
+		"system": _get_agent_taunt_llm_system_prompt(),
+		"stream": false,
+		"options": {
+			"temperature": 0.82,
+			"num_predict": 40
+		}
+	}
+	var error_code: int = request.request(
+		endpoint,
+		PackedStringArray(["Content-Type: application/json"]),
+		HTTPClient.METHOD_POST,
+		JSON.stringify(body)
+	)
+	if error_code != OK:
+		_agent_taunt_llm_pending = false
+		_agent_taunt_llm_generation_active = false
+		push_warning("Agent taunt Ollama request failed to start: %s" % error_string(error_code))
+		return false
+	return true
+
+
+func _request_agent_intro_taunt_from_nobodywho(program: AgentBossProgram, fallback_line: String) -> bool:
 	var chat: Object = _get_agent_taunt_llm_chat()
 	if chat == null or not is_instance_valid(chat) or not chat.has_method("ask"):
 		return false
@@ -1180,8 +1241,28 @@ func _request_agent_intro_taunt_from_llm(program: AgentBossProgram, fallback_lin
 	_agent_taunt_llm_elapsed = 0.0
 	_agent_taunt_llm_fallback_line = fallback_line
 	_agent_taunt_llm_response = ""
+	_agent_taunt_llm_source_in_use = _agent_taunt_llm_model_path_in_use
 	chat.call("ask", _build_agent_taunt_llm_prompt(program, fallback_line))
 	return true
+
+
+func _get_agent_taunt_http_request() -> HTTPRequest:
+	if _agent_taunt_http_request != null and is_instance_valid(_agent_taunt_http_request):
+		_agent_taunt_http_request.timeout = max(agent_taunt_llm_timeout_seconds + 1.0, 1.0)
+		return _agent_taunt_http_request
+	var request: HTTPRequest = HTTPRequest.new()
+	request.name = "AgentTauntOllamaRequest"
+	request.process_mode = Node.PROCESS_MODE_ALWAYS
+	request.timeout = max(agent_taunt_llm_timeout_seconds + 1.0, 1.0)
+	add_child(request)
+	_connect_once(request, &"request_completed", _on_agent_taunt_ollama_request_completed)
+	_agent_taunt_http_request = request
+	return request
+
+
+func _cancel_agent_taunt_http_request() -> void:
+	if _agent_taunt_http_request != null and is_instance_valid(_agent_taunt_http_request):
+		_agent_taunt_http_request.cancel_request()
 
 
 func _get_agent_taunt_llm_chat() -> Object:
@@ -1322,7 +1403,8 @@ func _update_agent_taunt_llm_request(delta: float) -> bool:
 		return false
 	_agent_taunt_llm_pending = false
 	_agent_taunt_llm_generation_active = false
-	push_warning("Agent taunt LLM timed out after %.1fs using model %s. Increase agent_taunt_llm_timeout_seconds or use a smaller GGUF." % [max(agent_taunt_llm_timeout_seconds, 0.1), _agent_taunt_llm_model_path_in_use])
+	_cancel_agent_taunt_http_request()
+	push_warning("Agent taunt LLM timed out after %.1fs using %s. Increase agent_taunt_llm_timeout_seconds or use a smaller model." % [max(agent_taunt_llm_timeout_seconds, 0.1), _agent_taunt_llm_source_in_use])
 	_finalize_agent_intro_taunt_line(_agent_taunt_llm_fallback_line)
 	return true
 
@@ -1330,6 +1412,66 @@ func _update_agent_taunt_llm_request(delta: float) -> bool:
 func _on_agent_taunt_llm_response_updated(new_token: Variant = "") -> void:
 	if _agent_taunt_llm_pending:
 		_agent_taunt_llm_response += String(new_token)
+
+
+func _on_agent_taunt_ollama_request_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	_agent_taunt_llm_generation_active = false
+	if not _agent_taunt_llm_pending:
+		return
+	_agent_taunt_llm_pending = false
+	if result != HTTPRequest.RESULT_SUCCESS:
+		push_warning("Agent taunt Ollama request failed: %s" % _get_http_request_result_label(result))
+		_finalize_agent_intro_taunt_line(_agent_taunt_llm_fallback_line)
+		return
+	if response_code < 200 or response_code >= 300:
+		push_warning("Agent taunt Ollama request failed with HTTP %d: %s" % [response_code, body.get_string_from_utf8()])
+		_finalize_agent_intro_taunt_line(_agent_taunt_llm_fallback_line)
+		return
+	var parsed: Variant = JSON.parse_string(body.get_string_from_utf8())
+	if not parsed is Dictionary:
+		push_warning("Agent taunt Ollama request returned invalid JSON.")
+		_finalize_agent_intro_taunt_line(_agent_taunt_llm_fallback_line)
+		return
+	var payload: Dictionary = parsed
+	var raw_line: String = String(payload.get("response", "")).strip_edges()
+	if raw_line.is_empty():
+		push_warning("Agent taunt Ollama response did not include response text.")
+		_finalize_agent_intro_taunt_line(_agent_taunt_llm_fallback_line)
+		return
+	_finalize_agent_intro_taunt_line(_sanitize_agent_taunt_text(raw_line, _agent_taunt_llm_fallback_line))
+
+
+func _get_http_request_result_label(result: int) -> String:
+	match result:
+		HTTPRequest.RESULT_SUCCESS:
+			return "success"
+		HTTPRequest.RESULT_CHUNKED_BODY_SIZE_MISMATCH:
+			return "chunked body size mismatch"
+		HTTPRequest.RESULT_CANT_CONNECT:
+			return "cannot connect"
+		HTTPRequest.RESULT_CANT_RESOLVE:
+			return "cannot resolve"
+		HTTPRequest.RESULT_CONNECTION_ERROR:
+			return "connection error"
+		HTTPRequest.RESULT_TLS_HANDSHAKE_ERROR:
+			return "TLS handshake error"
+		HTTPRequest.RESULT_NO_RESPONSE:
+			return "no response"
+		HTTPRequest.RESULT_BODY_SIZE_LIMIT_EXCEEDED:
+			return "body size limit exceeded"
+		HTTPRequest.RESULT_BODY_DECOMPRESS_FAILED:
+			return "body decompress failed"
+		HTTPRequest.RESULT_REQUEST_FAILED:
+			return "request failed"
+		HTTPRequest.RESULT_DOWNLOAD_FILE_CANT_OPEN:
+			return "download file cannot open"
+		HTTPRequest.RESULT_DOWNLOAD_FILE_WRITE_ERROR:
+			return "download file write error"
+		HTTPRequest.RESULT_REDIRECT_LIMIT_REACHED:
+			return "redirect limit reached"
+		HTTPRequest.RESULT_TIMEOUT:
+			return "timeout"
+	return "result %d" % result
 
 
 func _on_agent_taunt_llm_response_finished(response: Variant = "") -> void:
