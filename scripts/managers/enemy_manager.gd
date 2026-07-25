@@ -88,9 +88,9 @@ func set_arena_definition(level_definition) -> void:
 		return
 	_arena_bounds = level_definition.arena_bounds
 	_arena_shape = int(level_definition.arena_shape)
-	_level_wall_rects = level_definition.wall_rects
+	_level_wall_rects = _get_level_collision_rects(level_definition, "active_room_wall_rects", level_definition.wall_rects)
 	_wall_rects = _level_wall_rects.duplicate()
-	_void_rects = level_definition.void_rects
+	_void_rects = _get_level_collision_rects(level_definition, "active_room_void_rects", level_definition.void_rects)
 	_playable_rects = _get_playable_rects(level_definition)
 	for enemy in _enemies:
 		if is_instance_valid(enemy):
@@ -513,4 +513,18 @@ func _get_playable_rects(level_definition) -> Array[Rect2]:
 	if not level_definition.has_meta("footprint_cells"):
 		return rects
 	rects.append_array(ArenaGeometry.get_footprint_cell_rects(level_definition.arena_bounds, level_definition.get_meta("footprint_cells")))
+	return rects
+
+
+func _get_level_collision_rects(level_definition, meta_key: String, fallback: Array[Rect2]) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if level_definition != null and level_definition.has_meta(meta_key):
+		var meta_value: Variant = level_definition.get_meta(meta_key)
+		if meta_value is Array:
+			for rect in meta_value:
+				if rect is Rect2:
+					rects.append(rect)
+			if not rects.is_empty():
+				return rects
+	rects.append_array(fallback)
 	return rects

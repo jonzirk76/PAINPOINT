@@ -849,6 +849,8 @@ func _apply_active_room_contents_to_full_floor_level(level: LevelDefinition, act
 	if active_level == null:
 		return
 	var offset: Vector2 = _get_floor_position_for_room_position(active_room_id, Vector2.ZERO, room_ids)
+	level.set_meta("active_room_wall_rects", _copy_offset_rects(active_level.wall_rects, offset))
+	level.set_meta("active_room_void_rects", _copy_offset_rects(active_level.void_rects, offset))
 	level.max_active_enemies = int(active_level.max_active_enemies)
 	level.spawner_health = int(active_level.spawner_health)
 	level.spawner_radius = float(active_level.spawner_radius)
@@ -876,6 +878,13 @@ func _copy_offset_resource_placements(source_placements: Array, offset: Vector2,
 			continue
 		copied_placements.append(_copy_offset_resource_placement(source_resource, offset, source_room_id))
 	return copied_placements
+
+
+func _copy_offset_rects(source_rects: Array[Rect2], offset: Vector2) -> Array[Rect2]:
+	var copied_rects: Array[Rect2] = []
+	for rect: Rect2 in source_rects:
+		copied_rects.append(_translated_rect(rect, offset))
+	return copied_rects
 
 
 func _copy_offset_resource_placement(source_resource: Resource, offset: Vector2, source_room_id: String = "") -> Resource:

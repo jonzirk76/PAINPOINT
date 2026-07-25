@@ -4703,8 +4703,8 @@ func _get_room_blocker_rects(level_definition) -> Array[Rect2]:
 	var blockers: Array[Rect2] = []
 	if level_definition == null:
 		return blockers
-	blockers.append_array(level_definition.wall_rects)
-	blockers.append_array(level_definition.void_rects)
+	blockers.append_array(_get_level_collision_rects(level_definition, "active_room_wall_rects", level_definition.wall_rects))
+	blockers.append_array(_get_level_collision_rects(level_definition, "active_room_void_rects", level_definition.void_rects))
 	return blockers
 
 
@@ -4737,13 +4737,27 @@ func _position_is_inside_room_playable_area(candidate_position: Vector2, level_d
 func _position_is_clear_of_room_walls(candidate_position: Vector2, level_definition) -> bool:
 	if level_definition == null:
 		return true
-	for wall_rect in level_definition.wall_rects:
+	for wall_rect in _get_level_collision_rects(level_definition, "active_room_wall_rects", level_definition.wall_rects):
 		if wall_rect.grow(34.0).has_point(candidate_position):
 			return false
-	for void_rect in level_definition.void_rects:
+	for void_rect in _get_level_collision_rects(level_definition, "active_room_void_rects", level_definition.void_rects):
 		if void_rect.grow(34.0).has_point(candidate_position):
 			return false
 	return true
+
+
+func _get_level_collision_rects(level_definition, meta_key: String, fallback: Array[Rect2]) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if level_definition != null and level_definition.has_meta(meta_key):
+		var meta_value: Variant = level_definition.get_meta(meta_key)
+		if meta_value is Array:
+			for rect in meta_value:
+				if rect is Rect2:
+					rects.append(rect)
+			if not rects.is_empty():
+				return rects
+	rects.append_array(fallback)
+	return rects
 
 
 func _rect_has_point_inclusive(rect: Rect2, point: Vector2) -> bool:

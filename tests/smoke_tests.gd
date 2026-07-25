@@ -3119,6 +3119,17 @@ func _test_dungeon_room_interiors_persist(failures: Array[String]) -> void:
 	var combat_dim_rects: Array = full_floor_during_combat.get_meta("inactive_room_dim_rects") if full_floor_during_combat.has_meta("inactive_room_dim_rects") else []
 	if combat_dim_rects.is_empty():
 		failures.append("Full-floor dungeon combat levels should expose dim rects for visible inactive rooms.")
+	var active_combat_wall_rects: Array[Rect2] = _get_level_meta_rects(full_floor_during_combat, "active_room_wall_rects", [])
+	if active_combat_wall_rects.is_empty():
+		failures.append("Full-floor dungeon combat levels should expose active-room wall blockers for gameplay managers.")
+	elif active_combat_wall_rects.size() >= full_floor_during_combat.wall_rects.size():
+		failures.append("Active combat wall blockers should be a smaller room-local subset of full-floor wall blockers.")
+	var active_combat_bounds: Rect2 = full_floor_during_combat.get_meta("active_room_bounds") if full_floor_during_combat.has_meta("active_room_bounds") else Rect2()
+	if active_combat_bounds.size != Vector2.ZERO:
+		for rect in active_combat_wall_rects:
+			if not rect.intersects(active_combat_bounds.grow(96.0), true):
+				failures.append("Active combat wall blockers should stay near the active room bounds.")
+				break
 
 	var persistent_prop = load("res://scripts/resources/destructible_prop_placement.gd").new()
 	persistent_prop.position = Vector2(36.0, 28.0)

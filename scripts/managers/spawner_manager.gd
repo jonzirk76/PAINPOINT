@@ -164,9 +164,9 @@ func set_arena_definition(level_definition) -> void:
 		return
 	_arena_bounds = level_definition.arena_bounds
 	_arena_shape = int(level_definition.arena_shape)
-	_level_wall_rects = level_definition.wall_rects
+	_level_wall_rects = _get_level_collision_rects(level_definition, "active_room_wall_rects", level_definition.wall_rects)
 	_wall_rects = _level_wall_rects.duplicate()
-	_void_rects = level_definition.void_rects
+	_void_rects = _get_level_collision_rects(level_definition, "active_room_void_rects", level_definition.void_rects)
 	_playable_rects = _get_playable_rects(level_definition)
 	for spawner in _spawners:
 		if is_instance_valid(spawner) and spawner.has_method("set_arena_definition"):
@@ -529,10 +529,10 @@ func _get_spawn_radial_stagger(spawn_index: int, spawn_count: int) -> float:
 func _position_is_clear_of_walls(position: Vector2) -> bool:
 	if _level_definition == null:
 		return true
-	for wall_rect in _level_definition.wall_rects:
+	for wall_rect in _wall_rects:
 		if wall_rect.grow(24.0).has_point(position):
 			return false
-	for void_rect in _level_definition.void_rects:
+	for void_rect in _void_rects:
 		if void_rect.grow(24.0).has_point(position):
 			return false
 	return true
@@ -560,6 +560,20 @@ func _get_playable_rects(level_definition) -> Array[Rect2]:
 	if not level_definition.has_meta("footprint_cells"):
 		return rects
 	rects.append_array(ArenaGeometry.get_footprint_cell_rects(level_definition.arena_bounds, level_definition.get_meta("footprint_cells")))
+	return rects
+
+
+func _get_level_collision_rects(level_definition, meta_key: String, fallback: Array[Rect2]) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if level_definition != null and level_definition.has_meta(meta_key):
+		var meta_value: Variant = level_definition.get_meta(meta_key)
+		if meta_value is Array:
+			for rect in meta_value:
+				if rect is Rect2:
+					rects.append(rect)
+			if not rects.is_empty():
+				return rects
+	rects.append_array(fallback)
 	return rects
 
 
