@@ -72,6 +72,8 @@ const SPECIAL_ATTACK_PINWHEEL_BURST := "pinwheel_burst"
 @export var intro_seconds: float = 2.35
 ## Controls how long the boss intro teleport/fade-in materialization lasts.
 @export var intro_materialize_seconds: float = 0.82
+## Controls how long the personality name fades in before the intro healthbar fill starts.
+@export var intro_name_fade_seconds: float = 0.62
 ## Controls how many red alert pulses play during the boss alert intro.
 @export var intro_alert_flash_count: int = 3
 ## Controls how long the bottom boss healthbar takes to fill during the intro.

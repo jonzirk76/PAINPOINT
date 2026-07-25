@@ -250,6 +250,9 @@ var _pending_agent_boss_presentation: EnemyEntity = null
 var _last_boss_health: int = 0
 var _last_boss_max_health: int = 0
 var _boss_health_display_count: int = 0
+var _boss_intro_name_fade_remaining: float = 0.0
+var _boss_intro_name_fade_duration: float = 0.0
+var _boss_health_pending_reveal_duration: float = 0.0
 var _boss_health_reveal_remaining: float = 0.0
 var _boss_health_reveal_duration: float = 0.0
 var _boss_alert_remaining: float = 0.0
@@ -285,6 +288,7 @@ const BOSS_HEALTH_BAR_HEIGHT := 28.0
 const BOSS_HEALTH_HIDE_SECONDS := 1.05
 const BOSS_ALERT_DEFAULT_SECONDS := 2.35
 const BOSS_ALERT_HEALTH_FILL_SECONDS := 1.45
+const BOSS_INTRO_NAME_FADE_SECONDS := 0.62
 const BOSS_ALERT_DEFAULT_FLASH_COUNT := 3
 const AMMO_SEGMENT_REFILL_STEP_SECONDS := 0.06
 const AMMO_SEGMENT_REFILL_MIN_SECONDS := 0.22
@@ -778,6 +782,9 @@ func _clear_boss_health_hud() -> void:
 	_last_boss_health = 0
 	_last_boss_max_health = 0
 	_boss_health_display_count = 0
+	_boss_intro_name_fade_remaining = 0.0
+	_boss_intro_name_fade_duration = 0.0
+	_boss_health_pending_reveal_duration = 0.0
 	_boss_health_reveal_remaining = 0.0
 	_boss_health_reveal_duration = 0.0
 	_boss_alert_remaining = 0.0
@@ -801,7 +808,7 @@ func _track_level_boss(boss: EnemyEntity) -> void:
 	_active_boss = boss
 	_last_boss_max_health = max(int(boss.max_health), 1)
 	_last_boss_health = clampi(int(boss.health), 0, _last_boss_max_health)
-	_boss_health_display_count = _last_boss_health
+	_boss_health_display_count = 0 if boss.agent_program != null else _last_boss_health
 	_boss_health_hide_remaining = 0.0
 	if boss.agent_program != null:
 		if _loading_screen_is_visible() or _is_room_entry_transition_active:
@@ -809,6 +816,9 @@ func _track_level_boss(boss: EnemyEntity) -> void:
 			_prepare_agent_boss_intro_materialize(boss)
 			if boss.has_method("prepare_agent_boss_intro"):
 				boss.prepare_agent_boss_intro()
+			_boss_intro_name_fade_remaining = 0.0
+			_boss_intro_name_fade_duration = 0.0
+			_boss_health_pending_reveal_duration = 0.0
 			_boss_health_reveal_remaining = 0.0
 			_boss_health_reveal_duration = 0.0
 			_boss_alert_remaining = 0.0
@@ -818,6 +828,9 @@ func _track_level_boss(boss: EnemyEntity) -> void:
 			_start_agent_boss_presentation(boss)
 	else:
 		_pending_agent_boss_presentation = null
+		_boss_intro_name_fade_remaining = 0.0
+		_boss_intro_name_fade_duration = 0.0
+		_boss_health_pending_reveal_duration = 0.0
 		_boss_health_reveal_remaining = 0.0
 		_boss_health_reveal_duration = 0.0
 		_boss_alert_remaining = 0.0
@@ -838,20 +851,35 @@ func _start_agent_boss_presentation(boss: EnemyEntity) -> void:
 	var program: AgentBossProgram = boss.agent_program as AgentBossProgram
 	var intro_seconds: float = BOSS_ALERT_DEFAULT_SECONDS
 	var fill_seconds: float = BOSS_ALERT_HEALTH_FILL_SECONDS
+	var name_fade_seconds: float = BOSS_INTRO_NAME_FADE_SECONDS
 	_boss_alert_flash_count = BOSS_ALERT_DEFAULT_FLASH_COUNT
 	if program != null:
 		intro_seconds = max(float(program.intro_seconds), 0.0)
 		fill_seconds = max(float(program.intro_health_fill_seconds), 0.05)
+		name_fade_seconds = max(float(program.intro_name_fade_seconds), 0.0)
 		_boss_alert_flash_count = max(int(program.intro_alert_flash_count), 1)
 	_materialize_agent_boss_intro(boss)
 	_boss_health_display_count = 0
-	_boss_health_reveal_duration = max(fill_seconds, 0.05)
-	_boss_health_reveal_remaining = _boss_health_reveal_duration
-	_boss_alert_duration = max(intro_seconds, 0.05)
+	_boss_intro_name_fade_duration = max(name_fade_seconds, 0.0)
+	_boss_intro_name_fade_remaining = _boss_intro_name_fade_duration
+	_boss_health_pending_reveal_duration = max(fill_seconds, 0.05)
+	_boss_health_reveal_duration = 0.0
+	_boss_health_reveal_remaining = 0.0
+	var presentation_seconds := _boss_intro_name_fade_duration + _boss_health_pending_reveal_duration
+	if _boss_intro_name_fade_remaining <= 0.0:
+		_begin_boss_health_reveal()
+	_boss_alert_duration = max(max(intro_seconds, presentation_seconds), 0.05)
 	_boss_alert_remaining = _boss_alert_duration
 	if boss.has_method("start_agent_boss_intro"):
-		boss.start_agent_boss_intro(intro_seconds)
+		boss.start_agent_boss_intro(_boss_alert_duration)
 	_update_boss_alert_overlay()
+
+
+func _begin_boss_health_reveal() -> void:
+	_boss_health_display_count = 0
+	_boss_health_reveal_duration = max(_boss_health_pending_reveal_duration, 0.05)
+	_boss_health_reveal_remaining = _boss_health_reveal_duration
+	_boss_health_pending_reveal_duration = 0.0
 
 
 func _prepare_agent_boss_intro_materialize(boss: EnemyEntity) -> void:
@@ -890,6 +918,11 @@ func _get_agent_boss_intro_materialize_seconds(boss: EnemyEntity) -> float:
 
 func _update_boss_health_feedback(delta: float) -> bool:
 	var changed: bool = false
+	if _boss_intro_name_fade_remaining > 0.0:
+		_boss_intro_name_fade_remaining = max(_boss_intro_name_fade_remaining - delta, 0.0)
+		if _boss_intro_name_fade_remaining <= 0.0 and _boss_health_pending_reveal_duration > 0.0:
+			_begin_boss_health_reveal()
+		changed = true
 	if _boss_health_reveal_remaining > 0.0:
 		var previous_display_count: int = _boss_health_display_count
 		_boss_health_reveal_remaining = max(_boss_health_reveal_remaining - delta, 0.0)
@@ -933,6 +966,9 @@ func _update_boss_health_panel() -> void:
 	_ensure_boss_health_hud()
 	if _boss_health_panel == null or _boss_health_tick_layer == null:
 		return
+	if _pending_agent_boss_presentation != null:
+		_boss_health_panel.visible = false
+		return
 	if _last_boss_max_health <= 0 or (_active_boss == null and _boss_health_hide_remaining <= 0.0):
 		_boss_health_panel.visible = false
 		return
@@ -944,6 +980,15 @@ func _update_boss_health_panel() -> void:
 		_boss_health_fill.visible = false
 	if _boss_health_label != null:
 		_boss_health_label.text = _get_boss_display_name()
+		_boss_health_label.modulate = Color(1.0, 1.0, 1.0, _get_boss_intro_name_alpha())
+	var show_health_meter := not _is_boss_intro_name_fade_active()
+	if _boss_health_bar_back != null:
+		_boss_health_bar_back.visible = show_health_meter
+	if _boss_health_tick_layer != null:
+		_boss_health_tick_layer.visible = show_health_meter
+	if not show_health_meter:
+		_boss_health_panel.visible = true
+		return
 	_update_meter_segments(
 		_boss_health_tick_layer,
 		_last_boss_max_health,
@@ -955,6 +1000,19 @@ func _update_boss_health_panel() -> void:
 		BOSS_METER_SEGMENT_EJECT_OFFSET
 	)
 	_boss_health_panel.visible = true
+
+
+func _is_boss_intro_name_fade_active() -> bool:
+	return _boss_intro_name_fade_duration > 0.0 and _boss_intro_name_fade_remaining > 0.0
+
+
+func _get_boss_intro_name_alpha() -> float:
+	if _boss_intro_name_fade_duration <= 0.0:
+		return 1.0
+	if _boss_intro_name_fade_remaining <= 0.0:
+		return 1.0
+	var progress := 1.0 - clamp(_boss_intro_name_fade_remaining / _boss_intro_name_fade_duration, 0.0, 1.0)
+	return progress * progress * (3.0 - 2.0 * progress)
 
 
 func _get_boss_health_reveal_flash_config() -> Dictionary:
