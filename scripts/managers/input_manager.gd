@@ -17,11 +17,11 @@ signal overdrive_changed(is_held: bool)
 
 @export var stick_deadzone: float = 0.25
 ## Controls how much the aim direction must change before requesting another shot.
-@export var aim_change_threshold: float = 0.14
+@export var aim_change_threshold: float = 0.18
 ## Snaps right-stick aim to a cardinal axis when the off-axis component is this small relative to the dominant axis.
-@export var aim_cardinal_snap_enter_ratio: float = 0.28
+@export var aim_cardinal_snap_enter_ratio: float = 0.45
 ## Keeps right-stick aim snapped to a cardinal axis until the off-axis component drifts past this ratio.
-@export var aim_cardinal_snap_exit_ratio: float = 0.42
+@export var aim_cardinal_snap_exit_ratio: float = 0.65
 @export var move_change_threshold: float = 0.03
 @export var super_trigger_threshold: float = 0.55
 @export var overdrive_trigger_threshold: float = 0.55

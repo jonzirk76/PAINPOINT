@@ -15,6 +15,8 @@ signal super_shot_requested(origin: Vector2, direction: Vector2, charge_ratio: f
 @export var player_scene: PackedScene = preload("res://scenes/entities/player_entity.tscn")
 @export var spawn_position: Vector2 = Vector2.ZERO
 @export var base_fire_cooldown: float = 0.09
+## Controls how long an aim-change shot is remembered when it arrives during fire cooldown.
+@export var fire_input_buffer_seconds: float = 0.12
 @export var damage_invulnerability_seconds: float = 0.6
 @export var parry_cooldown_seconds: float = 8.0
 @export var parry_chain_cooldown_seconds: float = 0.5
@@ -33,6 +35,8 @@ var player = null
 var enabled: bool = false
 var _player_layer: Node = null
 var _fire_cooldown_remaining: float = 0.0
+var _queued_fire_direction: Vector2 = Vector2.ZERO
+var _queued_fire_remaining: float = 0.0
 var _fire_cooldown_multiplier: float = 1.0
 var _move_speed_multiplier: float = 1.0
 var _context_speed_multiplier: float = 1.0
@@ -94,6 +98,7 @@ func reset_run() -> void:
 	_sync_parry_chain_state()
 	_sync_player_speed()
 	_sync_super_meter_state()
+	_clear_queued_fire()
 	player_spawned.emit(player)
 	player_health_changed.emit(player.health, player.health)
 
@@ -117,6 +122,7 @@ func clear_player() -> void:
 	player = null
 	_spawn_feedback_queued = false
 	_fire_cooldown_remaining = 0.0
+	_clear_queued_fire()
 	_damage_cooldown_remaining = 0.0
 	_parry_cooldown_remaining = 0.0
 	_active_parry_cooldown_duration = parry_cooldown_seconds
@@ -136,6 +142,7 @@ func clear_player() -> void:
 func set_enabled(value: bool) -> void:
 	enabled = value
 	if not enabled:
+		_clear_queued_fire()
 		_cancel_super_charge(true)
 		if _has_player():
 			player.stop_movement()
@@ -159,6 +166,7 @@ func play_queued_spawn_feedback() -> void:
 func _process(delta: float) -> void:
 	if _fire_cooldown_remaining > 0.0:
 		_fire_cooldown_remaining = max(_fire_cooldown_remaining - delta, 0.0)
+	_update_queued_fire(delta)
 	if _damage_cooldown_remaining > 0.0:
 		_damage_cooldown_remaining = max(_damage_cooldown_remaining - delta, 0.0)
 	if _damage_cooldown_remaining > 0.0 or _last_invulnerability_remaining > 0.0:
@@ -197,15 +205,56 @@ func request_fire(direction: Vector2) -> void:
 	if not enabled or not _has_player():
 		return
 	if _super_is_charging:
+		_clear_queued_fire()
 		return
-	if direction.length_squared() <= 0.001 or _fire_cooldown_remaining > 0.0:
+	if direction.length_squared() <= 0.001:
+		_clear_queued_fire()
 		return
+	if _fire_cooldown_remaining > 0.0:
+		_queue_fire(direction)
+		return
+	_clear_queued_fire()
+	_fire_player_shot(direction)
+
+
+func _fire_player_shot(direction: Vector2) -> void:
+	if not enabled or not _has_player() or _super_is_charging:
+		return
+	if direction.length_squared() <= 0.001:
+		return
+	var shot_direction := direction.normalized()
 	if player.has_method("play_shoot_pose"):
-		player.play_shoot_pose(direction)
+		player.play_shoot_pose(shot_direction)
 	else:
-		player.set_aim_direction(direction)
+		player.set_aim_direction(shot_direction)
 	_fire_cooldown_remaining = base_fire_cooldown * _fire_cooldown_multiplier
-	shoot_requested.emit(player.get_fire_origin(), direction.normalized())
+	shoot_requested.emit(player.get_fire_origin(), shot_direction)
+
+
+func _queue_fire(direction: Vector2) -> void:
+	if direction.length_squared() <= 0.001 or fire_input_buffer_seconds <= 0.0:
+		_clear_queued_fire()
+		return
+	_queued_fire_direction = direction.normalized()
+	_queued_fire_remaining = max(fire_input_buffer_seconds, 0.0)
+
+
+func _update_queued_fire(delta: float) -> void:
+	if _queued_fire_remaining <= 0.0:
+		return
+	if _fire_cooldown_remaining <= 0.0:
+		var direction := _queued_fire_direction
+		_clear_queued_fire()
+		_fire_player_shot(direction)
+		return
+	_queued_fire_remaining = max(_queued_fire_remaining - delta, 0.0)
+	if _queued_fire_remaining <= 0.0:
+		_clear_queued_fire()
+
+
+func _clear_queued_fire() -> void:
+	_queued_fire_direction = Vector2.ZERO
+	_queued_fire_remaining = 0.0
 
 
 func request_parry() -> void:
@@ -236,6 +285,7 @@ func request_super_charge_start() -> void:
 		return
 	if not is_super_ready():
 		return
+	_clear_queued_fire()
 	_super_is_charging = true
 	_super_charge_elapsed = 0.0
 	if player.has_method("set_super_charge_state"):
