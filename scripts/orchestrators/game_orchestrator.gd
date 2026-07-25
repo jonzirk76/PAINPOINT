@@ -2484,7 +2484,7 @@ func _should_advance_gameplay_feedback() -> bool:
 
 
 func _is_gameplay_input_allowed() -> bool:
-	return _is_gameplay_running() and not _tree_pause_requested and not _agent_taunt_active
+	return _is_gameplay_running() and not _tree_pause_requested and not _agent_taunt_active and not _loading_overlay_blocks_game_input()
 
 
 func _on_move_changed(move_vector: Vector2) -> void:
@@ -3172,6 +3172,8 @@ func _on_player_defeated(_player) -> void:
 
 
 func _on_restart_requested() -> void:
+	if _loading_overlay_blocks_game_input():
+		return
 	if _status == "DOWN" and _current_level != null:
 		if _is_main_loop_run:
 			await _show_loading_before_work("LOADING FLOOR", "Generating floor layout", 0.05)
@@ -3511,6 +3513,8 @@ func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = 
 
 func _on_pause_requested() -> void:
 	if _agent_taunt_active:
+		return
+	if _loading_overlay_blocks_game_input():
 		return
 	if _is_gameplay_running():
 		_stop_perfect_parry_slowmo()
@@ -4377,6 +4381,8 @@ func _check_level_clear() -> void:
 
 
 func _on_menu_up_requested() -> void:
+	if _loading_overlay_blocks_game_input():
+		return
 	if _status != "LEVEL_SELECT":
 		return
 	_level_select_option_index = wrapi(_level_select_option_index - 1, 0, _get_select_option_count())
@@ -4384,6 +4390,8 @@ func _on_menu_up_requested() -> void:
 
 
 func _on_menu_down_requested() -> void:
+	if _loading_overlay_blocks_game_input():
+		return
 	if _status != "LEVEL_SELECT":
 		return
 	_level_select_option_index = wrapi(_level_select_option_index + 1, 0, _get_select_option_count())
@@ -4391,6 +4399,8 @@ func _on_menu_down_requested() -> void:
 
 
 func _on_menu_confirm_requested() -> void:
+	if _loading_overlay_blocks_game_input():
+		return
 	if _agent_taunt_active:
 		if not _agent_taunt_continue_enabled:
 			return
@@ -4416,6 +4426,8 @@ func _on_menu_confirm_requested() -> void:
 
 
 func _on_menu_back_requested() -> void:
+	if _loading_overlay_blocks_game_input():
+		return
 	if _status == "LEVEL_SELECT" and _level_select_page == LEVEL_SELECT_PAGE_ARCHIVE:
 		_level_select_page = LEVEL_SELECT_PAGE_MAIN
 		_level_select_option_index = 0
@@ -4935,6 +4947,10 @@ func _show_loading_before_work(title: String, message: String, progress: float =
 
 func _loading_screen_is_visible() -> bool:
 	return loading_screen != null and loading_screen.visible
+
+
+func _loading_overlay_blocks_game_input() -> bool:
+	return _loading_transition_pending or _is_loading_room or _loading_screen_is_visible()
 
 
 func _set_loading_progress(progress: float, message: String = "") -> void:
