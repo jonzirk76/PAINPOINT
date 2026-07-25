@@ -75,6 +75,10 @@ The dungeon minimap is UI-only rendering of `DungeonManager` state. `DungeonMana
 
 Each generated dungeon floor also chooses one start or combat room as the cat room from the floor seed. `DungeonManager` stores only the chosen room and room-local spawn point; `GameOrchestrator` turns that into a full-floor position when the room is loaded and commands `FaunaManager` to spawn the single floor cat. The cat is background fauna: it avoids player/enemy/spawner danger points but does not participate in combat damage or objective counts.
 
+## Performance Follow-Ups
+
+If combat-room end hitches or dungeon traversal rebuild costs come up again, revisit full-floor `LevelDefinition` generation. The current implementation rebuilds a composed full-floor level when room state changes; caching stable full-floor geometry or incrementally updating room-state overlays, destructible placements, fog, doors, and active-room contents could reduce end-of-combat spikes more than timing deferrals alone.
+
 ## HUD And Pause Flow
 
 The normal combat HUD stays intentionally light: top-center score, lower-corner state info, and an upper-right character resource stack with green health ticks, blue overdrive ammo, and the yellow special meter. Detailed attribute modifiers, overdrive stacks, and run stats are shown in `PausePanel` instead of occupying combat space.
