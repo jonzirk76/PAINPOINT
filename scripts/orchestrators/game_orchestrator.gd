@@ -287,6 +287,9 @@ var _agent_taunt_llm_generation_active: bool = false
 var _agent_taunt_llm_elapsed: float = 0.0
 var _agent_taunt_llm_fallback_line: String = ""
 var _agent_taunt_llm_response: String = ""
+var _agent_taunt_llm_unavailable_warned: bool = false
+var _agent_taunt_llm_missing_model_warned: bool = false
+var _agent_taunt_llm_missing_property_warned: bool = false
 var _boss_intro_name_fade_remaining: float = 0.0
 var _boss_intro_name_fade_duration: float = 0.0
 var _boss_health_pending_reveal_duration: float = 0.0
@@ -964,6 +967,7 @@ func _clear_boss_health_hud() -> void:
 	_agent_taunt_active = false
 	_agent_taunt_continue_enabled = false
 	_agent_taunt_llm_pending = false
+	_agent_taunt_llm_generation_active = false
 	_agent_taunt_llm_elapsed = 0.0
 	_agent_taunt_llm_fallback_line = ""
 	_agent_taunt_llm_response = ""
@@ -1005,6 +1009,7 @@ func _track_level_boss(boss: EnemyEntity) -> void:
 	_agent_taunt_active = false
 	_agent_taunt_continue_enabled = false
 	_agent_taunt_llm_pending = false
+	_agent_taunt_llm_generation_active = false
 	_agent_taunt_llm_elapsed = 0.0
 	_agent_taunt_llm_fallback_line = ""
 	_agent_taunt_llm_response = ""
@@ -1155,6 +1160,7 @@ func _dismiss_agent_intro_taunt() -> void:
 	_agent_taunt_active = false
 	_agent_taunt_continue_enabled = false
 	_agent_taunt_llm_pending = false
+	_agent_taunt_llm_generation_active = false
 	_boss_intro_taunt_boss = null
 	_hide_agent_dialogue_box()
 	_set_tree_paused(false)
@@ -1180,6 +1186,9 @@ func _request_agent_intro_taunt_from_llm(program: AgentBossProgram, fallback_lin
 
 func _get_agent_taunt_llm_chat() -> Object:
 	if not ClassDB.class_exists(AGENT_TAUNT_LLM_MODEL_CLASS) or not ClassDB.class_exists(AGENT_TAUNT_LLM_CHAT_CLASS):
+		if not _agent_taunt_llm_unavailable_warned:
+			_agent_taunt_llm_unavailable_warned = true
+			push_warning("Agent taunt LLM unavailable: NobodyWho classes are not loaded. Check GDExtension load errors and Godot 4.5+ compatibility.")
 		return null
 	var model: Object = _agent_taunt_llm_model
 	if model == null or not is_instance_valid(model):
@@ -1188,11 +1197,19 @@ func _get_agent_taunt_llm_chat() -> Object:
 		_register_agent_taunt_llm_object(model)
 	var resolved_model_path: String = _resolve_agent_taunt_llm_model_path(model)
 	if resolved_model_path.is_empty():
+		if not _agent_taunt_llm_missing_model_warned:
+			_agent_taunt_llm_missing_model_warned = true
+			push_warning("Agent taunt LLM unavailable: set agent_taunt_llm_model_path to a readable GGUF path or cache a NobodyWho model.")
 		return null
 	if resolved_model_path != _agent_taunt_llm_model_path_in_use:
 		_agent_taunt_llm_model_path_in_use = resolved_model_path
 		if _object_has_property(model, "model_path"):
 			model.set("model_path", resolved_model_path)
+		else:
+			if not _agent_taunt_llm_missing_property_warned:
+				_agent_taunt_llm_missing_property_warned = true
+				push_warning("Agent taunt LLM unavailable: NobodyWhoModel does not expose model_path.")
+			return null
 		if _object_has_property(model, "projection_model_path"):
 			model.set("projection_model_path", "")
 	var chat: Object = _agent_taunt_llm_chat
@@ -1205,6 +1222,11 @@ func _get_agent_taunt_llm_chat() -> Object:
 			chat.call("set_sampler_preset_temperature", 0.82)
 	if _object_has_property(chat, "model_node"):
 		chat.set("model_node", model)
+	else:
+		if not _agent_taunt_llm_missing_property_warned:
+			_agent_taunt_llm_missing_property_warned = true
+			push_warning("Agent taunt LLM unavailable: NobodyWhoChat does not expose model_node.")
+		return null
 	if _object_has_property(chat, "system_prompt"):
 		chat.set("system_prompt", _get_agent_taunt_llm_system_prompt())
 	if _object_has_property(chat, "context_length"):
@@ -1299,6 +1321,8 @@ func _update_agent_taunt_llm_request(delta: float) -> bool:
 	if _agent_taunt_llm_elapsed < max(agent_taunt_llm_timeout_seconds, 0.1):
 		return false
 	_agent_taunt_llm_pending = false
+	_agent_taunt_llm_generation_active = false
+	push_warning("Agent taunt LLM timed out after %.1fs using model %s. Increase agent_taunt_llm_timeout_seconds or use a smaller GGUF." % [max(agent_taunt_llm_timeout_seconds, 0.1), _agent_taunt_llm_model_path_in_use])
 	_finalize_agent_intro_taunt_line(_agent_taunt_llm_fallback_line)
 	return true
 
