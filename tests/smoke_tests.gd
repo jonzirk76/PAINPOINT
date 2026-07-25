@@ -4098,6 +4098,15 @@ func _test_room_manager_doors(failures: Array[String]) -> void:
 		south_gate_shape = south_gate_collision.shape as RectangleShape2D
 	if south_gate_body == null or south_gate_shape == null or south_gate_body.global_position.distance_squared_to(expected_south_gate_blocker.get_center()) > 0.25 or south_gate_shape.size.distance_squared_to(expected_south_gate_blocker.size) > 0.25:
 		failures.append("Closed south gate collision should match the shifted wall body blocker, not the visible top strip.")
+	var south_gate_body_visual = south_door.get_node_or_null("GateBodyVisual")
+	var south_gate_body_overlay_rects: Array[Rect2] = south_door._get_gate_body_overlay_rects(south_gate_visual_rect)
+	if south_gate_body_visual == null or int(south_gate_body_visual.z_index) != 5 or not south_gate_body_visual.visible:
+		failures.append("Closed south gates should draw a visible body overlay for the shifted blocker row above fog.")
+	elif not _rect_list_has_rect(south_gate_body_overlay_rects, expected_south_gate_blocker):
+		failures.append("Closed south gate body overlay should align with the shifted blocker row.")
+	south_door.set_unlocked(true)
+	if south_gate_body_visual != null and south_gate_body_visual.visible:
+		failures.append("Unlocked south gates should clear the shifted body overlay.")
 	direct_door.set_unlocked(true)
 	if not direct_door.has_special_marker():
 		failures.append("Door entity should treat boss targets as special marked doors.")

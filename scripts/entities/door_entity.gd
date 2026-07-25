@@ -26,6 +26,7 @@ var _collision_shape: CollisionShape2D = null
 var _gate_body: StaticBody2D = null
 var _gate_collision_shape: CollisionShape2D = null
 var _gate_top_visual = null
+var _gate_body_visual = null
 var _armed: bool = false
 var _arm_delay_remaining: float = 0.0
 var _monitoring_enabled: bool = true
@@ -59,6 +60,7 @@ func initialize(door_direction: String, target_id: String, center_position: Vect
 	_add_or_update_collision()
 	_add_or_update_gate_collision()
 	_sync_gate_top_visual()
+	_sync_gate_body_visual()
 	set_physics_process(_monitoring_enabled and unlocked)
 	queue_redraw()
 
@@ -69,6 +71,7 @@ func set_visual_rect(center_position: Vector2, size: Vector2) -> void:
 	visual_size = Vector2(round(size.x), round(size.y))
 	_add_or_update_gate_collision()
 	_sync_gate_top_visual()
+	_sync_gate_body_visual()
 	queue_redraw()
 
 
@@ -85,6 +88,7 @@ func set_unlocked(value: bool) -> void:
 	_arm_delay_remaining = ARM_DELAY_SECONDS if unlocked else 0.0
 	_set_gate_blocking_enabled(not unlocked)
 	_sync_gate_top_visual()
+	_sync_gate_body_visual()
 	set_physics_process(_monitoring_enabled and unlocked and not _armed)
 	queue_redraw()
 
@@ -188,6 +192,16 @@ func _sync_gate_top_visual() -> void:
 	visual.configure(_get_gate_top_rects(rect), WALL_TOP_FILL_COLOR, WALL_TOP_OUTLINE_COLOR, 2.0)
 
 
+func _sync_gate_body_visual() -> void:
+	var visual = _ensure_gate_body_visual()
+	if unlocked:
+		visual.clear()
+		return
+	var rect: Rect2 = _get_visual_fill_rect()
+	var body_color := GATE_SPECIAL_BODY_COLOR if has_special_marker() else GATE_BODY_COLOR
+	visual.configure(_get_gate_body_overlay_rects(rect), body_color, Color(0.16, 0.17, 0.18, 1.0), 2.0)
+
+
 func _ensure_gate_top_visual():
 	if _gate_top_visual != null and is_instance_valid(_gate_top_visual):
 		return _gate_top_visual
@@ -197,6 +211,17 @@ func _ensure_gate_top_visual():
 	_gate_top_visual.z_as_relative = false
 	add_child(_gate_top_visual)
 	return _gate_top_visual
+
+
+func _ensure_gate_body_visual():
+	if _gate_body_visual != null and is_instance_valid(_gate_body_visual):
+		return _gate_body_visual
+	_gate_body_visual = DOOR_GATE_TOP_VISUAL_SCRIPT.new()
+	_gate_body_visual.name = "GateBodyVisual"
+	_gate_body_visual.z_index = WALL_TOP_Z_INDEX
+	_gate_body_visual.z_as_relative = false
+	add_child(_gate_body_visual)
+	return _gate_body_visual
 
 
 func _get_visual_draw_rect() -> Rect2:
@@ -232,6 +257,12 @@ func _get_gate_body_rects(rect: Rect2) -> Array[Rect2]:
 	for top_rect in _get_gate_top_rects(rect):
 		rects.append(Rect2(top_rect.position + Vector2(0.0, tile_size), top_rect.size))
 	return rects
+
+
+func _get_gate_body_overlay_rects(rect: Rect2) -> Array[Rect2]:
+	if direction == "south":
+		return _get_gate_blocker_rects(rect)
+	return []
 
 
 func _get_gate_blocker_rects(rect: Rect2) -> Array[Rect2]:
