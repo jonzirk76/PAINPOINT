@@ -16,7 +16,12 @@ signal super_charge_released(direction: Vector2)
 signal overdrive_changed(is_held: bool)
 
 @export var stick_deadzone: float = 0.25
-@export var aim_change_threshold: float = 0.18
+## Controls how much the aim direction must change before requesting another shot.
+@export var aim_change_threshold: float = 0.14
+## Snaps right-stick aim to a cardinal axis when the off-axis component is this small relative to the dominant axis.
+@export var aim_cardinal_snap_enter_ratio: float = 0.28
+## Keeps right-stick aim snapped to a cardinal axis until the off-axis component drifts past this ratio.
+@export var aim_cardinal_snap_exit_ratio: float = 0.42
 @export var move_change_threshold: float = 0.03
 @export var super_trigger_threshold: float = 0.55
 @export var overdrive_trigger_threshold: float = 0.55
@@ -25,6 +30,7 @@ var enabled: bool = false
 @export var extra_pause_button_indices: Array[int] = []
 var _last_move: Vector2 = Vector2.ZERO
 var _last_aim: Vector2 = Vector2.ZERO
+var _last_cardinal_aim_snap: Vector2 = Vector2.ZERO
 var _super_held: bool = false
 var _overdrive_held: bool = false
 var _aim_origin_provider: Callable
@@ -41,6 +47,7 @@ func initialize(context: Dictionary) -> void:
 func reset_run() -> void:
 	_last_move = Vector2.ZERO
 	_last_aim = Vector2.ZERO
+	_last_cardinal_aim_snap = Vector2.ZERO
 	_super_held = false
 	_overdrive_held = false
 
@@ -122,6 +129,7 @@ func should_fire_for_aim_change(raw_direction: Vector2) -> bool:
 	var direction := _apply_deadzone(raw_direction)
 	if direction.length_squared() <= 0.001:
 		_last_aim = Vector2.ZERO
+		_last_cardinal_aim_snap = Vector2.ZERO
 		return false
 	if _last_aim.length_squared() <= 0.001 or direction.distance_to(_last_aim) >= aim_change_threshold:
 		_last_aim = direction
@@ -155,7 +163,7 @@ func _read_aim_vector() -> Vector2:
 		Input.get_joy_axis(0, JOY_AXIS_RIGHT_Y)
 	)
 	if joy_vector.length() >= stick_deadzone:
-		return joy_vector.limit_length(1.0)
+		return _snap_analog_aim_to_cardinal(joy_vector)
 
 	var digital_vector := Vector2.ZERO
 	if Input.is_physical_key_pressed(KEY_LEFT):
@@ -167,13 +175,16 @@ func _read_aim_vector() -> Vector2:
 	if Input.is_physical_key_pressed(KEY_DOWN):
 		digital_vector.y += 1.0
 	if digital_vector.length_squared() > 0.001:
+		_last_cardinal_aim_snap = Vector2.ZERO
 		return digital_vector.limit_length(1.0)
 
 	if (Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)) and _aim_origin_provider.is_valid():
+		_last_cardinal_aim_snap = Vector2.ZERO
 		var origin: Vector2 = _aim_origin_provider.call()
 		var mouse_world: Vector2 = get_viewport().get_canvas_transform().affine_inverse() * get_viewport().get_mouse_position()
 		return (mouse_world - origin).limit_length(1.0)
 
+	_last_cardinal_aim_snap = Vector2.ZERO
 	return Vector2.ZERO
 
 
@@ -193,3 +204,31 @@ func _apply_deadzone(vector: Vector2) -> Vector2:
 	if vector.length() < stick_deadzone:
 		return Vector2.ZERO
 	return vector.normalized()
+
+
+func _snap_analog_aim_to_cardinal(vector: Vector2) -> Vector2:
+	var direction := _apply_deadzone(vector)
+	if direction.length_squared() <= 0.001:
+		_last_cardinal_aim_snap = Vector2.ZERO
+		return Vector2.ZERO
+
+	var abs_x: float = absf(direction.x)
+	var abs_y: float = absf(direction.y)
+	var cardinal := Vector2.RIGHT
+	var off_axis_ratio := 0.0
+	if abs_x >= abs_y:
+		cardinal = Vector2(1.0 if direction.x >= 0.0 else -1.0, 0.0)
+		off_axis_ratio = abs_y / maxf(abs_x, 0.001)
+	else:
+		cardinal = Vector2(0.0, 1.0 if direction.y >= 0.0 else -1.0)
+		off_axis_ratio = abs_x / maxf(abs_y, 0.001)
+
+	var enter_ratio: float = clampf(aim_cardinal_snap_enter_ratio, 0.0, 1.0)
+	var exit_ratio: float = clampf(maxf(aim_cardinal_snap_exit_ratio, enter_ratio), 0.0, 1.0)
+	var snap_ratio: float = exit_ratio if _last_cardinal_aim_snap == cardinal else enter_ratio
+	if off_axis_ratio <= snap_ratio:
+		_last_cardinal_aim_snap = cardinal
+		return cardinal
+
+	_last_cardinal_aim_snap = Vector2.ZERO
+	return direction
