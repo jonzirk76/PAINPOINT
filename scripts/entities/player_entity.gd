@@ -175,6 +175,15 @@ func get_fire_origin() -> Vector2:
 	return _constrain_to_playable(desired_origin, 2.0)
 
 
+func get_projectile_origin(shot_direction: Vector2 = Vector2.ZERO) -> Vector2:
+	var direction := shot_direction.normalized() if shot_direction.length_squared() > 0.001 else _get_muzzle_direction()
+	var side_offset_limit: float = max(body_radius - 0.5, 0.0)
+	var barrel_side_offset: float = clamp(muzzle_side_offset, -side_offset_limit, side_offset_limit)
+	var forward_offset: float = sqrt(max(body_radius * body_radius - barrel_side_offset * barrel_side_offset, 0.0))
+	var desired_origin: Vector2 = global_position + direction * forward_offset + _get_barrel_side(direction) * barrel_side_offset
+	return _constrain_to_playable(desired_origin, 2.0)
+
+
 func _constrain_to_playable(candidate_position: Vector2, clearance_override: float = -1.0) -> Vector2:
 	var clearance: float = body_radius if clearance_override < 0.0 else clearance_override
 	return ArenaGeometry.constrain_point_to_playable_regions(candidate_position, arena_bounds, arena_shape, playable_rects, [], clearance)
@@ -434,8 +443,11 @@ func _get_muzzle_direction() -> Vector2:
 func _get_local_muzzle_position(extra_forward_offset: float = 0.0) -> Vector2:
 	var direction := _get_muzzle_direction()
 	var forward_offset: float = max(max(muzzle_forward_offset + extra_forward_offset, body_radius * 0.55), 8.0)
-	var barrel_side := (-direction).rotated(PI / 2.0) if direction.x < -0.001 else direction.rotated(PI / 2.0)
-	return direction * forward_offset + barrel_side * muzzle_side_offset
+	return direction * forward_offset + _get_barrel_side(direction) * muzzle_side_offset
+
+
+func _get_barrel_side(direction: Vector2) -> Vector2:
+	return (-direction).rotated(PI / 2.0) if direction.x < -0.001 else direction.rotated(PI / 2.0)
 
 
 func _get_side_resting_pistol_rotation(facing: Vector2) -> float:

@@ -18,6 +18,8 @@ const HE_TARGET_RETICLE_MAX_RADIUS := 88.0
 @export var arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 @export var arena_shape: int = 0
 @export var projectile_team: String = "player"
+## Hides projectile visuals until the projectile has traveled this far from its collision spawn point.
+@export var visual_reveal_distance: float = 0.0
 ## Controls how high hostile grenades visually lift while traveling.
 @export var hostile_grenade_arc_height: float = 34.0
 
@@ -30,6 +32,7 @@ var last_expire_position: Vector2 = Vector2.ZERO
 var last_expire_direction: Vector2 = Vector2.RIGHT
 var last_expire_radius: float = 6.0
 var _age: float = 0.0
+var _distance_traveled: float = 0.0
 var _is_expired: bool = false
 var _base_body_radius: float = 6.0
 var _collision_shape: CollisionShape2D = null
@@ -63,12 +66,15 @@ func _configure_collision_identity() -> void:
 	_configure_projectile_kind_behavior()
 
 
-func initialize(origin: Vector2, shot_direction: Vector2, packet, projectile_speed: float) -> void:
+func initialize(origin: Vector2, shot_direction: Vector2, packet, projectile_speed: float, reveal_distance: float = 0.0) -> void:
 	global_position = origin
 	if shot_direction.length_squared() > 0.001:
 		direction = shot_direction.normalized()
 	damage_packet = packet
 	speed = projectile_speed
+	visual_reveal_distance = max(reveal_distance, 0.0)
+	_distance_traveled = 0.0
+	visible = visual_reveal_distance <= 0.0
 	pierce_remaining = packet.pierce_count if packet != null else 0
 	_base_body_radius = body_radius * max(packet.projectile_size_multiplier if packet != null else 1.0, 0.1)
 	body_radius = _base_body_radius
@@ -89,7 +95,11 @@ func _physics_process(delta: float) -> void:
 		return
 	var previous_position := global_position
 	var next_position := global_position + direction * speed * delta
+	var step_distance: float = previous_position.distance_to(next_position)
 	global_position = next_position
+	_distance_traveled += step_distance
+	if not visible and _distance_traveled >= visual_reveal_distance:
+		visible = true
 	_check_swept_hit(previous_position, next_position)
 	if not _is_expired and not ArenaGeometry.contains_point(global_position, arena_bounds, arena_shape):
 		expire("bounds", global_position)

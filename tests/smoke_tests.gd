@@ -207,6 +207,7 @@ func _init() -> void:
 	_test_parry_absorbs_hostile_projectiles_for_ammo(failures)
 	_test_parry_absorb_visuals_and_ammo_flash(failures)
 	_test_projectile_impact_visuals(failures)
+	_test_projectile_visual_reveal_delay(failures)
 	_test_audio_assets_and_pitch_variation(failures)
 	_test_reward_driven_pickup_drops(failures)
 	_test_health_pickup_and_player_healing(failures)
@@ -546,16 +547,29 @@ func _test_player_shoot_pose_relaxes_to_movement(failures: Array[String]) -> voi
 	var expected_right_origin := player.global_position + Vector2(player.muzzle_forward_offset, player.muzzle_side_offset)
 	if right_origin.distance_to(expected_right_origin) > 0.001:
 		failures.append("Player fire origin should line up with the right-facing gun muzzle.")
+	var projectile_forward_offset: float = sqrt(player.body_radius * player.body_radius - player.muzzle_side_offset * player.muzzle_side_offset)
+	var right_projectile_origin: Vector2 = player.get_projectile_origin(Vector2.RIGHT)
+	var expected_right_projectile_origin := player.global_position + Vector2(projectile_forward_offset, player.muzzle_side_offset)
+	if right_projectile_origin.distance_to(expected_right_projectile_origin) > 0.001:
+		failures.append("Player projectile origin should start on the collision edge behind the right-facing muzzle.")
 	player.play_shoot_pose(Vector2.LEFT)
 	var left_origin: Vector2 = player.get_fire_origin()
 	var expected_left_origin := player.global_position + Vector2(-player.muzzle_forward_offset, player.muzzle_side_offset)
 	if left_origin.distance_to(expected_left_origin) > 0.001:
 		failures.append("Player fire origin should line up with the mirrored left-facing gun muzzle.")
+	var left_projectile_origin: Vector2 = player.get_projectile_origin(Vector2.LEFT)
+	var expected_left_projectile_origin := player.global_position + Vector2(-projectile_forward_offset, player.muzzle_side_offset)
+	if left_projectile_origin.distance_to(expected_left_projectile_origin) > 0.001:
+		failures.append("Player projectile origin should start on the collision edge behind the left-facing muzzle.")
 	player.play_shoot_pose(Vector2.UP)
 	var up_origin: Vector2 = player.get_fire_origin()
 	var expected_up_origin := player.global_position + Vector2(player.muzzle_side_offset, -player.muzzle_forward_offset)
 	if up_origin.distance_to(expected_up_origin) > 0.001:
 		failures.append("Player fire origin should rotate with the gun barrel.")
+	var up_projectile_origin: Vector2 = player.get_projectile_origin(Vector2.UP)
+	var expected_up_projectile_origin := player.global_position + Vector2(player.muzzle_side_offset, -projectile_forward_offset)
+	if up_projectile_origin.distance_to(expected_up_projectile_origin) > 0.001:
+		failures.append("Player projectile origin should start on the collision edge behind the upward muzzle.")
 	player.free()
 
 
@@ -1627,6 +1641,21 @@ func _test_projectile_impact_visuals(failures: Array[String]) -> void:
 		failures.append("Projectile expiry routing should play impact frames for wall, boundary, and dissipating bullets.")
 	effects_manager.free()
 	effect_layer.free()
+
+
+func _test_projectile_visual_reveal_delay(failures: Array[String]) -> void:
+	var projectile = load("res://scenes/entities/projectile_entity.tscn").instantiate()
+	root.add_child(projectile)
+	projectile.initialize(Vector2.ZERO, Vector2.RIGHT, null, 100.0, 10.0)
+	if projectile.visible:
+		failures.append("Projectile visuals should start hidden when a reveal distance is configured.")
+	projectile._physics_process(0.05)
+	if projectile.visible:
+		failures.append("Projectile visuals should remain hidden before reaching the reveal distance.")
+	projectile._physics_process(0.06)
+	if not projectile.visible:
+		failures.append("Projectile visuals should appear once the reveal distance is reached.")
+	projectile.free()
 
 
 func _test_audio_assets_and_pitch_variation(failures: Array[String]) -> void:

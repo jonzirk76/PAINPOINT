@@ -2558,16 +2558,25 @@ func _on_cat_meowed(pitch_center: float, pitch_variation: float) -> void:
 
 func _on_player_shoot_requested(origin: Vector2, direction: Vector2) -> void:
 	audio_manager.play_player_shot()
-	effects_manager.play_muzzle_flash(origin, direction, 16.0)
+	var muzzle_origin: Vector2 = player_manager.get_player_muzzle_origin()
+	effects_manager.play_muzzle_flash(muzzle_origin, direction, 16.0)
 	var shot_modifiers: Dictionary = upgrade_manager.get_modifiers()
+	shot_modifiers["visual_reveal_distance"] = _get_projectile_visual_reveal_distance(origin, muzzle_origin, direction)
 	projectile_manager.fire(origin, direction, shot_modifiers)
 	upgrade_manager.consume_overdrive_shot()
 
 
 func _on_player_super_shot_requested(origin: Vector2, direction: Vector2, charge_ratio: float) -> void:
 	audio_manager.play_player_shot()
-	effects_manager.play_muzzle_flash(origin, direction, 22.0)
-	projectile_manager.fire_super_shot(origin, direction, charge_ratio)
+	var muzzle_origin: Vector2 = player_manager.get_player_muzzle_origin()
+	effects_manager.play_muzzle_flash(muzzle_origin, direction, 22.0)
+	projectile_manager.fire_super_shot(origin, direction, charge_ratio, _get_projectile_visual_reveal_distance(origin, muzzle_origin, direction))
+
+
+func _get_projectile_visual_reveal_distance(origin: Vector2, muzzle_origin: Vector2, direction: Vector2) -> float:
+	if direction.length_squared() <= 0.001:
+		return 0.0
+	return max((muzzle_origin - origin).dot(direction.normalized()), 0.0)
 
 
 func _on_projectile_hit(projectile, target: Node, packet) -> void:

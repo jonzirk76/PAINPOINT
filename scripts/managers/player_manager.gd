@@ -239,7 +239,7 @@ func _fire_player_shot(direction: Vector2) -> void:
 	else:
 		player.set_aim_direction(shot_direction)
 	_fire_cooldown_remaining = base_fire_cooldown * _fire_cooldown_multiplier
-	shoot_requested.emit(player.get_fire_origin(), shot_direction)
+	shoot_requested.emit(player.get_projectile_origin(shot_direction), shot_direction)
 
 
 func _queue_fire(direction: Vector2) -> void:
@@ -324,7 +324,7 @@ func request_super_charge_release(direction: Vector2) -> void:
 		player.play_shoot_pose(shot_direction)
 	_sync_player_speed()
 	_sync_super_meter_state()
-	super_shot_requested.emit(player.get_fire_origin(), shot_direction, charge_ratio)
+	super_shot_requested.emit(player.get_projectile_origin(shot_direction), shot_direction, charge_ratio)
 
 
 func apply_damage(amount: int) -> void:
@@ -409,6 +409,12 @@ func get_player_position() -> Vector2:
 	if _has_player():
 		return player.global_position
 	return spawn_position
+
+
+func get_player_muzzle_origin() -> Vector2:
+	if _has_player() and player.has_method("get_fire_origin"):
+		return player.get_fire_origin()
+	return get_player_position()
 
 
 func get_player_health() -> int:

@@ -63,6 +63,7 @@ func fire(origin: Vector2, direction: Vector2, modifiers: Dictionary) -> void:
 		return
 	var projectile_count: int = max(int(modifiers.get("projectile_count", 1)), 1)
 	var spread_degrees: float = float(modifiers.get("spread_angle_degrees", 0.0))
+	var visual_reveal_distance: float = max(float(modifiers.get("visual_reveal_distance", 0.0)), 0.0)
 	var base_angle := direction.normalized().angle()
 	var start_angle := base_angle
 	var angle_step := 0.0
@@ -79,24 +80,25 @@ func fire(origin: Vector2, direction: Vector2, modifiers: Dictionary) -> void:
 		var projectile = projectile_scene.instantiate()
 		projectile.set_arena_definition(_arena_bounds, _arena_shape)
 		projectile.set_projectile_team("player")
-		projectile.initialize(origin, shot_direction, packet, base_projectile_speed)
+		projectile.initialize(origin, shot_direction, packet, base_projectile_speed, visual_reveal_distance)
 		projectile.hit_detected.connect(_on_projectile_hit)
 		projectile.expired.connect(_on_projectile_expired)
 		_projectiles.append(projectile)
 		_add_child_safely(_get_projectile_parent(), projectile)
 
 
-func fire_super_shot(origin: Vector2, direction: Vector2, charge_ratio: float) -> void:
+func fire_super_shot(origin: Vector2, direction: Vector2, charge_ratio: float, visual_reveal_distance: float = 0.0) -> void:
 	if not enabled or direction.length_squared() <= 0.001 or _projectiles.size() >= max_active_projectiles:
 		return
 	var shot_direction := direction.normalized()
 	var normalized_charge: float = clamp(charge_ratio, 0.08, 1.0)
 	var packet = _create_super_damage_packet(origin, shot_direction, normalized_charge)
+	var reveal_distance: float = max(visual_reveal_distance, 0.0)
 	var projectile = projectile_scene.instantiate()
 	projectile.lifetime_seconds = 1.55
 	projectile.set_arena_definition(_arena_bounds, _arena_shape)
 	projectile.set_projectile_team("player")
-	projectile.initialize(origin, shot_direction, packet, lerp(super_projectile_speed_min, super_projectile_speed_max, normalized_charge))
+	projectile.initialize(origin, shot_direction, packet, lerp(super_projectile_speed_min, super_projectile_speed_max, normalized_charge), reveal_distance)
 	projectile.hit_detected.connect(_on_projectile_hit)
 	projectile.expired.connect(_on_projectile_expired)
 	_projectiles.append(projectile)
