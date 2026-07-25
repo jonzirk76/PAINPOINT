@@ -23,6 +23,8 @@ signal super_shot_requested(origin: Vector2, direction: Vector2, charge_ratio: f
 @export var parry_chain_grace_seconds: float = 4.0
 @export var parry_effect_radius: float = 154.0
 @export var parry_perfect_radius: float = 42.0
+## Extra parry cooldown seconds recovered per second while a hostile projectile grazes the perfect parry radius.
+@export var parry_graze_cooldown_recovery_per_second: float = 1.0
 @export var parry_enemy_knockback: float = 430.0
 @export var super_meter_max: float = 100.0
 @export var super_meter_enemy_kill_gain: float = 6.0
@@ -45,6 +47,7 @@ var _last_invulnerability_remaining: float = -1.0
 var _parry_cooldown_remaining: float = 0.0
 var _active_parry_cooldown_duration: float = 8.0
 var _last_parry_cooldown_remaining: float = -1.0
+var _parry_graze_cooldown_active: bool = false
 var _parry_chain_count: int = 0
 var _longest_parry_chain: int = 0
 var _parry_chain_grace_remaining: float = 0.0
@@ -83,6 +86,7 @@ func reset_run() -> void:
 	_parry_cooldown_remaining = 0.0
 	_active_parry_cooldown_duration = parry_cooldown_seconds
 	_last_parry_cooldown_remaining = -1.0
+	_parry_graze_cooldown_active = false
 	_parry_chain_count = 0
 	_longest_parry_chain = 0
 	_parry_chain_grace_remaining = 0.0
@@ -126,6 +130,7 @@ func clear_player() -> void:
 	_damage_cooldown_remaining = 0.0
 	_parry_cooldown_remaining = 0.0
 	_active_parry_cooldown_duration = parry_cooldown_seconds
+	_parry_graze_cooldown_active = false
 	_parry_chain_count = 0
 	_parry_chain_grace_remaining = 0.0
 	_context_speed_multiplier = 1.0
@@ -144,6 +149,7 @@ func set_enabled(value: bool) -> void:
 	if not enabled:
 		_clear_queued_fire()
 		_cancel_super_charge(true)
+		set_parry_graze_cooldown_active(false)
 		if _has_player():
 			player.stop_movement()
 
@@ -172,7 +178,12 @@ func _process(delta: float) -> void:
 	if _damage_cooldown_remaining > 0.0 or _last_invulnerability_remaining > 0.0:
 		_sync_invulnerability_state()
 	if _parry_cooldown_remaining > 0.0:
-		_parry_cooldown_remaining = max(_parry_cooldown_remaining - delta, 0.0)
+		var cooldown_recovery := delta
+		if _parry_graze_cooldown_active:
+			cooldown_recovery += delta * max(parry_graze_cooldown_recovery_per_second, 0.0)
+		_parry_cooldown_remaining = max(_parry_cooldown_remaining - cooldown_recovery, 0.0)
+	if _parry_cooldown_remaining <= 0.0 and _parry_graze_cooldown_active:
+		_parry_graze_cooldown_active = false
 	if _parry_cooldown_remaining > 0.0 or _last_parry_cooldown_remaining > 0.0:
 		_sync_parry_state()
 	if _parry_chain_grace_remaining > 0.0:
@@ -428,6 +439,22 @@ func get_parry_cooldown_duration() -> float:
 	return _active_parry_cooldown_duration
 
 
+func get_parry_perfect_radius() -> float:
+	return parry_perfect_radius
+
+
+func is_parry_graze_cooldown_active() -> bool:
+	return _parry_graze_cooldown_active
+
+
+func set_parry_graze_cooldown_active(value: bool) -> void:
+	var next_active := value and enabled and _has_player() and _parry_cooldown_remaining > 0.0
+	if _parry_graze_cooldown_active == next_active:
+		return
+	_parry_graze_cooldown_active = next_active
+	_sync_parry_state()
+
+
 func get_parry_chain_count() -> int:
 	return _parry_chain_count
 
@@ -511,6 +538,7 @@ func _on_player_health_depleted(entity) -> void:
 	enabled = false
 	_damage_cooldown_remaining = 0.0
 	_parry_cooldown_remaining = 0.0
+	_parry_graze_cooldown_active = false
 	_super_meter = 0.0
 	_super_is_charging = false
 	_super_charge_elapsed = 0.0
@@ -538,6 +566,8 @@ func _sync_parry_state() -> void:
 		var is_ready := _parry_cooldown_remaining <= 0.0
 		if player.has_method("set_parry_ready_state"):
 			player.set_parry_ready_state(is_ready)
+		if player.has_method("set_parry_cooldown_state"):
+			player.set_parry_cooldown_state(_parry_cooldown_remaining, _active_parry_cooldown_duration, _parry_graze_cooldown_active)
 		if is_ready and (previous_remaining > 0.0 or previous_remaining < 0.0) and player.has_method("play_parry_ready_response"):
 			if _defer_spawn_feedback and previous_remaining < 0.0:
 				_spawn_feedback_queued = true

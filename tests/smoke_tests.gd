@@ -62,6 +62,7 @@ const SCRIPT_PATHS := [
 	"res://scripts/ui/dungeon_minimap.gd",
 	"res://scripts/ui/loading_screen.gd",
 	"res://scripts/ui/circular_portrait.gd",
+	"res://scripts/ui/parry_portrait_meter.gd",
 	"res://scripts/orchestrators/game_orchestrator.gd",
 	"res://scripts/resources/agent_boss_program.gd",
 	"res://scripts/resources/agent_boss_generator.gd",
@@ -988,6 +989,19 @@ func _test_character_hud_feedback_and_manual_layout(failures: Array[String]) -> 
 	main._update_super_bar(super_rect)
 	if main.super_bar_back.get_node_or_null("SuperCrackle") == null:
 		failures.append("Ready special meter should draw a white crackle overlay.")
+	main._last_parry_cooldown_duration = 8.0
+	main._last_parry_cooldown_remaining = 4.0
+	main._last_parry_graze_cooldown_active = true
+	main._update_combat_panel([])
+	if main._parry_portrait_meter == null or not main._parry_portrait_meter.visible:
+		failures.append("Combat HUD should draw a parry cooldown meter around the portrait.")
+	if main._parry_portrait_status_label == null or main._parry_portrait_status_label.text != "PARRY GRAZE":
+		failures.append("Combat HUD should label graze-accelerated parry cooldown recovery.")
+	main._last_parry_cooldown_remaining = 0.0
+	main._last_parry_graze_cooldown_active = false
+	main._update_combat_panel([])
+	if main._parry_portrait_status_label == null or main._parry_portrait_status_label.text != "PARRY READY":
+		failures.append("Combat HUD should label the portrait meter when parry is ready.")
 	main.free()
 
 
@@ -1121,6 +1135,16 @@ func _test_parry_input_and_cooldown(failures: Array[String]) -> void:
 		failures.append("Player parry-ready indicator should clear while parry is on cooldown.")
 	if manager.get_parry_cooldown_remaining() <= 0.0:
 		failures.append("PlayerManager parry should start a long cooldown.")
+	manager._process(0.5)
+	var normal_cooldown_remaining: float = manager.get_parry_cooldown_remaining()
+	manager.set_parry_graze_cooldown_active(true)
+	manager._process(0.5)
+	var graze_cooldown_remaining: float = manager.get_parry_cooldown_remaining()
+	if normal_cooldown_remaining - graze_cooldown_remaining < 0.95:
+		failures.append("Graze-active parry cooldown should recover at double speed by default.")
+	if not bool(manager.player._parry_graze_cooldown_active):
+		failures.append("Player should show the graze-accelerated parry cooldown state.")
+	manager.set_parry_graze_cooldown_active(false)
 	manager._process(2.1)
 	manager.request_parry()
 	if parry_count[0] != 2:
@@ -1462,6 +1486,10 @@ func _test_parry_absorbs_hostile_projectiles_for_ammo(failures: Array[String]) -
 	projectile_manager.fire_hostile(Vector2(82.0, 0.0), Vector2.RIGHT, {"speed": 250.0, "damage": 1, "radius": 7.0})
 	projectile_manager.fire_hostile(Vector2(220.0, 0.0), Vector2.RIGHT, {"speed": 250.0, "damage": 1, "radius": 7.0})
 	projectile_manager.fire(Vector2(12.0, 12.0), Vector2.RIGHT, {})
+	if not projectile_manager.has_hostile_projectile_in_radius(Vector2.ZERO, 24.0):
+		failures.append("Graze detection should find hostile projectiles inside the perfect-parry radius.")
+	if projectile_manager.has_hostile_projectile_in_radius(Vector2(400.0, 0.0), 24.0):
+		failures.append("Graze detection should ignore hostile projectiles outside the perfect-parry radius.")
 	var absorbed: Dictionary = projectile_manager.absorb_hostile_projectiles(Vector2.ZERO, 100.0, 24.0)
 	if int(absorbed["absorbed_count"]) != 2:
 		failures.append("Parry should erase hostile projectiles inside the effect radius only.")

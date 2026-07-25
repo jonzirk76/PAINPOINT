@@ -42,6 +42,9 @@ var _perfect_parry_flash_duration: float = 0.36
 var _parry_ready_flash_remaining: float = 0.0
 var _parry_ready_flash_duration: float = 0.42
 var _parry_ready: bool = false
+var _parry_cooldown_remaining: float = 0.0
+var _parry_cooldown_duration: float = 0.0
+var _parry_graze_cooldown_active: bool = false
 var _parry_chain_grace_remaining: float = 0.0
 var _parry_chain_grace_duration: float = 4.0
 var _parry_chain_count: int = 0
@@ -98,7 +101,7 @@ func _process(delta: float) -> void:
 		_parry_ready_flash_remaining = max(_parry_ready_flash_remaining - delta, 0.0)
 	if _is_dead:
 		_death_elapsed = min(_death_elapsed + delta, _death_duration)
-	if is_walking or was_shooting or _shoot_pose_remaining > 0.0 or _parry_ready or _parry_chain_grace_remaining > 0.0 or _super_charge_active or _parry_ready_flash_remaining > 0.0 or _parry_pulse_remaining > 0.0 or _perfect_parry_flash_remaining > 0.0 or _hit_flash_remaining > 0.0 or _heal_flash_remaining > 0.0 or _is_dead:
+	if is_walking or was_shooting or _shoot_pose_remaining > 0.0 or _parry_ready or _parry_cooldown_remaining > 0.0 or _parry_graze_cooldown_active or _parry_chain_grace_remaining > 0.0 or _super_charge_active or _parry_ready_flash_remaining > 0.0 or _parry_pulse_remaining > 0.0 or _perfect_parry_flash_remaining > 0.0 or _hit_flash_remaining > 0.0 or _heal_flash_remaining > 0.0 or _is_dead:
 		queue_redraw()
 
 
@@ -248,6 +251,13 @@ func set_parry_ready_state(is_ready: bool) -> void:
 	queue_redraw()
 
 
+func set_parry_cooldown_state(remaining: float, duration: float, graze_active: bool) -> void:
+	_parry_cooldown_remaining = max(remaining, 0.0)
+	_parry_cooldown_duration = max(duration, 0.01)
+	_parry_graze_cooldown_active = graze_active and _parry_cooldown_remaining > 0.0 and not _is_dead
+	queue_redraw()
+
+
 func set_parry_chain_state(remaining: float, duration: float, chain_count: int) -> void:
 	_parry_chain_grace_remaining = max(remaining, 0.0)
 	_parry_chain_grace_duration = max(duration, 0.01)
@@ -287,6 +297,8 @@ func play_death_animation() -> void:
 	_knockback_velocity = Vector2.ZERO
 	invulnerable_remaining = 0.0
 	_parry_ready = false
+	_parry_cooldown_remaining = 0.0
+	_parry_graze_cooldown_active = false
 	_parry_chain_grace_remaining = 0.0
 	_parry_chain_count = 0
 	_super_charge_active = false
@@ -309,6 +321,9 @@ func reset_health() -> void:
 	_perfect_parry_flash_remaining = 0.0
 	_parry_ready_flash_remaining = 0.0
 	_parry_ready = false
+	_parry_cooldown_remaining = 0.0
+	_parry_cooldown_duration = 0.0
+	_parry_graze_cooldown_active = false
 	_parry_chain_grace_remaining = 0.0
 	_parry_chain_count = 0
 	_super_charge_active = false
@@ -330,6 +345,8 @@ func _draw() -> void:
 	if _heal_flash_remaining > 0.0:
 		var heal_ratio: float = clamp(_heal_flash_remaining / 0.24, 0.0, 1.0)
 		draw_arc(Vector2.ZERO, body_radius + 8.0, 0.0, TAU, 32, Color(0.28, 1.0, 0.45, heal_ratio), 4.0)
+	if _parry_cooldown_remaining > 0.0:
+		_draw_parry_cooldown_meter()
 	if _parry_ready:
 		_draw_parry_ready_idle()
 	if _parry_chain_grace_remaining > 0.0:
@@ -514,6 +531,21 @@ func _draw_parry_ready_idle() -> void:
 	var alpha: float = 0.34 + pulse * 0.34
 	draw_arc(Vector2.ZERO, body_radius + 13.0, 0.0, TAU, 32, Color(0.55, 1.0, 0.95, alpha), 2.5)
 	draw_arc(Vector2.ZERO, body_radius + 18.0, PI * 0.15, PI * 1.85, 32, Color(1.0, 1.0, 0.72, alpha * 0.7), 2.0)
+
+
+func _draw_parry_cooldown_meter() -> void:
+	var ready_ratio: float = 1.0 - clamp(_parry_cooldown_remaining / max(_parry_cooldown_duration, 0.01), 0.0, 1.0)
+	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.018)
+	var radius: float = body_radius + 21.0 + (1.4 if _parry_graze_cooldown_active else 0.0) * pulse
+	var start_angle := -PI * 0.5
+	var end_angle := start_angle + TAU * ready_ratio
+	var fill_color := Color(0.38, 0.92, 1.0, 0.78)
+	if _parry_graze_cooldown_active:
+		fill_color = Color(1.0, 0.93, 0.35, 0.9)
+	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 48, Color(0.02, 0.08, 0.1, 0.34), 3.0)
+	draw_arc(Vector2.ZERO, radius, start_angle, end_angle, 48, fill_color, 4.2)
+	if _parry_graze_cooldown_active:
+		draw_arc(Vector2.ZERO, radius + 5.0, start_angle, end_angle, 48, Color(1.0, 1.0, 0.72, 0.55 + pulse * 0.25), 2.2)
 
 
 func _draw_parry_ready_flash() -> void:

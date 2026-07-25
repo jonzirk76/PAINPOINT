@@ -161,6 +161,20 @@ func absorb_hostile_projectiles(origin: Vector2, radius: float, perfect_radius: 
 	}
 
 
+func has_hostile_projectile_in_radius(origin: Vector2, radius: float) -> bool:
+	var effect_radius: float = max(radius, 0.0)
+	for projectile in _projectiles:
+		if not is_instance_valid(projectile):
+			continue
+		if String(projectile.projectile_team) != "hostile":
+			continue
+		var projectile_radius: float = float(projectile.body_radius)
+		var graze_radius: float = effect_radius + projectile_radius
+		if projectile.global_position.distance_squared_to(origin) <= graze_radius * graze_radius:
+			return true
+	return false
+
+
 func get_player_projectile_positions() -> Array[Vector2]:
 	var positions: Array[Vector2] = []
 	for projectile in _projectiles:

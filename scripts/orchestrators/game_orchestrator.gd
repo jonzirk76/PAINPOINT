@@ -77,6 +77,7 @@ const CAT_DEBUG_LEVEL_IDS := ["cat_behavior_test", "cat_peaceful_test"]
 const FLOOR_EXIT_PORTAL_SCENE := preload("res://scenes/entities/floor_exit_portal_entity.tscn")
 const AGENT_BOSS_GENERATOR := preload("res://scripts/resources/agent_boss_generator.gd")
 const BOLD_PIXELS_FONT := preload("res://art/fonts/BoldPixels.ttf")
+const PARRY_PORTRAIT_METER_SCRIPT := preload("res://scripts/ui/parry_portrait_meter.gd")
 const LOADING_PROGRESS_FLOOR_LAYOUT_START := 0.08
 const LOADING_PROGRESS_FLOOR_LAYOUT_DONE := 0.18
 const LOADING_PROGRESS_ROOM_GEOMETRY := 0.28
@@ -170,6 +171,7 @@ var _last_parry_cooldown_duration: float = 0.0
 var _last_parry_chain_count: int = 0
 var _last_parry_chain_grace_remaining: float = 0.0
 var _last_parry_chain_grace_duration: float = 0.0
+var _last_parry_graze_cooldown_active: bool = false
 var _last_super_meter: float = 0.0
 var _last_super_meter_max: float = 100.0
 var _last_super_is_charging: bool = false
@@ -266,6 +268,8 @@ var _boss_health_label: Label = null
 var _boss_health_bar_back: ColorRect = null
 var _boss_health_fill: ColorRect = null
 var _boss_health_tick_layer: Control = null
+var _parry_portrait_meter: Control = null
+var _parry_portrait_status_label: Label = null
 var _agent_dialogue_panel: Control = null
 var _agent_dialogue_back: ColorRect = null
 var _agent_dialogue_speaker_label: Label = null
@@ -392,6 +396,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_super_crackle_rng.randomize()
 	_capture_hud_authoring_state()
+	_ensure_parry_portrait_hud()
 	_ensure_agent_debug_panel()
 	_ensure_boss_health_hud()
 	_ensure_agent_dialogue_box()
@@ -410,7 +415,7 @@ func _process(delta: float) -> void:
 	if _status == "BOSS_CLEARING":
 		_update_boss_clear_transition(delta)
 	_update_perfect_parry_slowmo()
-	var hud_feedback_changed := false
+	var hud_feedback_changed := _update_parry_graze_cooldown_state()
 	if _should_advance_gameplay_feedback():
 		if _ammo_refill_flash_remaining > 0.0:
 			_ammo_refill_flash_remaining = max(_ammo_refill_flash_remaining - delta, 0.0)
@@ -583,6 +588,37 @@ func _capture_hud_authoring_state() -> void:
 		captured_any = true
 	if captured_any:
 		_meter_authoring_state_captured = true
+
+
+func _ensure_parry_portrait_hud() -> void:
+	if combat_panel == null:
+		return
+	if _parry_portrait_meter == null or not is_instance_valid(_parry_portrait_meter):
+		var meter: Control = PARRY_PORTRAIT_METER_SCRIPT.new()
+		meter.name = "ParryPortraitMeter"
+		meter.position = Vector2(7.5, 7.5)
+		meter.size = Vector2(76.0, 76.0)
+		meter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		meter.z_index = 4
+		combat_panel.add_child(meter)
+		_parry_portrait_meter = meter
+	if _parry_portrait_status_label == null or not is_instance_valid(_parry_portrait_status_label):
+		var status_label: Label = Label.new()
+		status_label.name = "ParryReadyLabel"
+		status_label.position = Vector2(0.0, 0.0)
+		status_label.size = Vector2(92.0, 15.0)
+		status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		status_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		status_label.z_index = 5
+		status_label.add_theme_font_override("font", BOLD_PIXELS_FONT)
+		status_label.add_theme_font_size_override("font_size", 9)
+		status_label.add_theme_color_override("font_color", Color(0.62, 1.0, 0.92, 1.0))
+		status_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.9))
+		status_label.add_theme_constant_override("shadow_offset_x", 0)
+		status_label.add_theme_constant_override("shadow_offset_y", 1)
+		combat_panel.add_child(status_label)
+		_parry_portrait_status_label = status_label
 
 
 func _ensure_agent_debug_panel() -> void:
@@ -2327,6 +2363,7 @@ func _enter_level_select() -> void:
 	_last_super_meter_max = player_manager.get_super_meter_max()
 	_last_super_is_charging = false
 	_last_super_charge_ratio = 0.0
+	_reset_parry_hud_state()
 	_reset_overdrive_hud_state()
 	_stop_perfect_parry_slowmo()
 	_clear_floor_exit_portal()
@@ -2472,6 +2509,7 @@ func _reset_parry_hud_state() -> void:
 	_last_parry_chain_count = 0
 	_last_parry_chain_grace_remaining = 0.0
 	_last_parry_chain_grace_duration = 0.0
+	_last_parry_graze_cooldown_active = false
 
 
 func _reset_ammo_segment_refill_flash() -> void:
@@ -2483,6 +2521,24 @@ func _reset_ammo_segment_refill_flash() -> void:
 
 func _should_advance_gameplay_feedback() -> bool:
 	return not _tree_pause_requested and (_is_gameplay_running() or _status == "DOWN")
+
+
+func _update_parry_graze_cooldown_state() -> bool:
+	var graze_active := false
+	if _is_gameplay_running() and not _tree_pause_requested and player_manager != null and projectile_manager != null:
+		if player_manager.get_parry_cooldown_remaining() > 0.0:
+			graze_active = projectile_manager.has_hostile_projectile_in_radius(
+				player_manager.get_player_position(),
+				player_manager.get_parry_perfect_radius()
+			)
+	var actual_active := graze_active
+	if player_manager != null and player_manager.has_method("set_parry_graze_cooldown_active"):
+		player_manager.set_parry_graze_cooldown_active(graze_active)
+		if player_manager.has_method("is_parry_graze_cooldown_active"):
+			actual_active = player_manager.is_parry_graze_cooldown_active()
+	var changed := _last_parry_graze_cooldown_active != actual_active
+	_last_parry_graze_cooldown_active = actual_active
+	return changed
 
 
 func _is_gameplay_input_allowed() -> bool:
@@ -3037,6 +3093,8 @@ func _on_player_parry_cooldown_changed(remaining: float, duration: float) -> voi
 	var was_on_cooldown := _last_parry_cooldown_remaining > 0.0
 	_last_parry_cooldown_remaining = remaining
 	_last_parry_cooldown_duration = duration
+	if player_manager != null and player_manager.has_method("is_parry_graze_cooldown_active"):
+		_last_parry_graze_cooldown_active = player_manager.is_parry_graze_cooldown_active()
 	if was_on_cooldown and remaining <= 0.0:
 		audio_manager.play_parry_ready()
 	_update_hud()
@@ -3634,7 +3692,35 @@ func _update_combat_panel(active_effects: Array) -> void:
 	if attribute_label != null:
 		attribute_label.visible = false
 		attribute_label.text = _get_attribute_text()
+	_update_parry_portrait_hud()
 	_update_ammo_counter_panel(active_effects)
+
+
+func _update_parry_portrait_hud() -> void:
+	_ensure_parry_portrait_hud()
+	if _parry_portrait_meter == null or not is_instance_valid(_parry_portrait_meter):
+		return
+	if _parry_portrait_status_label == null or not is_instance_valid(_parry_portrait_status_label):
+		return
+	var should_show := combat_panel != null and combat_panel.visible and _status != "LEVEL_SELECT" and _last_max_health > 0
+	_parry_portrait_meter.visible = should_show
+	_parry_portrait_status_label.visible = should_show
+	if not should_show:
+		return
+	var cooldown_duration: float = max(_last_parry_cooldown_duration, 0.01)
+	var cooldown_remaining: float = max(_last_parry_cooldown_remaining, 0.0)
+	if _parry_portrait_meter.has_method("set_parry_state"):
+		_parry_portrait_meter.set_parry_state(cooldown_remaining, cooldown_duration, _last_parry_graze_cooldown_active)
+	if cooldown_remaining <= 0.0:
+		_parry_portrait_status_label.text = "PARRY READY"
+		_parry_portrait_status_label.add_theme_color_override("font_color", Color(0.62, 1.0, 0.92, 1.0))
+	elif _last_parry_graze_cooldown_active:
+		_parry_portrait_status_label.text = "PARRY GRAZE"
+		_parry_portrait_status_label.add_theme_color_override("font_color", Color(1.0, 0.92, 0.38, 1.0))
+	else:
+		var ready_percent := roundi((1.0 - clamp(cooldown_remaining / cooldown_duration, 0.0, 1.0)) * 100.0)
+		_parry_portrait_status_label.text = "PARRY %d%%" % ready_percent
+		_parry_portrait_status_label.add_theme_color_override("font_color", Color(0.56, 0.9, 1.0, 1.0))
 
 
 func _get_meter_full_rect(fill: Control, bar_back: Control, fallback_width: float) -> Rect2:
@@ -4183,6 +4269,8 @@ func _get_pause_stats_text() -> String:
 
 func _get_parry_status_text() -> String:
 	if _last_parry_cooldown_remaining > 0.0:
+		if _last_parry_graze_cooldown_active:
+			return "GRAZE %.1fs" % _last_parry_cooldown_remaining
 		return "%.1fs" % _last_parry_cooldown_remaining
 	if _last_parry_chain_count > 0 and _last_parry_chain_grace_remaining > 0.0:
 		return "CHAIN x%d  %.1fs" % [_last_parry_chain_count, _last_parry_chain_grace_remaining]
