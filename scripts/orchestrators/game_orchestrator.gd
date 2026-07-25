@@ -149,6 +149,12 @@ const BOSS_REWARD_CHOICE_CLEARANCE := 30.0
 
 ## Multiplies player movement speed while walking through the composed cleared-floor traversal map.
 @export var cleared_floor_speed_multiplier: float = 1.45
+## Optional NobodyWho GGUF path, HuggingFace reference, or URL used for generated agent intro taunts.
+@export var agent_taunt_llm_model_path: String = ""
+## Allows generated taunts to use the smallest cached NobodyWho GGUF model when no explicit model path is set.
+@export var agent_taunt_llm_use_cached_model: bool = true
+## Controls how long the boss intro waits for a generated taunt before showing the procedural fallback.
+@export var agent_taunt_llm_timeout_seconds: float = 2.5
 
 var _score: int = 0
 var _last_health: int = 0
@@ -272,6 +278,15 @@ var _boss_intro_taunt_pending: bool = false
 var _boss_intro_taunt_delay_remaining: float = 0.0
 var _boss_intro_taunt_boss: EnemyEntity = null
 var _agent_taunt_active: bool = false
+var _agent_taunt_continue_enabled: bool = false
+var _agent_taunt_llm_model: Object = null
+var _agent_taunt_llm_chat: Object = null
+var _agent_taunt_llm_model_path_in_use: String = ""
+var _agent_taunt_llm_pending: bool = false
+var _agent_taunt_llm_generation_active: bool = false
+var _agent_taunt_llm_elapsed: float = 0.0
+var _agent_taunt_llm_fallback_line: String = ""
+var _agent_taunt_llm_response: String = ""
 var _boss_intro_name_fade_remaining: float = 0.0
 var _boss_intro_name_fade_duration: float = 0.0
 var _boss_health_pending_reveal_duration: float = 0.0
@@ -344,6 +359,10 @@ const BOSS_ALERT_DEFAULT_FLASH_COUNT := 3
 const AGENT_DIALOGUE_PANEL_WIDTH := 780.0
 const AGENT_DIALOGUE_PANEL_HEIGHT := 124.0
 const AGENT_DIALOGUE_PANEL_BOTTOM_MARGIN := 30.0
+const AGENT_TAUNT_LOADING_LINE := "SIGNAL ACQUIRING..."
+const AGENT_TAUNT_MAX_CHARACTERS := 150
+const AGENT_TAUNT_LLM_MODEL_CLASS := "NobodyWhoModel"
+const AGENT_TAUNT_LLM_CHAT_CLASS := "NobodyWhoChat"
 const AMMO_SEGMENT_REFILL_STEP_SECONDS := 0.06
 const AMMO_SEGMENT_REFILL_MIN_SECONDS := 0.22
 const AMMO_SEGMENT_REFILL_MAX_SECONDS := 0.72
@@ -908,20 +927,32 @@ func _ensure_agent_dialogue_box() -> void:
 	_agent_dialogue_prompt_label = prompt_label
 
 
-func _show_agent_dialogue_box(speaker: String, line: String) -> void:
+func _show_agent_dialogue_box(speaker: String, line: String, continue_enabled: bool = true) -> void:
 	_ensure_agent_dialogue_box()
 	if _agent_dialogue_panel == null or not is_instance_valid(_agent_dialogue_panel):
 		return
 	if _agent_dialogue_speaker_label != null and is_instance_valid(_agent_dialogue_speaker_label):
 		_agent_dialogue_speaker_label.text = speaker
-	if _agent_dialogue_text_label != null and is_instance_valid(_agent_dialogue_text_label):
-		_agent_dialogue_text_label.text = line
+	_set_agent_dialogue_line(line)
+	_set_agent_taunt_continue_enabled(continue_enabled)
 	_agent_dialogue_panel.visible = true
 
 
 func _hide_agent_dialogue_box() -> void:
 	if _agent_dialogue_panel != null and is_instance_valid(_agent_dialogue_panel):
 		_agent_dialogue_panel.visible = false
+	_set_agent_taunt_continue_enabled(false)
+
+
+func _set_agent_dialogue_line(line: String) -> void:
+	if _agent_dialogue_text_label != null and is_instance_valid(_agent_dialogue_text_label):
+		_agent_dialogue_text_label.text = line
+
+
+func _set_agent_taunt_continue_enabled(value: bool) -> void:
+	_agent_taunt_continue_enabled = value
+	if _agent_dialogue_prompt_label != null and is_instance_valid(_agent_dialogue_prompt_label):
+		_agent_dialogue_prompt_label.visible = value
 
 
 func _clear_boss_health_hud() -> void:
@@ -931,6 +962,11 @@ func _clear_boss_health_hud() -> void:
 	_boss_intro_taunt_delay_remaining = 0.0
 	_boss_intro_taunt_boss = null
 	_agent_taunt_active = false
+	_agent_taunt_continue_enabled = false
+	_agent_taunt_llm_pending = false
+	_agent_taunt_llm_elapsed = 0.0
+	_agent_taunt_llm_fallback_line = ""
+	_agent_taunt_llm_response = ""
 	_last_boss_health = 0
 	_last_boss_max_health = 0
 	_boss_health_display_count = 0
@@ -967,6 +1003,11 @@ func _track_level_boss(boss: EnemyEntity) -> void:
 	_boss_intro_taunt_delay_remaining = 0.0
 	_boss_intro_taunt_boss = null
 	_agent_taunt_active = false
+	_agent_taunt_continue_enabled = false
+	_agent_taunt_llm_pending = false
+	_agent_taunt_llm_elapsed = 0.0
+	_agent_taunt_llm_fallback_line = ""
+	_agent_taunt_llm_response = ""
 	_hide_agent_dialogue_box()
 	if boss.agent_program != null:
 		if _loading_screen_is_visible() or _is_room_entry_transition_active:
@@ -1038,6 +1079,7 @@ func _queue_agent_intro_taunt(boss: EnemyEntity, delay_seconds: float) -> void:
 	_boss_intro_taunt_pending = true
 	_boss_intro_taunt_delay_remaining = max(delay_seconds, 0.0)
 	_agent_taunt_active = false
+	_agent_taunt_continue_enabled = false
 
 
 func _begin_boss_intro_name_fade() -> void:
@@ -1098,9 +1140,12 @@ func _show_agent_intro_taunt() -> void:
 	_agent_taunt_active = true
 	_set_tree_paused(true)
 	var program: AgentBossProgram = boss.agent_program as AgentBossProgram
-	_show_agent_dialogue_box(_get_boss_display_name(), _build_agent_intro_taunt(program))
+	var fallback_line: String = _build_agent_intro_taunt(program)
+	_show_agent_dialogue_box(_get_boss_display_name(), AGENT_TAUNT_LOADING_LINE, false)
 	if _boss_alert_overlay != null and is_instance_valid(_boss_alert_overlay):
 		_boss_alert_overlay.visible = false
+	if not _request_agent_intro_taunt_from_llm(program, fallback_line):
+		_finalize_agent_intro_taunt_line(fallback_line)
 	_update_boss_health_panel()
 
 
@@ -1108,12 +1153,214 @@ func _dismiss_agent_intro_taunt() -> void:
 	if not _agent_taunt_active:
 		return
 	_agent_taunt_active = false
+	_agent_taunt_continue_enabled = false
+	_agent_taunt_llm_pending = false
 	_boss_intro_taunt_boss = null
 	_hide_agent_dialogue_box()
 	_set_tree_paused(false)
 	_begin_boss_intro_name_fade()
 	_update_boss_alert_overlay()
 	_update_boss_health_panel()
+
+
+func _request_agent_intro_taunt_from_llm(program: AgentBossProgram, fallback_line: String) -> bool:
+	if program == null or _agent_taunt_llm_generation_active:
+		return false
+	var chat: Object = _get_agent_taunt_llm_chat()
+	if chat == null or not is_instance_valid(chat) or not chat.has_method("ask"):
+		return false
+	_agent_taunt_llm_pending = true
+	_agent_taunt_llm_generation_active = true
+	_agent_taunt_llm_elapsed = 0.0
+	_agent_taunt_llm_fallback_line = fallback_line
+	_agent_taunt_llm_response = ""
+	chat.call("ask", _build_agent_taunt_llm_prompt(program, fallback_line))
+	return true
+
+
+func _get_agent_taunt_llm_chat() -> Object:
+	if not ClassDB.class_exists(AGENT_TAUNT_LLM_MODEL_CLASS) or not ClassDB.class_exists(AGENT_TAUNT_LLM_CHAT_CLASS):
+		return null
+	var model: Object = _agent_taunt_llm_model
+	if model == null or not is_instance_valid(model):
+		model = ClassDB.instantiate(AGENT_TAUNT_LLM_MODEL_CLASS)
+		_agent_taunt_llm_model = model
+		_register_agent_taunt_llm_object(model)
+	var resolved_model_path: String = _resolve_agent_taunt_llm_model_path(model)
+	if resolved_model_path.is_empty():
+		return null
+	if resolved_model_path != _agent_taunt_llm_model_path_in_use:
+		_agent_taunt_llm_model_path_in_use = resolved_model_path
+		if _object_has_property(model, "model_path"):
+			model.set("model_path", resolved_model_path)
+		if _object_has_property(model, "projection_model_path"):
+			model.set("projection_model_path", "")
+	var chat: Object = _agent_taunt_llm_chat
+	if chat == null or not is_instance_valid(chat):
+		chat = ClassDB.instantiate(AGENT_TAUNT_LLM_CHAT_CLASS)
+		_agent_taunt_llm_chat = chat
+		_register_agent_taunt_llm_object(chat)
+		_connect_agent_taunt_llm_signals(chat)
+		if chat.has_method("set_sampler_preset_temperature"):
+			chat.call("set_sampler_preset_temperature", 0.82)
+	if _object_has_property(chat, "model_node"):
+		chat.set("model_node", model)
+	if _object_has_property(chat, "system_prompt"):
+		chat.set("system_prompt", _get_agent_taunt_llm_system_prompt())
+	if _object_has_property(chat, "context_length"):
+		chat.set("context_length", 768)
+	return chat
+
+
+func _register_agent_taunt_llm_object(target: Object) -> void:
+	if target == null or not is_instance_valid(target):
+		return
+	if target is Node:
+		var node: Node = target as Node
+		node.process_mode = Node.PROCESS_MODE_ALWAYS
+		if node.get_parent() == null:
+			add_child(node)
+
+
+func _connect_agent_taunt_llm_signals(chat: Object) -> void:
+	if chat == null or not is_instance_valid(chat):
+		return
+	if chat.has_signal(&"response_updated"):
+		_connect_once(chat, &"response_updated", _on_agent_taunt_llm_response_updated)
+	if chat.has_signal(&"response_finished"):
+		_connect_once(chat, &"response_finished", _on_agent_taunt_llm_response_finished)
+	if chat.has_signal(&"worker_failed"):
+		_connect_once(chat, &"worker_failed", _on_agent_taunt_llm_worker_failed)
+
+
+func _resolve_agent_taunt_llm_model_path(model: Object) -> String:
+	var configured_path: String = agent_taunt_llm_model_path.strip_edges()
+	if not configured_path.is_empty():
+		return configured_path
+	if not agent_taunt_llm_use_cached_model or model == null or not is_instance_valid(model) or not model.has_method("get_cached_models"):
+		return ""
+	var cached_models: Variant = model.call("get_cached_models")
+	if not cached_models is Array:
+		return ""
+	var selected_path: String = ""
+	var selected_size: int = -1
+	for entry_variant in cached_models:
+		if not entry_variant is Dictionary:
+			continue
+		var entry: Dictionary = entry_variant
+		var path: String = String(entry.get("path", "")).strip_edges()
+		var size: int = int(entry.get("size", 0))
+		if path.is_empty():
+			continue
+		if selected_path.is_empty() or (size > 0 and (selected_size <= 0 or size < selected_size)):
+			selected_path = path
+			selected_size = size
+	return selected_path
+
+
+func _object_has_property(target: Object, property_name: String) -> bool:
+	if target == null or not is_instance_valid(target):
+		return false
+	for property_info in target.get_property_list():
+		if not property_info is Dictionary:
+			continue
+		var name: String = String(property_info.get("name", ""))
+		if name == property_name:
+			return true
+	return false
+
+
+func _get_agent_taunt_llm_system_prompt() -> String:
+	return "You write one-line boss intro taunts for a top-down arcade shooter. Return only the taunt text: no speaker name, no quotes, no markdown, no profanity. Keep it under 22 words."
+
+
+func _build_agent_taunt_llm_prompt(program: AgentBossProgram, fallback_line: String) -> String:
+	var personality: String = _get_agent_personality_label(String(program.personality_verb))
+	var normal_movement: String = _get_agent_normal_movement_label(String(program.normal_movement_verb))
+	var slow_weapon: String = _get_agent_slow_attack_label(String(program.slow_attack_verb))
+	var explosive: String = _get_agent_explosive_label(String(program.high_explosive_verb))
+	var special_movement: String = _get_agent_special_movement_label(String(program.special_movement_verb), String(program.special_reposition_verb))
+	var special_attack: String = _get_agent_special_attack_label(String(program.special_attack_verb))
+	return "\n".join([
+		"Write one short pre-fight taunt for this procedurally generated agent boss.",
+		"Focus on personality and arsenal. Make it punchy, readable, and specific to the loadout.",
+		"Return only the taunt line.",
+		"Personality: %s." % personality,
+		"Movement style: %s; special movement: %s." % [normal_movement, special_movement],
+		"Arsenal: %s, %s, %s." % [slow_weapon, explosive, special_attack],
+		"Fallback style example: %s" % fallback_line
+	])
+
+
+func _update_agent_taunt_llm_request(delta: float) -> bool:
+	if not _agent_taunt_llm_pending:
+		return false
+	_agent_taunt_llm_elapsed += delta
+	if _agent_taunt_llm_elapsed < max(agent_taunt_llm_timeout_seconds, 0.1):
+		return false
+	_agent_taunt_llm_pending = false
+	_finalize_agent_intro_taunt_line(_agent_taunt_llm_fallback_line)
+	return true
+
+
+func _on_agent_taunt_llm_response_updated(new_token: Variant = "") -> void:
+	if _agent_taunt_llm_pending:
+		_agent_taunt_llm_response += String(new_token)
+
+
+func _on_agent_taunt_llm_response_finished(response: Variant = "") -> void:
+	_agent_taunt_llm_generation_active = false
+	if not _agent_taunt_llm_pending:
+		return
+	_agent_taunt_llm_pending = false
+	var raw_line: String = String(response)
+	if raw_line.strip_edges().is_empty():
+		raw_line = _agent_taunt_llm_response
+	_finalize_agent_intro_taunt_line(_sanitize_agent_taunt_text(raw_line, _agent_taunt_llm_fallback_line))
+
+
+func _on_agent_taunt_llm_worker_failed(error: Variant = "") -> void:
+	_agent_taunt_llm_generation_active = false
+	if not _agent_taunt_llm_pending:
+		return
+	_agent_taunt_llm_pending = false
+	push_warning("Agent taunt LLM failed: %s" % String(error))
+	_finalize_agent_intro_taunt_line(_agent_taunt_llm_fallback_line)
+
+
+func _finalize_agent_intro_taunt_line(line: String) -> void:
+	_set_agent_dialogue_line(line)
+	_set_agent_taunt_continue_enabled(true)
+
+
+func _sanitize_agent_taunt_text(text: String, fallback_line: String) -> String:
+	var line: String = text.strip_edges()
+	line = line.replace("\r", " ").replace("\n", " ").replace("\t", " ")
+	while line.contains("  "):
+		line = line.replace("  ", " ")
+	line = line.strip_edges()
+	while line.begins_with("-") or line.begins_with("*"):
+		line = line.substr(1).strip_edges()
+	var colon_index: int = line.find(":")
+	if colon_index >= 0 and colon_index <= 32:
+		line = line.substr(colon_index + 1).strip_edges()
+	if line.length() >= 2:
+		var first_char: String = line.substr(0, 1)
+		var last_char: String = line.substr(line.length() - 1, 1)
+		if (first_char == "\"" and last_char == "\"") or (first_char == "'" and last_char == "'"):
+			line = line.substr(1, line.length() - 2).strip_edges()
+	line = line.replace("\"", "").strip_edges()
+	if line.length() > AGENT_TAUNT_MAX_CHARACTERS:
+		var truncated: String = line.substr(0, AGENT_TAUNT_MAX_CHARACTERS).strip_edges()
+		var last_space: int = truncated.rfind(" ")
+		if last_space > 60:
+			truncated = truncated.substr(0, last_space).strip_edges()
+		if not truncated.ends_with(".") and not truncated.ends_with("!") and not truncated.ends_with("?"):
+			truncated += "..."
+		line = truncated
+	if line.is_empty():
+		return fallback_line
+	return line
 
 
 func _build_agent_intro_taunt(program: AgentBossProgram) -> String:
@@ -1133,6 +1380,52 @@ func _build_agent_intro_taunt(program: AgentBossProgram) -> String:
 		AgentBossProgram.PERSONALITY_DUELIST:
 			return "One clean duel: my %s opens, my %s tests your footwork, my %s ends it." % [slow_weapon, explosive, special]
 	return "New loadout online: %s, %s, and %s." % [slow_weapon, explosive, special]
+
+
+func _get_agent_personality_label(verb: String) -> String:
+	match verb:
+		AgentBossProgram.PERSONALITY_HUNTER:
+			return "patient hunter"
+		AgentBossProgram.PERSONALITY_BULLY:
+			return "aggressive bully"
+		AgentBossProgram.PERSONALITY_COWARD:
+			return "defensive coward"
+		AgentBossProgram.PERSONALITY_DUELIST:
+			return "precise duelist"
+	return verb.replace("_", " ")
+
+
+func _get_agent_normal_movement_label(verb: String) -> String:
+	match verb:
+		AgentBossProgram.NORMAL_STRAFE:
+			return "strafes around the player"
+		AgentBossProgram.NORMAL_PUSH_FORWARD:
+			return "pushes forward"
+		AgentBossProgram.NORMAL_ZIG_ZAG:
+			return "zig-zags under fire"
+		AgentBossProgram.NORMAL_PULL_BACK:
+			return "pulls back to make space"
+	return verb.replace("_", " ")
+
+
+func _get_agent_special_movement_label(movement_verb: String, reposition_verb: String) -> String:
+	var movement: String = movement_verb.replace("_", " ")
+	match movement_verb:
+		AgentBossProgram.SPECIAL_MOVEMENT_TELEPORT_LOS:
+			movement = "line-of-sight teleports"
+		AgentBossProgram.SPECIAL_MOVEMENT_DASH_CHAIN:
+			movement = "dash chains"
+		AgentBossProgram.SPECIAL_MOVEMENT_CHARGE:
+			movement = "charges"
+	var reposition: String = reposition_verb.replace("_", " ")
+	match reposition_verb:
+		AgentBossProgram.SPECIAL_REPOSITION_APPROACH:
+			reposition = "closes distance"
+		AgentBossProgram.SPECIAL_REPOSITION_RETREAT:
+			reposition = "retreats"
+		AgentBossProgram.SPECIAL_REPOSITION_STRAFE:
+			reposition = "strafes"
+	return "%s, then %s" % [movement, reposition]
 
 
 func _get_agent_slow_attack_label(verb: String) -> String:
@@ -1182,6 +1475,7 @@ func _update_boss_health_feedback(delta: float) -> bool:
 			_show_agent_intro_taunt()
 		changed = true
 	if _agent_taunt_active:
+		changed = _update_agent_taunt_llm_request(delta) or changed
 		return changed
 	if _boss_intro_name_fade_remaining > 0.0:
 		_boss_intro_name_fade_remaining = max(_boss_intro_name_fade_remaining - delta, 0.0)
@@ -3823,6 +4117,8 @@ func _on_menu_down_requested() -> void:
 
 func _on_menu_confirm_requested() -> void:
 	if _agent_taunt_active:
+		if not _agent_taunt_continue_enabled:
+			return
 		_dismiss_agent_intro_taunt()
 		return
 	if _is_gameplay_running() and item_manager.collect_focused_reward():
