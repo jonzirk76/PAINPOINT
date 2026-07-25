@@ -54,10 +54,10 @@ const BEHAVIOR_CYBER_SOLDIER := "cyber_soldier"
 ## Controls the total sweep angle of minigun special streams.
 @export var special_minigun_sweep_degrees: float = 76.0
 ## Controls the fewest shots fired during autocannon special bursts.
-@export var special_autocannon_min_shots: int = 4
+@export var special_autocannon_min_shots: int = 2
 ## Controls the most shots fired during autocannon special bursts.
-@export var special_autocannon_max_shots: int = 8
+@export var special_autocannon_max_shots: int = 4
 ## Controls the delay between individual autocannon special shots.
-@export var special_autocannon_shot_interval: float = 0.18
+@export var special_autocannon_shot_interval: float = 0.28
 ## Enables procedural agent boss behavior when this profile is spawned as a boss.
 @export var agent_program: AgentBossProgram = null
