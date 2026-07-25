@@ -1034,17 +1034,21 @@ func _configure_encounter_test_room(room_id: String, forced_profiles: Array[Reso
 	for profile in forced_profiles:
 		if profile != null:
 			profiles.append(profile)
-	if profiles.is_empty():
-		return
-	level.encounter_budget = profiles.size()
-	level.encounter_min_spawn_distance = max(float(level.encounter_min_spawn_distance), 170.0)
-	level.max_active_enemies = max(profiles.size() + max(int(test_options.get("extra_enemy_slots", 1)), 0), profiles.size())
+	if not profiles.is_empty():
+		level.encounter_budget = profiles.size()
+		level.encounter_min_spawn_distance = max(float(level.encounter_min_spawn_distance), 170.0)
+		level.max_active_enemies = max(profiles.size() + max(int(test_options.get("extra_enemy_slots", 1)), 0), profiles.size())
+		level.set_meta("forced_opening_encounter_profiles", profiles)
+	elif bool(test_options.get("disable_initial_spawns", true)):
+		level.encounter_table = []
+		level.encounter_budget = 0
+	if test_options.has("randomize_agent_boss_each_load"):
+		level.randomize_agent_boss_each_load = bool(test_options.get("randomize_agent_boss_each_load", false))
 	level.initial_spawn_batch_multiplier_override = 0 if bool(test_options.get("disable_initial_spawns", true)) else -1
 	var spawner_count: int = max(int(test_options.get("spawner_count", 0)), 0)
 	level.spawner_placements = _build_encounter_test_spawner_placements(level, spawner_count, bool(test_options.get("passive_spawners", true)))
 	var empty_positions: Array[Vector2] = []
 	level.spawner_positions = empty_positions
-	level.set_meta("forced_opening_encounter_profiles", profiles)
 	state["level_definition"] = level
 	_rooms[room_id] = state
 

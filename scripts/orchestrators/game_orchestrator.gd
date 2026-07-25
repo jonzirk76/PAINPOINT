@@ -20,6 +20,19 @@ const ENCOUNTER_TEST_CYBER_SOLDIER := preload("res://resources/enemies/cyber_sol
 const ENCOUNTER_TEST_CYBER_SOLDIER_TELEPORT := preload("res://resources/enemies/cyber_soldier_teleport.tres")
 const GENERATED_ENCOUNTER_TESTS := [
 	{
+		"label": "Generated Agent Intro Test",
+		"summary": "fixed boss room + random agent",
+		"floor": 1,
+		"seed": 61291,
+		"room_kind": "boss",
+		"profiles": [],
+		"options": {
+			"randomize_agent_boss_each_load": true,
+			"spawner_count": 0,
+			"disable_initial_spawns": true
+		}
+	},
+	{
 		"label": "Generated Drone Test",
 		"summary": "experimental repair + shield",
 		"floor": 1,
@@ -243,6 +256,11 @@ var _boss_health_label: Label = null
 var _boss_health_bar_back: ColorRect = null
 var _boss_health_fill: ColorRect = null
 var _boss_health_tick_layer: Control = null
+var _agent_dialogue_panel: Control = null
+var _agent_dialogue_back: ColorRect = null
+var _agent_dialogue_speaker_label: Label = null
+var _agent_dialogue_text_label: Label = null
+var _agent_dialogue_prompt_label: Label = null
 var _boss_alert_overlay: ColorRect = null
 var _boss_alert_label: Label = null
 var _active_boss: EnemyEntity = null
@@ -250,6 +268,10 @@ var _pending_agent_boss_presentation: EnemyEntity = null
 var _last_boss_health: int = 0
 var _last_boss_max_health: int = 0
 var _boss_health_display_count: int = 0
+var _boss_intro_taunt_pending: bool = false
+var _boss_intro_taunt_delay_remaining: float = 0.0
+var _boss_intro_taunt_boss: EnemyEntity = null
+var _agent_taunt_active: bool = false
 var _boss_intro_name_fade_remaining: float = 0.0
 var _boss_intro_name_fade_duration: float = 0.0
 var _boss_health_pending_reveal_duration: float = 0.0
@@ -265,8 +287,37 @@ const LEVEL_SELECT_PAGE_ARCHIVE := "archive"
 const CAT_BEHAVIOR_LEVEL_INDEX := 6
 const PEACEFUL_CAT_LEVEL_INDEX := 7
 const BOSS_TEST_LEVEL_INDEX := 8
-const MAIN_LEVEL_OPTION_LEVEL_INDICES := [CAT_BEHAVIOR_LEVEL_INDEX, PEACEFUL_CAT_LEVEL_INDEX]
-const ARCHIVE_LEVEL_OPTION_LEVEL_INDICES := [0, 1, 2, 3, 4, 5, BOSS_TEST_LEVEL_INDEX]
+const GENERATED_TEST_AGENT_BOSS_INDEX := 0
+const GENERATED_TEST_DRONE_INDEX := 1
+const GENERATED_TEST_ARMOR_INDEX := 2
+const GENERATED_TEST_CYBER_INDEX := 3
+const LEVEL_SELECT_ACTION_BACK := "back"
+const LEVEL_SELECT_ACTION_ARCHIVE := "archive"
+const LEVEL_SELECT_ACTION_DUNGEON := "dungeon"
+const LEVEL_SELECT_ACTION_GENERATED_TEST := "generated_test"
+const LEVEL_SELECT_ACTION_LEVEL := "level"
+const LEVEL_SELECT_ACTION_MAIN_LOOP := "main_loop"
+const MAIN_LEVEL_SELECT_OPTIONS := [
+	{"action": LEVEL_SELECT_ACTION_MAIN_LOOP},
+	{"action": LEVEL_SELECT_ACTION_GENERATED_TEST, "index": GENERATED_TEST_AGENT_BOSS_INDEX},
+	{"action": LEVEL_SELECT_ACTION_ARCHIVE}
+]
+const ARCHIVE_LEVEL_SELECT_OPTIONS := [
+	{"action": LEVEL_SELECT_ACTION_BACK},
+	{"action": LEVEL_SELECT_ACTION_GENERATED_TEST, "index": GENERATED_TEST_CYBER_INDEX},
+	{"action": LEVEL_SELECT_ACTION_GENERATED_TEST, "index": GENERATED_TEST_ARMOR_INDEX},
+	{"action": LEVEL_SELECT_ACTION_GENERATED_TEST, "index": GENERATED_TEST_DRONE_INDEX},
+	{"action": LEVEL_SELECT_ACTION_LEVEL, "index": BOSS_TEST_LEVEL_INDEX},
+	{"action": LEVEL_SELECT_ACTION_LEVEL, "index": PEACEFUL_CAT_LEVEL_INDEX},
+	{"action": LEVEL_SELECT_ACTION_LEVEL, "index": CAT_BEHAVIOR_LEVEL_INDEX},
+	{"action": LEVEL_SELECT_ACTION_DUNGEON},
+	{"action": LEVEL_SELECT_ACTION_LEVEL, "index": 5},
+	{"action": LEVEL_SELECT_ACTION_LEVEL, "index": 4},
+	{"action": LEVEL_SELECT_ACTION_LEVEL, "index": 3},
+	{"action": LEVEL_SELECT_ACTION_LEVEL, "index": 2},
+	{"action": LEVEL_SELECT_ACTION_LEVEL, "index": 1},
+	{"action": LEVEL_SELECT_ACTION_LEVEL, "index": 0}
+]
 const BOSS_CLEAR_DELAY_SECONDS := 0.85
 const PERFECT_PARRY_TIME_SCALE := 0.24
 const PERFECT_PARRY_SLOWMO_SECONDS := 0.16
@@ -290,6 +341,9 @@ const BOSS_ALERT_DEFAULT_SECONDS := 2.35
 const BOSS_ALERT_HEALTH_FILL_SECONDS := 1.45
 const BOSS_INTRO_NAME_FADE_SECONDS := 0.62
 const BOSS_ALERT_DEFAULT_FLASH_COUNT := 3
+const AGENT_DIALOGUE_PANEL_WIDTH := 780.0
+const AGENT_DIALOGUE_PANEL_HEIGHT := 124.0
+const AGENT_DIALOGUE_PANEL_BOTTOM_MARGIN := 30.0
 const AMMO_SEGMENT_REFILL_STEP_SECONDS := 0.06
 const AMMO_SEGMENT_REFILL_MIN_SECONDS := 0.22
 const AMMO_SEGMENT_REFILL_MAX_SECONDS := 0.72
@@ -309,6 +363,7 @@ func _ready() -> void:
 	_capture_hud_authoring_state()
 	_ensure_agent_debug_panel()
 	_ensure_boss_health_hud()
+	_ensure_agent_dialogue_box()
 	_configure_pause_process_modes()
 	_set_tree_paused(false)
 	_connect_manager_signals()
@@ -776,9 +831,106 @@ func _ensure_boss_health_hud() -> void:
 	_boss_health_tick_layer = tick_layer
 
 
+func _ensure_agent_dialogue_box() -> void:
+	if _agent_dialogue_panel != null and is_instance_valid(_agent_dialogue_panel):
+		return
+	var ui_layer: CanvasLayer = get_node_or_null("UI") as CanvasLayer
+	if ui_layer == null:
+		return
+	var panel: Control = Control.new()
+	panel.name = "AgentDialoguePanel"
+	panel.visible = false
+	panel.anchor_left = 0.5
+	panel.anchor_right = 0.5
+	panel.anchor_top = 1.0
+	panel.anchor_bottom = 1.0
+	panel.offset_left = -AGENT_DIALOGUE_PANEL_WIDTH * 0.5
+	panel.offset_right = AGENT_DIALOGUE_PANEL_WIDTH * 0.5
+	panel.offset_top = -AGENT_DIALOGUE_PANEL_HEIGHT - AGENT_DIALOGUE_PANEL_BOTTOM_MARGIN
+	panel.offset_bottom = -AGENT_DIALOGUE_PANEL_BOTTOM_MARGIN
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.z_index = 80
+	ui_layer.add_child(panel)
+	var back: ColorRect = ColorRect.new()
+	back.name = "AgentDialogueBack"
+	back.anchor_left = 0.0
+	back.anchor_right = 1.0
+	back.anchor_top = 0.0
+	back.anchor_bottom = 1.0
+	back.offset_left = 0.0
+	back.offset_right = 0.0
+	back.offset_top = 0.0
+	back.offset_bottom = 0.0
+	back.color = Color(0.018, 0.014, 0.022, 0.92)
+	back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(back)
+	var speaker_label: Label = Label.new()
+	speaker_label.name = "AgentDialogueSpeaker"
+	speaker_label.offset_left = 18.0
+	speaker_label.offset_right = AGENT_DIALOGUE_PANEL_WIDTH - 18.0
+	speaker_label.offset_top = 10.0
+	speaker_label.offset_bottom = 36.0
+	speaker_label.add_theme_font_override("font", BOLD_PIXELS_FONT)
+	speaker_label.add_theme_font_size_override("font_size", 20)
+	speaker_label.add_theme_color_override("font_color", Color(1.0, 0.76, 0.42, 1.0))
+	speaker_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(speaker_label)
+	var text_label: Label = Label.new()
+	text_label.name = "AgentDialogueText"
+	text_label.offset_left = 18.0
+	text_label.offset_right = AGENT_DIALOGUE_PANEL_WIDTH - 18.0
+	text_label.offset_top = 38.0
+	text_label.offset_bottom = 88.0
+	text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	text_label.add_theme_font_override("font", BOLD_PIXELS_FONT)
+	text_label.add_theme_font_size_override("font_size", 15)
+	text_label.add_theme_color_override("font_color", Color(0.92, 0.96, 1.0, 1.0))
+	text_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(text_label)
+	var prompt_label: Label = Label.new()
+	prompt_label.name = "AgentDialoguePrompt"
+	prompt_label.text = "PRESS A TO CONTINUE"
+	prompt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	prompt_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	prompt_label.offset_left = AGENT_DIALOGUE_PANEL_WIDTH - 260.0
+	prompt_label.offset_right = AGENT_DIALOGUE_PANEL_WIDTH - 18.0
+	prompt_label.offset_top = AGENT_DIALOGUE_PANEL_HEIGHT - 30.0
+	prompt_label.offset_bottom = AGENT_DIALOGUE_PANEL_HEIGHT - 8.0
+	prompt_label.add_theme_font_override("font", BOLD_PIXELS_FONT)
+	prompt_label.add_theme_font_size_override("font_size", 12)
+	prompt_label.add_theme_color_override("font_color", Color(0.72, 0.94, 1.0, 1.0))
+	prompt_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(prompt_label)
+	_agent_dialogue_panel = panel
+	_agent_dialogue_back = back
+	_agent_dialogue_speaker_label = speaker_label
+	_agent_dialogue_text_label = text_label
+	_agent_dialogue_prompt_label = prompt_label
+
+
+func _show_agent_dialogue_box(speaker: String, line: String) -> void:
+	_ensure_agent_dialogue_box()
+	if _agent_dialogue_panel == null or not is_instance_valid(_agent_dialogue_panel):
+		return
+	if _agent_dialogue_speaker_label != null and is_instance_valid(_agent_dialogue_speaker_label):
+		_agent_dialogue_speaker_label.text = speaker
+	if _agent_dialogue_text_label != null and is_instance_valid(_agent_dialogue_text_label):
+		_agent_dialogue_text_label.text = line
+	_agent_dialogue_panel.visible = true
+
+
+func _hide_agent_dialogue_box() -> void:
+	if _agent_dialogue_panel != null and is_instance_valid(_agent_dialogue_panel):
+		_agent_dialogue_panel.visible = false
+
+
 func _clear_boss_health_hud() -> void:
 	_active_boss = null
 	_pending_agent_boss_presentation = null
+	_boss_intro_taunt_pending = false
+	_boss_intro_taunt_delay_remaining = 0.0
+	_boss_intro_taunt_boss = null
+	_agent_taunt_active = false
 	_last_boss_health = 0
 	_last_boss_max_health = 0
 	_boss_health_display_count = 0
@@ -798,6 +950,7 @@ func _clear_boss_health_hud() -> void:
 		_boss_health_panel.visible = false
 	if _boss_alert_overlay != null and is_instance_valid(_boss_alert_overlay):
 		_boss_alert_overlay.visible = false
+	_hide_agent_dialogue_box()
 
 
 func _track_level_boss(boss: EnemyEntity) -> void:
@@ -810,6 +963,11 @@ func _track_level_boss(boss: EnemyEntity) -> void:
 	_last_boss_health = clampi(int(boss.health), 0, _last_boss_max_health)
 	_boss_health_display_count = 0 if boss.agent_program != null else _last_boss_health
 	_boss_health_hide_remaining = 0.0
+	_boss_intro_taunt_pending = false
+	_boss_intro_taunt_delay_remaining = 0.0
+	_boss_intro_taunt_boss = null
+	_agent_taunt_active = false
+	_hide_agent_dialogue_box()
 	if boss.agent_program != null:
 		if _loading_screen_is_visible() or _is_room_entry_transition_active:
 			_pending_agent_boss_presentation = boss
@@ -859,20 +1017,34 @@ func _start_agent_boss_presentation(boss: EnemyEntity) -> void:
 		name_fade_seconds = max(float(program.intro_name_fade_seconds), 0.0)
 		_boss_alert_flash_count = max(int(program.intro_alert_flash_count), 1)
 	_materialize_agent_boss_intro(boss)
+	var materialize_seconds: float = _get_agent_boss_intro_materialize_seconds(boss)
 	_boss_health_display_count = 0
 	_boss_intro_name_fade_duration = max(name_fade_seconds, 0.0)
-	_boss_intro_name_fade_remaining = _boss_intro_name_fade_duration
+	_boss_intro_name_fade_remaining = 0.0
 	_boss_health_pending_reveal_duration = max(fill_seconds, 0.05)
 	_boss_health_reveal_duration = 0.0
 	_boss_health_reveal_remaining = 0.0
-	var presentation_seconds: float = _boss_intro_name_fade_duration + _boss_health_pending_reveal_duration
-	if _boss_intro_name_fade_remaining <= 0.0:
-		_begin_boss_health_reveal()
+	var presentation_seconds: float = materialize_seconds + _boss_intro_name_fade_duration + _boss_health_pending_reveal_duration
 	_boss_alert_duration = max(max(intro_seconds, presentation_seconds), 0.05)
 	_boss_alert_remaining = _boss_alert_duration
 	if boss.has_method("start_agent_boss_intro"):
 		boss.start_agent_boss_intro(_boss_alert_duration)
+	_queue_agent_intro_taunt(boss, materialize_seconds)
 	_update_boss_alert_overlay()
+
+
+func _queue_agent_intro_taunt(boss: EnemyEntity, delay_seconds: float) -> void:
+	_boss_intro_taunt_boss = boss
+	_boss_intro_taunt_pending = true
+	_boss_intro_taunt_delay_remaining = max(delay_seconds, 0.0)
+	_agent_taunt_active = false
+
+
+func _begin_boss_intro_name_fade() -> void:
+	_boss_health_display_count = 0
+	_boss_intro_name_fade_remaining = _boss_intro_name_fade_duration
+	if _boss_intro_name_fade_remaining <= 0.0:
+		_begin_boss_health_reveal()
 
 
 func _begin_boss_health_reveal() -> void:
@@ -916,8 +1088,101 @@ func _get_agent_boss_intro_materialize_seconds(boss: EnemyEntity) -> float:
 	return 0.82
 
 
+func _show_agent_intro_taunt() -> void:
+	var boss: EnemyEntity = _boss_intro_taunt_boss
+	_boss_intro_taunt_pending = false
+	_boss_intro_taunt_delay_remaining = 0.0
+	if boss == null or not is_instance_valid(boss) or boss != _active_boss or boss.agent_program == null:
+		_begin_boss_intro_name_fade()
+		return
+	_agent_taunt_active = true
+	_set_tree_paused(true)
+	var program: AgentBossProgram = boss.agent_program as AgentBossProgram
+	_show_agent_dialogue_box(_get_boss_display_name(), _build_agent_intro_taunt(program))
+	if _boss_alert_overlay != null and is_instance_valid(_boss_alert_overlay):
+		_boss_alert_overlay.visible = false
+	_update_boss_health_panel()
+
+
+func _dismiss_agent_intro_taunt() -> void:
+	if not _agent_taunt_active:
+		return
+	_agent_taunt_active = false
+	_boss_intro_taunt_boss = null
+	_hide_agent_dialogue_box()
+	_set_tree_paused(false)
+	_begin_boss_intro_name_fade()
+	_update_boss_alert_overlay()
+	_update_boss_health_panel()
+
+
+func _build_agent_intro_taunt(program: AgentBossProgram) -> String:
+	if program == null:
+		return "No profile. No mercy."
+	var personality: String = String(program.personality_verb)
+	var slow_weapon: String = _get_agent_slow_attack_label(String(program.slow_attack_verb))
+	var explosive: String = _get_agent_explosive_label(String(program.high_explosive_verb))
+	var special: String = _get_agent_special_attack_label(String(program.special_attack_verb))
+	match personality:
+		AgentBossProgram.PERSONALITY_HUNTER:
+			return "I marked your route. %s keeps you moving; %s and %s finish the chase." % [slow_weapon, explosive, special]
+		AgentBossProgram.PERSONALITY_BULLY:
+			return "I brought %s, %s, and %s. Try to make me back up." % [slow_weapon, explosive, special]
+		AgentBossProgram.PERSONALITY_COWARD:
+			return "Stay over there. %s screens the gap, %s buys space, and %s punishes pursuit." % [slow_weapon, explosive, special]
+		AgentBossProgram.PERSONALITY_DUELIST:
+			return "One clean duel: my %s opens, my %s tests your footwork, my %s ends it." % [slow_weapon, explosive, special]
+	return "New loadout online: %s, %s, and %s." % [slow_weapon, explosive, special]
+
+
+func _get_agent_slow_attack_label(verb: String) -> String:
+	match verb:
+		AgentBossProgram.SLOW_ATTACK_FAST_SINGLE:
+			return "needle shots"
+		AgentBossProgram.SLOW_ATTACK_SHORT_SCATTER:
+			return "short scatter"
+		AgentBossProgram.SLOW_ATTACK_WIDE_SCATTER:
+			return "wide scatter"
+		AgentBossProgram.SLOW_ATTACK_ASSAULT_BURST:
+			return "assault bursts"
+	return verb.replace("_", " ")
+
+
+func _get_agent_explosive_label(verb: String) -> String:
+	match verb:
+		AgentBossProgram.HIGH_EXPLOSIVE_ROCKET:
+			return "a rocket"
+		AgentBossProgram.HIGH_EXPLOSIVE_GRENADE:
+			return "grenades"
+		AgentBossProgram.HIGH_EXPLOSIVE_MINES:
+			return "mines"
+	return verb.replace("_", " ")
+
+
+func _get_agent_special_attack_label(verb: String) -> String:
+	match verb:
+		AgentBossProgram.SPECIAL_ATTACK_MINIGUN_SWEEP_TWICE:
+			return "double minigun sweeps"
+		AgentBossProgram.SPECIAL_ATTACK_SPIRAL_CLOCKWISE:
+			return "clockwise spiral fire"
+		AgentBossProgram.SPECIAL_ATTACK_SPIRAL_COUNTER_CLOCKWISE:
+			return "counter spiral fire"
+		AgentBossProgram.SPECIAL_ATTACK_RING_PULSE:
+			return "ring pulses"
+		AgentBossProgram.SPECIAL_ATTACK_PINWHEEL_BURST:
+			return "pinwheel bursts"
+	return verb.replace("_", " ")
+
+
 func _update_boss_health_feedback(delta: float) -> bool:
 	var changed: bool = false
+	if _boss_intro_taunt_pending:
+		_boss_intro_taunt_delay_remaining = max(_boss_intro_taunt_delay_remaining - delta, 0.0)
+		if _boss_intro_taunt_delay_remaining <= 0.0:
+			_show_agent_intro_taunt()
+		changed = true
+	if _agent_taunt_active:
+		return changed
 	if _boss_intro_name_fade_remaining > 0.0:
 		_boss_intro_name_fade_remaining = max(_boss_intro_name_fade_remaining - delta, 0.0)
 		if _boss_intro_name_fade_remaining <= 0.0 and _boss_health_pending_reveal_duration > 0.0:
@@ -966,7 +1231,7 @@ func _update_boss_health_panel() -> void:
 	_ensure_boss_health_hud()
 	if _boss_health_panel == null or _boss_health_tick_layer == null:
 		return
-	if _pending_agent_boss_presentation != null:
+	if _pending_agent_boss_presentation != null or _boss_intro_taunt_pending or _agent_taunt_active:
 		_boss_health_panel.visible = false
 		return
 	if _last_boss_max_health <= 0 or (_active_boss == null and _boss_health_hide_remaining <= 0.0):
@@ -2676,6 +2941,8 @@ func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = 
 
 
 func _on_pause_requested() -> void:
+	if _agent_taunt_active:
+		return
 	if _is_gameplay_running():
 		_stop_perfect_parry_slowmo()
 		_paused_previous_status = _status
@@ -3555,6 +3822,9 @@ func _on_menu_down_requested() -> void:
 
 
 func _on_menu_confirm_requested() -> void:
+	if _agent_taunt_active:
+		_dismiss_agent_intro_taunt()
+		return
 	if _is_gameplay_running() and item_manager.collect_focused_reward():
 		_update_hud()
 		return
@@ -3594,71 +3864,80 @@ func _update_level_select_ui() -> void:
 	var lines: Array[String] = []
 	if _level_select_page == LEVEL_SELECT_PAGE_ARCHIVE:
 		lines.append("ARCHIVE")
-		var back_marker := ">" if _level_select_option_index == 0 else " "
-		lines.append("%s Back" % back_marker)
-		for archive_index in range(ARCHIVE_LEVEL_OPTION_LEVEL_INDICES.size()):
-			var level_index: int = int(ARCHIVE_LEVEL_OPTION_LEVEL_INDICES[archive_index])
-			var level = LEVELS[level_index]
-			var option_index := archive_index + 1
-			var marker := ">" if option_index == _level_select_option_index else " "
-			lines.append("%s %d. %s  [%s]" % [marker, option_index, level.display_name, level.get_summary()])
-		var dungeon_option_index := ARCHIVE_LEVEL_OPTION_LEVEL_INDICES.size() + 1
-		var dungeon_marker := ">" if _level_select_option_index == dungeon_option_index else " "
-		lines.append("%s %d. Dungeon Prototype  [room pieces + first boss]" % [dungeon_marker, dungeon_option_index])
+		var archive_options: Array = _get_level_select_options()
+		for option_index: int in range(archive_options.size()):
+			var option: Dictionary = archive_options[option_index]
+			var marker: String = ">" if option_index == _level_select_option_index else " "
+			if String(option.get("action", "")) == LEVEL_SELECT_ACTION_BACK:
+				lines.append("%s Back" % marker)
+			else:
+				lines.append("%s %d. %s" % [marker, option_index, _get_level_select_option_label(option)])
 		level_list_label.text = "\n".join(lines)
 		return
 	lines.append("LEVEL SELECT")
-	for option_index in range(MAIN_LEVEL_OPTION_LEVEL_INDICES.size()):
-		var level_index: int = int(MAIN_LEVEL_OPTION_LEVEL_INDICES[option_index])
-		var level = LEVELS[level_index]
-		var marker := ">" if option_index == _level_select_option_index else " "
-		lines.append("%s %d. %s  [%s]" % [marker, option_index + 1, level.display_name, level.get_summary()])
-	var option_cursor := MAIN_LEVEL_OPTION_LEVEL_INDICES.size()
-	for test_index in range(GENERATED_ENCOUNTER_TESTS.size()):
-		var test_config: Dictionary = GENERATED_ENCOUNTER_TESTS[test_index]
-		var test_marker := ">" if option_cursor == _level_select_option_index else " "
-		lines.append("%s %d. %s  [%s]" % [test_marker, option_cursor + 1, String(test_config.get("label", "Generated Test")), String(test_config.get("summary", "generated encounter"))])
-		option_cursor += 1
-	var main_loop_option_index := option_cursor
-	var main_loop_marker := ">" if _level_select_option_index == main_loop_option_index else " "
-	lines.append("%s %d. Main Game Loop Test  [floor loop + tally]" % [main_loop_marker, main_loop_option_index + 1])
-	var archive_option_index := main_loop_option_index + 1
-	var archive_marker := ">" if _level_select_option_index == archive_option_index else " "
-	lines.append("%s %d. Archive  [older arenas + prototype]" % [archive_marker, archive_option_index + 1])
+	var main_options: Array = _get_level_select_options()
+	for option_index: int in range(main_options.size()):
+		var option: Dictionary = main_options[option_index]
+		var marker: String = ">" if option_index == _level_select_option_index else " "
+		lines.append("%s %d. %s" % [marker, option_index + 1, _get_level_select_option_label(option)])
 	level_list_label.text = "\n".join(lines)
 
 
 func _activate_level_select_option() -> void:
-	if _level_select_page == LEVEL_SELECT_PAGE_ARCHIVE:
-		if _level_select_option_index <= 0:
+	var options: Array = _get_level_select_options()
+	if _level_select_option_index < 0 or _level_select_option_index >= options.size():
+		return
+	var option: Dictionary = options[_level_select_option_index]
+	var action: String = String(option.get("action", ""))
+	match action:
+		LEVEL_SELECT_ACTION_BACK:
 			_level_select_page = LEVEL_SELECT_PAGE_MAIN
 			_level_select_option_index = 0
 			_update_level_select_ui()
-			return
-		if _level_select_option_index <= ARCHIVE_LEVEL_OPTION_LEVEL_INDICES.size():
-			_selected_level_index = int(ARCHIVE_LEVEL_OPTION_LEVEL_INDICES[_level_select_option_index - 1])
+		LEVEL_SELECT_ACTION_ARCHIVE:
+			_level_select_page = LEVEL_SELECT_PAGE_ARCHIVE
+			_level_select_option_index = 0
+			_update_level_select_ui()
+		LEVEL_SELECT_ACTION_LEVEL:
+			_selected_level_index = int(option.get("index", 0))
 			_start_selected_level()
-			return
-		_selected_level_index = LEVELS.size()
-		_start_selected_level()
-		return
-	if _level_select_option_index < MAIN_LEVEL_OPTION_LEVEL_INDICES.size():
-		_selected_level_index = int(MAIN_LEVEL_OPTION_LEVEL_INDICES[_level_select_option_index])
-		_start_selected_level()
-		return
-	var test_option_start_index := MAIN_LEVEL_OPTION_LEVEL_INDICES.size()
-	var test_option_end_index := test_option_start_index + GENERATED_ENCOUNTER_TESTS.size()
-	if _level_select_option_index >= test_option_start_index and _level_select_option_index < test_option_end_index:
-		_selected_level_index = LEVELS.size() + 2 + (_level_select_option_index - test_option_start_index)
-		_start_selected_level()
-		return
-	if _level_select_option_index == test_option_end_index:
-		_selected_level_index = LEVELS.size() + 1
-		_start_selected_level()
-		return
-	_level_select_page = LEVEL_SELECT_PAGE_ARCHIVE
-	_level_select_option_index = 0
-	_update_level_select_ui()
+		LEVEL_SELECT_ACTION_DUNGEON:
+			_selected_level_index = LEVELS.size()
+			_start_selected_level()
+		LEVEL_SELECT_ACTION_MAIN_LOOP:
+			_selected_level_index = LEVELS.size() + 1
+			_start_selected_level()
+		LEVEL_SELECT_ACTION_GENERATED_TEST:
+			_selected_level_index = LEVELS.size() + 2 + int(option.get("index", 0))
+			_start_selected_level()
+
+
+func _get_level_select_options() -> Array:
+	return ARCHIVE_LEVEL_SELECT_OPTIONS if _level_select_page == LEVEL_SELECT_PAGE_ARCHIVE else MAIN_LEVEL_SELECT_OPTIONS
+
+
+func _get_level_select_option_label(option: Dictionary) -> String:
+	var action: String = String(option.get("action", ""))
+	match action:
+		LEVEL_SELECT_ACTION_ARCHIVE:
+			return "Archive  [tests + older arenas]"
+		LEVEL_SELECT_ACTION_DUNGEON:
+			return "Dungeon Prototype  [room pieces + first boss]"
+		LEVEL_SELECT_ACTION_GENERATED_TEST:
+			var test_index: int = int(option.get("index", 0))
+			if test_index >= 0 and test_index < GENERATED_ENCOUNTER_TESTS.size():
+				var test_config: Dictionary = GENERATED_ENCOUNTER_TESTS[test_index]
+				return "%s  [%s]" % [String(test_config.get("label", "Generated Test")), String(test_config.get("summary", "generated encounter"))]
+			return "Generated Test  [generated encounter]"
+		LEVEL_SELECT_ACTION_LEVEL:
+			var level_index: int = int(option.get("index", 0))
+			if level_index >= 0 and level_index < LEVELS.size():
+				var level = LEVELS[level_index]
+				return "%s  [%s]" % [level.display_name, level.get_summary()]
+			return "Missing Level  [unavailable]"
+		LEVEL_SELECT_ACTION_MAIN_LOOP:
+			return "Main Game Loop Test  [floor loop + tally]"
+	return "Back"
 
 
 func _load_dungeon_current_room(entry_direction: String, reset_player: bool, override_player_position: Vector2 = Vector2.INF) -> void:
@@ -3921,9 +4200,7 @@ func _get_dungeon_hud_suffix() -> String:
 
 
 func _get_select_option_count() -> int:
-	if _level_select_page == LEVEL_SELECT_PAGE_ARCHIVE:
-		return ARCHIVE_LEVEL_OPTION_LEVEL_INDICES.size() + 2
-	return MAIN_LEVEL_OPTION_LEVEL_INDICES.size() + GENERATED_ENCOUNTER_TESTS.size() + 2
+	return _get_level_select_options().size()
 
 
 func _update_minimap() -> void:

@@ -4403,39 +4403,48 @@ func _test_boss_test_level_select(failures: Array[String]) -> void:
 		main._connect_manager_signals()
 		main._initialize_managers()
 		main._enter_level_select()
-	if not main.level_list_label.text.contains("Cat Behavior Test") or not main.level_list_label.text.contains("Peaceful Cat Test"):
-		failures.append("Main level select should keep cat test rooms directly visible.")
-	for generated_test_name in ["Generated Drone Test", "Generated Armor Test", "Generated Cyber Test"]:
-		if not main.level_list_label.text.contains(generated_test_name):
-			failures.append("Main level select should expose generated encounter test room: %s" % generated_test_name)
+	if not main.level_list_label.text.contains("> 1. Main Game Loop Test"):
+		failures.append("Main level select should keep Main Game Loop Test as the first choice.")
+	if not main.level_list_label.text.contains("Generated Agent Intro Test"):
+		failures.append("Main level select should expose the generated agent intro test room.")
 	if not main.level_list_label.text.contains("Archive"):
 		failures.append("Main level select should expose archived older arenas through an Archive option.")
-	if main.level_list_label.text.contains("Boss Test Chamber"):
-		failures.append("Boss test chamber should live in the Archive menu instead of the main level-select list.")
+	for archived_only_name in ["Cat Behavior Test", "Peaceful Cat Test", "Generated Drone Test", "Generated Armor Test", "Generated Cyber Test", "Boss Test Chamber"]:
+		if main.level_list_label.text.contains(archived_only_name):
+			failures.append("%s should live in the Archive menu instead of the main level-select list." % archived_only_name)
 	main._level_select_page = main.LEVEL_SELECT_PAGE_ARCHIVE
 	main._level_select_option_index = 0
 	main._update_level_select_ui()
 	for archived_name in ["Square Yard", "Diamond Engine", "Hex Pressure", "Crossfire Foundry", "Circle Gauntlet", "Maze Breaker"]:
 		if not main.level_list_label.text.contains(archived_name):
 			failures.append("Archive level select should include archived arena: %s" % archived_name)
+	for archived_test_name in ["Generated Cyber Test", "Generated Armor Test", "Generated Drone Test", "Boss Test Chamber", "Peaceful Cat Test", "Cat Behavior Test"]:
+		if not main.level_list_label.text.contains(archived_test_name):
+			failures.append("Archive level select should include archived test room: %s" % archived_test_name)
 	if not main.level_list_label.text.contains("Boss Test Chamber"):
 		failures.append("Archive level select should include the standalone boss test chamber.")
 	if not main.level_list_label.text.contains("Dungeon Prototype"):
 		failures.append("Archive level select should include the dungeon prototype.")
-	main._selected_level_index = main.LEVELS.size() - 1
-	main._start_selected_level()
-	if main._status != "RUNNING" or main._is_dungeon_run:
-		failures.append("Boss test chamber should start as a normal level-select arena.")
+	main._start_generated_encounter_test(main.GENERATED_TEST_AGENT_BOSS_INDEX)
+	if main._status != "DUNGEON" or not main._is_dungeon_run or main._is_main_loop_run:
+		failures.append("Generated agent intro test should start as a generated dungeon boss room.")
+	if main.dungeon_manager.get_current_room_kind() != "boss":
+		failures.append("Generated agent intro test should load a generated boss room.")
 	if main.spawner_manager.get_spawner_count() != 0:
-		failures.append("Boss test chamber should not spawn supporting generals.")
+		failures.append("Generated agent intro test should not spawn supporting generals.")
+	var current_level: LevelDefinition = main._current_level as LevelDefinition
+	if current_level == null:
+		failures.append("Generated agent intro test did not load a current full-floor level.")
+	elif not bool(current_level.randomize_agent_boss_each_load):
+		failures.append("Generated agent intro test should randomize the agent loadout independently from its fixed room seed.")
 	var boss_found := false
 	for enemy in main.enemy_manager._enemies:
 		if is_instance_valid(enemy) and enemy.behavior_kind == "boss":
 			boss_found = true
 			if enemy.agent_program == null:
-				failures.append("Boss test chamber should spawn a generated agent boss.")
+				failures.append("Generated agent intro test should spawn a generated agent boss.")
 	if not boss_found:
-		failures.append("Boss test chamber should spawn a boss enemy.")
+		failures.append("Generated agent intro test should spawn a boss enemy.")
 	main.free()
 
 
@@ -4451,10 +4460,10 @@ func _test_generated_encounter_test_level_select(failures: Array[String]) -> voi
 		main._connect_manager_signals()
 		main._initialize_managers()
 		main._enter_level_select()
-	main._start_generated_encounter_test(0)
+	main._start_generated_encounter_test(main.GENERATED_TEST_DRONE_INDEX)
 	if main._status != "DUNGEON" or not main._is_dungeon_run or main._is_main_loop_run:
 		failures.append("Generated encounter test should start as a generated dungeon room.")
-	if main._active_generated_encounter_test_index != 0:
+	if main._active_generated_encounter_test_index != main.GENERATED_TEST_DRONE_INDEX:
 		failures.append("Generated encounter test should track the active test index for restart.")
 	if main.dungeon_manager.get_current_room_kind() != "combat":
 		failures.append("Generated drone test should start in a generated combat room.")

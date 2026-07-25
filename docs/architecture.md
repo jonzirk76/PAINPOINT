@@ -53,7 +53,7 @@ A level is won only when `SpawnerManager.get_spawner_count()` and `EnemyManager.
 
 ## Dungeon Prototype Flow
 
-The level-select menu includes `Dungeon Prototype` and `Main Game Loop Test` entries beside the authored arena levels. Both modes keep the same managers and entity rules, but `DungeonManager` generates a puzzle-piece room graph from `RoomPieceDefinition` resources.
+The level-select menu keeps `Main Game Loop Test` as the first main-page choice, followed by the generated agent-intro boss test and an Archive entry. Older authored arenas, cat tests, generated encounter tests, the standalone boss chamber, and `Dungeon Prototype` live in the Archive, generally newest to oldest. Dungeon and generated-test modes keep the same managers and entity rules, but `DungeonManager` generates a puzzle-piece room graph from `RoomPieceDefinition` resources.
 
 Room pieces define footprint cells, connector directions, arena geometry, internal wall rectangles, typed spawner placements, and optional boss profile data. `DungeonManager` places pieces with cell-footprint collision so pieces fit spatially, tracks which rooms are cleared, and exposes only room-state queries/commands to `GameOrchestrator`.
 
