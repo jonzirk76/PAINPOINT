@@ -173,10 +173,6 @@ func spawn_cat(spawn_position: Vector2, movement_seed: int = 0):
 		return _cat
 	var cat_seed: int = max(movement_seed, 1)
 	var cat = cat_scene.instantiate()
-	if _fauna_layer != null:
-		_fauna_layer.add_child(cat)
-	else:
-		add_child(cat)
 	_cat = cat
 	_connect_cat_signals(cat)
 	if cat.has_method("set_cat_texture"):
@@ -184,6 +180,7 @@ func spawn_cat(spawn_position: Vector2, movement_seed: int = 0):
 	if cat.has_method("initialize"):
 		cat.initialize(spawn_position, cat_seed)
 	_sync_cat_simulation_state()
+	_add_child_safely(_get_fauna_parent(), cat)
 	return cat
 
 
@@ -234,6 +231,19 @@ func _connect_cat_signals(cat: Node) -> void:
 	var callback: Callable = Callable(self, "_on_cat_meowed")
 	if not cat.is_connected(&"meowed", callback):
 		cat.connect(&"meowed", callback)
+
+
+func _get_fauna_parent() -> Node:
+	return _fauna_layer if _fauna_layer != null else self
+
+
+func _add_child_safely(parent: Node, child: Node) -> void:
+	if parent == null or child == null or child.get_parent() != null:
+		return
+	if parent.is_inside_tree() and Engine.is_in_physics_frame():
+		parent.call_deferred("add_child", child)
+		return
+	parent.add_child(child)
 
 
 func _on_cat_meowed(pitch_center: float, pitch_variation: float) -> void:

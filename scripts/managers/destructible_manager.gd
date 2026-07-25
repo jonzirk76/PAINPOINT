@@ -80,14 +80,24 @@ func _spawn_destructible(placement):
 	if placement == null:
 		return null
 	var prop = destructible_scene.instantiate()
-	if _destructible_layer != null:
-		_destructible_layer.add_child(prop)
-	else:
-		add_child(prop)
 	prop.initialize(placement)
 	prop.health_depleted.connect(_on_prop_health_depleted)
 	_destructibles.append(prop)
+	_add_child_safely(_get_destructible_parent(), prop)
 	return prop
+
+
+func _get_destructible_parent() -> Node:
+	return _destructible_layer if _destructible_layer != null else self
+
+
+func _add_child_safely(parent: Node, child: Node) -> void:
+	if parent == null or child == null or child.get_parent() != null:
+		return
+	if parent.is_inside_tree() and Engine.is_in_physics_frame():
+		parent.call_deferred("add_child", child)
+		return
+	parent.add_child(child)
 
 
 func _on_prop_health_depleted(prop) -> void:

@@ -5033,16 +5033,12 @@ func _activate_boss_exit_portal(boss_position: Vector2, boss_radius: float) -> v
 			_floor_exit_portal.set_active(true)
 	else:
 		var portal = FLOOR_EXIT_PORTAL_SCENE.instantiate()
-		var portal_layer: Node = $World/DepthSortLayer
-		if portal_layer != null:
-			portal_layer.add_child(portal)
-		else:
-			add_child(portal)
 		var portal_position := _get_boss_exit_portal_position(boss_position)
 		if portal.has_method("initialize"):
 			portal.initialize(portal_position, max(boss_radius * 1.05, 48.0), true)
 		_connect_floor_exit_portal(portal)
 		_floor_exit_portal = portal
+		_add_child_safely(_get_depth_sort_parent(), portal)
 	_update_minimap()
 
 
@@ -5052,11 +5048,6 @@ func _show_boss_exit_portal_preview(level_definition) -> void:
 	if _floor_exit_portal != null and is_instance_valid(_floor_exit_portal):
 		return
 	var portal = FLOOR_EXIT_PORTAL_SCENE.instantiate()
-	var portal_layer: Node = $World/DepthSortLayer
-	if portal_layer != null:
-		portal_layer.add_child(portal)
-	else:
-		add_child(portal)
 	var portal_radius := 48.0
 	if level_definition.boss_profile != null:
 		portal_radius = max(float(level_definition.boss_profile.body_radius) * 1.05, 48.0)
@@ -5064,6 +5055,21 @@ func _show_boss_exit_portal_preview(level_definition) -> void:
 		portal.initialize(_get_boss_exit_portal_position(level_definition.boss_spawn_position), portal_radius, false)
 	_connect_floor_exit_portal(portal)
 	_floor_exit_portal = portal
+	_add_child_safely(_get_depth_sort_parent(), portal)
+
+
+func _get_depth_sort_parent() -> Node:
+	var layer: Node = get_node_or_null("World/DepthSortLayer")
+	return layer if layer != null else self
+
+
+func _add_child_safely(parent: Node, child: Node) -> void:
+	if parent == null or child == null or child.get_parent() != null:
+		return
+	if parent.is_inside_tree() and Engine.is_in_physics_frame():
+		parent.call_deferred("add_child", child)
+		return
+	parent.add_child(child)
 
 
 func _get_boss_exit_portal_position(boss_position: Vector2) -> Vector2:

@@ -77,16 +77,13 @@ func fire(origin: Vector2, direction: Vector2, modifiers: Dictionary) -> void:
 		var shot_direction := Vector2.RIGHT.rotated(shot_angle)
 		var packet = _create_damage_packet(modifiers, origin, shot_direction)
 		var projectile = projectile_scene.instantiate()
-		if _projectile_layer != null:
-			_projectile_layer.add_child(projectile)
-		else:
-			add_child(projectile)
 		projectile.set_arena_definition(_arena_bounds, _arena_shape)
 		projectile.set_projectile_team("player")
 		projectile.initialize(origin, shot_direction, packet, base_projectile_speed)
 		projectile.hit_detected.connect(_on_projectile_hit)
 		projectile.expired.connect(_on_projectile_expired)
 		_projectiles.append(projectile)
+		_add_child_safely(_get_projectile_parent(), projectile)
 
 
 func fire_super_shot(origin: Vector2, direction: Vector2, charge_ratio: float) -> void:
@@ -97,16 +94,13 @@ func fire_super_shot(origin: Vector2, direction: Vector2, charge_ratio: float) -
 	var packet = _create_super_damage_packet(origin, shot_direction, normalized_charge)
 	var projectile = projectile_scene.instantiate()
 	projectile.lifetime_seconds = 1.55
-	if _projectile_layer != null:
-		_projectile_layer.add_child(projectile)
-	else:
-		add_child(projectile)
 	projectile.set_arena_definition(_arena_bounds, _arena_shape)
 	projectile.set_projectile_team("player")
 	projectile.initialize(origin, shot_direction, packet, lerp(super_projectile_speed_min, super_projectile_speed_max, normalized_charge))
 	projectile.hit_detected.connect(_on_projectile_hit)
 	projectile.expired.connect(_on_projectile_expired)
 	_projectiles.append(projectile)
+	_add_child_safely(_get_projectile_parent(), projectile)
 
 
 func fire_hostile(origin: Vector2, direction: Vector2, shot_config: Dictionary) -> void:
@@ -188,10 +182,6 @@ func _spawn_hostile_projectile(origin: Vector2, direction: Vector2, shot_config:
 		projectile.lifetime_seconds = max(requested_lifetime, 0.05)
 	else:
 		projectile.lifetime_seconds = max(requested_lifetime, player_projectile_range / shot_speed)
-	if _projectile_layer != null:
-		_projectile_layer.add_child(projectile)
-	else:
-		add_child(projectile)
 	projectile.set_arena_definition(_arena_bounds, _arena_shape)
 	projectile.set_projectile_team("hostile")
 	if projectile.has_method("configure_hostile_metadata"):
@@ -200,6 +190,7 @@ func _spawn_hostile_projectile(origin: Vector2, direction: Vector2, shot_config:
 	projectile.hit_detected.connect(_on_projectile_hit)
 	projectile.expired.connect(_on_projectile_expired)
 	_projectiles.append(projectile)
+	_add_child_safely(_get_projectile_parent(), projectile)
 
 
 func _create_damage_packet(modifiers: Dictionary, origin: Vector2, direction: Vector2):
@@ -226,6 +217,19 @@ func _create_damage_packet(modifiers: Dictionary, origin: Vector2, direction: Ve
 	packet.source_position = origin
 	packet.knockback_direction = direction.normalized()
 	return packet
+
+
+func _get_projectile_parent() -> Node:
+	return _projectile_layer if _projectile_layer != null else self
+
+
+func _add_child_safely(parent: Node, child: Node) -> void:
+	if parent == null or child == null or child.get_parent() != null:
+		return
+	if parent.is_inside_tree() and Engine.is_in_physics_frame():
+		parent.call_deferred("add_child", child)
+		return
+	parent.add_child(child)
 
 
 func _create_super_damage_packet(origin: Vector2, direction: Vector2, charge_ratio: float):

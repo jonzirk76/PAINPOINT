@@ -70,12 +70,9 @@ func reset_run() -> void:
 	player = player_scene.instantiate()
 	player.global_position = spawn_position
 	player.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
-	if _player_layer != null:
-		_player_layer.add_child(player)
-	else:
-		add_child(player)
 	player.health_changed.connect(_on_player_health_changed)
 	player.health_depleted.connect(_on_player_health_depleted)
+	_add_child_safely(_get_player_parent(), player)
 	_fire_cooldown_remaining = 0.0
 	_damage_cooldown_remaining = 0.0
 	_last_invulnerability_remaining = -1.0
@@ -99,6 +96,19 @@ func reset_run() -> void:
 	_sync_super_meter_state()
 	player_spawned.emit(player)
 	player_health_changed.emit(player.health, player.health)
+
+
+func _get_player_parent() -> Node:
+	return _player_layer if _player_layer != null else self
+
+
+func _add_child_safely(parent: Node, child: Node) -> void:
+	if parent == null or child == null or child.get_parent() != null:
+		return
+	if parent.is_inside_tree() and Engine.is_in_physics_frame():
+		parent.call_deferred("add_child", child)
+		return
+	parent.add_child(child)
 
 
 func clear_player() -> void:

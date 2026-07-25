@@ -142,10 +142,6 @@ func spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary = {})
 	enemy.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
 	if bool(spawn_flags.get("boss_add", false)):
 		enemy.set_meta("boss_add", true)
-	if _enemy_layer != null:
-		_enemy_layer.add_child(enemy)
-	else:
-		add_child(enemy)
 	if bool(spawn_flags.get("birth", false)) and enemy.has_method("play_birth_animation"):
 		enemy.play_birth_animation(float(spawn_flags.get("birth_duration", 0.36)))
 	enemy.health_changed.connect(_on_enemy_health_changed)
@@ -161,6 +157,7 @@ func spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary = {})
 		enemy.set_meta("preloaded_birth_duration", float(spawn_flags.get("birth_duration", 0.42)))
 		enemy.set_physics_process(false)
 	enemy_count_changed.emit(_enemies.size())
+	_add_child_safely(_get_enemy_parent(), enemy)
 	return enemy
 
 
@@ -196,6 +193,19 @@ func _get_parry_pushback_size_factor(enemy) -> float:
 		return 1.0
 	var body_size: float = max(float(enemy.body_radius), 1.0)
 	return clamp(22.0 / body_size, 0.28, 1.0)
+
+
+func _get_enemy_parent() -> Node:
+	return _enemy_layer if _enemy_layer != null else self
+
+
+func _add_child_safely(parent: Node, child: Node) -> void:
+	if parent == null or child == null or child.get_parent() != null:
+		return
+	if parent.is_inside_tree() and Engine.is_in_physics_frame():
+		parent.call_deferred("add_child", child)
+		return
+	parent.add_child(child)
 
 
 func get_nearby_enemies(origin: Vector2, radius: float, excluded: Array[Node]) -> Array:

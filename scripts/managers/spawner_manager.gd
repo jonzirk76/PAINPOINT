@@ -216,13 +216,10 @@ func _spawn_spawner(placement, index: int) -> void:
 	spawner.spawn_ready.connect(_on_spawner_spawn_ready)
 	spawner.health_depleted.connect(_on_spawner_health_depleted)
 	spawner.shot_ready.connect(_on_spawner_shot_ready)
-	if _spawner_layer != null:
-		_spawner_layer.add_child(spawner)
-	else:
-		add_child(spawner)
 	if spawner_birth_animation_seconds > 0.0 and spawner.has_method("play_birth_animation"):
 		spawner.play_birth_animation(spawner_birth_animation_seconds)
 	_spawners.append(spawner)
+	_add_child_safely(_get_spawner_parent(), spawner)
 
 
 func _on_spawner_spawn_ready(_spawner, _spawn_position: Vector2) -> void:
@@ -237,6 +234,19 @@ func _on_spawner_spawn_ready(_spawner, _spawn_position: Vector2) -> void:
 		var batch_position := _get_spawn_position_around_spawner(_spawner, spawn_index, batch_count)
 		spawn_requested.emit(batch_position, profile)
 		projected_enemy_count += 1
+
+
+func _get_spawner_parent() -> Node:
+	return _spawner_layer if _spawner_layer != null else self
+
+
+func _add_child_safely(parent: Node, child: Node) -> void:
+	if parent == null or child == null or child.get_parent() != null:
+		return
+	if parent.is_inside_tree() and Engine.is_in_physics_frame():
+		parent.call_deferred("add_child", child)
+		return
+	parent.add_child(child)
 
 
 func _begin_initial_spawn_sequence() -> void:
