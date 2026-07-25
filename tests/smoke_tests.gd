@@ -3232,15 +3232,25 @@ func _test_dungeon_room_interiors_persist(failures: Array[String]) -> void:
 	if _get_level_generation_signature(manager.get_current_level_definition()) != first_signature:
 		failures.append("DungeonManager should return the cached generated interior on repeated reads.")
 	var full_floor_during_combat = manager.get_current_full_floor_level_definition(true)
+	if manager._full_floor_base_level_cache == null:
+		failures.append("DungeonManager should cache stable full-floor geometry after building a full-floor level.")
+	var full_floor_signature := _get_level_generation_signature(full_floor_during_combat)
+	var repeated_full_floor = manager.get_current_full_floor_level_definition(true)
+	if _get_level_generation_signature(repeated_full_floor) != full_floor_signature:
+		failures.append("Repeated full-floor level requests should reuse stable cached geometry.")
+	full_floor_during_combat.wall_rects.clear()
+	var isolated_full_floor = manager.get_current_full_floor_level_definition(true)
+	if isolated_full_floor.wall_rects.is_empty():
+		failures.append("Mutating a returned full-floor level should not mutate the cached full-floor geometry.")
 	var combat_dim_rects: Array = full_floor_during_combat.get_meta("inactive_room_dim_rects") if full_floor_during_combat.has_meta("inactive_room_dim_rects") else []
 	if combat_dim_rects.is_empty():
 		failures.append("Full-floor dungeon combat levels should expose dim rects for visible inactive rooms.")
-	var active_combat_wall_rects: Array[Rect2] = _get_level_meta_rects(full_floor_during_combat, "active_room_wall_rects", [])
+	var active_combat_wall_rects: Array[Rect2] = _get_level_meta_rects(isolated_full_floor, "active_room_wall_rects", [])
 	if active_combat_wall_rects.is_empty():
 		failures.append("Full-floor dungeon combat levels should expose active-room wall blockers for gameplay managers.")
-	elif active_combat_wall_rects.size() >= full_floor_during_combat.wall_rects.size():
+	elif active_combat_wall_rects.size() >= isolated_full_floor.wall_rects.size():
 		failures.append("Active combat wall blockers should be a smaller room-local subset of full-floor wall blockers.")
-	var active_combat_bounds: Rect2 = full_floor_during_combat.get_meta("active_room_bounds") if full_floor_during_combat.has_meta("active_room_bounds") else Rect2()
+	var active_combat_bounds: Rect2 = isolated_full_floor.get_meta("active_room_bounds") if isolated_full_floor.has_meta("active_room_bounds") else Rect2()
 	if active_combat_bounds.size != Vector2.ZERO:
 		for rect in active_combat_wall_rects:
 			if not rect.intersects(active_combat_bounds.grow(96.0), true):

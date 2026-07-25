@@ -73,6 +73,17 @@ var _interior_generator = ROOM_INTERIOR_GENERATOR_SCRIPT.new()
 var _large_room_count: int = 0
 var _crossroads_placed: bool = false
 var _piece_variant_cache: Dictionary = {}
+var _full_floor_base_level_cache: LevelDefinition = null
+var _full_floor_room_ids_cache: Array[String] = []
+var _full_floor_cells_cache: Array[Vector2i] = []
+var _full_floor_min_world_cell_cache: Vector2i = Vector2i.ZERO
+var _full_floor_room_offsets_cache: Dictionary = {}
+var _full_floor_room_bounds_cache: Dictionary = {}
+var _full_floor_room_playable_rects_cache: Dictionary = {}
+var _full_floor_current_door_infos_cache: Dictionary = {}
+var _full_floor_traversal_door_infos_cache: Dictionary = {}
+var _full_floor_state_overlay_cache: Dictionary = {}
+var _full_floor_state_version: int = 0
 var _floor_cat_room_position: Vector2 = Vector2.ZERO
 var _floor_cat_seed: int = 0
 
@@ -107,6 +118,24 @@ func set_enabled(value: bool) -> void:
 	enabled = value
 
 
+func _clear_full_floor_geometry_cache() -> void:
+	_full_floor_base_level_cache = null
+	_full_floor_room_ids_cache.clear()
+	_full_floor_cells_cache.clear()
+	_full_floor_min_world_cell_cache = Vector2i.ZERO
+	_full_floor_room_offsets_cache.clear()
+	_full_floor_room_bounds_cache.clear()
+	_full_floor_room_playable_rects_cache.clear()
+	_full_floor_current_door_infos_cache.clear()
+	_invalidate_full_floor_state_cache()
+
+
+func _invalidate_full_floor_state_cache() -> void:
+	_full_floor_state_version += 1
+	_full_floor_state_overlay_cache.clear()
+	_full_floor_traversal_door_infos_cache.clear()
+
+
 func get_current_level_definition():
 	var state := get_current_room_state()
 	if state.is_empty():
@@ -128,26 +157,104 @@ func get_current_full_floor_level_definition(include_active_contents: bool = tru
 
 
 func get_full_floor_level_definition(active_room_id: String = "", include_active_contents: bool = true):
-	var room_ids: Array[String] = _get_full_floor_room_ids()
+	if not _ensure_full_floor_geometry_cache():
+		return null
+	var room_ids: Array[String] = _full_floor_room_ids_cache
 	var level_id: String = "full_floor_%d" % floor_number if active_room_id.is_empty() else "full_floor_%d_%s" % [floor_number, active_room_id]
-	var level = _build_floor_level_definition(room_ids, level_id, "Floor %d" % floor_number, "Floor %d Full Map" % floor_number)
+	var level: LevelDefinition = _copy_full_floor_base_level(level_id, "Floor %d" % floor_number, "Floor %d Full Map" % floor_number)
 	if level == null:
 		return null
 	level.set_meta("full_floor", true)
 	level.set_meta("active_room_id", active_room_id)
-	level.set_meta("fog_rects", _get_full_floor_fog_rects(active_room_id, room_ids))
-	level.set_meta("inactive_room_dim_rects", _get_full_floor_inactive_room_dim_rects(active_room_id, room_ids))
-	level.set_meta("visible_bounds", get_full_floor_visible_bounds(active_room_id))
+	var overlay := _get_full_floor_state_overlay(active_room_id)
+	level.set_meta("fog_rects", Array(overlay.get("fog_rects", [])).duplicate())
+	level.set_meta("inactive_room_dim_rects", Array(overlay.get("inactive_room_dim_rects", [])).duplicate())
+	level.set_meta("visible_bounds", overlay.get("visible_bounds", Rect2()))
 	if not active_room_id.is_empty():
-		level.set_meta("active_room_bounds", get_full_floor_room_bounds(active_room_id))
-		if _rooms.has(active_room_id):
-			var active_state: Dictionary = _rooms[active_room_id]
-			if not bool(active_state.get("cleared", false)):
-				level.set_meta("active_room_playable_rects", _get_full_floor_room_playable_rects(active_room_id, room_ids))
+		level.set_meta("active_room_bounds", overlay.get("active_room_bounds", Rect2()))
+		if overlay.has("active_room_playable_rects"):
+			level.set_meta("active_room_playable_rects", Array(overlay.get("active_room_playable_rects", [])).duplicate())
 	_apply_visible_floor_destructible_prop_placements(level, active_room_id, room_ids, include_active_contents)
 	if include_active_contents:
 		_apply_active_room_contents_to_full_floor_level(level, active_room_id, room_ids)
 	return level
+
+
+func _ensure_full_floor_geometry_cache() -> bool:
+	if _full_floor_base_level_cache != null:
+		return true
+	var room_ids: Array[String] = _get_full_floor_room_ids()
+	if room_ids.is_empty():
+		return false
+	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(room_ids)
+	if floor_cells.is_empty():
+		return false
+	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(room_ids)
+	var level: LevelDefinition = _build_floor_level_definition_from_geometry(
+		room_ids,
+		floor_cells,
+		min_world_cell,
+		"full_floor_%d" % floor_number,
+		"Floor %d" % floor_number,
+		"Floor %d Full Map" % floor_number
+	)
+	if level == null:
+		return false
+	_full_floor_base_level_cache = level
+	_full_floor_room_ids_cache = room_ids
+	_full_floor_cells_cache = floor_cells
+	_full_floor_min_world_cell_cache = min_world_cell
+	_full_floor_room_offsets_cache.clear()
+	_full_floor_room_bounds_cache.clear()
+	_full_floor_room_playable_rects_cache.clear()
+	for room_id in room_ids:
+		if room_id.is_empty() or not _rooms.has(room_id):
+			continue
+		var state: Dictionary = _rooms[room_id]
+		var offset: Vector2 = _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
+		_full_floor_room_offsets_cache[room_id] = offset
+		var piece: RoomPieceDefinition = state["piece"] as RoomPieceDefinition
+		if piece == null:
+			continue
+		var room_bounds: Rect2 = ROOM_GEOMETRY_BUILDER.get_bounds(piece.footprint_cells)
+		_full_floor_room_bounds_cache[room_id] = _translated_rect(room_bounds, offset)
+		var playable_rects: Array[Rect2] = []
+		for local_cell: Vector2i in piece.footprint_cells:
+			var cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(piece.footprint_cells, local_cell)
+			playable_rects.append(_translated_rect(cell_rect, offset))
+		_full_floor_room_playable_rects_cache[room_id] = playable_rects
+	return true
+
+
+func _copy_full_floor_base_level(level_id: String, display_name: String, difficulty_label: String) -> LevelDefinition:
+	if _full_floor_base_level_cache == null:
+		return null
+	var level: LevelDefinition = _full_floor_base_level_cache.duplicate(true) as LevelDefinition
+	if level == null:
+		return null
+	level.id = level_id
+	level.display_name = display_name
+	level.difficulty_label = difficulty_label
+	return level
+
+
+func _get_full_floor_state_overlay(active_room_id: String) -> Dictionary:
+	var cache_key := "%d:%s" % [_full_floor_state_version, active_room_id]
+	if _full_floor_state_overlay_cache.has(cache_key):
+		return Dictionary(_full_floor_state_overlay_cache[cache_key])
+	var overlay := {
+		"fog_rects": _get_full_floor_fog_rects(active_room_id, _full_floor_room_ids_cache),
+		"inactive_room_dim_rects": _get_full_floor_inactive_room_dim_rects(active_room_id, _full_floor_room_ids_cache),
+		"visible_bounds": get_full_floor_visible_bounds(active_room_id)
+	}
+	if not active_room_id.is_empty():
+		overlay["active_room_bounds"] = get_full_floor_room_bounds(active_room_id)
+		if _rooms.has(active_room_id):
+			var active_state: Dictionary = _rooms[active_room_id]
+			if not bool(active_state.get("cleared", false)):
+				overlay["active_room_playable_rects"] = _get_full_floor_room_playable_rects(active_room_id, _full_floor_room_ids_cache)
+	_full_floor_state_overlay_cache[cache_key] = overlay
+	return overlay
 
 
 func remove_destructible_prop_placement(room_id: String, placement) -> bool:
@@ -325,6 +432,7 @@ func mark_current_room_cleared() -> bool:
 	if String(state["piece"].room_kind) != "treasure":
 		state["cleared_floor_available"] = true
 	_rooms[current_room_id] = state
+	_invalidate_full_floor_state_cache()
 	return true
 
 
@@ -338,6 +446,7 @@ func mark_current_room_cleared_floor_available() -> bool:
 		return false
 	state["cleared_floor_available"] = true
 	_rooms[current_room_id] = state
+	_invalidate_full_floor_state_cache()
 	return true
 
 
@@ -372,6 +481,12 @@ func _build_floor_level_definition(cleared_room_ids: Array[String], level_id: St
 	if floor_cells.is_empty():
 		return null
 	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(cleared_room_ids)
+	return _build_floor_level_definition_from_geometry(cleared_room_ids, floor_cells, min_world_cell, level_id, display_name, difficulty_label)
+
+
+func _build_floor_level_definition_from_geometry(cleared_room_ids: Array[String], floor_cells: Array[Vector2i], min_world_cell: Vector2i, level_id: String, display_name: String, difficulty_label: String):
+	if cleared_room_ids.is_empty() or floor_cells.is_empty():
+		return null
 	var level: LevelDefinition = LevelDefinition.new()
 	level.id = level_id
 	level.display_name = display_name
@@ -406,19 +521,20 @@ func get_full_floor_current_door_infos() -> Array:
 
 
 func get_full_floor_traversal_door_infos() -> Array:
+	var cache_key := "%d:%s" % [_full_floor_state_version, current_room_id]
+	if _ensure_full_floor_geometry_cache():
+		if _full_floor_traversal_door_infos_cache.has(cache_key):
+			return _duplicate_door_infos(Array(_full_floor_traversal_door_infos_cache[cache_key]))
 	var source_room_ids: Array[String] = _get_full_floor_visible_room_ids(current_room_id)
 	var door_infos: Array = []
 	if source_room_ids.is_empty():
 		return door_infos
-	var room_ids: Array[String] = _get_full_floor_room_ids()
-	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(room_ids)
-	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(room_ids)
 	for room_id in source_room_ids:
 		var state: Dictionary = _rooms[room_id]
 		var piece = state["piece"]
 		var connections: Dictionary = state["connections"]
 		var connection_edges: Dictionary = state.get("connection_edges", {})
-		var offset: Vector2 = _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
+		var offset: Vector2 = _get_cached_full_floor_room_offset(room_id)
 		for direction in CARDINAL_DIRECTIONS:
 			if not connections.has(direction):
 				continue
@@ -440,6 +556,11 @@ func get_full_floor_traversal_door_infos() -> Array:
 				"source_room_id": room_id,
 				"full_floor_transition": true
 			})
+	if _full_floor_base_level_cache != null:
+		var stored_infos: Array = []
+		for door_info in door_infos:
+			stored_infos.append(Dictionary(door_info).duplicate())
+		_full_floor_traversal_door_infos_cache[cache_key] = stored_infos
 	return door_infos
 
 
@@ -458,6 +579,9 @@ func get_full_floor_minimap_position_for_position(position: Vector2) -> Dictiona
 func get_full_floor_room_bounds(room_id: String) -> Rect2:
 	if room_id.is_empty() or not _rooms.has(room_id):
 		return Rect2()
+	if _ensure_full_floor_geometry_cache() and _full_floor_room_bounds_cache.has(room_id):
+		var cached_bounds: Rect2 = _full_floor_room_bounds_cache[room_id]
+		return cached_bounds
 	return _get_floor_bounds_for_room_ids([room_id], _get_full_floor_room_ids())
 
 
@@ -465,6 +589,8 @@ func _get_full_floor_room_playable_rects(room_id: String, room_ids: Array[String
 	var rects: Array[Rect2] = []
 	if room_id.is_empty() or not _rooms.has(room_id) or room_ids.is_empty():
 		return rects
+	if _ensure_full_floor_geometry_cache() and _full_floor_room_playable_rects_cache.has(room_id):
+		return _copy_rect2_array(Array(_full_floor_room_playable_rects_cache[room_id]))
 	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(room_ids)
 	if floor_cells.is_empty():
 		return rects
@@ -484,14 +610,29 @@ func get_full_floor_visible_bounds(active_room_id: String = "") -> Rect2:
 	var visible_room_ids: Array[String] = _get_full_floor_visible_room_ids(active_room_id)
 	if visible_room_ids.is_empty():
 		return get_full_floor_room_bounds(current_room_id)
+	if _ensure_full_floor_geometry_cache():
+		var initialized := false
+		var bounds := Rect2()
+		for room_id in visible_room_ids:
+			if not _full_floor_room_bounds_cache.has(room_id):
+				continue
+			var room_bounds: Rect2 = _full_floor_room_bounds_cache[room_id]
+			if not initialized:
+				bounds = room_bounds
+				initialized = true
+			else:
+				bounds = bounds.merge(room_bounds)
+		if initialized:
+			return bounds
 	return _get_floor_bounds_for_room_ids(visible_room_ids, _get_full_floor_room_ids())
 
 
 func _get_floor_minimap_position_for_position(position: Vector2, cleared_room_ids: Array[String]) -> Dictionary:
 	if cleared_room_ids.is_empty():
 		return {"ok": false, "cell": Vector2i.ZERO, "position": Vector2.ZERO, "room_id": ""}
-	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(cleared_room_ids)
-	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(cleared_room_ids)
+	var use_full_floor_cache := _uses_full_floor_geometry_cache(cleared_room_ids)
+	var floor_cells: Array[Vector2i] = _full_floor_cells_cache if use_full_floor_cache else _get_cleared_floor_cells(cleared_room_ids)
+	var min_world_cell: Vector2i = _full_floor_min_world_cell_cache if use_full_floor_cache else _get_cleared_floor_min_world_cell(cleared_room_ids)
 	var best_cell: Vector2i = Vector2i.ZERO
 	var best_position: Vector2 = Vector2.ZERO
 	var best_room_id: String = ""
@@ -500,7 +641,7 @@ func _get_floor_minimap_position_for_position(position: Vector2, cleared_room_id
 		var state: Dictionary = _rooms[room_id]
 		var piece: Resource = state["piece"]
 		var anchor: Vector2i = state["anchor"]
-		var offset: Vector2 = _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
+		var offset: Vector2 = _get_cached_full_floor_room_offset(room_id) if use_full_floor_cache else _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
 		for local_cell in piece.footprint_cells:
 			var cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(piece.footprint_cells, local_cell)
 			var translated_rect: Rect2 = _translated_rect(cell_rect, offset)
@@ -588,10 +729,8 @@ func _get_cleared_floor_wall_top_tiles(cleared_room_ids: Array[String], min_worl
 func _apply_visible_floor_destructible_prop_placements(level: LevelDefinition, active_room_id: String, room_ids: Array[String], include_active_contents: bool) -> void:
 	if level == null or room_ids.is_empty():
 		return
-	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(room_ids)
-	if floor_cells.is_empty():
+	if not _ensure_full_floor_geometry_cache():
 		return
-	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(room_ids)
 	var visible_props: Array[Resource] = []
 	for room_id in _get_full_floor_visible_room_ids(active_room_id):
 		if room_id.is_empty() or not _rooms.has(room_id):
@@ -602,7 +741,7 @@ func _apply_visible_floor_destructible_prop_placements(level: LevelDefinition, a
 		var room_level: LevelDefinition = state.get("level_definition", null) as LevelDefinition
 		if room_level == null:
 			continue
-		var offset: Vector2 = _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
+		var offset: Vector2 = _get_cached_full_floor_room_offset(room_id)
 		visible_props.append_array(_copy_offset_resource_placements(room_level.destructible_prop_placements, offset, room_id))
 	level.destructible_prop_placements = visible_props
 
@@ -680,14 +819,13 @@ func _get_full_floor_door_infos_for_room(room_id: String) -> Array:
 	var door_infos: Array = []
 	if room_id.is_empty() or not _rooms.has(room_id):
 		return door_infos
-	var room_ids: Array[String] = _get_full_floor_room_ids()
-	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(room_ids)
-	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(room_ids)
+	if _ensure_full_floor_geometry_cache() and _full_floor_current_door_infos_cache.has(room_id):
+		return _duplicate_door_infos(Array(_full_floor_current_door_infos_cache[room_id]))
 	var state: Dictionary = _rooms[room_id]
 	var piece = state["piece"]
 	var connections: Dictionary = state["connections"]
 	var connection_edges: Dictionary = state.get("connection_edges", {})
-	var offset: Vector2 = _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
+	var offset: Vector2 = _get_cached_full_floor_room_offset(room_id)
 	for direction in CARDINAL_DIRECTIONS:
 		if not connections.has(direction):
 			continue
@@ -707,12 +845,58 @@ func _get_full_floor_door_infos_for_room(room_id: String) -> Array:
 			"source_room_id": room_id,
 			"full_floor_transition": true
 		})
+	if _full_floor_base_level_cache != null:
+		var stored_infos: Array = []
+		for door_info in door_infos:
+			stored_infos.append(Dictionary(door_info).duplicate())
+		_full_floor_current_door_infos_cache[room_id] = stored_infos
 	return door_infos
+
+
+func _duplicate_door_infos(source_infos: Array) -> Array:
+	var duplicated_infos: Array = []
+	for door_info in source_infos:
+		duplicated_infos.append(Dictionary(door_info).duplicate())
+	return duplicated_infos
+
+
+func _uses_full_floor_geometry_cache(room_ids: Array[String]) -> bool:
+	if not _ensure_full_floor_geometry_cache():
+		return false
+	if room_ids.size() != _full_floor_room_ids_cache.size():
+		return false
+	for index in range(room_ids.size()):
+		if room_ids[index] != _full_floor_room_ids_cache[index]:
+			return false
+	return true
+
+
+func _copy_rect2_array(source_rects: Array) -> Array[Rect2]:
+	var copied_rects: Array[Rect2] = []
+	for rect in source_rects:
+		if rect is Rect2:
+			copied_rects.append(rect)
+	return copied_rects
+
+
+func _get_cached_full_floor_room_offset(room_id: String) -> Vector2:
+	if _ensure_full_floor_geometry_cache() and _full_floor_room_offsets_cache.has(room_id):
+		var cached_offset: Vector2 = _full_floor_room_offsets_cache[room_id]
+		return cached_offset
+	if room_id.is_empty() or not _rooms.has(room_id):
+		return Vector2.ZERO
+	var room_ids: Array[String] = _get_full_floor_room_ids()
+	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(room_ids)
+	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(room_ids)
+	var state: Dictionary = _rooms[room_id]
+	return _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
 
 
 func _get_floor_position_for_room_position(room_id: String, room_position: Vector2, room_ids: Array[String]) -> Vector2:
 	if room_id.is_empty() or not _rooms.has(room_id) or room_ids.is_empty():
 		return room_position
+	if _uses_full_floor_geometry_cache(room_ids):
+		return room_position + _get_cached_full_floor_room_offset(room_id)
 	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(room_ids)
 	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(room_ids)
 	var state: Dictionary = _rooms[room_id]
@@ -722,8 +906,9 @@ func _get_floor_position_for_room_position(room_id: String, room_position: Vecto
 func _get_floor_room_position_for_position(floor_position: Vector2, room_ids: Array[String]) -> Dictionary:
 	if room_ids.is_empty():
 		return {"ok": false, "room_id": "", "position": floor_position}
-	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(room_ids)
-	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(room_ids)
+	var use_full_floor_cache := _uses_full_floor_geometry_cache(room_ids)
+	var floor_cells: Array[Vector2i] = _full_floor_cells_cache if use_full_floor_cache else _get_cleared_floor_cells(room_ids)
+	var min_world_cell: Vector2i = _full_floor_min_world_cell_cache if use_full_floor_cache else _get_cleared_floor_min_world_cell(room_ids)
 	var best_room_id: String = ""
 	var best_position: Vector2 = floor_position
 	var best_distance: float = INF
@@ -732,7 +917,7 @@ func _get_floor_room_position_for_position(floor_position: Vector2, room_ids: Ar
 		var piece: RoomPieceDefinition = state["piece"] as RoomPieceDefinition
 		if piece == null:
 			continue
-		var offset: Vector2 = _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
+		var offset: Vector2 = _get_cached_full_floor_room_offset(room_id) if use_full_floor_cache else _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
 		for local_cell in piece.footprint_cells:
 			var cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(piece.footprint_cells, local_cell)
 			var translated_rect: Rect2 = _translated_rect(cell_rect, offset)
@@ -781,10 +966,11 @@ func _get_full_floor_fog_rects(active_room_id: String, room_ids: Array[String]) 
 	var fog_rects: Array[Rect2] = []
 	if room_ids.is_empty():
 		return fog_rects
-	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(room_ids)
+	var use_full_floor_cache := _uses_full_floor_geometry_cache(room_ids)
+	var floor_cells: Array[Vector2i] = _full_floor_cells_cache if use_full_floor_cache else _get_cleared_floor_cells(room_ids)
 	if floor_cells.is_empty():
 		return fog_rects
-	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(room_ids)
+	var min_world_cell: Vector2i = _full_floor_min_world_cell_cache if use_full_floor_cache else _get_cleared_floor_min_world_cell(room_ids)
 	var visible_cell_lookup: Dictionary = _get_full_floor_visible_cell_lookup(active_room_id, room_ids, min_world_cell)
 	var min_floor_cell: Vector2i = ROOM_GEOMETRY_BUILDER.get_min_cell(floor_cells)
 	var max_floor_cell: Vector2i = ROOM_GEOMETRY_BUILDER.get_max_cell(floor_cells)
@@ -805,10 +991,11 @@ func _get_full_floor_inactive_room_dim_rects(active_room_id: String, room_ids: A
 	var active_state: Dictionary = _rooms[active_room_id]
 	if bool(active_state.get("cleared", false)):
 		return dim_rects
-	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(room_ids)
+	var use_full_floor_cache := _uses_full_floor_geometry_cache(room_ids)
+	var floor_cells: Array[Vector2i] = _full_floor_cells_cache if use_full_floor_cache else _get_cleared_floor_cells(room_ids)
 	if floor_cells.is_empty():
 		return dim_rects
-	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(room_ids)
+	var min_world_cell: Vector2i = _full_floor_min_world_cell_cache if use_full_floor_cache else _get_cleared_floor_min_world_cell(room_ids)
 	for room_id in _get_full_floor_visible_room_ids(active_room_id):
 		if room_id == active_room_id or not _rooms.has(room_id):
 			continue
@@ -816,7 +1003,7 @@ func _get_full_floor_inactive_room_dim_rects(active_room_id: String, room_ids: A
 		var piece: RoomPieceDefinition = state["piece"] as RoomPieceDefinition
 		if piece == null:
 			continue
-		var offset: Vector2 = _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
+		var offset: Vector2 = _get_cached_full_floor_room_offset(room_id) if use_full_floor_cache else _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
 		for local_cell: Vector2i in piece.footprint_cells:
 			var cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(piece.footprint_cells, local_cell)
 			dim_rects.append(_translated_rect(cell_rect, offset))
@@ -848,7 +1035,7 @@ func _apply_active_room_contents_to_full_floor_level(level: LevelDefinition, act
 	var active_level: LevelDefinition = state.get("level_definition", null) as LevelDefinition
 	if active_level == null:
 		return
-	var offset: Vector2 = _get_floor_position_for_room_position(active_room_id, Vector2.ZERO, room_ids)
+	var offset: Vector2 = _get_cached_full_floor_room_offset(active_room_id)
 	level.set_meta("active_room_wall_rects", _copy_offset_rects(active_level.wall_rects, offset))
 	level.set_meta("active_room_void_rects", _copy_offset_rects(active_level.void_rects, offset))
 	level.max_active_enemies = int(active_level.max_active_enemies)
@@ -990,6 +1177,7 @@ func get_floor_generation_seed() -> int:
 
 
 func _generate_layout() -> void:
+	_clear_full_floor_geometry_cache()
 	_rooms.clear()
 	_room_order.clear()
 	_occupied_cells.clear()
@@ -1562,8 +1750,11 @@ func _reveal_room(room_id: String) -> void:
 	if not _rooms.has(room_id):
 		return
 	var state: Dictionary = _rooms[room_id]
+	if bool(state.get("revealed", false)):
+		return
 	state["revealed"] = true
 	_rooms[room_id] = state
+	_invalidate_full_floor_state_cache()
 
 
 func _generate_room_interiors() -> void:
