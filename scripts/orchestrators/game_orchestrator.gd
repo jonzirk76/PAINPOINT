@@ -3194,6 +3194,7 @@ func _on_restart_requested() -> void:
 func _on_upgrade_changed(modifiers: Dictionary, _active_effects: Array) -> void:
 	_latest_modifiers = modifiers
 	player_manager.set_weapon_modifiers(modifiers)
+	input_manager.set_fire_cooldown_multiplier(float(modifiers.get("fire_cooldown_multiplier", 1.0)))
 	_update_hud()
 
 

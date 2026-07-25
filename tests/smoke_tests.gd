@@ -1008,6 +1008,35 @@ func _test_aim_change_logic(failures: Array[String]) -> void:
 	if manager.should_fire_for_aim_change(Vector2.ZERO):
 		failures.append("Right-stick neutral return should not repeatedly request release fire.")
 	manager.reset_run()
+	manager.stick_deadzone = 0.25
+	manager.aim_release_deadzone_fire_rate_bonus = 0.25
+	manager.set_fire_cooldown_multiplier(1.0)
+	if not manager.should_fire_for_aim_change(Vector2.RIGHT):
+		failures.append("Base fire-rate right-stick aim should still arm release fire.")
+	if manager.should_fire_for_aim_change(Vector2(0.36, 0.0)):
+		failures.append("Base fire-rate release radius should not grow beyond the normal stick deadzone.")
+	manager.reset_run()
+	manager.stick_deadzone = 0.25
+	manager.aim_release_deadzone_fire_rate_bonus = 0.25
+	manager.set_fire_cooldown_multiplier(0.4)
+	if not manager.should_fire_for_aim_change(Vector2(0.34, 0.0)):
+		failures.append("Expanded release radius should not raise the initial right-stick aim entry deadzone.")
+	if not manager.should_fire_for_aim_change(Vector2(0.36, 0.0)):
+		failures.append("Fast fire-rate right-stick return should use the expanded release radius.")
+	elif manager._consume_pending_aim_fire_direction().distance_to(Vector2.RIGHT) > 0.001:
+		failures.append("Fast fire-rate right-stick release should fire in the previous aim direction.")
+	if manager.should_fire_for_aim_change(Vector2(0.36, 0.0)):
+		failures.append("Expanded release radius should latch neutral until the stick moves outward again.")
+	if not manager.should_fire_for_aim_change(Vector2(0.52, 0.0)):
+		failures.append("Right-stick aim should re-arm after leaving the expanded release radius.")
+	manager.set_fire_cooldown_multiplier(0.4)
+	manager.reset_run()
+	if not manager.should_fire_for_aim_change(Vector2.RIGHT):
+		failures.append("Input reset should keep the current fire-rate release tuning armed for floor transitions.")
+	if not manager.should_fire_for_aim_change(Vector2(0.36, 0.0)):
+		failures.append("Input reset should preserve fire-rate-based release radius during floor transitions.")
+	manager.set_fire_cooldown_multiplier(1.0)
+	manager.reset_run()
 	if not manager.should_fire_for_aim_change(Vector2.RIGHT, InputManager.AIM_SOURCE_DIGITAL):
 		failures.append("Initial digital aim state should still request fire.")
 	if manager.should_fire_for_aim_change(Vector2.ZERO, InputManager.AIM_SOURCE_NONE):

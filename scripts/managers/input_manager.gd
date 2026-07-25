@@ -25,6 +25,8 @@ const AIM_SOURCE_MOUSE := 3
 @export var aim_change_threshold: float = 0.18
 ## Fires once in the previous right-stick direction when analog aim returns to neutral.
 @export var aim_release_fire_enabled: bool = true
+## Expands the analog return-to-neutral radius as fire rate upgrades reduce weapon cooldown.
+@export var aim_release_deadzone_fire_rate_bonus: float = 0.25
 ## Snaps right-stick aim to a cardinal axis when the off-axis component is this small relative to the dominant axis.
 @export var aim_cardinal_snap_enter_ratio: float = 0.45
 ## Keeps right-stick aim snapped to a cardinal axis until the off-axis component drifts past this ratio.
@@ -42,8 +44,11 @@ var _last_active_aim_source: int = AIM_SOURCE_NONE
 var _last_read_aim_source: int = AIM_SOURCE_NONE
 var _pending_aim_fire_direction: Vector2 = Vector2.ZERO
 var _aim_release_fire_armed: bool = false
+var _aim_release_neutral_latched: bool = false
 var _super_held: bool = false
 var _overdrive_held: bool = false
+var _fire_cooldown_multiplier: float = 1.0
+var _last_read_analog_aim_magnitude: float = 0.0
 var _aim_origin_provider: Callable
 
 
@@ -63,8 +68,10 @@ func reset_run() -> void:
 	_last_read_aim_source = AIM_SOURCE_NONE
 	_pending_aim_fire_direction = Vector2.ZERO
 	_aim_release_fire_armed = false
+	_aim_release_neutral_latched = false
 	_super_held = false
 	_overdrive_held = false
+	_last_read_analog_aim_magnitude = 0.0
 
 
 func set_enabled(value: bool) -> void:
@@ -72,6 +79,7 @@ func set_enabled(value: bool) -> void:
 	if not enabled:
 		_pending_aim_fire_direction = Vector2.ZERO
 		_aim_release_fire_armed = false
+		_aim_release_neutral_latched = false
 		_last_read_aim_source = AIM_SOURCE_NONE
 	if not enabled and _overdrive_held:
 		_overdrive_held = false
@@ -93,7 +101,7 @@ func _process(_delta: float) -> void:
 		_overdrive_held = overdrive_held
 		overdrive_changed.emit(_overdrive_held)
 	var aim_vector := _read_aim_vector()
-	if should_fire_for_aim_change(aim_vector, _last_read_aim_source):
+	if should_fire_for_aim_change(aim_vector, _last_read_aim_source, _last_read_analog_aim_magnitude):
 		var fire_direction := _consume_pending_aim_fire_direction()
 		aim_changed.emit(fire_direction)
 		if not super_held and not was_super_held:
@@ -145,9 +153,23 @@ func _is_pause_controller_button(button_index: int) -> bool:
 	return false
 
 
-func should_fire_for_aim_change(raw_direction: Vector2, aim_source: int = AIM_SOURCE_ANALOG) -> bool:
+func set_fire_cooldown_multiplier(multiplier: float) -> void:
+	_fire_cooldown_multiplier = maxf(multiplier, 0.01)
+
+
+func should_fire_for_aim_change(raw_direction: Vector2, aim_source: int = AIM_SOURCE_ANALOG, raw_analog_magnitude: float = -1.0) -> bool:
 	_pending_aim_fire_direction = Vector2.ZERO
-	var direction := _apply_deadzone(raw_direction)
+	var analog_magnitude := raw_analog_magnitude
+	if analog_magnitude < 0.0:
+		analog_magnitude = raw_direction.length()
+	var release_deadzone := _get_aim_release_deadzone()
+	var should_hold_release_neutral := aim_source == AIM_SOURCE_ANALOG and _aim_release_neutral_latched and analog_magnitude < release_deadzone
+	var should_release_to_neutral := aim_source == AIM_SOURCE_ANALOG and _aim_release_fire_armed and _last_active_aim_source == AIM_SOURCE_ANALOG and analog_magnitude < release_deadzone
+	if aim_source == AIM_SOURCE_ANALOG and analog_magnitude >= release_deadzone:
+		_aim_release_neutral_latched = false
+	elif aim_source == AIM_SOURCE_DIGITAL or aim_source == AIM_SOURCE_MOUSE:
+		_aim_release_neutral_latched = false
+	var direction := Vector2.ZERO if should_hold_release_neutral or should_release_to_neutral else _apply_deadzone(raw_direction)
 	if direction.length_squared() <= 0.001:
 		var release_direction := _last_aim
 		var should_fire_on_release := aim_release_fire_enabled and _aim_release_fire_armed and _last_active_aim_source == AIM_SOURCE_ANALOG and release_direction.length_squared() > 0.001
@@ -156,6 +178,7 @@ func should_fire_for_aim_change(raw_direction: Vector2, aim_source: int = AIM_SO
 		_last_active_aim_source = AIM_SOURCE_NONE
 		_aim_release_fire_armed = false
 		if should_fire_on_release:
+			_aim_release_neutral_latched = true
 			_pending_aim_fire_direction = release_direction.normalized()
 			return true
 		return false
@@ -201,7 +224,8 @@ func _read_aim_vector() -> Vector2:
 		Input.get_joy_axis(0, JOY_AXIS_RIGHT_X),
 		Input.get_joy_axis(0, JOY_AXIS_RIGHT_Y)
 	)
-	if joy_vector.length() >= stick_deadzone:
+	_last_read_analog_aim_magnitude = joy_vector.length()
+	if _last_read_analog_aim_magnitude >= stick_deadzone:
 		_last_read_aim_source = AIM_SOURCE_ANALOG
 		return _snap_analog_aim_to_cardinal(joy_vector)
 
@@ -247,6 +271,12 @@ func _apply_deadzone(vector: Vector2) -> Vector2:
 	if vector.length() < stick_deadzone:
 		return Vector2.ZERO
 	return vector.normalized()
+
+
+func _get_aim_release_deadzone() -> float:
+	var fire_rate_ratio: float = clampf(1.0 - _fire_cooldown_multiplier, 0.0, 1.0)
+	var release_deadzone: float = stick_deadzone + maxf(aim_release_deadzone_fire_rate_bonus, 0.0) * fire_rate_ratio
+	return clampf(release_deadzone, stick_deadzone, 0.85)
 
 
 func _snap_analog_aim_to_cardinal(vector: Vector2) -> Vector2:
