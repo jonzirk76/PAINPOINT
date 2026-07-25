@@ -1427,18 +1427,72 @@ func _on_agent_taunt_ollama_request_completed(result: int, response_code: int, _
 		push_warning("Agent taunt Ollama request failed with HTTP %d: %s" % [response_code, body.get_string_from_utf8()])
 		_finalize_agent_intro_taunt_line(_agent_taunt_llm_fallback_line)
 		return
-	var parsed: Variant = JSON.parse_string(body.get_string_from_utf8())
+	var body_text: String = body.get_string_from_utf8()
+	var parsed: Variant = JSON.parse_string(body_text)
 	if not parsed is Dictionary:
-		push_warning("Agent taunt Ollama request returned invalid JSON.")
+		push_warning("Agent taunt Ollama request returned invalid JSON: %s" % _get_agent_taunt_body_excerpt(body_text))
 		_finalize_agent_intro_taunt_line(_agent_taunt_llm_fallback_line)
 		return
 	var payload: Dictionary = parsed
-	var raw_line: String = String(payload.get("response", "")).strip_edges()
+	if payload.has("error"):
+		push_warning("Agent taunt Ollama request returned an error: %s" % String(payload.get("error", "")))
+		_finalize_agent_intro_taunt_line(_agent_taunt_llm_fallback_line)
+		return
+	var raw_line: String = _extract_agent_taunt_ollama_text(payload).strip_edges()
 	if raw_line.is_empty():
-		push_warning("Agent taunt Ollama response did not include response text.")
+		push_warning("Agent taunt Ollama response did not include response text: %s" % _get_agent_taunt_payload_summary(payload, body_text))
 		_finalize_agent_intro_taunt_line(_agent_taunt_llm_fallback_line)
 		return
 	_finalize_agent_intro_taunt_line(_sanitize_agent_taunt_text(raw_line, _agent_taunt_llm_fallback_line))
+
+
+func _extract_agent_taunt_ollama_text(payload: Dictionary) -> String:
+	var response_text: String = String(payload.get("response", "")).strip_edges()
+	if not response_text.is_empty():
+		return response_text
+	var content_text: String = String(payload.get("content", "")).strip_edges()
+	if not content_text.is_empty():
+		return content_text
+	var message_variant: Variant = payload.get("message", null)
+	if message_variant is Dictionary:
+		var message: Dictionary = message_variant
+		var message_content: String = String(message.get("content", "")).strip_edges()
+		if not message_content.is_empty():
+			return message_content
+	var choices_variant: Variant = payload.get("choices", null)
+	if choices_variant is Array:
+		var choices: Array = choices_variant
+		for choice_variant in choices:
+			if not choice_variant is Dictionary:
+				continue
+			var choice: Dictionary = choice_variant
+			var text: String = String(choice.get("text", "")).strip_edges()
+			if not text.is_empty():
+				return text
+			var choice_message_variant: Variant = choice.get("message", null)
+			if choice_message_variant is Dictionary:
+				var choice_message: Dictionary = choice_message_variant
+				var choice_content: String = String(choice_message.get("content", "")).strip_edges()
+				if not choice_content.is_empty():
+					return choice_content
+	return ""
+
+
+func _get_agent_taunt_payload_summary(payload: Dictionary, body_text: String) -> String:
+	var keys: Array[String] = []
+	for key_variant in payload.keys():
+		keys.append(String(key_variant))
+	keys.sort()
+	return "keys=[%s] body=%s" % [", ".join(keys), _get_agent_taunt_body_excerpt(body_text)]
+
+
+func _get_agent_taunt_body_excerpt(body_text: String) -> String:
+	var excerpt: String = body_text.strip_edges().replace("\r", " ").replace("\n", " ").replace("\t", " ")
+	while excerpt.contains("  "):
+		excerpt = excerpt.replace("  ", " ")
+	if excerpt.length() > 260:
+		excerpt = excerpt.substr(0, 260).strip_edges() + "..."
+	return excerpt
 
 
 func _get_http_request_result_label(result: int) -> String:
