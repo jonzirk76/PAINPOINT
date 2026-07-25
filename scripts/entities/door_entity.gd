@@ -36,6 +36,8 @@ var _gate_collision_update_deferred: bool = false
 
 func _init() -> void:
 	_configure_collision_identity()
+	_add_or_update_collision()
+	_add_or_update_gate_collision()
 
 
 func _ready() -> void:

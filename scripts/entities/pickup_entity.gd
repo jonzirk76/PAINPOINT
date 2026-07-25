@@ -20,6 +20,10 @@ var _collision_shape: CollisionShape2D = null
 var _collision_add_deferred: bool = false
 
 
+func _init() -> void:
+	_add_collision()
+
+
 func _ready() -> void:
 	_set_area_collision_property("collision_layer", 8)
 	_set_area_collision_property("collision_mask", 1)
@@ -181,7 +185,10 @@ func _draw() -> void:
 
 
 func _add_collision() -> void:
-	if _collision_shape != null or _is_expired:
+	if _collision_shape != null:
+		_sync_collision_radius()
+		return
+	if _is_expired:
 		return
 	if is_inside_tree() and Engine.is_in_physics_frame():
 		if not _collision_add_deferred:
@@ -196,6 +203,17 @@ func _add_collision() -> void:
 	collision_shape.shape = shape
 	add_child(collision_shape)
 	_collision_shape = collision_shape
+	_sync_collision_radius()
+
+
+func _sync_collision_radius() -> void:
+	if _collision_shape == null:
+		return
+	var shape := _collision_shape.shape as CircleShape2D
+	if shape == null:
+		shape = CircleShape2D.new()
+		_collision_shape.shape = shape
+	shape.radius = body_radius
 
 
 func _set_area_collision_property(property_name: StringName, value: Variant) -> void:

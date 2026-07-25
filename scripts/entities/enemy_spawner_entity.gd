@@ -82,6 +82,7 @@ var _lightning_charge_max_stacks: int = 0
 
 func _init() -> void:
 	_configure_collision_identity()
+	_add_collision()
 
 
 func _ready() -> void:
@@ -456,7 +457,10 @@ func _draw() -> void:
 
 
 func _add_collision() -> void:
-	if _collision_shape != null or _is_destroyed:
+	if _collision_shape != null:
+		_sync_collision_radius()
+		return
+	if _is_destroyed:
 		return
 	if is_inside_tree() and Engine.is_in_physics_frame():
 		if not _collision_add_deferred:
@@ -471,6 +475,17 @@ func _add_collision() -> void:
 	collision_shape.shape = shape
 	add_child(collision_shape)
 	_collision_shape = collision_shape
+	_sync_collision_radius()
+
+
+func _sync_collision_radius() -> void:
+	if _collision_shape == null:
+		return
+	var shape := _collision_shape.shape as CircleShape2D
+	if shape == null:
+		shape = CircleShape2D.new()
+		_collision_shape.shape = shape
+	shape.radius = body_radius
 
 
 func _disable_collision_state() -> void:

@@ -20,6 +20,7 @@ var _is_broken: bool = false
 
 func _init() -> void:
 	_configure_collision_identity()
+	_add_or_update_collision()
 
 
 func _ready() -> void:

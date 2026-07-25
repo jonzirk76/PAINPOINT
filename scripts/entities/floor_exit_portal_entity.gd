@@ -15,6 +15,10 @@ var _collision_shape: CollisionShape2D = null
 var _collision_add_deferred: bool = false
 
 
+func _init() -> void:
+	_add_collision()
+
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_PAUSABLE
 	_set_area_property("collision_layer", 0)
@@ -112,6 +116,8 @@ func _on_body_exited(body: Node) -> void:
 
 func _add_collision() -> void:
 	if _collision_shape != null:
+		_update_collision_radius()
+		_sync_active_state()
 		return
 	if is_inside_tree() and Engine.is_in_physics_frame():
 		if not _collision_add_deferred:

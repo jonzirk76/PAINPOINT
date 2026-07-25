@@ -204,6 +204,10 @@ var _collision_shape: CollisionShape2D = null
 var _collision_add_deferred: bool = false
 
 
+func _init() -> void:
+	_add_collision()
+
+
 func _ready() -> void:
 	_configure_collision_identity()
 	_add_collision()
@@ -475,8 +479,10 @@ func _configure_collision_identity() -> void:
 
 
 func _add_collision() -> void:
-	if _collision_shape != null or get_node_or_null("CollisionShape2D") != null:
+	if _collision_shape == null:
 		_collision_shape = get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if _collision_shape != null:
+		_sync_collision_radius()
 		return
 	if is_inside_tree() and Engine.is_in_physics_frame():
 		if not _collision_add_deferred:
@@ -491,6 +497,17 @@ func _add_collision() -> void:
 	collision_shape.shape = shape
 	add_child(collision_shape)
 	_collision_shape = collision_shape
+	_sync_collision_radius()
+
+
+func _sync_collision_radius() -> void:
+	if _collision_shape == null:
+		return
+	var shape := _collision_shape.shape as CircleShape2D
+	if shape == null:
+		shape = CircleShape2D.new()
+		_collision_shape.shape = shape
+	shape.radius = body_radius
 
 
 func _set_body_collision_property(property_name: StringName, value: Variant) -> void:
