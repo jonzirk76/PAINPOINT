@@ -7,3 +7,39 @@
 /build_templates/
 /export_presets.cfg
 art/generated/characters/velora/base/*
+
+# Local LLM/model artifacts
+*.gguf
+*.ggml
+*.safetensors
+/models/
+/local_models/
+/llm_models/
+
+# Optional local LLM addon packages
+/addons/nobodywho/
+
+# Local runtime/config overrides
+.env
+.env.*
+!.env.example
+/resources/local/
+*.local.tres
+*.local.cfg
+*.local.json
+
+# Generated dialogue/art scratch output
+/art/generated/dialogue/
+/art/generated/scratch/
+
+# Logs and local diagnostics
+*.log
+/logs/
+
+# Extra export/build artifacts
+/exports/
+/dist/
+/releases/
+*.pck
+*.apk
+*.aab

@@ -152,7 +152,7 @@ const BOSS_REWARD_CHOICE_CLEARANCE := 30.0
 ## Optional NobodyWho GGUF path, HuggingFace reference, or URL used for generated agent intro taunts.
 @export var agent_taunt_llm_model_path: String = ""
 ## Allows generated taunts to use the smallest cached NobodyWho GGUF model when no explicit model path is set.
-@export var agent_taunt_llm_use_cached_model: bool = true
+@export var agent_taunt_llm_use_cached_model: bool = false
 ## Controls how long the boss intro waits for a generated taunt before showing the procedural fallback.
 @export var agent_taunt_llm_timeout_seconds: float = 2.5
 ## Optional Ollama model name used for generated agent intro taunts before trying NobodyWho.
