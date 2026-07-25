@@ -1440,7 +1440,7 @@ func _on_agent_taunt_ollama_request_completed(result: int, response_code: int, _
 		return
 	var raw_line: String = _extract_agent_taunt_ollama_text(payload).strip_edges()
 	if raw_line.is_empty():
-		push_warning("Agent taunt Ollama response did not include response text: %s" % _get_agent_taunt_payload_summary(payload, body_text))
+		push_warning("Agent taunt Ollama response did not include response text%s: %s" % [_get_agent_taunt_empty_response_hint(payload), _get_agent_taunt_payload_summary(payload, body_text)])
 		_finalize_agent_intro_taunt_line(_agent_taunt_llm_fallback_line)
 		return
 	_finalize_agent_intro_taunt_line(_sanitize_agent_taunt_text(raw_line, _agent_taunt_llm_fallback_line))
@@ -1484,6 +1484,13 @@ func _get_agent_taunt_payload_summary(payload: Dictionary, body_text: String) ->
 		keys.append(String(key_variant))
 	keys.sort()
 	return "keys=[%s] body=%s" % [", ".join(keys), _get_agent_taunt_body_excerpt(body_text)]
+
+
+func _get_agent_taunt_empty_response_hint(payload: Dictionary) -> String:
+	var model_name: String = String(payload.get("model", "")).to_lower()
+	if model_name.contains("base"):
+		return " from base model; use an instruct/chat model for prompt-following taunts"
+	return ""
 
 
 func _get_agent_taunt_body_excerpt(body_text: String) -> String:
