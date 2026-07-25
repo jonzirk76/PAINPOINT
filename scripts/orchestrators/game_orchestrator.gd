@@ -1721,6 +1721,8 @@ func _get_agent_special_attack_label(verb: String) -> String:
 
 
 func _update_boss_health_feedback(delta: float) -> bool:
+	if _is_user_pause_menu_active() and not _agent_taunt_active:
+		return false
 	var changed: bool = false
 	if _boss_intro_taunt_pending:
 		_boss_intro_taunt_delay_remaining = max(_boss_intro_taunt_delay_remaining - delta, 0.0)
@@ -3512,9 +3514,9 @@ func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = 
 
 
 func _on_pause_requested() -> void:
-	if _agent_taunt_active:
-		return
 	if _loading_overlay_blocks_game_input():
+		return
+	if _agent_intro_blocks_pause_input() and not _is_user_pause_menu_active():
 		return
 	if _is_gameplay_running():
 		_stop_perfect_parry_slowmo()
@@ -4951,6 +4953,14 @@ func _loading_screen_is_visible() -> bool:
 
 func _loading_overlay_blocks_game_input() -> bool:
 	return _loading_transition_pending or _is_loading_room or _loading_screen_is_visible()
+
+
+func _agent_intro_blocks_pause_input() -> bool:
+	return _pending_agent_boss_presentation != null or _boss_intro_taunt_pending or _agent_taunt_active
+
+
+func _is_user_pause_menu_active() -> bool:
+	return _status == "PAUSED" or _status == "PAUSE_EXIT_CONFIRM"
 
 
 func _set_loading_progress(progress: float, message: String = "") -> void:
