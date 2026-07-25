@@ -538,6 +538,22 @@ func _test_player_shoot_pose_relaxes_to_movement(failures: Array[String]) -> voi
 		failures.append("Player shooting pose should expire after its short hold window.")
 	if player._get_visual_facing_direction().distance_to(Vector2.DOWN) > 0.001:
 		failures.append("Player visual facing should return to movement after shooting pose expires.")
+	player.global_position = Vector2(20.0, -12.0)
+	player.play_shoot_pose(Vector2.RIGHT)
+	var right_origin: Vector2 = player.get_fire_origin()
+	var expected_right_origin := player.global_position + Vector2(player.muzzle_forward_offset, player.muzzle_side_offset)
+	if right_origin.distance_to(expected_right_origin) > 0.001:
+		failures.append("Player fire origin should line up with the right-facing gun muzzle.")
+	player.play_shoot_pose(Vector2.LEFT)
+	var left_origin: Vector2 = player.get_fire_origin()
+	var expected_left_origin := player.global_position + Vector2(-player.muzzle_forward_offset, player.muzzle_side_offset)
+	if left_origin.distance_to(expected_left_origin) > 0.001:
+		failures.append("Player fire origin should line up with the mirrored left-facing gun muzzle.")
+	player.play_shoot_pose(Vector2.UP)
+	var up_origin: Vector2 = player.get_fire_origin()
+	var expected_up_origin := player.global_position + Vector2(player.muzzle_side_offset, -player.muzzle_forward_offset)
+	if up_origin.distance_to(expected_up_origin) > 0.001:
+		failures.append("Player fire origin should rotate with the gun barrel.")
 	player.free()
 
 

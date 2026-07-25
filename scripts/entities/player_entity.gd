@@ -20,6 +20,10 @@ const PLAYER_RESTING_PISTOL_LEFT_TEXTURE := preload("res://art/characters/player
 @export var wall_rects: Array[Rect2] = []
 @export var void_rects: Array[Rect2] = []
 @export var shoot_pose_hold_seconds: float = 0.42
+## Controls how far forward player projectiles and muzzle flashes spawn along the drawn gun barrel.
+@export var muzzle_forward_offset: float = 35.0
+## Controls the small side offset used to line shots up with the drawn barrel.
+@export var muzzle_side_offset: float = -2.5
 
 var health: int = max_health
 var playable_rects: Array[Rect2] = []
@@ -164,8 +168,7 @@ func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: A
 
 
 func get_fire_origin() -> Vector2:
-	var muzzle_offset: float = max(body_radius * 0.55, 8.0)
-	var desired_origin: Vector2 = global_position + aim_direction * muzzle_offset
+	var desired_origin: Vector2 = global_position + _get_local_muzzle_position()
 	return _constrain_to_playable(desired_origin, 2.0)
 
 
@@ -402,6 +405,22 @@ func _get_visual_facing_direction() -> Vector2:
 	return Vector2.DOWN
 
 
+func _get_muzzle_direction() -> Vector2:
+	var direction := aim_direction.normalized()
+	if direction.length_squared() <= 0.001:
+		direction = _get_visual_facing_direction()
+	if direction.length_squared() <= 0.001:
+		direction = Vector2.RIGHT
+	return direction.normalized()
+
+
+func _get_local_muzzle_position(extra_forward_offset: float = 0.0) -> Vector2:
+	var direction := _get_muzzle_direction()
+	var forward_offset: float = max(max(muzzle_forward_offset + extra_forward_offset, body_radius * 0.55), 8.0)
+	var barrel_side := (-direction).rotated(PI / 2.0) if direction.x < -0.001 else direction.rotated(PI / 2.0)
+	return direction * forward_offset + barrel_side * muzzle_side_offset
+
+
 func _get_side_resting_pistol_rotation(facing: Vector2) -> float:
 	var is_walking := move_vector.length_squared() > 0.01
 	var base_tilt: float = clamp(facing.y * (0.16 if is_walking else 0.08), -0.16, 0.16)
@@ -531,7 +550,7 @@ func _draw_super_charge() -> void:
 		aim = Vector2.RIGHT
 	var ratio: float = clamp(_super_charge_ratio, 0.0, 1.0)
 	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.026)
-	var muzzle: Vector2 = aim * (body_radius + 15.0 + ratio * 8.0)
+	var muzzle: Vector2 = _get_local_muzzle_position(ratio * 8.0)
 	var side := aim.orthogonal()
 	var orb_radius: float = lerp(8.0, 31.0, ratio) + pulse * lerp(1.5, 4.0, ratio)
 	var hot_color := Color(1.0, lerp(0.68, 0.95, ratio), 0.22, 0.82)
