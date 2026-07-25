@@ -84,8 +84,8 @@ func _draw_dim() -> void:
 		draw_rect(rect, Color(0.0, 0.0, 0.0, 0.36), true)
 
 
-func _tile_key_vector(position: Vector2, tile_size: float) -> Vector2i:
-	return Vector2i(int(round(position.x / tile_size)), int(round(position.y / tile_size)))
+func _tile_key_vector(world_position: Vector2, tile_size: float) -> Vector2i:
+	return Vector2i(int(round(world_position.x / tile_size)), int(round(world_position.y / tile_size)))
 
 
 func _tile_key(cell: Vector2i) -> String:

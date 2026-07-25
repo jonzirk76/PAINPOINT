@@ -13,6 +13,7 @@ signal health_depleted(prop)
 var health: int = max_health
 var placement_resource = null
 var _collision_shape: CollisionShape2D = null
+var _collision_update_deferred: bool = false
 var _hit_flash_remaining: float = 0.0
 var _is_broken: bool = false
 
@@ -71,8 +72,8 @@ func _process(delta: float) -> void:
 
 
 func _configure_collision_identity() -> void:
-	collision_layer = 32
-	collision_mask = 0
+	_set_body_collision_property("collision_layer", 32)
+	_set_body_collision_property("collision_mask", 0)
 	add_to_group("arena_walls")
 	add_to_group("destructible_props")
 
@@ -81,8 +82,7 @@ func _break() -> void:
 	if _is_broken:
 		return
 	_is_broken = true
-	collision_layer = 0
-	collision_mask = 0
+	_disable_collision_state()
 	remove_from_group("arena_walls")
 	remove_from_group("destructible_props")
 	health_depleted.emit(self)
@@ -141,6 +141,14 @@ func _draw_damage_marks(rect: Rect2, health_ratio: float) -> void:
 
 
 func _add_or_update_collision() -> void:
+	if _is_broken:
+		return
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		if not _collision_update_deferred:
+			_collision_update_deferred = true
+			call_deferred("_add_or_update_collision")
+		return
+	_collision_update_deferred = false
 	if _collision_shape == null:
 		_collision_shape = CollisionShape2D.new()
 		_collision_shape.name = "CollisionShape2D"
@@ -148,3 +156,16 @@ func _add_or_update_collision() -> void:
 	var shape := RectangleShape2D.new()
 	shape.size = prop_size
 	_collision_shape.shape = shape
+
+
+func _disable_collision_state() -> void:
+	_collision_update_deferred = false
+	_set_body_collision_property("collision_layer", 0)
+	_set_body_collision_property("collision_mask", 0)
+
+
+func _set_body_collision_property(property_name: StringName, value: Variant) -> void:
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		set_deferred(property_name, value)
+		return
+	set(property_name, value)

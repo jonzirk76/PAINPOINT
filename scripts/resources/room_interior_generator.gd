@@ -236,8 +236,8 @@ func _build_boss_obstacles(level, connections: Dictionary, rng: RandomNumberGene
 	var bounds: Rect2 = level.arena_bounds
 	var center := bounds.get_center()
 	var half := bounds.size * 0.5
-	var wall_pair_budget: int = clamp(2 + int(floor_number / 2) + int(attempt % 2), 2, 5)
-	var void_pair_budget: int = clamp(1 + int(floor_number / 3), 1, 4)
+	var wall_pair_budget: int = clamp(2 + floori(float(floor_number) / 2.0) + int(attempt % 2), 2, 5)
+	var void_pair_budget: int = clamp(1 + floori(float(floor_number) / 3.0), 1, 4)
 	_try_add_symmetric_rect_pair(walls, level, connections, walls, voids, center, Vector2(half.x * 0.32, half.y * 0.24), Vector2(1, 2))
 	_try_add_symmetric_rect_pair(walls, level, connections, walls, voids, center, Vector2(half.x * 0.32, -half.y * 0.24), Vector2(1, 2))
 	var wall_attempts := 0
@@ -272,7 +272,7 @@ func _build_boss_destructible_prop_placements(level, connections: Dictionary, fl
 	var bounds: Rect2 = level.arena_bounds
 	var center: Vector2 = bounds.get_center()
 	var half: Vector2 = bounds.size * 0.5
-	var target_pairs: int = clampi(1 + int(floor_number / 3), 1, 3)
+	var target_pairs: int = clampi(1 + floori(float(floor_number) / 3.0), 1, 3)
 	var attempts := 0
 	while placements.size() < target_pairs * 2 and attempts < 28:
 		attempts += 1
@@ -346,7 +346,7 @@ func _build_obstacles(level, connections: Dictionary, archetype: int, rng: Rando
 	var voids: Array[Rect2] = []
 	var grid_size := _get_obstacle_grid_size(level.arena_bounds)
 	var total_cells: int = max(grid_size.x * grid_size.y, 1)
-	var total_budget: int = clamp(int(round(float(total_cells) * 0.055)) + 6 + int(floor_number / 2), 13, 40)
+	var total_budget: int = clamp(int(round(float(total_cells) * 0.055)) + 6 + floori(float(floor_number) / 2.0), 13, 40)
 	if room_kind == "challenge":
 		total_budget += 4
 	match archetype:
@@ -492,7 +492,7 @@ func _build_mass_obstacle_cells(level, connections: Dictionary, walls: Array[Rec
 		else:
 			width = rng.randi_range(3, 5)
 			height = rng.randi_range(1, 2)
-	var top_left := origin - Vector2i(int(width / 2), int(height / 2))
+	var top_left := origin - Vector2i(floori(float(width) / 2.0), floori(float(height) / 2.0))
 	for x in range(width):
 		for y in range(height):
 			if cells.size() >= target_cells:
@@ -859,10 +859,10 @@ func _build_opening_encounter_table(room_kind: String, floor_number: int) -> Arr
 		return entries
 	entries.append(_make_encounter_entry(REPAIR_DRONE, 1, 0, 4, 2, 1, 1, ["combat", "challenge"]))
 	entries.append(_make_encounter_entry(SHIELD_DRONE, 1, 0, 5, 2, 1, 2, ["combat", "challenge"]))
-	entries.append(_make_encounter_entry(POWER_ARMOR_ROCKET, 2, 0, 2 + int(floor_number / 3), 4, 1, 1, ["combat", "challenge"]))
-	entries.append(_make_encounter_entry(POWER_ARMOR_GRENADE, 3, 0, 2 + int(floor_number / 4), 4, 1, 1, ["combat", "challenge"]))
-	entries.append(_make_encounter_entry(CYBER_SOLDIER, 3, 0, 2 + int(floor_number / 3), 3, 1, 1, ["combat", "challenge"]))
-	entries.append(_make_encounter_entry(CYBER_SOLDIER_TELEPORT, 5, 0, 1 + int(floor_number / 5), 4, 1, 1, ["combat", "challenge"]))
+	entries.append(_make_encounter_entry(POWER_ARMOR_ROCKET, 2, 0, 2 + floori(float(floor_number) / 3.0), 4, 1, 1, ["combat", "challenge"]))
+	entries.append(_make_encounter_entry(POWER_ARMOR_GRENADE, 3, 0, 2 + floori(float(floor_number) / 4.0), 4, 1, 1, ["combat", "challenge"]))
+	entries.append(_make_encounter_entry(CYBER_SOLDIER, 3, 0, 2 + floori(float(floor_number) / 3.0), 3, 1, 1, ["combat", "challenge"]))
+	entries.append(_make_encounter_entry(CYBER_SOLDIER_TELEPORT, 5, 0, 1 + floori(float(floor_number) / 5.0), 4, 1, 1, ["combat", "challenge"]))
 	return entries
 
 
@@ -951,8 +951,8 @@ func _get_spawner_options(floor_number: int) -> Array[Dictionary]:
 	var floor_pressure_bonus: int = max(floor_number - 1, 0)
 	options.append({"profile": BASIC_SPAWNER, "cost": 3, "weight": 6})
 	options.append({"profile": FAST_SPAWNER, "cost": 3, "weight": 5})
-	options.append({"profile": SHOOTER_SPAWNER, "cost": 4, "weight": 3 + int(floor_pressure_bonus / 2)})
-	options.append({"profile": TANK_SPAWNER, "cost": 5, "weight": 2 + int(floor_pressure_bonus / 3)})
+	options.append({"profile": SHOOTER_SPAWNER, "cost": 4, "weight": 3 + floori(float(floor_pressure_bonus) / 2.0)})
+	options.append({"profile": TANK_SPAWNER, "cost": 5, "weight": 2 + floori(float(floor_pressure_bonus) / 3.0)})
 	return options
 
 

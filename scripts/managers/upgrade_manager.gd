@@ -4,7 +4,6 @@ class_name UpgradeManager
 signal upgrade_changed(modifiers: Dictionary, active_effects: Array)
 signal permanent_upgrades_changed(attribute_modifiers: Dictionary, permanent_stats: Array)
 signal overdrive_changed(state: Dictionary)
-signal upgrade_expired(effect)
 
 @export var base_overdrive_capacity: int = 40
 
@@ -189,16 +188,16 @@ func get_attribute_modifiers() -> Dictionary:
 	for state in _permanent_upgrades.values():
 		var upgrade = state["upgrade"]
 		var total_amount: float = float(state.get("total_amount", float(upgrade.amount) * float(int(state.get("stacks", 0)))))
-		match int(upgrade.stat_type):
-			0:
+		match upgrade.stat_type:
+			PermanentUpgrade.StatType.FIRE_RATE:
 				fire_rate_bonus += total_amount
-			1:
+			PermanentUpgrade.StatType.MOVE_SPEED:
 				move_speed_bonus += total_amount
-			2:
+			PermanentUpgrade.StatType.DAMAGE:
 				damage_bonus += total_amount
-			3:
+			PermanentUpgrade.StatType.PROJECTILE_SIZE:
 				projectile_size_bonus += total_amount
-			4:
+			PermanentUpgrade.StatType.OVERDRIVE_CAPACITY:
 				overdrive_capacity_bonus += total_amount
 	return {
 		"fire_cooldown_multiplier": max(1.0 - fire_rate_bonus, 0.4),

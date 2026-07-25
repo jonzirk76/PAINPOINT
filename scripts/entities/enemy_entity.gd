@@ -210,6 +210,8 @@ var _agent_walk_cycle: float = 0.0
 var _agent_shoot_pose_remaining: float = 0.0
 var _agent_aim_direction: Vector2 = Vector2.RIGHT
 var _agent_last_move_facing_direction: Vector2 = Vector2.DOWN
+var _collision_shape: CollisionShape2D = null
+var _collision_add_deferred: bool = false
 
 
 func _init() -> void:
@@ -226,11 +228,11 @@ func _ready() -> void:
 
 func _configure_collision_identity() -> void:
 	if _is_agent_boss():
-		collision_layer = AGENT_BOSS_COLLISION_LAYER
-		collision_mask = AGENT_BOSS_COLLISION_MASK
+		_set_body_collision_property("collision_layer", AGENT_BOSS_COLLISION_LAYER)
+		_set_body_collision_property("collision_mask", AGENT_BOSS_COLLISION_MASK)
 	else:
-		collision_layer = ENEMY_COLLISION_LAYER
-		collision_mask = STANDARD_ENEMY_COLLISION_MASK
+		_set_body_collision_property("collision_layer", ENEMY_COLLISION_LAYER)
+		_set_body_collision_property("collision_mask", STANDARD_ENEMY_COLLISION_MASK)
 	add_to_group("enemies")
 
 
@@ -385,9 +387,9 @@ func _physics_process(delta: float) -> void:
 		queue_redraw()
 
 
-func set_target_position(position: Vector2) -> void:
+func set_target_position(new_target_position: Vector2) -> void:
 	var previous_position := target_position
-	target_position = position
+	target_position = new_target_position
 	if _is_ranged_behavior() and previous_position.distance_squared_to(target_position) > 1.0:
 		queue_redraw()
 
@@ -611,8 +613,7 @@ func play_birth_animation(duration: float = 0.36) -> void:
 		return
 	_birth_duration = max(duration, 0.08)
 	_birth_remaining = _birth_duration
-	collision_layer = 0
-	collision_mask = 0
+	_disable_collision_state()
 	queue_redraw()
 
 
@@ -626,8 +627,8 @@ func _rebuild_path_blocker_cache() -> void:
 	_path_blocker_rects.append_array(void_rects)
 
 
-func _constrain_to_playable(position: Vector2) -> Vector2:
-	return ArenaGeometry.constrain_point_to_playable_regions(position, arena_bounds, arena_shape, playable_rects, [], body_radius)
+func _constrain_to_playable(candidate_position: Vector2) -> Vector2:
+	return ArenaGeometry.constrain_point_to_playable_regions(candidate_position, arena_bounds, arena_shape, playable_rects, [], body_radius)
 
 
 func _invalidate_path_cache() -> void:
@@ -705,9 +706,9 @@ func _draw_enemy_character_art(tint: Color) -> void:
 	if texture == null:
 		return
 	var visual_radius: float = body_radius * _get_visual_scale()
-	var rotation: float = _get_visual_rotation()
+	var visual_rotation: float = _get_visual_rotation()
 	var body_tint: Color = _get_enemy_body_tint(tint)
-	draw_set_transform(Vector2.ZERO, rotation, Vector2.ONE)
+	draw_set_transform(Vector2.ZERO, visual_rotation, Vector2.ONE)
 	draw_texture_rect(texture, Rect2(Vector2(-visual_radius, -visual_radius), Vector2(visual_radius * 2.0, visual_radius * 2.0)), false, body_tint)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
@@ -875,16 +876,16 @@ func _draw_agent_walk_feet(alpha: float) -> void:
 	_draw_agent_oval(right_center - Vector2.DOWN * body_radius * 0.08, 0.0, right_scale * Vector2(0.62, 0.56), _get_agent_accent_color(alpha * 0.72))
 
 
-func _draw_agent_centered_texture(texture: Texture2D, visual_radius: float, rotation: float, tint: Color, scale: Vector2 = Vector2.ONE) -> void:
+func _draw_agent_centered_texture(texture: Texture2D, visual_radius: float, texture_rotation: float, tint: Color, texture_scale: Vector2 = Vector2.ONE) -> void:
 	if texture == null:
 		return
-	draw_set_transform(Vector2.ZERO, rotation, scale)
+	draw_set_transform(Vector2.ZERO, texture_rotation, texture_scale)
 	draw_texture_rect(texture, Rect2(Vector2(-visual_radius, -visual_radius), Vector2(visual_radius * 2.0, visual_radius * 2.0)), false, tint)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
-func _draw_agent_oval(center: Vector2, rotation: float, scale: Vector2, color: Color) -> void:
-	draw_set_transform(center, rotation, scale)
+func _draw_agent_oval(center: Vector2, oval_rotation: float, oval_scale: Vector2, color: Color) -> void:
+	draw_set_transform(center, oval_rotation, oval_scale)
 	draw_circle(Vector2.ZERO, 1.0, color)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
@@ -1695,8 +1696,8 @@ func _is_agent_boss() -> bool:
 
 
 func _configure_agent_boss_state() -> void:
-	var seed: int = int(agent_program.generation_seed) if agent_program != null and agent_program.get("generation_seed") != null else int(get_instance_id())
-	_agent_rng.seed = max(seed, 1)
+	var generation_seed: int = int(agent_program.generation_seed) if agent_program != null and agent_program.get("generation_seed") != null else int(get_instance_id())
+	_agent_rng.seed = max(generation_seed, 1)
 	_agent_action_kind = ""
 	_agent_action_remaining = 0.0
 	_agent_intro_pending = false
@@ -2201,7 +2202,7 @@ func _update_agent_assault_burst(to_target: Vector2) -> void:
 		emitted_count += 1
 
 
-func _get_agent_slow_velocity(to_target: Vector2) -> Vector2:
+func _get_agent_slow_velocity(_to_target: Vector2) -> Vector2:
 	var speed_value: float = max(float(agent_program.slow_move_speed), 0.0)
 	if _agent_action_direction.length_squared() <= 0.001:
 		_agent_action_direction = _pick_agent_valid_direction(Vector2.RIGHT.rotated(_agent_rng.randf() * TAU), 120.0)
@@ -2406,10 +2407,10 @@ func _update_agent_teleport_cast(delta: float, to_target: Vector2) -> void:
 
 
 func _pick_agent_los_point(to_target: Vector2) -> Vector2:
-	var preferred_distance: float = clamp(float(agent_program.special_move_distance), 180.0, 420.0)
+	var los_preferred_distance: float = clamp(float(agent_program.special_move_distance), 180.0, 420.0)
 	var directions: Array[Vector2] = _get_agent_special_move_directions(to_target)
 	for direction in directions:
-		var candidate: Vector2 = global_position + direction.normalized() * preferred_distance
+		var candidate: Vector2 = global_position + direction.normalized() * los_preferred_distance
 		candidate = _adjust_agent_special_candidate_distance(candidate)
 		candidate = _constrain_to_playable(candidate)
 		if _agent_point_is_valid(candidate) and not _wall_blocks_segment(candidate, target_position):
@@ -3264,8 +3265,7 @@ func _play_death_animation() -> void:
 		return
 	_is_dying = true
 	remove_from_group("enemies")
-	collision_layer = 0
-	collision_mask = 0
+	_disable_collision_state()
 	velocity = Vector2.ZERO
 	_hit_flash_remaining = 0.0
 	queue_redraw()
@@ -3282,12 +3282,34 @@ func _draw_death_animation() -> void:
 
 
 func _add_collision() -> void:
+	if _collision_shape != null or _is_dying:
+		return
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		if not _collision_add_deferred:
+			_collision_add_deferred = true
+			call_deferred("_add_collision")
+		return
+	_collision_add_deferred = false
 	var shape := CircleShape2D.new()
 	shape.radius = body_radius
 	var collision_shape := CollisionShape2D.new()
 	collision_shape.name = "CollisionShape2D"
 	collision_shape.shape = shape
 	add_child(collision_shape)
+	_collision_shape = collision_shape
+
+
+func _disable_collision_state() -> void:
+	_collision_add_deferred = false
+	_set_body_collision_property("collision_layer", 0)
+	_set_body_collision_property("collision_mask", 0)
+
+
+func _set_body_collision_property(property_name: StringName, value: Variant) -> void:
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		set_deferred(property_name, value)
+		return
+	set(property_name, value)
 
 
 func _wall_blocks_segment(from_position: Vector2, to_position: Vector2) -> bool:

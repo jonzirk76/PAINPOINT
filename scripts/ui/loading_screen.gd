@@ -62,7 +62,7 @@ func _ready() -> void:
 	_update_continue_prompt()
 
 
-func begin_loading(title: String = "LOADING", message: String = "", initial_progress: float = 0.0) -> void:
+func begin_loading(_title: String = "LOADING", message: String = "", initial_progress: float = 0.0) -> void:
 	var was_visible := visible
 	_clear_title_text()
 	status_label.text = message
@@ -85,7 +85,7 @@ func set_progress(value: float, message: String = "") -> void:
 		status_label.text = message
 
 
-func finish_loading(message: String = "READY", wait_for_continue: bool = false) -> void:
+func finish_loading(message: String = "READY", _wait_for_continue: bool = false) -> void:
 	progress = 1.0
 	status_label.text = message
 	_continue_enabled = true

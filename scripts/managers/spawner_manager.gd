@@ -225,7 +225,7 @@ func _spawn_spawner(placement, index: int) -> void:
 	_spawners.append(spawner)
 
 
-func _on_spawner_spawn_ready(_spawner, spawn_position: Vector2) -> void:
+func _on_spawner_spawn_ready(_spawner, _spawn_position: Vector2) -> void:
 	if not enabled or _current_enemy_count >= max_active_enemies:
 		return
 	var profile = _spawner.enemy_profile if _spawner != null and _spawner.enemy_profile != null else default_enemy_profile
@@ -484,8 +484,8 @@ func _get_biased_spawn_position(spawner, spawn_index: int, spawn_count: int, bas
 	for attempt in range(14):
 		var side_step: float = 0.0
 		if attempt > 0:
-			var sign: float = -1.0 if attempt % 2 == 1 else 1.0
-			side_step = sign * floor(float(attempt + 1) * 0.5) * 0.24
+			var side_sign: float = -1.0 if attempt % 2 == 1 else 1.0
+			side_step = side_sign * floor(float(attempt + 1) * 0.5) * 0.24
 		var distance: float = max(base_distance + radial_stagger + floor(float(attempt) / 4.0) * 18.0, float(spawner.body_radius) + 28.0)
 		var angle: float = bias_direction.angle() + fan_offset + side_step
 		var candidate: Vector2 = _constrain_spawn_position(spawner.global_position + Vector2.RIGHT.rotated(angle) * distance, 24.0)

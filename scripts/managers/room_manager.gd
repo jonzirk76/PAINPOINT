@@ -24,7 +24,10 @@ func set_enabled(value: bool) -> void:
 	enabled = value
 	for door in _doors:
 		if is_instance_valid(door):
-			door.monitoring = value
+			if door.has_method("set_monitoring_enabled"):
+				door.set_monitoring_enabled(value)
+			elif door is Area2D:
+				door.set_deferred("monitoring", value)
 
 
 func load_room(level_definition, door_infos: Array, doors_unlocked: bool) -> void:

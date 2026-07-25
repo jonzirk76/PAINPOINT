@@ -30,10 +30,10 @@ static func generate_profile(base_profile: Resource, run_seed: int, floor_number
 
 static func generate_program(run_seed: int, floor_number: int, level_id: String) -> AgentBossProgram:
 	var program: AgentBossProgram = AgentBossProgram.new()
-	var seed: int = _compute_generation_seed(run_seed, floor_number, level_id)
+	var generation_seed: int = _compute_generation_seed(run_seed, floor_number, level_id)
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
-	rng.seed = seed
-	program.generation_seed = seed
+	rng.seed = generation_seed
+	program.generation_seed = generation_seed
 	var body_scale: float = rng.randf_range(MIN_BODY_SCALE, MAX_BODY_SCALE)
 	program.body_radius = PLAYER_BODY_RADIUS * body_scale
 	program.contact_radius = max(PLAYER_SIZED_CONTACT_RADIUS * body_scale, program.body_radius + 5.0)

@@ -728,13 +728,13 @@ func _update_cat_debug_panel() -> void:
 	var target_distance: float = float(snapshot.get("target_distance", -1.0))
 	var path_points: int = int(snapshot.get("path_points", 0))
 	var position_value: Variant = snapshot.get("position", Vector2.INF)
-	var position: Vector2 = position_value if position_value is Vector2 else Vector2.INF
+	var cat_position: Vector2 = position_value if position_value is Vector2 else Vector2.INF
 	var target_text: String = "--"
 	if target_distance >= 0.0:
 		target_text = "%4.0f" % target_distance
 	var position_text: String = "--"
-	if position != Vector2.INF:
-		position_text = "%4.0f,%4.0f" % [position.x, position.y]
+	if cat_position != Vector2.INF:
+		position_text = "%4.0f,%4.0f" % [cat_position.x, cat_position.y]
 	_cat_debug_label.text = "CAT LOG\nMove %s  Motion %s\nIdle %s  Sit %s  Lay %s\nLookExit %s  JumpQ %s  Flee %s\nCuriosity %.2f  Speed %4.0f\nTarget %s  Path %d  Pos %s" % [
 		movement_state,
 		motion_state,
@@ -1393,8 +1393,8 @@ func _object_has_property(target: Object, property_name: String) -> bool:
 	for property_info in target.get_property_list():
 		if not property_info is Dictionary:
 			continue
-		var name: String = String(property_info.get("name", ""))
-		if name == property_name:
+		var candidate_name: String = String(property_info.get("name", ""))
+		if candidate_name == property_name:
 			return true
 	return false
 
@@ -2853,19 +2853,19 @@ func _get_opening_encounter_positions(level_definition, count: int) -> Array[Vec
 	return positions
 
 
-func _opening_encounter_position_is_clear(position: Vector2, anchor: Vector2, min_distance: float, selected_positions: Array[Vector2], level_definition) -> bool:
-	if position.distance_squared_to(anchor) < min_distance * min_distance:
+func _opening_encounter_position_is_clear(candidate_position: Vector2, anchor: Vector2, min_distance: float, selected_positions: Array[Vector2], level_definition) -> bool:
+	if candidate_position.distance_squared_to(anchor) < min_distance * min_distance:
 		return false
-	if not _position_is_clear_of_room_walls(position, level_definition):
+	if not _position_is_clear_of_room_walls(candidate_position, level_definition):
 		return false
 	for selected in selected_positions:
-		if position.distance_squared_to(selected) < 72.0 * 72.0:
+		if candidate_position.distance_squared_to(selected) < 72.0 * 72.0:
 			return false
 	for spawner_position in spawner_manager.get_spawner_positions():
-		if position.distance_squared_to(spawner_position) < 92.0 * 92.0:
+		if candidate_position.distance_squared_to(spawner_position) < 92.0 * 92.0:
 			return false
 	for enemy_position in enemy_manager.get_enemy_positions():
-		if position.distance_squared_to(enemy_position) < 72.0 * 72.0:
+		if candidate_position.distance_squared_to(enemy_position) < 72.0 * 72.0:
 			return false
 	return true
 
@@ -3899,7 +3899,7 @@ func _build_super_crackle_points(fill_rect: Rect2) -> PackedVector2Array:
 	return points
 
 
-func _update_ammo_counter_panel(active_effects: Array) -> void:
+func _update_ammo_counter_panel(_active_effects: Array) -> void:
 	if ammo_counter_panel == null:
 		return
 	for child in ammo_counter_panel.get_children():
@@ -4302,15 +4302,15 @@ func _reward_choice_group_position_is_clear(center_position: Vector2, bounds: Re
 		Vector2(BOSS_REWARD_CHOICE_SPACING, 0.0)
 	]
 	for offset: Vector2 in offsets:
-		var position: Vector2 = center_position + offset
-		if not ArenaGeometry.contains_point(position, bounds, int(_current_level.arena_shape)):
+		var choice_position: Vector2 = center_position + offset
+		if not ArenaGeometry.contains_point(choice_position, bounds, int(_current_level.arena_shape)):
 			return false
-		if _room_reward_position_is_blocked(position, BOSS_REWARD_CHOICE_CLEARANCE):
+		if _room_reward_position_is_blocked(choice_position, BOSS_REWARD_CHOICE_CLEARANCE):
 			return false
 	return true
 
 
-func _room_reward_position_is_blocked(position: Vector2, clearance: float) -> bool:
+func _room_reward_position_is_blocked(candidate_position: Vector2, clearance: float) -> bool:
 	if _current_level == null:
 		return false
 	var blocker_rects: Array[Rect2] = []
@@ -4319,7 +4319,7 @@ func _room_reward_position_is_blocked(position: Vector2, clearance: float) -> bo
 	if destructible_manager != null and destructible_manager.has_method("get_blocker_rects"):
 		blocker_rects.append_array(destructible_manager.get_blocker_rects())
 	for blocker_rect: Rect2 in blocker_rects:
-		if blocker_rect.grow(clearance).has_point(position):
+		if blocker_rect.grow(clearance).has_point(candidate_position):
 			return true
 	return false
 
@@ -4626,17 +4626,17 @@ func _get_room_entry_position(level_definition, entry_direction: String) -> Vect
 	if bounds.size == Vector2.ZERO:
 		bounds = level_definition.arena_bounds
 	var margin := 96.0
-	var position := bounds.get_center()
+	var entry_position := bounds.get_center()
 	match entry_direction:
 		"north":
-			position = Vector2(bounds.get_center().x, bounds.position.y + bounds.size.y - margin)
+			entry_position = Vector2(bounds.get_center().x, bounds.position.y + bounds.size.y - margin)
 		"south":
-			position = Vector2(bounds.get_center().x, bounds.position.y + margin)
+			entry_position = Vector2(bounds.get_center().x, bounds.position.y + margin)
 		"east":
-			position = Vector2(bounds.position.x + margin, bounds.get_center().y)
+			entry_position = Vector2(bounds.position.x + margin, bounds.get_center().y)
 		"west":
-			position = Vector2(bounds.position.x + bounds.size.x - margin, bounds.get_center().y)
-	return _find_safe_room_position(position, level_definition)
+			entry_position = Vector2(bounds.position.x + bounds.size.x - margin, bounds.get_center().y)
+	return _find_safe_room_position(entry_position, level_definition)
 
 
 func _find_safe_room_position(preferred_position: Vector2, level_definition) -> Vector2:
@@ -4657,12 +4657,12 @@ func _find_safe_room_position(preferred_position: Vector2, level_definition) -> 
 	return ArenaGeometry.constrain_point(preferred_position, level_definition.arena_bounds, int(level_definition.arena_shape))
 
 
-func _position_is_clear_of_room_walls(position: Vector2, level_definition) -> bool:
+func _position_is_clear_of_room_walls(candidate_position: Vector2, level_definition) -> bool:
 	for wall_rect in level_definition.wall_rects:
-		if wall_rect.grow(34.0).has_point(position):
+		if wall_rect.grow(34.0).has_point(candidate_position):
 			return false
 	for void_rect in level_definition.void_rects:
-		if void_rect.grow(34.0).has_point(position):
+		if void_rect.grow(34.0).has_point(candidate_position):
 			return false
 	return true
 

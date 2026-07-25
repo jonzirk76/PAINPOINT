@@ -200,6 +200,8 @@ var _startle_jump_land_position: Vector2 = Vector2.ZERO
 var _startle_jump_direction: Vector2 = Vector2.DOWN
 var _startle_jump_cooldown_remaining: float = 0.0
 var _startle_run_remaining: float = 0.0
+var _collision_shape: CollisionShape2D = null
+var _collision_add_deferred: bool = false
 
 
 func _ready() -> void:
@@ -269,16 +271,16 @@ func set_cat_texture(texture: Texture2D) -> void:
 	_sprite.texture = _cat_texture
 
 
-func set_player_context(position: Vector2, velocity: Vector2, avoidance_radius: float) -> void:
-	if position == Vector2.INF:
+func set_player_context(player_position: Vector2, player_velocity: Vector2, avoidance_radius: float) -> void:
+	if player_position == Vector2.INF:
 		_has_player_context = false
 		_player_position = Vector2.INF
 		_player_velocity = Vector2.ZERO
 		_reset_curiosity_line_of_sight_cache()
 		return
 	_has_player_context = true
-	_player_position = position
-	_player_velocity = velocity
+	_player_position = player_position
+	_player_velocity = player_velocity
 	_player_avoidance_radius = maxf(avoidance_radius, player_personal_space_radius + 1.0)
 
 
@@ -351,11 +353,11 @@ func set_danger_points(points: Array) -> void:
 			_danger_points.append(Dictionary(point))
 
 
-func _set_target_position(position: Vector2, rebuild_path: bool = true) -> void:
-	_target_position = position
+func _set_target_position(new_target_position: Vector2, rebuild_path: bool = true) -> void:
+	_target_position = new_target_position
 	_path_points.clear()
-	if rebuild_path and position != Vector2.INF:
-		_path_points = _build_path_to(position)
+	if rebuild_path and new_target_position != Vector2.INF:
+		_path_points = _build_path_to(new_target_position)
 
 
 func _get_current_movement_target() -> Vector2:
@@ -468,19 +470,34 @@ func _draw() -> void:
 
 
 func _configure_collision_identity() -> void:
-	collision_layer = 0
-	collision_mask = COLLISION_MASK_WALLS_AND_VOID
+	_set_body_collision_property("collision_layer", 0)
+	_set_body_collision_property("collision_mask", COLLISION_MASK_WALLS_AND_VOID)
 
 
 func _add_collision() -> void:
-	if get_node_or_null("CollisionShape2D") != null:
+	if _collision_shape != null or get_node_or_null("CollisionShape2D") != null:
+		_collision_shape = get_node_or_null("CollisionShape2D") as CollisionShape2D
 		return
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		if not _collision_add_deferred:
+			_collision_add_deferred = true
+			call_deferred("_add_collision")
+		return
+	_collision_add_deferred = false
 	var shape := CircleShape2D.new()
 	shape.radius = body_radius
 	var collision_shape := CollisionShape2D.new()
 	collision_shape.name = "CollisionShape2D"
 	collision_shape.shape = shape
 	add_child(collision_shape)
+	_collision_shape = collision_shape
+
+
+func _set_body_collision_property(property_name: StringName, value: Variant) -> void:
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		set_deferred(property_name, value)
+		return
+	set(property_name, value)
 
 
 func _ensure_sprite() -> void:
@@ -952,11 +969,11 @@ func _get_combat_avoidance_vector() -> Vector2:
 		var point_kind: String = String(point_info.get("kind", "combat"))
 		if point_kind == "player":
 			continue
-		var position: Vector2 = point_info.get("position", Vector2.INF)
-		if position == Vector2.INF:
+		var danger_position: Vector2 = point_info.get("position", Vector2.INF)
+		if danger_position == Vector2.INF:
 			continue
 		var radius: float = maxf(float(point_info.get("radius", combat_avoidance_radius)), body_radius + 1.0)
-		var to_cat: Vector2 = global_position - position
+		var to_cat: Vector2 = global_position - danger_position
 		var distance: float = to_cat.length()
 		if distance > radius:
 			continue
@@ -1118,10 +1135,10 @@ func _pick_curiosity_biased_position() -> Vector2:
 	return Vector2.INF
 
 
-func _position_respects_player_space(position: Vector2, min_radius: float) -> bool:
+func _position_respects_player_space(candidate_position: Vector2, min_radius: float) -> bool:
 	if not _has_player_context:
 		return true
-	return position.distance_squared_to(_player_position) >= min_radius * min_radius
+	return candidate_position.distance_squared_to(_player_position) >= min_radius * min_radius
 
 
 func _has_line_of_sight_to_player() -> bool:
@@ -1177,8 +1194,8 @@ func _build_path_to(destination: Vector2) -> Array[Vector2]:
 	return _smooth_path_points(_path_cells_to_points(path_cells, bounds, grid_size, destination))
 
 
-func _world_to_path_cell(position: Vector2, bounds: Rect2, grid_size: float, cols: int, rows: int) -> Vector2i:
-	var local_position: Vector2 = position - bounds.position
+func _world_to_path_cell(world_position: Vector2, bounds: Rect2, grid_size: float, cols: int, rows: int) -> Vector2i:
+	var local_position: Vector2 = world_position - bounds.position
 	return Vector2i(
 		clampi(int(floor(local_position.x / grid_size)), 0, cols - 1),
 		clampi(int(floor(local_position.y / grid_size)), 0, rows - 1)
@@ -1339,18 +1356,18 @@ func _segment_stays_in_playable_area(from_position: Vector2, to_position: Vector
 	return true
 
 
-func _point_inside_playable_area(position: Vector2) -> bool:
+func _point_inside_playable_area(candidate_position: Vector2) -> bool:
 	if not playable_rects.is_empty():
 		for rect: Rect2 in playable_rects:
-			if _rect_has_point_inclusive(rect, position):
+			if _rect_has_point_inclusive(rect, candidate_position):
 				return true
 		return false
-	return ArenaGeometry.contains_point(position, arena_bounds, arena_shape)
+	return ArenaGeometry.contains_point(candidate_position, arena_bounds, arena_shape)
 
 
-func _rect_has_point_inclusive(rect: Rect2, position: Vector2) -> bool:
+func _rect_has_point_inclusive(rect: Rect2, candidate_position: Vector2) -> bool:
 	var rect_end: Vector2 = rect.position + rect.size
-	return position.x >= rect.position.x - 0.001 and position.x <= rect_end.x + 0.001 and position.y >= rect.position.y - 0.001 and position.y <= rect_end.y + 0.001
+	return candidate_position.x >= rect.position.x - 0.001 and candidate_position.x <= rect_end.x + 0.001 and candidate_position.y >= rect.position.y - 0.001 and candidate_position.y <= rect_end.y + 0.001
 
 
 func _segment_intersects_rect(from_position: Vector2, to_position: Vector2, rect: Rect2) -> bool:
@@ -1423,13 +1440,13 @@ func _find_clear_target(preferred_position: Vector2) -> Vector2:
 	return ArenaGeometry.constrain_point_to_playable_regions(clamped, arena_bounds, arena_shape, playable_rects, blockers, body_radius)
 
 
-func _position_is_clear(position: Vector2) -> bool:
-	if not _position_inside_roam_bounds(position):
+func _position_is_clear(candidate_position: Vector2) -> bool:
+	if not _position_inside_roam_bounds(candidate_position):
 		return false
-	if not _point_inside_playable_area(position):
+	if not _point_inside_playable_area(candidate_position):
 		return false
 	for blocker in _get_blocker_rects():
-		if blocker.grow(body_radius + 4.0).has_point(position):
+		if blocker.grow(body_radius + 4.0).has_point(candidate_position):
 			return false
 	return true
 
@@ -1444,14 +1461,14 @@ func _rebuild_blocker_rects() -> void:
 	_blocker_rects.append_array(void_rects)
 
 
-func _constrain_to_playable(position: Vector2) -> Vector2:
-	return ArenaGeometry.constrain_point_to_playable_regions(position, arena_bounds, arena_shape, playable_rects, _get_blocker_rects(), body_radius)
+func _constrain_to_playable(candidate_position: Vector2) -> Vector2:
+	return ArenaGeometry.constrain_point_to_playable_regions(candidate_position, arena_bounds, arena_shape, playable_rects, _get_blocker_rects(), body_radius)
 
 
-func _constrain_to_playable_if_needed(position: Vector2) -> Vector2:
-	if _position_is_clear(position):
-		return position
-	return _constrain_to_playable(position)
+func _constrain_to_playable_if_needed(candidate_position: Vector2) -> Vector2:
+	if _position_is_clear(candidate_position):
+		return candidate_position
+	return _constrain_to_playable(candidate_position)
 
 
 func _get_effective_roam_bounds() -> Rect2:
@@ -1460,18 +1477,18 @@ func _get_effective_roam_bounds() -> Rect2:
 	return arena_bounds
 
 
-func _position_inside_roam_bounds(position: Vector2) -> bool:
+func _position_inside_roam_bounds(candidate_position: Vector2) -> bool:
 	if not _has_roam_bounds:
 		return true
-	return _roam_bounds.grow(-body_radius).has_point(position)
+	return _roam_bounds.grow(-body_radius).has_point(candidate_position)
 
 
-func _clamp_to_roam_bounds(position: Vector2) -> Vector2:
+func _clamp_to_roam_bounds(candidate_position: Vector2) -> Vector2:
 	if not _has_roam_bounds:
-		return position
+		return candidate_position
 	return Vector2(
-		clamp(position.x, _roam_bounds.position.x + body_radius, _roam_bounds.position.x + _roam_bounds.size.x - body_radius),
-		clamp(position.y, _roam_bounds.position.y + body_radius, _roam_bounds.position.y + _roam_bounds.size.y - body_radius)
+		clamp(candidate_position.x, _roam_bounds.position.x + body_radius, _roam_bounds.position.x + _roam_bounds.size.x - body_radius),
+		clamp(candidate_position.y, _roam_bounds.position.y + body_radius, _roam_bounds.position.y + _roam_bounds.size.y - body_radius)
 	)
 
 
@@ -1623,6 +1640,6 @@ func _get_clip_frames(direction_index: int, column_start: int, frame_count: int)
 	var frames: Array[Vector2i] = []
 	for frame_offset in range(frame_count):
 		var column := column_start + frame_offset % ANIMATION_FRAMES_PER_ROW
-		var row_offset := int(frame_offset / ANIMATION_FRAMES_PER_ROW)
+		var row_offset := int(floor(float(frame_offset) / float(ANIMATION_FRAMES_PER_ROW)))
 		frames.append(Vector2i(column, row + row_offset))
 	return frames

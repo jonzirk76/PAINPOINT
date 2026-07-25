@@ -87,17 +87,17 @@ func _draw_swoop_trail(eased: float, trail_color: Color, core_color: Color, fade
 	draw_circle(_quadratic_bezier(start_position, _control_position, end_position, eased), radius * 1.2, core_color)
 
 
-func _draw_perfect_shine(position: Vector2, fade: float, progress: float) -> void:
+func _draw_perfect_shine(shine_position: Vector2, fade: float, progress: float) -> void:
 	var pulse: float = 0.5 + 0.5 * sin(progress * TAU * 2.0)
 	var shine_radius: float = radius * (2.1 + pulse * 0.7)
-	draw_circle(position, radius * (1.35 + pulse * 0.3), Color(1.0, 1.0, 0.92, 0.82 * fade))
-	draw_arc(position, shine_radius, 0.0, TAU, 28, Color(1.0, 0.95, 0.46, 0.78 * fade), 3.0)
+	draw_circle(shine_position, radius * (1.35 + pulse * 0.3), Color(1.0, 1.0, 0.92, 0.82 * fade))
+	draw_arc(shine_position, shine_radius, 0.0, TAU, 28, Color(1.0, 0.95, 0.46, 0.78 * fade), 3.0)
 	for index in range(8):
 		var direction: Vector2 = Vector2.RIGHT.rotated(TAU * float(index) / 8.0 + progress * TAU * 0.5)
-		var inner: Vector2 = position + direction * radius * 0.75
-		var outer: Vector2 = position + direction * shine_radius * 1.25
+		var inner: Vector2 = shine_position + direction * radius * 0.75
+		var outer: Vector2 = shine_position + direction * shine_radius * 1.25
 		draw_line(inner, outer, Color(1.0, 1.0, 0.72, 0.86 * fade), 2.0)
-	draw_circle(position, radius * 0.64, Color(1.0, 1.0, 1.0, fade))
+	draw_circle(shine_position, radius * 0.64, Color(1.0, 1.0, 1.0, fade))
 
 
 func _quadratic_bezier(a: Vector2, b: Vector2, c: Vector2, t: float) -> Vector2:

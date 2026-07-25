@@ -28,6 +28,10 @@ var _gate_collision_shape: CollisionShape2D = null
 var _gate_top_visual = null
 var _armed: bool = false
 var _arm_delay_remaining: float = 0.0
+var _monitoring_enabled: bool = true
+var _gate_blocking_enabled: bool = false
+var _trigger_collision_update_deferred: bool = false
+var _gate_collision_update_deferred: bool = false
 
 
 func _init() -> void:
@@ -53,7 +57,7 @@ func initialize(door_direction: String, target_id: String, center_position: Vect
 	_add_or_update_collision()
 	_add_or_update_gate_collision()
 	_sync_gate_top_visual()
-	set_physics_process(unlocked)
+	set_physics_process(_monitoring_enabled and unlocked)
 	queue_redraw()
 
 
@@ -79,14 +83,22 @@ func set_unlocked(value: bool) -> void:
 	_arm_delay_remaining = ARM_DELAY_SECONDS if unlocked else 0.0
 	_set_gate_blocking_enabled(not unlocked)
 	_sync_gate_top_visual()
-	set_physics_process(unlocked and not _armed)
+	set_physics_process(_monitoring_enabled and unlocked and not _armed)
 	queue_redraw()
 
 
 func is_gate_blocking() -> bool:
-	if _gate_body == null or _gate_collision_shape == null:
-		return false
-	return _gate_body.collision_layer != 0 and not _gate_collision_shape.disabled
+	return _gate_blocking_enabled
+
+
+func set_monitoring_enabled(value: bool) -> void:
+	_monitoring_enabled = value
+	_set_area_property("monitoring", value)
+	if not value:
+		_armed = false
+		set_physics_process(false)
+	elif unlocked:
+		set_physics_process(not _armed)
 
 
 func get_gate_blocker_rect() -> Rect2:
@@ -95,27 +107,30 @@ func get_gate_blocker_rect() -> Rect2:
 
 
 func _configure_collision_identity() -> void:
-	collision_layer = 0
-	collision_mask = 1
-	monitoring = true
-	monitorable = false
+	_set_area_property("collision_layer", 0)
+	_set_area_property("collision_mask", 1)
+	_set_area_property("monitoring", _monitoring_enabled)
+	_set_area_property("monitorable", false)
 	add_to_group("dungeon_doors")
 
 
 func _on_body_entered(body: Node) -> void:
-	if not unlocked or not _armed or not body.is_in_group("player"):
+	if not _monitoring_enabled or not unlocked or not _armed or not body.is_in_group("player"):
 		return
 	_armed = false
 	entered.emit(self)
 
 
 func _on_body_exited(body: Node) -> void:
-	if unlocked and _arm_delay_remaining <= 0.0 and body.is_in_group("player"):
+	if _monitoring_enabled and unlocked and _arm_delay_remaining <= 0.0 and body.is_in_group("player"):
 		_refresh_armed_state()
 
 
 func _physics_process(delta: float) -> void:
-	if unlocked and not _armed:
+	if not _monitoring_enabled or not unlocked:
+		set_physics_process(false)
+		return
+	if not _armed:
 		if _arm_delay_remaining > 0.0:
 			_arm_delay_remaining = max(_arm_delay_remaining - delta, 0.0)
 			set_physics_process(true)
@@ -124,11 +139,17 @@ func _physics_process(delta: float) -> void:
 
 
 func _refresh_armed_state() -> void:
+	if not _monitoring_enabled or not unlocked:
+		_armed = false
+		set_physics_process(false)
+		return
 	_armed = not _has_player_overlap()
-	set_physics_process(unlocked and not _armed)
+	set_physics_process(not _armed)
 
 
 func _has_player_overlap() -> bool:
+	if not monitoring:
+		return false
 	for body in get_overlapping_bodies():
 		if body != null and is_instance_valid(body) and body.is_in_group("player"):
 			return true
@@ -257,8 +278,8 @@ func _build_gate_rect_lookup(rects: Array[Rect2]) -> Dictionary:
 	return lookup
 
 
-func _tile_key_vector(position: Vector2, tile_size: float) -> Vector2i:
-	return Vector2i(int(round(position.x / tile_size)), int(round(position.y / tile_size)))
+func _tile_key_vector(world_position: Vector2, tile_size: float) -> Vector2i:
+	return Vector2i(int(round(world_position.x / tile_size)), int(round(world_position.y / tile_size)))
 
 
 func _tile_key(cell: Vector2i) -> String:
@@ -361,6 +382,12 @@ func _draw_boss_marker(marker_size: float, accent_color: Color) -> void:
 
 
 func _add_or_update_collision() -> void:
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		if not _trigger_collision_update_deferred:
+			_trigger_collision_update_deferred = true
+			call_deferred("_add_or_update_collision")
+		return
+	_trigger_collision_update_deferred = false
 	if _collision_shape == null:
 		_collision_shape = CollisionShape2D.new()
 		_collision_shape.name = "CollisionShape2D"
@@ -371,6 +398,13 @@ func _add_or_update_collision() -> void:
 
 
 func _add_or_update_gate_collision() -> void:
+	_gate_blocking_enabled = not unlocked
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		if not _gate_collision_update_deferred:
+			_gate_collision_update_deferred = true
+			call_deferred("_add_or_update_gate_collision")
+		return
+	_gate_collision_update_deferred = false
 	if _gate_body == null:
 		_gate_body = StaticBody2D.new()
 		_gate_body.name = "GateBlocker"
@@ -389,8 +423,34 @@ func _add_or_update_gate_collision() -> void:
 
 
 func _set_gate_blocking_enabled(value: bool) -> void:
+	_gate_blocking_enabled = value
 	if _gate_body == null or _gate_collision_shape == null:
 		return
-	_gate_body.collision_layer = 32 if value else 0
-	_gate_body.collision_mask = 0
-	_gate_collision_shape.disabled = not value
+	_set_gate_body_property("collision_layer", 32 if value else 0)
+	_set_gate_body_property("collision_mask", 0)
+	_set_gate_collision_shape_disabled(not value)
+
+
+func _set_gate_body_property(property_name: StringName, value: Variant) -> void:
+	if _gate_body == null:
+		return
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		_gate_body.set_deferred(property_name, value)
+		return
+	_gate_body.set(property_name, value)
+
+
+func _set_gate_collision_shape_disabled(value: bool) -> void:
+	if _gate_collision_shape == null:
+		return
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		_gate_collision_shape.set_deferred("disabled", value)
+		return
+	_gate_collision_shape.disabled = value
+
+
+func _set_area_property(property_name: StringName, value: Variant) -> void:
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		set_deferred(property_name, value)
+		return
+	set(property_name, value)

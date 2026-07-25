@@ -40,6 +40,7 @@ var _hostile_he_target_position: Vector2 = Vector2.INF
 var _hostile_he_target_radius: float = 0.0
 var _hostile_he_target_reticle_enabled: bool = false
 var _visual_rotation_offset: float = 0.0
+var _collision_add_deferred: bool = false
 
 
 func _init() -> void:
@@ -54,10 +55,10 @@ func _ready() -> void:
 
 
 func _configure_collision_identity() -> void:
-	collision_layer = 4
-	collision_mask = HOSTILE_PROJECTILE_COLLISION_MASK if projectile_team == "hostile" else PLAYER_PROJECTILE_COLLISION_MASK
-	monitoring = true
-	monitorable = false
+	_set_area_collision_property("collision_layer", 4)
+	_set_area_collision_property("collision_mask", HOSTILE_PROJECTILE_COLLISION_MASK if projectile_team == "hostile" else PLAYER_PROJECTILE_COLLISION_MASK)
+	_set_area_collision_property("monitoring", true)
+	_set_area_collision_property("monitorable", false)
 	_configure_projectile_kind_behavior()
 
 
@@ -132,12 +133,12 @@ func _configure_projectile_kind_behavior() -> void:
 		return
 	match String(damage_packet.projectile_kind):
 		AGENT_GRENADE_KIND:
-			collision_mask = 0
+			_set_area_collision_property("collision_mask", 0)
 		AGENT_MINE_KIND:
 			if _is_agent_mine_arming():
-				collision_mask = 0
+				_set_area_collision_property("collision_mask", 0)
 			else:
-				collision_mask = 1
+				_set_area_collision_property("collision_mask", 1)
 				speed = 0.0
 
 
@@ -173,7 +174,7 @@ func _update_agent_mine_throw(delta: float) -> void:
 func _land_agent_mine() -> void:
 	_agent_mine_arming_remaining = 0.0
 	speed = 0.0
-	collision_mask = 1
+	_set_area_collision_property("collision_mask", 1)
 	_update_collision_radius()
 	queue_redraw()
 
@@ -262,10 +263,7 @@ func expire(reason: String = "expired", expire_position: Vector2 = Vector2.INF) 
 	last_expire_radius = body_radius
 	global_position = last_expire_position
 	_is_expired = true
-	monitoring = false
-	monitorable = false
-	collision_layer = 0
-	collision_mask = 0
+	_disable_collision_state()
 	expired.emit(self)
 	queue_free()
 
@@ -277,11 +275,22 @@ func despawn() -> void:
 	visible = false
 	set_process(false)
 	set_physics_process(false)
+	_disable_collision_state()
+	queue_free()
+
+
+func _disable_collision_state() -> void:
+	_collision_add_deferred = false
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		set_deferred("monitoring", false)
+		set_deferred("monitorable", false)
+		set_deferred("collision_layer", 0)
+		set_deferred("collision_mask", 0)
+		return
 	monitoring = false
 	monitorable = false
 	collision_layer = 0
 	collision_mask = 0
-	queue_free()
 
 
 func _draw() -> void:
@@ -402,6 +411,14 @@ func _draw_hostile_he_target_reticle(pulse: float) -> void:
 
 
 func _add_collision() -> void:
+	if _collision_shape != null or _is_expired:
+		return
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		if not _collision_add_deferred:
+			_collision_add_deferred = true
+			call_deferred("_add_collision")
+		return
+	_collision_add_deferred = false
 	var shape := CircleShape2D.new()
 	shape.radius = body_radius
 	var collision_shape := CollisionShape2D.new()
@@ -409,6 +426,13 @@ func _add_collision() -> void:
 	collision_shape.shape = shape
 	add_child(collision_shape)
 	_collision_shape = collision_shape
+
+
+func _set_area_collision_property(property_name: StringName, value: Variant) -> void:
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		set_deferred(property_name, value)
+		return
+	set(property_name, value)
 
 
 func _update_growth(_delta: float) -> void:

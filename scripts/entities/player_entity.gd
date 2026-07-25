@@ -52,6 +52,8 @@ var _is_dead: bool = false
 var _walk_cycle: float = 0.0
 var _shoot_pose_remaining: float = 0.0
 var _last_move_facing_direction: Vector2 = Vector2.DOWN
+var _collision_shape: CollisionShape2D = null
+var _collision_add_deferred: bool = false
 
 
 func _init() -> void:
@@ -67,8 +69,8 @@ func _ready() -> void:
 
 
 func _configure_collision_identity() -> void:
-	collision_layer = 1
-	collision_mask = 98
+	_set_body_collision_property("collision_layer", 1)
+	_set_body_collision_property("collision_mask", 98)
 	add_to_group("player")
 
 
@@ -166,9 +168,9 @@ func get_fire_origin() -> Vector2:
 	return _constrain_to_playable(desired_origin, 2.0)
 
 
-func _constrain_to_playable(position: Vector2, clearance_override: float = -1.0) -> Vector2:
+func _constrain_to_playable(candidate_position: Vector2, clearance_override: float = -1.0) -> Vector2:
 	var clearance: float = body_radius if clearance_override < 0.0 else clearance_override
-	return ArenaGeometry.constrain_point_to_playable_regions(position, arena_bounds, arena_shape, playable_rects, [], clearance)
+	return ArenaGeometry.constrain_point_to_playable_regions(candidate_position, arena_bounds, arena_shape, playable_rects, [], clearance)
 
 
 func take_damage(amount: int) -> void:
@@ -287,8 +289,7 @@ func play_death_animation() -> void:
 	_super_charge_ratio = 0.0
 	_shoot_pose_remaining = 0.0
 	modulate.a = 1.0
-	collision_layer = 0
-	collision_mask = 0
+	_disable_collision_state()
 	queue_redraw()
 
 
@@ -439,16 +440,16 @@ func _draw_player_walk_feet() -> void:
 	_draw_oval(right_center - Vector2.DOWN * body_radius * 0.18, 0.0, right_scale * Vector2(0.3, 0.22), Color(0.13, 0.82, 1.0, 0.7))
 
 
-func _draw_centered_texture(texture: Texture2D, visual_radius: float, rotation: float, tint: Color = Color.WHITE, scale: Vector2 = Vector2.ONE) -> void:
+func _draw_centered_texture(texture: Texture2D, visual_radius: float, texture_rotation: float, tint: Color = Color.WHITE, texture_scale: Vector2 = Vector2.ONE) -> void:
 	if texture == null:
 		return
-	draw_set_transform(Vector2.ZERO, rotation, scale)
+	draw_set_transform(Vector2.ZERO, texture_rotation, texture_scale)
 	draw_texture_rect(texture, Rect2(Vector2(-visual_radius, -visual_radius), Vector2(visual_radius * 2.0, visual_radius * 2.0)), false, tint)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
-func _draw_oval(center: Vector2, rotation: float, scale: Vector2, color: Color) -> void:
-	draw_set_transform(center, rotation, scale)
+func _draw_oval(center: Vector2, oval_rotation: float, oval_scale: Vector2, color: Color) -> void:
+	draw_set_transform(center, oval_rotation, oval_scale)
 	draw_circle(Vector2.ZERO, 1.0, color)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
@@ -544,9 +545,31 @@ func _draw_super_charge() -> void:
 
 
 func _add_collision() -> void:
+	if _collision_shape != null or _is_dead:
+		return
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		if not _collision_add_deferred:
+			_collision_add_deferred = true
+			call_deferred("_add_collision")
+		return
+	_collision_add_deferred = false
 	var shape := CircleShape2D.new()
 	shape.radius = body_radius
 	var collision_shape := CollisionShape2D.new()
 	collision_shape.name = "CollisionShape2D"
 	collision_shape.shape = shape
 	add_child(collision_shape)
+	_collision_shape = collision_shape
+
+
+func _disable_collision_state() -> void:
+	_collision_add_deferred = false
+	_set_body_collision_property("collision_layer", 0)
+	_set_body_collision_property("collision_mask", 0)
+
+
+func _set_body_collision_property(property_name: StringName, value: Variant) -> void:
+	if is_inside_tree() and Engine.is_in_physics_frame():
+		set_deferred(property_name, value)
+		return
+	set(property_name, value)

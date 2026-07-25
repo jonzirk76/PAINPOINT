@@ -1108,7 +1108,7 @@ func _build_boss_path(rng: RandomNumberGenerator) -> Array[String]:
 	var path_room_ids: Array[String] = ["start"]
 	var current_id := "start"
 	var path_direction := _shuffled_cardinal_directions(rng)[0]
-	var path_room_count: int = clamp(2 + int((floor_number - 1) / 2), 2, 5)
+	var path_room_count: int = clamp(2 + floori(float(floor_number - 1) / 2.0), 2, 5)
 	for index in range(path_room_count):
 		var room_id := "path_%d" % (index + 1)
 		var piece = _choose_combat_piece(rng, index)
@@ -1723,7 +1723,7 @@ func _apply_room_geometry(level, piece, connection_edges: Dictionary) -> void:
 func _get_extra_spawner_count(room_kind: String) -> int:
 	if room_kind == "start" or room_kind == "treasure":
 		return 0
-	var count: int = int((floor_number - 1) / 2)
+	var count: int = floori(float(floor_number - 1) / 2.0)
 	if room_kind == "challenge" and floor_number >= 3:
 		count += 1
 	if room_kind == "boss" and floor_number >= 2:
