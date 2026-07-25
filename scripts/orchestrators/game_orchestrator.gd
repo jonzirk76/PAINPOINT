@@ -151,6 +151,8 @@ const BOSS_REWARD_CHOICE_CLEARANCE := 30.0
 
 ## Multiplies player movement speed while walking through the composed cleared-floor traversal map.
 @export var cleared_floor_speed_multiplier: float = 1.45
+## Delays dungeon combat-room clear resolution so floor-map rebuilds happen after the last death animation.
+@export var room_clear_resolution_delay_seconds: float = 0.38
 ## Optional NobodyWho GGUF path, HuggingFace reference, or URL used for generated agent intro taunts.
 @export var agent_taunt_llm_model_path: String = ""
 ## Allows generated taunts to use the smallest cached NobodyWho GGUF model when no explicit model path is set.
@@ -196,6 +198,8 @@ var _is_main_loop_run: bool = false
 var _active_generated_encounter_test_index: int = -1
 var _is_cleared_floor_map_active: bool = false
 var _is_loading_room: bool = false
+var _room_clear_resolution_pending: bool = false
+var _room_clear_resolution_remaining: float = 0.0
 var _loading_transition_pending: bool = false
 var _loading_completion_floor_start_pending: bool = false
 var _paused_previous_status: String = ""
@@ -439,6 +443,7 @@ func _process(delta: float) -> void:
 	if _update_boss_health_feedback(delta):
 		_update_boss_health_panel()
 	if _is_gameplay_running():
+		_update_room_clear_resolution(delta)
 		_update_camera(delta)
 		_update_cat_debug_panel()
 		if _is_room_entry_transition_active:
@@ -2356,6 +2361,7 @@ func _enter_level_select() -> void:
 
 
 func _clear_gameplay() -> void:
+	_clear_pending_room_clear_resolution()
 	_clear_floor_exit_portal()
 	_set_agent_debug_panel_visible(false)
 	_set_cat_debug_panel_visible(false)
@@ -3494,6 +3500,7 @@ func _enter_cleared_floor_map_after_current_room_clear() -> bool:
 
 
 func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = false, smooth_camera: bool = false) -> bool:
+	_clear_pending_room_clear_resolution()
 	var level_definition = dungeon_manager.get_current_full_floor_level_definition(false)
 	if level_definition == null:
 		return false
@@ -4392,15 +4399,71 @@ func _get_current_room_reward_key() -> String:
 
 
 func _check_level_clear() -> void:
+	if not _level_clear_conditions_met():
+		return
+	if _should_delay_level_clear_resolution():
+		_schedule_room_clear_resolution()
+		return
+	_resolve_level_clear()
+
+
+func _level_clear_conditions_met() -> bool:
 	if _is_loading_room:
-		return
+		return false
 	if not _is_gameplay_running():
-		return
+		return false
 	if _is_room_entry_transition_active:
-		return
+		return false
 	if _is_cleared_floor_map_active:
-		return
+		return false
 	if spawner_manager.get_spawner_count() > 0 or enemy_manager.get_enemy_count() > 0:
+		return false
+	return true
+
+
+func _should_delay_level_clear_resolution() -> bool:
+	if _room_clear_resolution_pending:
+		return true
+	if room_clear_resolution_delay_seconds <= 0.0:
+		return false
+	if not _is_dungeon_run or dungeon_manager == null:
+		return false
+	var current_room_kind: String = dungeon_manager.get_current_room_kind()
+	if current_room_kind != "combat" and current_room_kind != "challenge" and current_room_kind != "boss":
+		return false
+	if _is_main_loop_run and current_room_kind == "boss" and _floor_exit_portal_active():
+		return false
+	return true
+
+
+func _schedule_room_clear_resolution() -> void:
+	if _room_clear_resolution_pending:
+		return
+	_room_clear_resolution_pending = true
+	_room_clear_resolution_remaining = max(room_clear_resolution_delay_seconds, 0.0)
+
+
+func _update_room_clear_resolution(delta: float) -> void:
+	if not _room_clear_resolution_pending:
+		return
+	if not _level_clear_conditions_met():
+		if _status != "PAUSED" and _status != "PAUSE_EXIT_CONFIRM":
+			_clear_pending_room_clear_resolution()
+		return
+	_room_clear_resolution_remaining = max(_room_clear_resolution_remaining - delta, 0.0)
+	if _room_clear_resolution_remaining > 0.0:
+		return
+	_resolve_level_clear()
+
+
+func _clear_pending_room_clear_resolution() -> void:
+	_room_clear_resolution_pending = false
+	_room_clear_resolution_remaining = 0.0
+
+
+func _resolve_level_clear() -> void:
+	_clear_pending_room_clear_resolution()
+	if not _level_clear_conditions_met():
 		return
 	if _is_dungeon_run:
 		if _is_main_loop_run and dungeon_manager.is_current_boss_room() and _floor_exit_portal_active():
@@ -4581,6 +4644,7 @@ func _get_level_select_option_label(option: Dictionary) -> String:
 
 
 func _load_dungeon_current_room(entry_direction: String, reset_player: bool, override_player_position: Vector2 = Vector2.INF) -> void:
+	_clear_pending_room_clear_resolution()
 	var level_definition = dungeon_manager.get_current_full_floor_level_definition(true)
 	if level_definition == null:
 		return

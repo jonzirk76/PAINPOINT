@@ -248,6 +248,7 @@ func _init() -> void:
 	_test_boss_test_level_select(failures)
 	_test_generated_encounter_test_level_select(failures)
 	_test_orchestrator_dungeon_start_and_boss(failures)
+	_test_dungeon_room_clear_resolution_is_deferred(failures)
 	_test_boss_exit_portal_preview_and_safe_position(failures)
 	_test_orchestrator_main_loop_floor_progression(failures)
 
@@ -4674,6 +4675,58 @@ func _test_orchestrator_dungeon_start_and_boss(failures: Array[String]) -> void:
 		failures.append("Generated dungeon boss room should not spawn interior spawner structures.")
 	if main.dungeon_manager.get_revealed_room_count() < boss_path.size():
 		failures.append("Dungeon minimap reveal state should advance along the traversed boss route.")
+	main.free()
+
+
+func _test_dungeon_room_clear_resolution_is_deferred(failures: Array[String]) -> void:
+	var scene = load("res://scenes/main.tscn")
+	if scene == null:
+		failures.append("Main scene failed to load for deferred room-clear test.")
+		return
+	var main = scene.instantiate()
+	root.add_child(main)
+	if main.dungeon_manager == null:
+		_prime_main_for_direct_test_calls(main)
+		main._connect_manager_signals()
+		main._initialize_managers()
+		main._enter_level_select()
+	main.enemy_manager.reset_run()
+	main.spawner_manager.clear_spawners()
+	main.dungeon_manager.reset_run(1, 61291)
+	var combat_path := _get_path_to_room_kind(main.dungeon_manager, "combat")
+	if combat_path.size() < 2:
+		failures.append("Deferred room-clear test could not find a generated combat room.")
+		main.free()
+		return
+	var direction := _get_connection_direction_between_rooms(main.dungeon_manager, combat_path[0], combat_path[1])
+	if direction.is_empty() or not main.dungeon_manager.enter_direction(direction):
+		failures.append("Deferred room-clear test could not enter the first generated combat room.")
+		main.free()
+		return
+	main._is_dungeon_run = true
+	main._is_main_loop_run = false
+	main._status = "DUNGEON"
+	main._set_cleared_floor_map_active(false)
+	main._set_room_entry_transition_active(false)
+	main._is_loading_room = false
+	main.room_clear_resolution_delay_seconds = 0.38
+	main._check_level_clear()
+	if not bool(main._room_clear_resolution_pending):
+		failures.append("Generated combat room clear should schedule delayed resolution.")
+	if main.dungeon_manager.is_current_room_cleared():
+		failures.append("Generated combat room should not clear before the delayed room-clear resolution.")
+	main._update_room_clear_resolution(0.37)
+	if not bool(main._room_clear_resolution_pending):
+		failures.append("Generated combat room clear should remain pending before the delay elapses.")
+	if main.dungeon_manager.is_current_room_cleared():
+		failures.append("Generated combat room should stay uncleared until the room-clear delay elapses.")
+	main._update_room_clear_resolution(0.02)
+	if bool(main._room_clear_resolution_pending):
+		failures.append("Generated combat room clear should resolve once the room-clear delay elapses.")
+	if not main.dungeon_manager.is_current_room_cleared():
+		failures.append("Generated combat room should be marked cleared after delayed room-clear resolution.")
+	if not bool(main._is_cleared_floor_map_active):
+		failures.append("Generated combat room should enter the cleared floor map after delayed resolution.")
 	main.free()
 
 
