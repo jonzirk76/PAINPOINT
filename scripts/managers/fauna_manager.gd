@@ -406,6 +406,10 @@ func _get_playable_rects(level_definition) -> Array[Rect2]:
 	var rects: Array[Rect2] = []
 	if level_definition == null:
 		return rects
+	if level_definition.has_meta("full_floor") and bool(level_definition.get_meta("full_floor")):
+		if level_definition.has_meta("footprint_cells"):
+			rects.append_array(ArenaGeometry.get_footprint_cell_rects(level_definition.arena_bounds, level_definition.get_meta("footprint_cells")))
+		return rects
 	if level_definition.has_meta("active_room_playable_rects"):
 		var active_rects_value: Variant = level_definition.get_meta("active_room_playable_rects")
 		if active_rects_value is Array:

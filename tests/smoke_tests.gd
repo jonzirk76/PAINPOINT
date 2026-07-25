@@ -450,6 +450,28 @@ func _test_cat_fauna_behavior(failures: Array[String]) -> void:
 		failures.append("FaunaManager should filter full-floor geometry before syncing active cats.")
 	if not manager_source.contains("signal cat_meowed") or not manager_source.contains("_on_cat_meowed") or not manager_source.contains("meowed"):
 		failures.append("FaunaManager should relay cat meow requests upward.")
+	var fauna_manager = load("res://scripts/managers/fauna_manager.gd").new()
+	root.add_child(fauna_manager)
+	var builder = load("res://scripts/resources/room_geometry_builder.gd")
+	var full_floor_cells: Array[Vector2i] = [Vector2i.ZERO, Vector2i(1, 0)]
+	var full_floor_level = load("res://scripts/resources/level_definition.gd").new()
+	full_floor_level.arena_bounds = builder.get_bounds(full_floor_cells)
+	full_floor_level.arena_shape = 0
+	full_floor_level.wall_rects = []
+	full_floor_level.void_rects = []
+	full_floor_level.set_meta("full_floor", true)
+	full_floor_level.set_meta("footprint_cells", full_floor_cells)
+	var left_floor_cell_rect: Rect2 = builder.get_cell_rect(full_floor_cells, Vector2i.ZERO)
+	var right_floor_cell_rect: Rect2 = builder.get_cell_rect(full_floor_cells, Vector2i(1, 0))
+	full_floor_level.set_meta("active_room_playable_rects", [right_floor_cell_rect])
+	fauna_manager.set_cat_activity_bounds(full_floor_level.arena_bounds)
+	fauna_manager.set_roam_bounds(full_floor_level.arena_bounds)
+	fauna_manager.set_arena_definition(full_floor_level)
+	var cat_floor_spawn_position: Vector2 = left_floor_cell_rect.get_center()
+	fauna_manager.spawn_cat(cat_floor_spawn_position, 321)
+	if fauna_manager.get_cat_position().distance_squared_to(cat_floor_spawn_position) > 1.0:
+		failures.append("Dungeon cats should not be constrained into the active combat room by active_room_playable_rects.")
+	fauna_manager.free()
 	var projectile_manager_source := _read_text("res://scripts/managers/projectile_manager.gd")
 	if not projectile_manager_source.contains("get_player_projectile_positions"):
 		failures.append("ProjectileManager should expose active player projectile positions for background fauna awareness.")
