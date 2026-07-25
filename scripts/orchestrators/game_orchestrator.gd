@@ -271,6 +271,8 @@ var _agent_dialogue_back: ColorRect = null
 var _agent_dialogue_speaker_label: Label = null
 var _agent_dialogue_text_label: Label = null
 var _agent_dialogue_prompt_label: Label = null
+var _agent_taunt_input_was_locked: bool = false
+var _agent_taunt_previous_input_enabled: bool = false
 var _boss_alert_overlay: ColorRect = null
 var _boss_alert_label: Label = null
 var _active_boss: EnemyEntity = null
@@ -446,8 +448,8 @@ func _process(delta: float) -> void:
 
 
 func _connect_manager_signals() -> void:
-	_connect_once(input_manager, &"move_changed", player_manager.set_move_vector)
-	_connect_once(input_manager, &"aim_changed", player_manager.set_aim_direction)
+	_connect_once(input_manager, &"move_changed", _on_move_changed)
+	_connect_once(input_manager, &"aim_changed", _on_aim_changed)
 	_connect_once(input_manager, &"aim_fire_requested", _on_aim_fire_requested)
 	_connect_once(input_manager, &"restart_requested", _on_restart_requested)
 	_connect_once(input_manager, &"menu_up_requested", _on_menu_up_requested)
@@ -965,6 +967,26 @@ func _set_agent_taunt_continue_enabled(value: bool) -> void:
 		_agent_dialogue_prompt_label.visible = value
 
 
+func _set_agent_taunt_gameplay_input_locked(value: bool) -> void:
+	if input_manager == null:
+		return
+	if value:
+		if _agent_taunt_input_was_locked:
+			return
+		_agent_taunt_input_was_locked = true
+		_agent_taunt_previous_input_enabled = bool(input_manager.enabled)
+		input_manager.set_enabled(false)
+		if player_manager != null:
+			player_manager.set_move_vector(Vector2.ZERO)
+		return
+	if not _agent_taunt_input_was_locked:
+		return
+	var restore_input_enabled: bool = _agent_taunt_previous_input_enabled
+	_agent_taunt_input_was_locked = false
+	_agent_taunt_previous_input_enabled = false
+	input_manager.set_enabled(restore_input_enabled)
+
+
 func _clear_boss_health_hud() -> void:
 	_active_boss = null
 	_pending_agent_boss_presentation = null
@@ -973,6 +995,7 @@ func _clear_boss_health_hud() -> void:
 	_boss_intro_taunt_boss = null
 	_agent_taunt_active = false
 	_agent_taunt_continue_enabled = false
+	_set_agent_taunt_gameplay_input_locked(false)
 	_agent_taunt_llm_pending = false
 	_agent_taunt_llm_generation_active = false
 	_cancel_agent_taunt_http_request()
@@ -1017,6 +1040,7 @@ func _track_level_boss(boss: EnemyEntity) -> void:
 	_boss_intro_taunt_boss = null
 	_agent_taunt_active = false
 	_agent_taunt_continue_enabled = false
+	_set_agent_taunt_gameplay_input_locked(false)
 	_agent_taunt_llm_pending = false
 	_agent_taunt_llm_generation_active = false
 	_cancel_agent_taunt_http_request()
@@ -1154,6 +1178,7 @@ func _show_agent_intro_taunt() -> void:
 		_begin_boss_intro_name_fade()
 		return
 	_agent_taunt_active = true
+	_set_agent_taunt_gameplay_input_locked(true)
 	_set_tree_paused(true)
 	var program: AgentBossProgram = boss.agent_program as AgentBossProgram
 	var fallback_line: String = _build_agent_intro_taunt(program)
@@ -1175,6 +1200,7 @@ func _dismiss_agent_intro_taunt() -> void:
 	_cancel_agent_taunt_http_request()
 	_boss_intro_taunt_boss = null
 	_hide_agent_dialogue_box()
+	_set_agent_taunt_gameplay_input_locked(false)
 	_set_tree_paused(false)
 	_begin_boss_intro_name_fade()
 	_update_boss_alert_overlay()
@@ -2457,24 +2483,42 @@ func _should_advance_gameplay_feedback() -> bool:
 	return not _tree_pause_requested and (_is_gameplay_running() or _status == "DOWN")
 
 
+func _is_gameplay_input_allowed() -> bool:
+	return _is_gameplay_running() and not _tree_pause_requested and not _agent_taunt_active
+
+
+func _on_move_changed(move_vector: Vector2) -> void:
+	if not _is_gameplay_input_allowed():
+		return
+	player_manager.set_move_vector(move_vector)
+
+
+func _on_aim_changed(direction: Vector2) -> void:
+	if not _is_gameplay_input_allowed():
+		return
+	player_manager.set_aim_direction(direction)
+
+
 func _on_aim_fire_requested(direction: Vector2) -> void:
+	if not _is_gameplay_input_allowed():
+		return
 	player_manager.request_fire(direction)
 
 
 func _on_input_super_charge_pressed() -> void:
-	if not _is_gameplay_running():
+	if not _is_gameplay_input_allowed():
 		return
 	player_manager.request_super_charge_start()
 
 
 func _on_input_super_charge_released(direction: Vector2) -> void:
-	if not _is_gameplay_running():
+	if not _is_gameplay_input_allowed():
 		return
 	player_manager.request_super_charge_release(direction)
 
 
 func _on_input_overdrive_changed(is_held: bool) -> void:
-	upgrade_manager.set_overdrive_active(is_held and _is_gameplay_running())
+	upgrade_manager.set_overdrive_active(is_held and _is_gameplay_input_allowed())
 
 
 func _on_cat_meowed(pitch_center: float, pitch_variation: float) -> void:
@@ -2980,6 +3024,8 @@ func _on_player_invulnerability_changed(remaining: float, duration: float) -> vo
 
 
 func _on_input_parry_requested() -> void:
+	if not _is_gameplay_input_allowed():
+		return
 	player_manager.request_parry()
 
 
