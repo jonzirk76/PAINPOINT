@@ -140,6 +140,10 @@ func get_full_floor_level_definition(active_room_id: String = "", include_active
 	level.set_meta("visible_bounds", get_full_floor_visible_bounds(active_room_id))
 	if not active_room_id.is_empty():
 		level.set_meta("active_room_bounds", get_full_floor_room_bounds(active_room_id))
+		if _rooms.has(active_room_id):
+			var active_state: Dictionary = _rooms[active_room_id]
+			if not bool(active_state.get("cleared", false)):
+				level.set_meta("active_room_playable_rects", _get_full_floor_room_playable_rects(active_room_id, room_ids))
 	_apply_visible_floor_destructible_prop_placements(level, active_room_id, room_ids, include_active_contents)
 	if include_active_contents:
 		_apply_active_room_contents_to_full_floor_level(level, active_room_id, room_ids)
@@ -455,6 +459,25 @@ func get_full_floor_room_bounds(room_id: String) -> Rect2:
 	if room_id.is_empty() or not _rooms.has(room_id):
 		return Rect2()
 	return _get_floor_bounds_for_room_ids([room_id], _get_full_floor_room_ids())
+
+
+func _get_full_floor_room_playable_rects(room_id: String, room_ids: Array[String]) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if room_id.is_empty() or not _rooms.has(room_id) or room_ids.is_empty():
+		return rects
+	var floor_cells: Array[Vector2i] = _get_cleared_floor_cells(room_ids)
+	if floor_cells.is_empty():
+		return rects
+	var min_world_cell: Vector2i = _get_cleared_floor_min_world_cell(room_ids)
+	var state: Dictionary = _rooms[room_id]
+	var piece: RoomPieceDefinition = state["piece"] as RoomPieceDefinition
+	if piece == null:
+		return rects
+	var offset: Vector2 = _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
+	for local_cell: Vector2i in piece.footprint_cells:
+		var cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(piece.footprint_cells, local_cell)
+		rects.append(_translated_rect(cell_rect, offset))
+	return rects
 
 
 func get_full_floor_visible_bounds(active_room_id: String = "") -> Rect2:

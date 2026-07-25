@@ -490,7 +490,17 @@ func _constrain_spawn_position(position: Vector2, clearance: float) -> Vector2:
 
 func _get_playable_rects(level_definition) -> Array[Rect2]:
 	var rects: Array[Rect2] = []
-	if level_definition == null or not level_definition.has_meta("footprint_cells"):
+	if level_definition == null:
+		return rects
+	if level_definition.has_meta("active_room_playable_rects"):
+		var active_rects_value: Variant = level_definition.get_meta("active_room_playable_rects")
+		if active_rects_value is Array:
+			for active_rect in active_rects_value:
+				if active_rect is Rect2:
+					rects.append(active_rect)
+			if not rects.is_empty():
+				return rects
+	if not level_definition.has_meta("footprint_cells"):
 		return rects
 	rects.append_array(ArenaGeometry.get_footprint_cell_rects(level_definition.arena_bounds, level_definition.get_meta("footprint_cells")))
 	return rects
