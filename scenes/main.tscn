@@ -1,4 +1,4 @@
-[gd_scene load_steps=28 format=3 uid="uid://beu8j4ocyaju8"]
+[gd_scene load_steps=29 format=3 uid="uid://beu8j4ocyaju8"]
 
 [ext_resource type="Script" uid="uid://wt5kiqqk3ets" path="res://scripts/orchestrators/game_orchestrator.gd" id="1"]
 [ext_resource type="Script" uid="uid://bp4ssjl06eeir" path="res://scripts/arena/arena_view.gd" id="2"]
@@ -23,6 +23,7 @@
 [ext_resource type="Texture2D" uid="uid://dmmnsmupy476b" path="res://art/concept_art/portraitcropped2.png" id="18_gqmmt"]
 [ext_resource type="Texture2D" uid="uid://cjvw5hc5udne8" path="res://art/character_UI.png" id="20_gqmmt"]
 [ext_resource type="PackedScene" uid="uid://cprl8lufwm42b" path="res://scenes/ui/loading_screen.tscn" id="21_loading"]
+[ext_resource type="Script" path="res://scripts/ui/parry_portrait_meter.gd" id="22_parry"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_jscy8"]
 font = ExtResource("16_yc10j")
@@ -220,6 +221,34 @@ offset_bottom = 70.5
 scale = Vector2(0.55, 0.55)
 texture = ExtResource("18_gqmmt")
 script = ExtResource("18_dp3eg")
+metadata/_edit_use_anchors_ = true
+
+[node name="ParryPortraitMeter" type="Control" parent="UI/CombatPanel"]
+layout_mode = 0
+offset_left = 7.5
+offset_top = 7.5
+offset_right = 83.5
+offset_bottom = 83.5
+mouse_filter = 2
+z_index = 4
+script = ExtResource("22_parry")
+metadata/_edit_use_anchors_ = true
+
+[node name="ParryReadyLabel" type="Label" parent="UI/CombatPanel"]
+layout_mode = 0
+offset_right = 92.0
+offset_bottom = 15.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.62, 1, 0.92, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.9)
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 9
+text = "PARRY READY"
+label_settings = SubResource("LabelSettings_y6deb")
+horizontal_alignment = 1
+vertical_alignment = 1
+z_index = 5
 metadata/_edit_use_anchors_ = true
 
 [node name="HealthLabel" type="Label" parent="UI/CombatPanel"]

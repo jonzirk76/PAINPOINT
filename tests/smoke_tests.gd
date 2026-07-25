@@ -989,6 +989,8 @@ func _test_character_hud_feedback_and_manual_layout(failures: Array[String]) -> 
 	main._update_super_bar(super_rect)
 	if main.super_bar_back.get_node_or_null("SuperCrackle") == null:
 		failures.append("Ready special meter should draw a white crackle overlay.")
+	if main.combat_panel.get_node_or_null("ParryPortraitMeter") == null or main.combat_panel.get_node_or_null("ParryReadyLabel") == null:
+		failures.append("Parry portrait meter and ready label should be authored in main.tscn for inspector placement.")
 	main._last_parry_cooldown_duration = 8.0
 	main._last_parry_cooldown_remaining = 4.0
 	main._last_parry_graze_cooldown_active = true
@@ -4824,6 +4826,8 @@ func _prime_main_for_direct_test_calls(main) -> void:
 	main.dungeon_minimap = main.get_node("UI/DungeonMinimap")
 	main.combat_panel = main.get_node("UI/CombatPanel")
 	main.character_ui = main.get_node("UI/CharacterUi")
+	main._parry_portrait_meter = main.get_node("UI/CombatPanel/ParryPortraitMeter")
+	main._parry_portrait_status_label = main.get_node("UI/CombatPanel/ParryReadyLabel")
 	main.health_bar_back = main.get_node("UI/CombatPanel/HealthBarBack")
 	main.health_fill = main.get_node("UI/CombatPanel/HealthBarBack/HealthBarFill")
 	main.health_tick_layer = main.get_node("UI/CombatPanel/HealthBarBack/HealthTickLayer")

@@ -77,7 +77,6 @@ const CAT_DEBUG_LEVEL_IDS := ["cat_behavior_test", "cat_peaceful_test"]
 const FLOOR_EXIT_PORTAL_SCENE := preload("res://scenes/entities/floor_exit_portal_entity.tscn")
 const AGENT_BOSS_GENERATOR := preload("res://scripts/resources/agent_boss_generator.gd")
 const BOLD_PIXELS_FONT := preload("res://art/fonts/BoldPixels.ttf")
-const PARRY_PORTRAIT_METER_SCRIPT := preload("res://scripts/ui/parry_portrait_meter.gd")
 const LOADING_PROGRESS_FLOOR_LAYOUT_START := 0.08
 const LOADING_PROGRESS_FLOOR_LAYOUT_DONE := 0.18
 const LOADING_PROGRESS_ROOM_GEOMETRY := 0.28
@@ -115,6 +114,8 @@ const BOSS_REWARD_CHOICE_CLEARANCE := 30.0
 @onready var dungeon_minimap: Control = $UI/DungeonMinimap
 @onready var combat_panel: Control = $UI/CombatPanel
 @onready var character_ui: CanvasItem = $UI/CharacterUi
+@onready var _parry_portrait_meter: Control = $UI/CombatPanel/ParryPortraitMeter
+@onready var _parry_portrait_status_label: Label = $UI/CombatPanel/ParryReadyLabel
 @onready var health_bar_back: ColorRect = $UI/CombatPanel/HealthBarBack
 @onready var health_fill: ColorRect = $UI/CombatPanel/HealthBarBack/HealthBarFill
 @onready var health_tick_layer: Control = $UI/CombatPanel/HealthBarBack/HealthTickLayer
@@ -268,8 +269,6 @@ var _boss_health_label: Label = null
 var _boss_health_bar_back: ColorRect = null
 var _boss_health_fill: ColorRect = null
 var _boss_health_tick_layer: Control = null
-var _parry_portrait_meter: Control = null
-var _parry_portrait_status_label: Label = null
 var _agent_dialogue_panel: Control = null
 var _agent_dialogue_back: ColorRect = null
 var _agent_dialogue_speaker_label: Label = null
@@ -396,7 +395,6 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_super_crackle_rng.randomize()
 	_capture_hud_authoring_state()
-	_ensure_parry_portrait_hud()
 	_ensure_agent_debug_panel()
 	_ensure_boss_health_hud()
 	_ensure_agent_dialogue_box()
@@ -588,37 +586,6 @@ func _capture_hud_authoring_state() -> void:
 		captured_any = true
 	if captured_any:
 		_meter_authoring_state_captured = true
-
-
-func _ensure_parry_portrait_hud() -> void:
-	if combat_panel == null:
-		return
-	if _parry_portrait_meter == null or not is_instance_valid(_parry_portrait_meter):
-		var meter: Control = PARRY_PORTRAIT_METER_SCRIPT.new()
-		meter.name = "ParryPortraitMeter"
-		meter.position = Vector2(7.5, 7.5)
-		meter.size = Vector2(76.0, 76.0)
-		meter.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		meter.z_index = 4
-		combat_panel.add_child(meter)
-		_parry_portrait_meter = meter
-	if _parry_portrait_status_label == null or not is_instance_valid(_parry_portrait_status_label):
-		var status_label: Label = Label.new()
-		status_label.name = "ParryReadyLabel"
-		status_label.position = Vector2(0.0, 0.0)
-		status_label.size = Vector2(92.0, 15.0)
-		status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		status_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		status_label.z_index = 5
-		status_label.add_theme_font_override("font", BOLD_PIXELS_FONT)
-		status_label.add_theme_font_size_override("font_size", 9)
-		status_label.add_theme_color_override("font_color", Color(0.62, 1.0, 0.92, 1.0))
-		status_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.9))
-		status_label.add_theme_constant_override("shadow_offset_x", 0)
-		status_label.add_theme_constant_override("shadow_offset_y", 1)
-		combat_panel.add_child(status_label)
-		_parry_portrait_status_label = status_label
 
 
 func _ensure_agent_debug_panel() -> void:
@@ -3697,7 +3664,6 @@ func _update_combat_panel(active_effects: Array) -> void:
 
 
 func _update_parry_portrait_hud() -> void:
-	_ensure_parry_portrait_hud()
 	if _parry_portrait_meter == null or not is_instance_valid(_parry_portrait_meter):
 		return
 	if _parry_portrait_status_label == null or not is_instance_valid(_parry_portrait_status_label):
