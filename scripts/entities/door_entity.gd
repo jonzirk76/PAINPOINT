@@ -104,8 +104,8 @@ func set_monitoring_enabled(value: bool) -> void:
 
 
 func get_gate_blocker_rect() -> Rect2:
-	var size := visual_size if visual_size != Vector2.ZERO else door_size
-	return Rect2(global_position + visual_offset - size * 0.5, size)
+	var blocker_rect := _get_gate_blocker_fill_rect(_get_visual_fill_rect())
+	return Rect2(global_position + blocker_rect.position, blocker_rect.size)
 
 
 func _configure_collision_identity() -> void:
@@ -232,6 +232,24 @@ func _get_gate_body_rects(rect: Rect2) -> Array[Rect2]:
 	for top_rect in _get_gate_top_rects(rect):
 		rects.append(Rect2(top_rect.position + Vector2(0.0, tile_size), top_rect.size))
 	return rects
+
+
+func _get_gate_blocker_rects(rect: Rect2) -> Array[Rect2]:
+	match direction:
+		"south":
+			var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
+			return _rect_to_gate_tiles(Rect2(rect.position + Vector2(0.0, tile_size), rect.size))
+	return _get_gate_body_rects(rect)
+
+
+func _get_gate_blocker_fill_rect(rect: Rect2) -> Rect2:
+	var blocker_rects := _get_gate_blocker_rects(rect)
+	if blocker_rects.is_empty():
+		return rect
+	var merged_rect := blocker_rects[0]
+	for index in range(1, blocker_rects.size()):
+		merged_rect = merged_rect.merge(blocker_rects[index])
+	return merged_rect
 
 
 func _rect_to_gate_tiles(rect: Rect2) -> Array[Rect2]:
@@ -416,10 +434,10 @@ func _add_or_update_gate_collision() -> void:
 		_gate_collision_shape = CollisionShape2D.new()
 		_gate_collision_shape.name = "CollisionShape2D"
 		_gate_body.add_child(_gate_collision_shape)
-	var size := visual_size if visual_size != Vector2.ZERO else door_size
+	var blocker_rect := _get_gate_blocker_fill_rect(_get_visual_fill_rect())
 	var shape := RectangleShape2D.new()
-	shape.size = size
-	_gate_body.position = visual_offset
+	shape.size = blocker_rect.size
+	_gate_body.position = blocker_rect.get_center()
 	_gate_collision_shape.shape = shape
 	_set_gate_blocking_enabled(not unlocked)
 

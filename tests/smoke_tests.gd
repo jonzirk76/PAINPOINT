@@ -3964,6 +3964,23 @@ func _test_room_manager_doors(failures: Array[String]) -> void:
 	var side_gate_lowest_body := Rect2(Vector2(0.0, marker_tile_size * 3.0), Vector2(marker_tile_size, marker_tile_size))
 	if not _rect_list_has_rect(side_gate_body_rects, side_gate_lowest_body):
 		failures.append("Closed side gate bodies should tuck under the lowest passable wall-top tile.")
+	var south_door = load("res://scenes/entities/door_entity.tscn").instantiate()
+	root.add_child(south_door)
+	var south_gate_visual_rect := Rect2(Vector2(120.0, 320.0), Vector2(marker_tile_size * 4.0, marker_tile_size))
+	var expected_south_gate_blocker := Rect2(south_gate_visual_rect.position + Vector2(0.0, marker_tile_size), south_gate_visual_rect.size)
+	south_door.initialize("south", "next", Vector2.ZERO, south_gate_visual_rect.size, false)
+	south_door.set_visual_rect(south_gate_visual_rect.get_center(), south_gate_visual_rect.size)
+	if not _rects_are_same(south_door.get_gate_blocker_rect(), expected_south_gate_blocker):
+		failures.append("Closed south gates should place their blocker on the wall body row below the visible gate top.")
+	var south_gate_body := south_door.get_node_or_null("GateBlocker") as Node2D
+	var south_gate_collision: CollisionShape2D = null
+	if south_gate_body != null:
+		south_gate_collision = south_gate_body.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	var south_gate_shape: RectangleShape2D = null
+	if south_gate_collision != null:
+		south_gate_shape = south_gate_collision.shape as RectangleShape2D
+	if south_gate_body == null or south_gate_shape == null or south_gate_body.global_position.distance_squared_to(expected_south_gate_blocker.get_center()) > 0.25 or south_gate_shape.size.distance_squared_to(expected_south_gate_blocker.size) > 0.25:
+		failures.append("Closed south gate collision should match the shifted wall body blocker, not the visible top strip.")
 	direct_door.set_unlocked(true)
 	if not direct_door.has_special_marker():
 		failures.append("Door entity should treat boss targets as special marked doors.")
@@ -3981,6 +3998,7 @@ func _test_room_manager_doors(failures: Array[String]) -> void:
 	direct_door._on_body_entered(player)
 	if entered_count[0] != 1:
 		failures.append("Door should trigger normally after it has armed.")
+	south_door.free()
 	direct_door.free()
 	player.free()
 	manager.free()
