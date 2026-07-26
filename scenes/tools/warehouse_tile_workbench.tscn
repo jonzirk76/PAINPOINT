@@ -1,0 +1,1414 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/warehouse_tile_workbench.gd" id="1_kq02e"]
+[ext_resource type="Texture2D" path="res://art/concept_art/warehousetiles.png" id="2_krlt3"]
+
+[node name="WarehouseTileWorkbench" type="Node2D" unique_id=1352596404]
+script = ExtResource("1_kq02e")
+
+[node name="Tiles" type="Node2D" parent="." unique_id=1355019220]
+position = Vector2(80, 100)
+
+[node name="FloorConcrete" type="Node2D" parent="Tiles" unique_id=1351403791]
+scale = Vector2(3, 3)
+metadata/tile_id = "floor_concrete"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base"
+
+[node name="Base" type="Polygon2D" parent="Tiles/FloorConcrete" unique_id=580023398]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/FloorConcrete" unique_id=442496055]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/FloorConcrete" unique_id=454291432]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "FLOOR / CONCRETE"
+
+[node name="FloorWorn" type="Node2D" parent="Tiles" unique_id=958964801]
+position = Vector2(174, 0)
+scale = Vector2(3, 3)
+metadata/tile_id = "floor_worn"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,WearA"
+
+[node name="Base" type="Polygon2D" parent="Tiles/FloorWorn" unique_id=97318791]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="WearA" type="Polygon2D" parent="Tiles/FloorWorn" unique_id=1968011939]
+color = Color(0.26666668, 0.26666668, 0.24705882, 1)
+polygon = PackedVector2Array(3, 5, 18, 2, 29, 7, 36, 18, 30, 34, 12, 37, 4, 28)
+metadata/palette_role = "floor_worn"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/FloorWorn" unique_id=1105304322]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/FloorWorn" unique_id=818510366]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "FLOOR / WORN"
+
+[node name="FloorCracked" type="Node2D" parent="Tiles" unique_id=1943941896]
+position = Vector2(348, 0)
+scale = Vector2(3, 3)
+metadata/tile_id = "floor_cracked"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,CrackA,CrackB"
+
+[node name="Base" type="Polygon2D" parent="Tiles/FloorCracked" unique_id=542033451]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="CrackA" type="Polygon2D" parent="Tiles/FloorCracked" unique_id=1981042246]
+color = Color(0.14509805, 0.16470589, 0.1764706, 1)
+polygon = PackedVector2Array(18, 0, 20, 12, 16, 19, 22, 25, 19, 40, 17, 27, 12, 20, 17, 11)
+metadata/palette_role = "metal_dark"
+
+[node name="CrackB" type="Polygon2D" parent="Tiles/FloorCracked" unique_id=1314414461]
+color = Color(0.14509805, 0.16470589, 0.1764706, 1)
+polygon = PackedVector2Array(18, 18, 6, 14, 1, 9, 8, 16, 17, 21)
+metadata/palette_role = "metal_dark"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/FloorCracked" unique_id=291755924]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/FloorCracked" unique_id=350248229]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "FLOOR / CRACKED"
+
+[node name="FloorMetalPlate" type="Node2D" parent="Tiles" unique_id=116491091]
+position = Vector2(522, 0)
+scale = Vector2(3, 3)
+metadata/tile_id = "floor_metal_plate"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,Plate,DiamondA,DiamondB"
+
+[node name="Base" type="Polygon2D" parent="Tiles/FloorMetalPlate" unique_id=1966270874]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="Plate" type="Polygon2D" parent="Tiles/FloorMetalPlate" unique_id=654445569]
+color = Color(0.34901962, 0.3764706, 0.39215687, 1)
+polygon = PackedVector2Array(2, 2, 38, 2, 38, 38, 2, 38)
+metadata/palette_role = "metal"
+
+[node name="DiamondA" type="Polygon2D" parent="Tiles/FloorMetalPlate" unique_id=2009042210]
+color = Color(0.64705884, 0.654902, 0.6392157, 1)
+polygon = PackedVector2Array(10, 5, 14, 10, 10, 15, 6, 10)
+metadata/palette_role = "metal_light"
+
+[node name="DiamondB" type="Polygon2D" parent="Tiles/FloorMetalPlate" unique_id=1312293598]
+color = Color(0.14509805, 0.16470589, 0.1764706, 1)
+polygon = PackedVector2Array(28, 22, 33, 27, 28, 32, 23, 27)
+metadata/palette_role = "metal_dark"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/FloorMetalPlate" unique_id=428714716]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/FloorMetalPlate" unique_id=1700587459]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "FLOOR / METAL PLATE"
+
+[node name="FloorGrate" type="Node2D" parent="Tiles" unique_id=1939281163]
+position = Vector2(696, 0)
+scale = Vector2(3, 3)
+metadata/tile_id = "floor_grate"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,GrateInset,RailA,RailB,RailC,RailD"
+
+[node name="Base" type="Polygon2D" parent="Tiles/FloorGrate" unique_id=97234214]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="GrateInset" type="Polygon2D" parent="Tiles/FloorGrate" unique_id=567914890]
+color = Color(0.14509805, 0.16470589, 0.1764706, 1)
+polygon = PackedVector2Array(3, 3, 37, 3, 37, 37, 3, 37)
+metadata/palette_role = "metal_dark"
+
+[node name="RailA" type="Polygon2D" parent="Tiles/FloorGrate" unique_id=1238463129]
+color = Color(0.34901962, 0.3764706, 0.39215687, 1)
+polygon = PackedVector2Array(7, 4, 10, 4, 10, 36, 7, 36)
+metadata/palette_role = "metal"
+
+[node name="RailB" type="Polygon2D" parent="Tiles/FloorGrate" unique_id=508019107]
+color = Color(0.34901962, 0.3764706, 0.39215687, 1)
+polygon = PackedVector2Array(15, 4, 18, 4, 18, 36, 15, 36)
+metadata/palette_role = "metal"
+
+[node name="RailC" type="Polygon2D" parent="Tiles/FloorGrate" unique_id=444869014]
+color = Color(0.34901962, 0.3764706, 0.39215687, 1)
+polygon = PackedVector2Array(23, 4, 26, 4, 26, 36, 23, 36)
+metadata/palette_role = "metal"
+
+[node name="RailD" type="Polygon2D" parent="Tiles/FloorGrate" unique_id=979773937]
+color = Color(0.34901962, 0.3764706, 0.39215687, 1)
+polygon = PackedVector2Array(31, 4, 34, 4, 34, 36, 31, 36)
+metadata/palette_role = "metal"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/FloorGrate" unique_id=1390295119]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/FloorGrate" unique_id=1031297713]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "FLOOR / GRATE"
+
+[node name="FloorPainted" type="Node2D" parent="Tiles" unique_id=1377643787]
+position = Vector2(870, 0)
+scale = Vector2(3, 3)
+metadata/tile_id = "floor_painted"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,Paint,ChipA,ChipB"
+
+[node name="Base" type="Polygon2D" parent="Tiles/FloorPainted" unique_id=640650761]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="Paint" type="Polygon2D" parent="Tiles/FloorPainted" unique_id=531449839]
+color = Color(0.3254902, 0.3882353, 0.25490198, 1)
+polygon = PackedVector2Array(2, 2, 38, 2, 38, 38, 2, 38)
+metadata/palette_role = "accent"
+
+[node name="ChipA" type="Polygon2D" parent="Tiles/FloorPainted" unique_id=1547720567]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(3, 7, 12, 4, 10, 9, 4, 12)
+metadata/palette_role = "floor"
+
+[node name="ChipB" type="Polygon2D" parent="Tiles/FloorPainted" unique_id=406651217]
+color = Color(0.26666668, 0.26666668, 0.24705882, 1)
+polygon = PackedVector2Array(29, 29, 38, 25, 37, 36, 25, 38)
+metadata/palette_role = "floor_worn"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/FloorPainted" unique_id=1136246040]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/FloorPainted" unique_id=1370305943]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "FLOOR / PAINTED"
+
+[node name="OverlayDirt" type="Node2D" parent="Tiles" unique_id=1165847068]
+position = Vector2(1044, 0)
+scale = Vector2(3, 3)
+metadata/tile_id = "overlay_dirt"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "TransparentGuide,Dirt"
+
+[node name="TransparentGuide" type="Polygon2D" parent="Tiles/OverlayDirt" unique_id=1823185825]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="Dirt" type="Polygon2D" parent="Tiles/OverlayDirt" unique_id=1247582634]
+color = Color(0.11372549, 0.12941177, 0.11372549, 1)
+polygon = PackedVector2Array(3, 22, 8, 9, 18, 4, 34, 11, 38, 27, 27, 36, 10, 34)
+metadata/palette_role = "grime"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/OverlayDirt" unique_id=1061445135]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/OverlayDirt" unique_id=1252287206]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "OVERLAY / DIRT"
+
+[node name="OverlayScratches" type="Node2D" parent="Tiles" unique_id=1623841558]
+position = Vector2(1218, 0)
+scale = Vector2(3, 3)
+metadata/tile_id = "overlay_scratches"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "TransparentGuide,ScratchA,ScratchB"
+
+[node name="TransparentGuide" type="Polygon2D" parent="Tiles/OverlayScratches" unique_id=1113098862]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="ScratchA" type="Polygon2D" parent="Tiles/OverlayScratches" unique_id=1462566500]
+color = Color(0.64705884, 0.654902, 0.6392157, 1)
+polygon = PackedVector2Array(5, 31, 28, 7, 30, 8, 7, 33)
+metadata/palette_role = "metal_light"
+
+[node name="ScratchB" type="Polygon2D" parent="Tiles/OverlayScratches" unique_id=1110671212]
+color = Color(0.64705884, 0.654902, 0.6392157, 1)
+polygon = PackedVector2Array(12, 36, 35, 14, 36, 16, 14, 38)
+metadata/palette_role = "metal_light"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/OverlayScratches" unique_id=743842678]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/OverlayScratches" unique_id=1740285801]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "OVERLAY / SCRATCHES"
+
+[node name="OverlayOil" type="Node2D" parent="Tiles" unique_id=1828429858]
+position = Vector2(0, 174)
+scale = Vector2(3, 3)
+metadata/tile_id = "overlay_oil"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "TransparentGuide,Oil,OilHighlight"
+
+[node name="TransparentGuide" type="Polygon2D" parent="Tiles/OverlayOil" unique_id=1118281535]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="Oil" type="Polygon2D" parent="Tiles/OverlayOil" unique_id=1273111212]
+color = Color(0.11372549, 0.12941177, 0.11372549, 1)
+polygon = PackedVector2Array(5, 24, 9, 12, 20, 6, 33, 11, 38, 22, 30, 35, 14, 37)
+metadata/palette_role = "grime"
+
+[node name="OilHighlight" type="Polygon2D" parent="Tiles/OverlayOil" unique_id=699415625]
+color = Color(0.14509805, 0.16470589, 0.1764706, 1)
+polygon = PackedVector2Array(12, 14, 20, 10, 27, 14, 20, 16)
+metadata/palette_role = "metal_dark"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/OverlayOil" unique_id=1534941946]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/OverlayOil" unique_id=621609494]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "OVERLAY / OIL"
+
+[node name="OverlayWet" type="Node2D" parent="Tiles" unique_id=472073170]
+position = Vector2(174, 174)
+scale = Vector2(3, 3)
+metadata/tile_id = "overlay_wet"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "TransparentGuide,Water,Reflection"
+
+[node name="TransparentGuide" type="Polygon2D" parent="Tiles/OverlayWet" unique_id=448806725]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="Water" type="Polygon2D" parent="Tiles/OverlayWet" unique_id=872884815]
+color = Color(0.1882353, 0.29411766, 0.3882353, 1)
+polygon = PackedVector2Array(3, 25, 8, 12, 20, 6, 35, 14, 38, 27, 29, 36, 12, 35)
+metadata/palette_role = "liquid"
+
+[node name="Reflection" type="Polygon2D" parent="Tiles/OverlayWet" unique_id=872770957]
+color = Color(0.64705884, 0.654902, 0.6392157, 1)
+polygon = PackedVector2Array(11, 14, 25, 9, 30, 12, 16, 17)
+metadata/palette_role = "metal_light"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/OverlayWet" unique_id=340252490]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/OverlayWet" unique_id=1529951878]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "OVERLAY / WET"
+
+[node name="OverlayLeak" type="Node2D" parent="Tiles" unique_id=134951065]
+position = Vector2(348, 174)
+scale = Vector2(3, 3)
+metadata/tile_id = "overlay_leak"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "TransparentGuide,LeakA,LeakB"
+
+[node name="TransparentGuide" type="Polygon2D" parent="Tiles/OverlayLeak" unique_id=1477779431]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="LeakA" type="Polygon2D" parent="Tiles/OverlayLeak" unique_id=1828169422]
+color = Color(0.11372549, 0.12941177, 0.11372549, 1)
+polygon = PackedVector2Array(5, 0, 11, 0, 13, 18, 18, 27, 14, 40, 8, 40, 10, 27, 7, 17)
+metadata/palette_role = "grime"
+
+[node name="LeakB" type="Polygon2D" parent="Tiles/OverlayLeak" unique_id=1878742235]
+color = Color(0.11372549, 0.12941177, 0.11372549, 1)
+polygon = PackedVector2Array(28, 0, 34, 0, 31, 14, 35, 26, 31, 40, 25, 40, 29, 26, 27, 14)
+metadata/palette_role = "grime"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/OverlayLeak" unique_id=1201918847]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/OverlayLeak" unique_id=255532286]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "OVERLAY / LEAK"
+
+[node name="OverlayMoss" type="Node2D" parent="Tiles" unique_id=667816657]
+position = Vector2(522, 174)
+scale = Vector2(3, 3)
+metadata/tile_id = "overlay_moss"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "TransparentGuide,Moss"
+
+[node name="TransparentGuide" type="Polygon2D" parent="Tiles/OverlayMoss" unique_id=1413075093]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="Moss" type="Polygon2D" parent="Tiles/OverlayMoss" unique_id=422291020]
+color = Color(0.3254902, 0.3882353, 0.25490198, 1)
+polygon = PackedVector2Array(0, 17, 8, 9, 14, 13, 20, 5, 29, 10, 40, 7, 40, 25, 31, 20, 24, 31, 13, 25, 0, 34)
+metadata/palette_role = "accent"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/OverlayMoss" unique_id=148660568]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/OverlayMoss" unique_id=1156645628]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "OVERLAY / MOSS"
+
+[node name="PathStraight" type="Node2D" parent="Tiles" unique_id=1106698093]
+position = Vector2(696, 174)
+scale = Vector2(3, 3)
+metadata/tile_id = "path_straight"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,Lane"
+
+[node name="Base" type="Polygon2D" parent="Tiles/PathStraight" unique_id=460397706]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="Lane" type="Polygon2D" parent="Tiles/PathStraight" unique_id=978763411]
+color = Color(0.7607843, 0.60784316, 0.12941177, 1)
+polygon = PackedVector2Array(0, 17, 40, 17, 40, 23, 0, 23)
+metadata/palette_role = "warning"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/PathStraight" unique_id=1523535010]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/PathStraight" unique_id=1088685625]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "PATH / STRAIGHT"
+
+[node name="PathCorner" type="Node2D" parent="Tiles" unique_id=141672514]
+position = Vector2(870, 174)
+scale = Vector2(3, 3)
+metadata/tile_id = "path_corner"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,LaneHorizontal,LaneVertical,CornerFill"
+
+[node name="Base" type="Polygon2D" parent="Tiles/PathCorner" unique_id=1685082832]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="LaneHorizontal" type="Polygon2D" parent="Tiles/PathCorner" unique_id=789686471]
+color = Color(0.7607843, 0.60784316, 0.12941177, 1)
+polygon = PackedVector2Array(0, 17, 23, 17, 23, 23, 0, 23)
+metadata/palette_role = "warning"
+
+[node name="LaneVertical" type="Polygon2D" parent="Tiles/PathCorner" unique_id=909091556]
+color = Color(0.7607843, 0.60784316, 0.12941177, 1)
+polygon = PackedVector2Array(17, 17, 23, 17, 23, 40, 17, 40)
+metadata/palette_role = "warning"
+
+[node name="CornerFill" type="Polygon2D" parent="Tiles/PathCorner" unique_id=519065685]
+color = Color(0.7607843, 0.60784316, 0.12941177, 1)
+polygon = PackedVector2Array(17, 17, 28, 17, 23, 23, 17, 28)
+metadata/palette_role = "warning"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/PathCorner" unique_id=822486029]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/PathCorner" unique_id=2034243572]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "PATH / CORNER"
+
+[node name="PathTJunction" type="Node2D" parent="Tiles" unique_id=89893584]
+position = Vector2(1044, 174)
+scale = Vector2(3, 3)
+metadata/tile_id = "path_t_junction"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,LaneHorizontal,LaneVertical"
+
+[node name="Base" type="Polygon2D" parent="Tiles/PathTJunction" unique_id=309870504]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="LaneHorizontal" type="Polygon2D" parent="Tiles/PathTJunction" unique_id=2021703389]
+color = Color(0.7607843, 0.60784316, 0.12941177, 1)
+polygon = PackedVector2Array(0, 17, 40, 17, 40, 23, 0, 23)
+metadata/palette_role = "warning"
+
+[node name="LaneVertical" type="Polygon2D" parent="Tiles/PathTJunction" unique_id=1563398670]
+color = Color(0.7607843, 0.60784316, 0.12941177, 1)
+polygon = PackedVector2Array(17, 17, 23, 17, 23, 40, 17, 40)
+metadata/palette_role = "warning"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/PathTJunction" unique_id=2095555680]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/PathTJunction" unique_id=239462990]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "PATH / T-JUNCTION"
+
+[node name="PathCross" type="Node2D" parent="Tiles" unique_id=1215794680]
+position = Vector2(1218, 174)
+scale = Vector2(3, 3)
+metadata/tile_id = "path_cross"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,LaneHorizontal,LaneVertical"
+
+[node name="Base" type="Polygon2D" parent="Tiles/PathCross" unique_id=429622866]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="LaneHorizontal" type="Polygon2D" parent="Tiles/PathCross" unique_id=1558311475]
+color = Color(0.7607843, 0.60784316, 0.12941177, 1)
+polygon = PackedVector2Array(0, 17, 40, 17, 40, 23, 0, 23)
+metadata/palette_role = "warning"
+
+[node name="LaneVertical" type="Polygon2D" parent="Tiles/PathCross" unique_id=1125795641]
+color = Color(0.7607843, 0.60784316, 0.12941177, 1)
+polygon = PackedVector2Array(17, 0, 23, 0, 23, 40, 17, 40)
+metadata/palette_role = "warning"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/PathCross" unique_id=108452565]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/PathCross" unique_id=246088805]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "PATH / CROSS"
+
+[node name="PathEnd" type="Node2D" parent="Tiles" unique_id=471667194]
+position = Vector2(0, 348)
+scale = Vector2(3, 3)
+metadata/tile_id = "path_end"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,Lane,End"
+
+[node name="Base" type="Polygon2D" parent="Tiles/PathEnd" unique_id=203918754]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="Lane" type="Polygon2D" parent="Tiles/PathEnd" unique_id=363071140]
+color = Color(0.7607843, 0.60784316, 0.12941177, 1)
+polygon = PackedVector2Array(0, 17, 28, 17, 28, 23, 0, 23)
+metadata/palette_role = "warning"
+
+[node name="End" type="Polygon2D" parent="Tiles/PathEnd" unique_id=1112445723]
+color = Color(0.7607843, 0.60784316, 0.12941177, 1)
+polygon = PackedVector2Array(25, 12, 31, 12, 31, 28, 25, 28)
+metadata/palette_role = "warning"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/PathEnd" unique_id=2138338522]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/PathEnd" unique_id=1669571574]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "PATH / END CAP"
+
+[node name="PathHazard" type="Node2D" parent="Tiles" unique_id=430382592]
+position = Vector2(174, 348)
+scale = Vector2(3, 3)
+metadata/tile_id = "path_hazard"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,HazardBase,StripeA,StripeB,StripeC"
+
+[node name="Base" type="Polygon2D" parent="Tiles/PathHazard" unique_id=1519804022]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="HazardBase" type="Polygon2D" parent="Tiles/PathHazard" unique_id=1754993076]
+color = Color(0.7607843, 0.60784316, 0.12941177, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "warning"
+
+[node name="StripeA" type="Polygon2D" parent="Tiles/PathHazard" unique_id=1438443963]
+color = Color(0.14117648, 0.14509805, 0.15686275, 1)
+polygon = PackedVector2Array(0, 0, 9, 0, 40, 31, 40, 40)
+metadata/palette_role = "warning_dark"
+
+[node name="StripeB" type="Polygon2D" parent="Tiles/PathHazard" unique_id=782104986]
+color = Color(0.14117648, 0.14509805, 0.15686275, 1)
+polygon = PackedVector2Array(0, 18, 0, 30, 10, 40, 22, 40)
+metadata/palette_role = "warning_dark"
+
+[node name="StripeC" type="Polygon2D" parent="Tiles/PathHazard" unique_id=1968340286]
+color = Color(0.14117648, 0.14509805, 0.15686275, 1)
+polygon = PackedVector2Array(18, 0, 30, 0, 40, 10, 40, 22)
+metadata/palette_role = "warning_dark"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/PathHazard" unique_id=1360063420]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/PathHazard" unique_id=711149174]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "PATH / HAZARD"
+
+[node name="PerimeterInnerEdge" type="Node2D" parent="Tiles" unique_id=1707887455]
+position = Vector2(348, 348)
+scale = Vector2(3, 3)
+metadata/tile_id = "perimeter_inner_edge"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,EdgeShadow,EdgeFace,EdgeTop"
+
+[node name="Base" type="Polygon2D" parent="Tiles/PerimeterInnerEdge" unique_id=1591385827]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="EdgeShadow" type="Polygon2D" parent="Tiles/PerimeterInnerEdge" unique_id=1875300902]
+color = Color(0.08235294, 0.09019608, 0.105882354, 1)
+polygon = PackedVector2Array(0, 26, 40, 26, 40, 40, 0, 40)
+metadata/palette_role = "shadow"
+
+[node name="EdgeFace" type="Polygon2D" parent="Tiles/PerimeterInnerEdge" unique_id=460857974]
+color = Color(0.33333334, 0.3372549, 0.3529412, 1)
+polygon = PackedVector2Array(0, 18, 40, 18, 40, 30, 0, 30)
+metadata/palette_role = "wall_face"
+
+[node name="EdgeTop" type="Polygon2D" parent="Tiles/PerimeterInnerEdge" unique_id=490384620]
+color = Color(0.52156866, 0.50980395, 0.47843137, 1)
+polygon = PackedVector2Array(0, 14, 40, 14, 40, 22, 0, 22)
+metadata/palette_role = "wall_top"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/PerimeterInnerEdge" unique_id=709342472]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/PerimeterInnerEdge" unique_id=2116564966]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "PERIMETER / INNER EDGE"
+
+[node name="PerimeterOuterEdge" type="Node2D" parent="Tiles" unique_id=1807072821]
+position = Vector2(522, 348)
+scale = Vector2(3, 3)
+metadata/tile_id = "perimeter_outer_edge"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,EdgeShadow,EdgeFace,EdgeTop"
+
+[node name="Base" type="Polygon2D" parent="Tiles/PerimeterOuterEdge" unique_id=731228262]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="EdgeShadow" type="Polygon2D" parent="Tiles/PerimeterOuterEdge" unique_id=1689398908]
+color = Color(0.08235294, 0.09019608, 0.105882354, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 14, 0, 14)
+metadata/palette_role = "shadow"
+
+[node name="EdgeFace" type="Polygon2D" parent="Tiles/PerimeterOuterEdge" unique_id=339869284]
+color = Color(0.33333334, 0.3372549, 0.3529412, 1)
+polygon = PackedVector2Array(0, 10, 40, 10, 40, 22, 0, 22)
+metadata/palette_role = "wall_face"
+
+[node name="EdgeTop" type="Polygon2D" parent="Tiles/PerimeterOuterEdge" unique_id=1592382921]
+color = Color(0.52156866, 0.50980395, 0.47843137, 1)
+polygon = PackedVector2Array(0, 18, 40, 18, 40, 26, 0, 26)
+metadata/palette_role = "wall_top"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/PerimeterOuterEdge" unique_id=168740958]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/PerimeterOuterEdge" unique_id=1647046078]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "PERIMETER / OUTER EDGE"
+
+[node name="PerimeterInnerCorner" type="Node2D" parent="Tiles" unique_id=41404775]
+position = Vector2(696, 348)
+scale = Vector2(3, 3)
+metadata/tile_id = "perimeter_inner_corner"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,ShadowL,FaceL,TopL"
+
+[node name="Base" type="Polygon2D" parent="Tiles/PerimeterInnerCorner" unique_id=697128248]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="ShadowL" type="Polygon2D" parent="Tiles/PerimeterInnerCorner" unique_id=1799153876]
+color = Color(0.08235294, 0.09019608, 0.105882354, 1)
+polygon = PackedVector2Array(0, 26, 26, 26, 26, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "shadow"
+
+[node name="FaceL" type="Polygon2D" parent="Tiles/PerimeterInnerCorner" unique_id=1926471281]
+color = Color(0.33333334, 0.3372549, 0.3529412, 1)
+polygon = PackedVector2Array(0, 18, 22, 18, 22, 0, 32, 0, 32, 30, 0, 30)
+metadata/palette_role = "wall_face"
+
+[node name="TopL" type="Polygon2D" parent="Tiles/PerimeterInnerCorner" unique_id=2125984004]
+color = Color(0.52156866, 0.50980395, 0.47843137, 1)
+polygon = PackedVector2Array(0, 13, 27, 13, 27, 0, 35, 0, 35, 21, 0, 21)
+metadata/palette_role = "wall_top"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/PerimeterInnerCorner" unique_id=470890102]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/PerimeterInnerCorner" unique_id=207518443]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "PERIMETER / INNER CORNER"
+
+[node name="PerimeterOuterCorner" type="Node2D" parent="Tiles" unique_id=337402278]
+position = Vector2(870, 348)
+scale = Vector2(3, 3)
+metadata/tile_id = "perimeter_outer_corner"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,ShadowL,FaceL,TopL"
+
+[node name="Base" type="Polygon2D" parent="Tiles/PerimeterOuterCorner" unique_id=1715718479]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="ShadowL" type="Polygon2D" parent="Tiles/PerimeterOuterCorner" unique_id=1387657508]
+color = Color(0.08235294, 0.09019608, 0.105882354, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 26, 40, 26, 14, 0, 14)
+metadata/palette_role = "shadow"
+
+[node name="FaceL" type="Polygon2D" parent="Tiles/PerimeterOuterCorner" unique_id=180728548]
+color = Color(0.33333334, 0.3372549, 0.3529412, 1)
+polygon = PackedVector2Array(0, 8, 32, 8, 32, 40, 22, 40, 22, 18, 0, 18)
+metadata/palette_role = "wall_face"
+
+[node name="TopL" type="Polygon2D" parent="Tiles/PerimeterOuterCorner" unique_id=208992567]
+color = Color(0.52156866, 0.50980395, 0.47843137, 1)
+polygon = PackedVector2Array(0, 15, 25, 15, 25, 40, 17, 40, 17, 23, 0, 23)
+metadata/palette_role = "wall_top"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/PerimeterOuterCorner" unique_id=878193892]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/PerimeterOuterCorner" unique_id=420620098]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "PERIMETER / OUTER CORNER"
+
+[node name="WallStraight" type="Node2D" parent="Tiles" unique_id=266145768]
+position = Vector2(1044, 348)
+scale = Vector2(3, 3)
+metadata/tile_id = "wall_straight"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,Shadow,Face,Top,TopEdge"
+
+[node name="Base" type="Polygon2D" parent="Tiles/WallStraight" unique_id=2145500578]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="Shadow" type="Polygon2D" parent="Tiles/WallStraight" unique_id=931760407]
+color = Color(0.08235294, 0.09019608, 0.105882354, 1)
+polygon = PackedVector2Array(0, 22, 40, 22, 40, 40, 0, 40)
+metadata/palette_role = "shadow"
+
+[node name="Face" type="Polygon2D" parent="Tiles/WallStraight" unique_id=821173977]
+color = Color(0.33333334, 0.3372549, 0.3529412, 1)
+polygon = PackedVector2Array(0, 13, 40, 13, 40, 31, 0, 31)
+metadata/palette_role = "wall_face"
+
+[node name="Top" type="Polygon2D" parent="Tiles/WallStraight" unique_id=1488607157]
+color = Color(0.52156866, 0.50980395, 0.47843137, 1)
+polygon = PackedVector2Array(0, 7, 40, 7, 40, 17, 0, 17)
+metadata/palette_role = "wall_top"
+
+[node name="TopEdge" type="Polygon2D" parent="Tiles/WallStraight" unique_id=1771054925]
+color = Color(0.64705884, 0.654902, 0.6392157, 1)
+polygon = PackedVector2Array(0, 7, 40, 7, 40, 9, 0, 9)
+metadata/palette_role = "metal_light"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/WallStraight" unique_id=803640339]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/WallStraight" unique_id=1704268658]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "WALL / STRAIGHT"
+
+[node name="WallCorner" type="Node2D" parent="Tiles" unique_id=1711743209]
+position = Vector2(1218, 348)
+scale = Vector2(3, 3)
+metadata/tile_id = "wall_corner"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,Shadow,Face,Top"
+
+[node name="Base" type="Polygon2D" parent="Tiles/WallCorner" unique_id=25385767]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="Shadow" type="Polygon2D" parent="Tiles/WallCorner" unique_id=943174052]
+color = Color(0.08235294, 0.09019608, 0.105882354, 1)
+polygon = PackedVector2Array(0, 22, 22, 22, 22, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "shadow"
+
+[node name="Face" type="Polygon2D" parent="Tiles/WallCorner" unique_id=1594437898]
+color = Color(0.33333334, 0.3372549, 0.3529412, 1)
+polygon = PackedVector2Array(0, 13, 29, 13, 29, 0, 40, 0, 40, 31, 0, 31)
+metadata/palette_role = "wall_face"
+
+[node name="Top" type="Polygon2D" parent="Tiles/WallCorner" unique_id=1850440396]
+color = Color(0.52156866, 0.50980395, 0.47843137, 1)
+polygon = PackedVector2Array(0, 7, 35, 7, 35, 0, 40, 0, 40, 17, 0, 17)
+metadata/palette_role = "wall_top"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/WallCorner" unique_id=457503739]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/WallCorner" unique_id=1980515072]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "WALL / CORNER"
+
+[node name="WallTJunction" type="Node2D" parent="Tiles" unique_id=1159225572]
+position = Vector2(0, 522)
+scale = Vector2(3, 3)
+metadata/tile_id = "wall_t_junction"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,ShadowHorizontal,ShadowVertical,FaceHorizontal,FaceVertical,TopHorizontal,TopVertical"
+
+[node name="Base" type="Polygon2D" parent="Tiles/WallTJunction" unique_id=1499609785]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="ShadowHorizontal" type="Polygon2D" parent="Tiles/WallTJunction" unique_id=190601765]
+color = Color(0.08235294, 0.09019608, 0.105882354, 1)
+polygon = PackedVector2Array(0, 22, 40, 22, 40, 40, 0, 40)
+metadata/palette_role = "shadow"
+
+[node name="ShadowVertical" type="Polygon2D" parent="Tiles/WallTJunction" unique_id=1005430491]
+color = Color(0.08235294, 0.09019608, 0.105882354, 1)
+polygon = PackedVector2Array(13, 0, 27, 0, 27, 40, 13, 40)
+metadata/palette_role = "shadow"
+
+[node name="FaceHorizontal" type="Polygon2D" parent="Tiles/WallTJunction" unique_id=396428770]
+color = Color(0.33333334, 0.3372549, 0.3529412, 1)
+polygon = PackedVector2Array(0, 13, 40, 13, 40, 31, 0, 31)
+metadata/palette_role = "wall_face"
+
+[node name="FaceVertical" type="Polygon2D" parent="Tiles/WallTJunction" unique_id=1026395272]
+color = Color(0.33333334, 0.3372549, 0.3529412, 1)
+polygon = PackedVector2Array(13, 0, 27, 0, 27, 40, 13, 40)
+metadata/palette_role = "wall_face"
+
+[node name="TopHorizontal" type="Polygon2D" parent="Tiles/WallTJunction" unique_id=680700663]
+color = Color(0.52156866, 0.50980395, 0.47843137, 1)
+polygon = PackedVector2Array(0, 7, 40, 7, 40, 17, 0, 17)
+metadata/palette_role = "wall_top"
+
+[node name="TopVertical" type="Polygon2D" parent="Tiles/WallTJunction" unique_id=1761212376]
+color = Color(0.52156866, 0.50980395, 0.47843137, 1)
+polygon = PackedVector2Array(16, 0, 24, 0, 24, 40, 16, 40)
+metadata/palette_role = "wall_top"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/WallTJunction" unique_id=1538139580]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/WallTJunction" unique_id=1989276631]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "WALL / T-JUNCTION"
+
+[node name="WallCross" type="Node2D" parent="Tiles" unique_id=399148860]
+position = Vector2(174, 522)
+scale = Vector2(3, 3)
+metadata/tile_id = "wall_cross"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,ShadowHorizontal,ShadowVertical,FaceHorizontal,FaceVertical,TopHorizontal,TopVertical"
+
+[node name="Base" type="Polygon2D" parent="Tiles/WallCross" unique_id=473363535]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="ShadowHorizontal" type="Polygon2D" parent="Tiles/WallCross" unique_id=1606227166]
+color = Color(0.08235294, 0.09019608, 0.105882354, 1)
+polygon = PackedVector2Array(0, 22, 40, 22, 40, 40, 0, 40)
+metadata/palette_role = "shadow"
+
+[node name="ShadowVertical" type="Polygon2D" parent="Tiles/WallCross" unique_id=1712533183]
+color = Color(0.08235294, 0.09019608, 0.105882354, 1)
+polygon = PackedVector2Array(13, 0, 27, 0, 27, 40, 13, 40)
+metadata/palette_role = "shadow"
+
+[node name="FaceHorizontal" type="Polygon2D" parent="Tiles/WallCross" unique_id=276123235]
+color = Color(0.33333334, 0.3372549, 0.3529412, 1)
+polygon = PackedVector2Array(0, 13, 40, 13, 40, 31, 0, 31)
+metadata/palette_role = "wall_face"
+
+[node name="FaceVertical" type="Polygon2D" parent="Tiles/WallCross" unique_id=1184781017]
+color = Color(0.33333334, 0.3372549, 0.3529412, 1)
+polygon = PackedVector2Array(13, 0, 27, 0, 27, 40, 13, 40)
+metadata/palette_role = "wall_face"
+
+[node name="TopHorizontal" type="Polygon2D" parent="Tiles/WallCross" unique_id=1190798027]
+color = Color(0.52156866, 0.50980395, 0.47843137, 1)
+polygon = PackedVector2Array(0, 7, 40, 7, 40, 17, 0, 17)
+metadata/palette_role = "wall_top"
+
+[node name="TopVertical" type="Polygon2D" parent="Tiles/WallCross" unique_id=1802481644]
+color = Color(0.52156866, 0.50980395, 0.47843137, 1)
+polygon = PackedVector2Array(16, 0, 24, 0, 24, 40, 16, 40)
+metadata/palette_role = "wall_top"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/WallCross" unique_id=1878376691]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/WallCross" unique_id=1876647661]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "WALL / CROSS"
+
+[node name="WallLow" type="Node2D" parent="Tiles" unique_id=16964916]
+position = Vector2(348, 522)
+scale = Vector2(3, 3)
+metadata/tile_id = "wall_low"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,Shadow,Face,Top"
+
+[node name="Base" type="Polygon2D" parent="Tiles/WallLow" unique_id=996638289]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="Shadow" type="Polygon2D" parent="Tiles/WallLow" unique_id=892833466]
+color = Color(0.08235294, 0.09019608, 0.105882354, 1)
+polygon = PackedVector2Array(0, 27, 40, 27, 40, 40, 0, 40)
+metadata/palette_role = "shadow"
+
+[node name="Face" type="Polygon2D" parent="Tiles/WallLow" unique_id=174600071]
+color = Color(0.33333334, 0.3372549, 0.3529412, 1)
+polygon = PackedVector2Array(0, 20, 40, 20, 40, 32, 0, 32)
+metadata/palette_role = "wall_face"
+
+[node name="Top" type="Polygon2D" parent="Tiles/WallLow" unique_id=1557971704]
+color = Color(0.52156866, 0.50980395, 0.47843137, 1)
+polygon = PackedVector2Array(0, 15, 40, 15, 40, 23, 0, 23)
+metadata/palette_role = "wall_top"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/WallLow" unique_id=228540085]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/WallLow" unique_id=1854223590]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "WALL / LOW COVER"
+
+[node name="DoorFrame" type="Node2D" parent="Tiles" unique_id=202909205]
+position = Vector2(522, 522)
+scale = Vector2(3, 3)
+metadata/tile_id = "door_frame"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,LeftPost,RightPost,Header,LeftEdge,RightEdge"
+
+[node name="Base" type="Polygon2D" parent="Tiles/DoorFrame" unique_id=928267894]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="LeftPost" type="Polygon2D" parent="Tiles/DoorFrame" unique_id=1815292663]
+color = Color(0.14509805, 0.16470589, 0.1764706, 1)
+polygon = PackedVector2Array(2, 4, 9, 4, 9, 40, 2, 40)
+metadata/palette_role = "metal_dark"
+
+[node name="RightPost" type="Polygon2D" parent="Tiles/DoorFrame" unique_id=2019861383]
+color = Color(0.14509805, 0.16470589, 0.1764706, 1)
+polygon = PackedVector2Array(31, 4, 38, 4, 38, 40, 31, 40)
+metadata/palette_role = "metal_dark"
+
+[node name="Header" type="Polygon2D" parent="Tiles/DoorFrame" unique_id=867755628]
+color = Color(0.34901962, 0.3764706, 0.39215687, 1)
+polygon = PackedVector2Array(2, 2, 38, 2, 38, 10, 2, 10)
+metadata/palette_role = "metal"
+
+[node name="LeftEdge" type="Polygon2D" parent="Tiles/DoorFrame" unique_id=2112992310]
+color = Color(0.64705884, 0.654902, 0.6392157, 1)
+polygon = PackedVector2Array(4, 5, 6, 5, 6, 37, 4, 37)
+metadata/palette_role = "metal_light"
+
+[node name="RightEdge" type="Polygon2D" parent="Tiles/DoorFrame" unique_id=1859295748]
+color = Color(0.64705884, 0.654902, 0.6392157, 1)
+polygon = PackedVector2Array(33, 5, 35, 5, 35, 37, 33, 37)
+metadata/palette_role = "metal_light"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/DoorFrame" unique_id=871536844]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/DoorFrame" unique_id=1420787236]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "DOOR / FRAME"
+
+[node name="DoorPersonnel" type="Node2D" parent="Tiles" unique_id=1937405895]
+position = Vector2(696, 522)
+scale = Vector2(3, 3)
+metadata/tile_id = "door_personnel"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,DoorShadow,Door,Inset,Handle"
+
+[node name="Base" type="Polygon2D" parent="Tiles/DoorPersonnel" unique_id=429528471]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="DoorShadow" type="Polygon2D" parent="Tiles/DoorPersonnel" unique_id=1814129557]
+color = Color(0.08235294, 0.09019608, 0.105882354, 1)
+polygon = PackedVector2Array(5, 3, 35, 3, 35, 40, 5, 40)
+metadata/palette_role = "shadow"
+
+[node name="Door" type="Polygon2D" parent="Tiles/DoorPersonnel" unique_id=645611335]
+color = Color(0.34901962, 0.3764706, 0.39215687, 1)
+polygon = PackedVector2Array(7, 4, 33, 4, 33, 40, 7, 40)
+metadata/palette_role = "metal"
+
+[node name="Inset" type="Polygon2D" parent="Tiles/DoorPersonnel" unique_id=2003496170]
+color = Color(0.14509805, 0.16470589, 0.1764706, 1)
+polygon = PackedVector2Array(11, 9, 29, 9, 29, 33, 11, 33)
+metadata/palette_role = "metal_dark"
+
+[node name="Handle" type="Polygon2D" parent="Tiles/DoorPersonnel" unique_id=1941849430]
+color = Color(0.7607843, 0.60784316, 0.12941177, 1)
+polygon = PackedVector2Array(25, 21, 28, 21, 28, 26, 25, 26)
+metadata/palette_role = "warning"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/DoorPersonnel" unique_id=1171961226]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/DoorPersonnel" unique_id=781122449]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "DOOR / PERSONNEL"
+
+[node name="DoorDouble" type="Node2D" parent="Tiles" unique_id=1457976358]
+position = Vector2(870, 522)
+scale = Vector2(3, 3)
+metadata/tile_id = "door_double"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,DoorShadow,LeftDoor,RightDoor,Seam,WindowLeft,WindowRight"
+
+[node name="Base" type="Polygon2D" parent="Tiles/DoorDouble" unique_id=1467853952]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="DoorShadow" type="Polygon2D" parent="Tiles/DoorDouble" unique_id=2017491292]
+color = Color(0.08235294, 0.09019608, 0.105882354, 1)
+polygon = PackedVector2Array(2, 3, 38, 3, 38, 40, 2, 40)
+metadata/palette_role = "shadow"
+
+[node name="LeftDoor" type="Polygon2D" parent="Tiles/DoorDouble" unique_id=298529664]
+color = Color(0.34901962, 0.3764706, 0.39215687, 1)
+polygon = PackedVector2Array(3, 4, 20, 4, 20, 40, 3, 40)
+metadata/palette_role = "metal"
+
+[node name="RightDoor" type="Polygon2D" parent="Tiles/DoorDouble" unique_id=1344183250]
+color = Color(0.34901962, 0.3764706, 0.39215687, 1)
+polygon = PackedVector2Array(20, 4, 37, 4, 37, 40, 20, 40)
+metadata/palette_role = "metal"
+
+[node name="Seam" type="Polygon2D" parent="Tiles/DoorDouble" unique_id=1120394566]
+color = Color(0.14509805, 0.16470589, 0.1764706, 1)
+polygon = PackedVector2Array(19, 4, 21, 4, 21, 40, 19, 40)
+metadata/palette_role = "metal_dark"
+
+[node name="WindowLeft" type="Polygon2D" parent="Tiles/DoorDouble" unique_id=254640085]
+color = Color(0.3254902, 0.3882353, 0.25490198, 1)
+polygon = PackedVector2Array(7, 9, 16, 9, 16, 16, 7, 16)
+metadata/palette_role = "accent"
+
+[node name="WindowRight" type="Polygon2D" parent="Tiles/DoorDouble" unique_id=439207514]
+color = Color(0.3254902, 0.3882353, 0.25490198, 1)
+polygon = PackedVector2Array(24, 9, 33, 9, 33, 16, 24, 16)
+metadata/palette_role = "accent"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/DoorDouble" unique_id=212298187]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/DoorDouble" unique_id=719096843]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "DOOR / DOUBLE"
+
+[node name="DoorRollup" type="Node2D" parent="Tiles" unique_id=1261248162]
+position = Vector2(1044, 522)
+scale = Vector2(3, 3)
+metadata/tile_id = "door_rollup"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,Frame,Shutter,SlatA,SlatB,SlatC"
+
+[node name="Base" type="Polygon2D" parent="Tiles/DoorRollup" unique_id=821436914]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="Frame" type="Polygon2D" parent="Tiles/DoorRollup" unique_id=801712417]
+color = Color(0.14509805, 0.16470589, 0.1764706, 1)
+polygon = PackedVector2Array(2, 2, 38, 2, 38, 40, 2, 40)
+metadata/palette_role = "metal_dark"
+
+[node name="Shutter" type="Polygon2D" parent="Tiles/DoorRollup" unique_id=301714533]
+color = Color(0.34901962, 0.3764706, 0.39215687, 1)
+polygon = PackedVector2Array(5, 7, 35, 7, 35, 37, 5, 37)
+metadata/palette_role = "metal"
+
+[node name="SlatA" type="Polygon2D" parent="Tiles/DoorRollup" unique_id=675197309]
+color = Color(0.14509805, 0.16470589, 0.1764706, 1)
+polygon = PackedVector2Array(5, 14, 35, 14, 35, 16, 5, 16)
+metadata/palette_role = "metal_dark"
+
+[node name="SlatB" type="Polygon2D" parent="Tiles/DoorRollup" unique_id=1537585560]
+color = Color(0.14509805, 0.16470589, 0.1764706, 1)
+polygon = PackedVector2Array(5, 22, 35, 22, 35, 24, 5, 24)
+metadata/palette_role = "metal_dark"
+
+[node name="SlatC" type="Polygon2D" parent="Tiles/DoorRollup" unique_id=1665074300]
+color = Color(0.14509805, 0.16470589, 0.1764706, 1)
+polygon = PackedVector2Array(5, 30, 35, 30, 35, 32, 5, 32)
+metadata/palette_role = "metal_dark"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/DoorRollup" unique_id=1008319634]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/DoorRollup" unique_id=1491615729]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "DOOR / ROLL-UP"
+
+[node name="StructurePillar" type="Node2D" parent="Tiles" unique_id=194704553]
+position = Vector2(1218, 522)
+scale = Vector2(3, 3)
+metadata/tile_id = "structure_pillar"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,Shadow,Pillar,PillarTop"
+
+[node name="Base" type="Polygon2D" parent="Tiles/StructurePillar" unique_id=1661624271]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="Shadow" type="Polygon2D" parent="Tiles/StructurePillar" unique_id=1998205389]
+color = Color(0.08235294, 0.09019608, 0.105882354, 1)
+polygon = PackedVector2Array(11, 12, 33, 12, 38, 34, 16, 40, 7, 31)
+metadata/palette_role = "shadow"
+
+[node name="Pillar" type="Polygon2D" parent="Tiles/StructurePillar" unique_id=1556420430]
+color = Color(0.33333334, 0.3372549, 0.3529412, 1)
+polygon = PackedVector2Array(10, 7, 29, 5, 34, 28, 15, 35, 6, 27)
+metadata/palette_role = "wall_face"
+
+[node name="PillarTop" type="Polygon2D" parent="Tiles/StructurePillar" unique_id=1377518695]
+color = Color(0.52156866, 0.50980395, 0.47843137, 1)
+polygon = PackedVector2Array(10, 7, 25, 2, 33, 9, 18, 15)
+metadata/palette_role = "wall_top"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/StructurePillar" unique_id=737341987]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/StructurePillar" unique_id=54190545]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "STRUCTURE / PILLAR"
+
+[node name="StructureBarrier" type="Node2D" parent="Tiles" unique_id=1210640733]
+position = Vector2(0, 696)
+scale = Vector2(3, 3)
+metadata/tile_id = "structure_barrier"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,Shadow,Barrier,Top,WarningMark"
+
+[node name="Base" type="Polygon2D" parent="Tiles/StructureBarrier" unique_id=1754497043]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="Shadow" type="Polygon2D" parent="Tiles/StructureBarrier" unique_id=880770205]
+color = Color(0.08235294, 0.09019608, 0.105882354, 1)
+polygon = PackedVector2Array(2, 24, 38, 24, 36, 35, 4, 37)
+metadata/palette_role = "shadow"
+
+[node name="Barrier" type="Polygon2D" parent="Tiles/StructureBarrier" unique_id=1838489991]
+color = Color(0.33333334, 0.3372549, 0.3529412, 1)
+polygon = PackedVector2Array(1, 16, 39, 16, 35, 30, 5, 31)
+metadata/palette_role = "wall_face"
+
+[node name="Top" type="Polygon2D" parent="Tiles/StructureBarrier" unique_id=2095125916]
+color = Color(0.52156866, 0.50980395, 0.47843137, 1)
+polygon = PackedVector2Array(1, 16, 6, 10, 39, 10, 39, 16)
+metadata/palette_role = "wall_top"
+
+[node name="WarningMark" type="Polygon2D" parent="Tiles/StructureBarrier" unique_id=143468530]
+color = Color(0.7607843, 0.60784316, 0.12941177, 1)
+polygon = PackedVector2Array(16, 13, 24, 13, 24, 23, 16, 23)
+metadata/palette_role = "warning"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/StructureBarrier" unique_id=1264824871]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/StructureBarrier" unique_id=654095123]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "STRUCTURE / BARRIER"
+
+[node name="StructureGuardRail" type="Node2D" parent="Tiles" unique_id=912364157]
+position = Vector2(174, 696)
+scale = Vector2(3, 3)
+metadata/tile_id = "structure_guard_rail"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,PostLeft,PostRight,RailShadow,Rail"
+
+[node name="Base" type="Polygon2D" parent="Tiles/StructureGuardRail" unique_id=27613355]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="PostLeft" type="Polygon2D" parent="Tiles/StructureGuardRail" unique_id=152329972]
+color = Color(0.14117648, 0.14509805, 0.15686275, 1)
+polygon = PackedVector2Array(4, 8, 8, 8, 8, 36, 4, 36)
+metadata/palette_role = "warning_dark"
+
+[node name="PostRight" type="Polygon2D" parent="Tiles/StructureGuardRail" unique_id=1335321830]
+color = Color(0.14117648, 0.14509805, 0.15686275, 1)
+polygon = PackedVector2Array(32, 8, 36, 8, 36, 36, 32, 36)
+metadata/palette_role = "warning_dark"
+
+[node name="RailShadow" type="Polygon2D" parent="Tiles/StructureGuardRail" unique_id=202220228]
+color = Color(0.08235294, 0.09019608, 0.105882354, 1)
+polygon = PackedVector2Array(4, 23, 36, 23, 36, 30, 4, 30)
+metadata/palette_role = "shadow"
+
+[node name="Rail" type="Polygon2D" parent="Tiles/StructureGuardRail" unique_id=647726158]
+color = Color(0.7607843, 0.60784316, 0.12941177, 1)
+polygon = PackedVector2Array(4, 16, 36, 16, 36, 22, 4, 22)
+metadata/palette_role = "warning"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/StructureGuardRail" unique_id=908005908]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/StructureGuardRail" unique_id=1993586749]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "STRUCTURE / GUARD RAIL"
+
+[node name="StructureFence" type="Node2D" parent="Tiles" unique_id=111195940]
+position = Vector2(348, 696)
+scale = Vector2(3, 3)
+metadata/tile_id = "structure_fence"
+metadata/canonical_size = Vector2(40, 40)
+metadata/layer_order = "Base,FrameTop,FrameBottom,FrameLeft,FrameRight,MeshA,MeshB"
+
+[node name="Base" type="Polygon2D" parent="Tiles/StructureFence" unique_id=578700256]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+
+[node name="FrameTop" type="Polygon2D" parent="Tiles/StructureFence" unique_id=620818866]
+color = Color(0.34901962, 0.3764706, 0.39215687, 1)
+polygon = PackedVector2Array(2, 4, 38, 4, 38, 7, 2, 7)
+metadata/palette_role = "metal"
+
+[node name="FrameBottom" type="Polygon2D" parent="Tiles/StructureFence" unique_id=592274974]
+color = Color(0.34901962, 0.3764706, 0.39215687, 1)
+polygon = PackedVector2Array(2, 34, 38, 34, 38, 37, 2, 37)
+metadata/palette_role = "metal"
+
+[node name="FrameLeft" type="Polygon2D" parent="Tiles/StructureFence" unique_id=266099943]
+color = Color(0.34901962, 0.3764706, 0.39215687, 1)
+polygon = PackedVector2Array(2, 4, 5, 4, 5, 37, 2, 37)
+metadata/palette_role = "metal"
+
+[node name="FrameRight" type="Polygon2D" parent="Tiles/StructureFence" unique_id=1236213992]
+color = Color(0.34901962, 0.3764706, 0.39215687, 1)
+polygon = PackedVector2Array(35, 4, 38, 4, 38, 37, 35, 37)
+metadata/palette_role = "metal"
+
+[node name="MeshA" type="Polygon2D" parent="Tiles/StructureFence" unique_id=156727895]
+color = Color(0.64705884, 0.654902, 0.6392157, 1)
+polygon = PackedVector2Array(6, 8, 9, 8, 34, 32, 31, 32)
+metadata/palette_role = "metal_light"
+
+[node name="MeshB" type="Polygon2D" parent="Tiles/StructureFence" unique_id=255665859]
+color = Color(0.64705884, 0.654902, 0.6392157, 1)
+polygon = PackedVector2Array(31, 8, 34, 8, 9, 32, 6, 32)
+metadata/palette_role = "metal_light"
+
+[node name="TileBounds" type="Line2D" parent="Tiles/StructureFence" unique_id=144033025]
+points = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40, 0, 0)
+width = 0.6
+default_color = Color(0.1, 0.9, 1, 0.48)
+
+[node name="Label" type="Label" parent="Tiles/StructureFence" unique_id=1580761103]
+offset_top = 43.0
+offset_bottom = 43.0
+scale = Vector2(0.33333334, 0.33333334)
+theme_override_font_sizes/font_size = 13
+text = "STRUCTURE / FENCE"
+
+[node name="ReferenceMockup" type="Sprite2D" parent="." unique_id=1790297349]
+position = Vector2(1760, 650)
+scale = Vector2(0.78, 0.78)
+texture = ExtResource("2_krlt3")
+
+[node name="CanonicalTileGuide" type="Line2D" parent="." unique_id=144371160]
+position = Vector2(1515, 95)
+points = PackedVector2Array(0, 0, 120, 0, 120, 120, 0, 120, 0, 0)
+width = 2.0
+default_color = Color(0.1, 0.95, 1, 0.9)
+
+[node name="CanonicalTileLabel" type="Label" parent="." unique_id=860667019]
+offset_left = 1515.0
+offset_top = 225.0
+offset_right = 1515.0
+offset_bottom = 225.0
+theme_override_font_sizes/font_size = 18
+text = "40×40 CANONICAL TILE
+shown at 3× preview scale"
