@@ -16,12 +16,14 @@ signal door_entered(direction: String, target_room_id: String)
 
 var enabled: bool = false
 var _door_layer: Node = null
+var _door_mat_layer: Node = null
 var _doors: Array = []
 var _door_welcome_mats: Array[Node2D] = []
 
 
 func initialize(context: Dictionary) -> void:
 	_door_layer = context.get("door_layer", null)
+	_door_mat_layer = context.get("door_mat_layer", null)
 
 
 func reset_run() -> void:
@@ -91,7 +93,7 @@ func _add_welcome_mat(opening_rect: Rect2, direction: String) -> void:
 		door_welcome_mat_color
 	)
 	_door_welcome_mats.append(welcome_mat)
-	_add_child_safely(_get_door_parent(), welcome_mat)
+	_add_child_safely(_get_door_mat_parent(), welcome_mat)
 
 
 func set_doors_unlocked(value: bool) -> void:
@@ -128,6 +130,10 @@ func _on_door_entered(door) -> void:
 
 func _get_door_parent() -> Node:
 	return _door_layer if _door_layer != null else self
+
+
+func _get_door_mat_parent() -> Node:
+	return _door_mat_layer if _door_mat_layer != null else _get_door_parent()
 
 
 func _add_child_safely(parent: Node, child: Node) -> void:

@@ -522,7 +522,13 @@ func _connect_once(source: Object, signal_name: StringName, target: Callable) ->
 func _initialize_managers() -> void:
 	_capture_hud_authoring_state()
 	var depth_sort_layer: Node2D = $World/DepthSortLayer
+	var door_mat_layer := Node2D.new()
+	door_mat_layer.name = "DoorMatLayer"
+	$World.add_child(door_mat_layer)
+	$World.move_child(door_mat_layer, $World/Arena.get_index() + 1)
 	WALL_OCCLUSION_LAYERS.open_visibility_path(depth_sort_layer)
+	WALL_OCCLUSION_LAYERS.open_visibility_path(door_mat_layer)
+	$UI.layer = 2
 	input_manager.initialize({
 		"aim_origin_provider": Callable(player_manager, "get_player_position")
 	})
@@ -562,7 +568,8 @@ func _initialize_managers() -> void:
 	})
 	dungeon_manager.initialize({})
 	room_manager.initialize({
-		"door_layer": depth_sort_layer
+		"door_layer": depth_sort_layer,
+		"door_mat_layer": door_mat_layer
 	})
 	audio_manager.initialize({})
 

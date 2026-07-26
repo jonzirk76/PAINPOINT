@@ -34,8 +34,8 @@ func _process(_delta: float) -> void:
 func _ensure_mask() -> void:
 	if _mask != null:
 		return
-	# Share the gameplay overlay layer while remaining below the scene UI.
-	layer = 0
+	# Opaque undiscovered fog must cover the translucent wall-occlusion composite.
+	layer = 1
 	_mask = FOG_MASK_SCRIPT.new()
 	_mask.name = "FogMask"
 	add_child(_mask)
