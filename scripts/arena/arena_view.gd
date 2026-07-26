@@ -358,10 +358,11 @@ func _configure_wall_top_overlay() -> void:
 	if not _uses_canonical_wall_tiles:
 		overlay.clear()
 		return
+	var no_fog_rects: Array[Rect2] = []
 	overlay.configure(
 		_wall_top_tile_rects,
 		ROOM_GEOMETRY_BUILDER.merge_wall_tiles(_wall_top_tile_rects),
-		[],
+		no_fog_rects,
 		_inactive_room_dim_rects,
 		WALL_TOP_FILL_COLOR,
 		WALL_TOP_OUTLINE_COLOR,
