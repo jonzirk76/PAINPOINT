@@ -1,6 +1,8 @@
 extends Node
 class_name EffectsManager
 
+const WALL_OCCLUSION_LAYERS := preload("res://scripts/arena/wall_occlusion_layers.gd")
+
 @export var chain_lightning_scene: PackedScene = preload("res://scenes/entities/chain_lightning_effect.tscn")
 @export var explosion_scene: PackedScene = preload("res://scenes/entities/explosion_effect.tscn")
 @export var parry_absorb_scene: PackedScene = preload("res://scenes/entities/parry_absorb_effect.tscn")
@@ -79,6 +81,7 @@ func play_projectile_impact(spawn_position: Vector2, direction: Vector2, radius:
 		return
 	_trim_effects()
 	var effect = projectile_impact_scene.instantiate()
+	WALL_OCCLUSION_LAYERS.mark_entity_tree(effect)
 	_configure_effect_process_mode(effect)
 	if _effect_layer != null:
 		_effect_layer.add_child(effect)
@@ -94,6 +97,7 @@ func play_muzzle_flash(spawn_position: Vector2, direction: Vector2, radius: floa
 		return
 	_trim_effects()
 	var effect = muzzle_flash_scene.instantiate()
+	WALL_OCCLUSION_LAYERS.mark_entity_tree(effect)
 	_configure_effect_process_mode(effect)
 	if _effect_layer != null:
 		_effect_layer.add_child(effect)

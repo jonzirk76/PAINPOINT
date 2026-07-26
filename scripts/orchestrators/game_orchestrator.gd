@@ -523,12 +523,14 @@ func _initialize_managers() -> void:
 	_capture_hud_authoring_state()
 	var depth_sort_layer: Node2D = $World/DepthSortLayer
 	var projectile_layer: Node2D = $World/ProjectileLayer
+	var effect_layer: Node2D = $World/EffectLayer
 	var door_mat_layer := Node2D.new()
 	door_mat_layer.name = "DoorMatLayer"
 	$World.add_child(door_mat_layer)
 	$World.move_child(door_mat_layer, $World/Arena.get_index() + 1)
 	WALL_OCCLUSION_LAYERS.open_visibility_path(depth_sort_layer)
 	WALL_OCCLUSION_LAYERS.open_visibility_path(projectile_layer)
+	WALL_OCCLUSION_LAYERS.open_visibility_path(effect_layer)
 	WALL_OCCLUSION_LAYERS.open_visibility_path(door_mat_layer)
 	$UI.layer = 2
 	input_manager.initialize({
@@ -566,7 +568,7 @@ func _initialize_managers() -> void:
 	upgrade_manager.initialize({})
 	combat_manager.initialize({})
 	effects_manager.initialize({
-		"effect_layer": $World/EffectLayer
+		"effect_layer": effect_layer
 	})
 	dungeon_manager.initialize({})
 	room_manager.initialize({
