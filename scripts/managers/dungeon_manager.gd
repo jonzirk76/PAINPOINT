@@ -983,13 +983,29 @@ func _get_full_floor_fog_rects(active_room_id: String, room_ids: Array[String]) 
 	var visible_cell_lookup: Dictionary = _get_full_floor_visible_cell_lookup(active_room_id, room_ids, min_world_cell)
 	var min_floor_cell: Vector2i = ROOM_GEOMETRY_BUILDER.get_min_cell(floor_cells)
 	var max_floor_cell: Vector2i = ROOM_GEOMETRY_BUILDER.get_max_cell(floor_cells)
+	var wall_height_tiles := ROOM_GEOMETRY_BUILDER.DEFAULT_WALL_HEIGHT_TILES
+	if not active_room_id.is_empty() and _rooms.has(active_room_id):
+		var active_state: Dictionary = _rooms[active_room_id]
+		var active_piece: RoomPieceDefinition = active_state.get("piece", null) as RoomPieceDefinition
+		if active_piece != null:
+			wall_height_tiles = max(int(active_piece.wall_height_tiles), 1)
+	var north_fog_offset := 0.0
+	var south_fog_offset := 0.0
+	if wall_height_tiles > 1:
+		north_fog_offset = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE * float(wall_height_tiles)
+		south_fog_offset = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
 	var fog_padding_cells := 1
 	for y: int in range(min_floor_cell.y - fog_padding_cells, max_floor_cell.y + fog_padding_cells + 1):
 		for x: int in range(min_floor_cell.x - fog_padding_cells, max_floor_cell.x + fog_padding_cells + 1):
 			var floor_cell := Vector2i(x, y)
 			if visible_cell_lookup.has(_cell_key(floor_cell)):
 				continue
-			fog_rects.append(ROOM_GEOMETRY_BUILDER.get_cell_rect(floor_cells, floor_cell))
+			var fog_rect := ROOM_GEOMETRY_BUILDER.get_cell_rect(floor_cells, floor_cell)
+			if floor_cell.y < min_floor_cell.y:
+				fog_rect.position.y -= north_fog_offset
+			elif floor_cell.y > max_floor_cell.y:
+				fog_rect.position.y += south_fog_offset
+			fog_rects.append(fog_rect)
 	return fog_rects
 
 
