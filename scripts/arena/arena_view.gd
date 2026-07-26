@@ -6,6 +6,7 @@ const ARENA_WALL_TOP_OVERLAY_SCRIPT := preload("res://scripts/arena/arena_wall_t
 const ARENA_WALL_BODY_VISUAL_SCRIPT := preload("res://scripts/arena/arena_wall_body_visual.gd")
 const ARENA_FLOOR_TILE_VISUAL_SCRIPT := preload("res://scripts/arena/arena_floor_tile_visual.gd")
 const WALL_OCCLUSION_OVERLAY_SCRIPT := preload("res://scripts/arena/wall_occlusion_overlay.gd")
+const FOG_OF_WAR_OVERLAY_SCRIPT := preload("res://scripts/arena/fog_of_war_overlay.gd")
 const WALL_BODY_FILL_COLOR := Color(0.16, 0.17, 0.19)
 const WALL_BODY_OUTLINE_COLOR := Color(0.5, 0.58, 0.64)
 const WALL_TOP_FILL_COLOR := Color(0.09, 0.1, 0.12)
@@ -54,6 +55,7 @@ var _blocker_rebuild_deferred: bool = false
 var _floor_wear_seed: int = 0
 var _floor_tile_visual = null
 var _wall_occlusion_overlay = null
+var _fog_of_war_overlay = null
 
 
 func configure(level_definition) -> void:
@@ -86,6 +88,7 @@ func configure(level_definition) -> void:
 	_configure_wall_top_overlay()
 	_configure_wall_body_depth_visuals()
 	_configure_wall_occlusion_overlay()
+	_configure_fog_of_war_overlay()
 	_rebuild_blocker_bodies()
 	queue_redraw()
 
@@ -94,6 +97,7 @@ func _exit_tree() -> void:
 	_clear_floor_tile_visual()
 	_clear_wall_body_depth_visuals()
 	_clear_wall_occlusion_overlay()
+	_clear_fog_of_war_overlay()
 
 
 func _draw() -> void:
@@ -357,7 +361,7 @@ func _configure_wall_top_overlay() -> void:
 	overlay.configure(
 		_wall_top_tile_rects,
 		ROOM_GEOMETRY_BUILDER.merge_wall_tiles(_wall_top_tile_rects),
-		_fog_rects,
+		[],
 		_inactive_room_dim_rects,
 		WALL_TOP_FILL_COLOR,
 		WALL_TOP_OUTLINE_COLOR,
@@ -458,6 +462,24 @@ func _clear_wall_occlusion_overlay() -> void:
 		_wall_occlusion_overlay.clear()
 		_wall_occlusion_overlay.queue_free()
 	_wall_occlusion_overlay = null
+
+
+func _configure_fog_of_war_overlay() -> void:
+	if not _uses_canonical_wall_tiles or _fog_rects.is_empty():
+		_clear_fog_of_war_overlay()
+		return
+	if _fog_of_war_overlay == null or not is_instance_valid(_fog_of_war_overlay):
+		_fog_of_war_overlay = FOG_OF_WAR_OVERLAY_SCRIPT.new()
+		_fog_of_war_overlay.name = "FogOfWarOverlay"
+		add_child(_fog_of_war_overlay)
+	_fog_of_war_overlay.configure(_fog_rects, get_viewport())
+
+
+func _clear_fog_of_war_overlay() -> void:
+	if _fog_of_war_overlay != null and is_instance_valid(_fog_of_war_overlay):
+		_fog_of_war_overlay.clear()
+		_fog_of_war_overlay.queue_free()
+	_fog_of_war_overlay = null
 
 
 func _get_depth_sort_layer() -> Node2D:
