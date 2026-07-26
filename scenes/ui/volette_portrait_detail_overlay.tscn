@@ -1,0 +1,107 @@
+[gd_scene format=3]
+
+[node name="VolettePortraitDetailOverlay" type="Node2D"]
+
+[node name="HairSeparation" type="Node2D" parent="."]
+
+[node name="CrownLeft" type="Polygon2D" parent="HairSeparation"]
+color = Color(0.08627451, 0.05490196, 0.16470589, 0.9)
+polygon = PackedVector2Array(28, 18, 39, 8, 48, 3, 42, 12, 37, 26, 34, 39, 31, 32)
+
+[node name="CrownCenter" type="Polygon2D" parent="HairSeparation"]
+color = Color(0.08627451, 0.05490196, 0.16470589, 0.9)
+polygon = PackedVector2Array(54, 4, 65, 0, 75, 2, 68, 8, 64, 21, 61, 38, 58, 26)
+
+[node name="CrownRight" type="Polygon2D" parent="HairSeparation"]
+color = Color(0.08627451, 0.05490196, 0.16470589, 0.9)
+polygon = PackedVector2Array(82, 5, 94, 9, 105, 18, 98, 17, 91, 13, 87, 28)
+
+[node name="LeftBangCrease" type="Polygon2D" parent="HairSeparation"]
+color = Color(0.08627451, 0.05490196, 0.16470589, 0.88)
+polygon = PackedVector2Array(38, 28, 46, 19, 44, 34, 39, 48, 36, 47)
+
+[node name="CenterBangCrease" type="Polygon2D" parent="HairSeparation"]
+color = Color(0.08627451, 0.05490196, 0.16470589, 0.88)
+polygon = PackedVector2Array(64, 22, 70, 15, 69, 31, 64, 47, 60, 53, 62, 39)
+
+[node name="RightBangCrease" type="Polygon2D" parent="HairSeparation"]
+color = Color(0.08627451, 0.05490196, 0.16470589, 0.88)
+polygon = PackedVector2Array(88, 28, 94, 23, 95, 38, 99, 49, 95, 46, 91, 36)
+
+[node name="LeftSideLock" type="Polygon2D" parent="HairSeparation"]
+color = Color(0.08627451, 0.05490196, 0.16470589, 0.82)
+polygon = PackedVector2Array(24, 69, 29, 82, 31, 101, 36, 118, 31, 111, 27, 98)
+
+[node name="RightSideLock" type="Polygon2D" parent="HairSeparation"]
+color = Color(0.08627451, 0.05490196, 0.16470589, 0.82)
+polygon = PackedVector2Array(104, 76, 108, 68, 107, 91, 103, 109, 98, 119, 100, 105)
+
+[node name="HairStrandLight" type="Node2D" parent="."]
+
+[node name="LeftArc" type="Polygon2D" parent="HairStrandLight"]
+color = Color(0.40392157, 0.3137255, 0.627451, 0.72)
+polygon = PackedVector2Array(16, 28, 24, 18, 34, 11, 29, 19, 22, 25, 18, 37)
+
+[node name="CenterArc" type="Polygon2D" parent="HairStrandLight"]
+color = Color(0.40392157, 0.3137255, 0.627451, 0.7)
+polygon = PackedVector2Array(47, 4, 57, 0, 68, 0, 59, 4, 52, 11)
+
+[node name="RightArc" type="Polygon2D" parent="HairStrandLight"]
+color = Color(0.40392157, 0.3137255, 0.627451, 0.68)
+polygon = PackedVector2Array(82, 2, 94, 7, 104, 15, 96, 11, 87, 8)
+
+[node name="LeftLockEdge" type="Polygon2D" parent="HairStrandLight"]
+color = Color(0.40392157, 0.3137255, 0.627451, 0.58)
+polygon = PackedVector2Array(22, 50, 25, 48, 26, 72, 29, 92, 26, 83, 23, 68)
+
+[node name="RightLockEdge" type="Polygon2D" parent="HairStrandLight"]
+color = Color(0.40392157, 0.3137255, 0.627451, 0.52)
+polygon = PackedVector2Array(108, 57, 111, 52, 110, 77, 106, 94, 107, 73)
+
+[node name="FaceContour" type="Node2D" parent="."]
+
+[node name="LeftJaw" type="Polygon2D" parent="FaceContour"]
+color = Color(0.35686275, 0.20392157, 0.28627452, 0.76)
+polygon = PackedVector2Array(30, 80, 35, 91, 42, 98, 51, 104, 49, 106, 40, 100, 33, 92)
+
+[node name="RightJaw" type="Polygon2D" parent="FaceContour"]
+color = Color(0.35686275, 0.20392157, 0.28627452, 0.76)
+polygon = PackedVector2Array(98, 89, 94, 98, 82, 105, 68, 113, 66, 111, 80, 103, 92, 96)
+
+[node name="UnderChin" type="Polygon2D" parent="FaceContour"]
+color = Color(0.47843137, 0.30980393, 0.34509805, 0.62)
+polygon = PackedVector2Array(50, 103, 67, 112, 81, 105, 68, 116, 58, 112)
+
+[node name="ClothingShadows" type="Node2D" parent="."]
+
+[node name="LeftCollarFold" type="Polygon2D" parent="ClothingShadows"]
+color = Color(0.019607844, 0.02745098, 0.07058824, 0.92)
+polygon = PackedVector2Array(34, 106, 49, 113, 57, 119, 52, 124, 39, 116)
+
+[node name="RightCollarFold" type="Polygon2D" parent="ClothingShadows"]
+color = Color(0.019607844, 0.02745098, 0.07058824, 0.92)
+polygon = PackedVector2Array(74, 111, 70, 118, 68, 130, 75, 125, 77, 116)
+
+[node name="CenterCollarSeam" type="Polygon2D" parent="ClothingShadows"]
+color = Color(0.007843138, 0.015686275, 0.043137256, 0.95)
+polygon = PackedVector2Array(61, 116, 64, 117, 65, 132, 62, 135)
+
+[node name="LeftVestShadow" type="Polygon2D" parent="ClothingShadows"]
+color = Color(0.003921569, 0.03529412, 0.11764706, 0.86)
+polygon = PackedVector2Array(7, 116, 18, 108, 34, 106, 36, 114, 23, 115, 34, 130, 22, 123)
+
+[node name="RightVestShadow" type="Polygon2D" parent="ClothingShadows"]
+color = Color(0.003921569, 0.03529412, 0.11764706, 0.86)
+polygon = PackedVector2Array(76, 113, 89, 115, 105, 126, 100, 133, 89, 125, 80, 124)
+
+[node name="LeftBlueBevel" type="Polygon2D" parent="ClothingShadows"]
+color = Color(0.043137256, 0.40392157, 0.7607843, 0.78)
+polygon = PackedVector2Array(5, 116, 16, 104, 20, 105, 11, 117, 27, 128, 21, 127)
+
+[node name="RightBlueBevel" type="Polygon2D" parent="ClothingShadows"]
+color = Color(0.043137256, 0.40392157, 0.7607843, 0.72)
+polygon = PackedVector2Array(87, 112, 104, 121, 111, 127, 106, 128, 95, 121)
+
+[node name="GemShadow" type="Polygon2D" parent="ClothingShadows"]
+color = Color(0.007843138, 0.11372549, 0.3019608, 0.9)
+polygon = PackedVector2Array(61, 134, 64, 138, 69, 141, 65, 144, 60, 140)
