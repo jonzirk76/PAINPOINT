@@ -1,8 +1,7 @@
-[gd_scene load_steps=13 format=3 uid="uid://e3qsq5bj1ya4"]
+[gd_scene load_steps=12 format=3 uid="uid://e3qsq5bj1ya4"]
 
 [ext_resource type="PackedScene" path="res://scenes/tools/blockout_dungeon_scale_preview.tscn" id="1_gmuih"]
 [ext_resource type="Texture2D" uid="uid://dbk8g8xhqfiek" path="res://art/concept_art/top_down_reference_2.png.png" id="1_t33fk"]
-[ext_resource type="PackedScene" uid="uid://bb6yturq6oeje" path="res://scenes/tools/native_head_workbench.tscn" id="2_2ypqn"]
 [ext_resource type="Script" uid="uid://dlfwcivlh1hm4" path="res://scripts/resources/character_vector_capture.gd" id="2_b0a86"]
 [ext_resource type="Texture2D" uid="uid://dfbhkeaih52jo" path="res://art/concept_art/3c2a185f-0ed7-4e5b-b06e-c0274621a312.png" id="3_gkqmr"]
 [ext_resource type="Texture2D" uid="uid://dra1cn0b6yjsl" path="res://art/concept_art/0c242277-9bf5-454d-95b0-7ffb9fe5a1bd.png" id="4_nd57x"]
@@ -51,46 +50,70 @@ position = Vector2(-1049, 5)
 
 [node name="LeftLeg" type="Polygon2D" parent="RearView/Legs"]
 position = Vector2(-1, -3)
-color = Color(0, 1, 1, 1)
+color = Color(0.9607843, 0.65882355, 0.45882353, 1)
 polygon = PackedVector2Array(1988, 920, 1999, 917, 2013, 921, 2023, 936, 2013, 945, 2003, 974, 1995, 979, 1986, 978, 1980, 968, 1985, 955)
+
+[node name="LeftShoe" type="Polygon2D" parent="RearView/Legs"]
+position = Vector2(273, 10)
+color = Color(9.866804e-07, 0, 0.4788519, 1)
+polygon = PackedVector2Array(1711, 928, 1715, 935, 1725, 939, 1735, 939, 1738, 937, 1727, 967, 1717, 970, 1707, 967, 1703, 956, 1704, 948, 1709, 940)
+
+[node name="LeftKneePad" type="Polygon2D" parent="RearView/Legs"]
+position = Vector2(-843, 32)
+color = Color(0, 0, 0, 1)
+polygon = PackedVector2Array(2828, 897, 2833, 905, 2845, 910, 2856, 910, 2852, 919, 2841, 920, 2829, 915, 2827, 909)
 
 [node name="RightLeg" type="Polygon2D" parent="RearView/Legs"]
 position = Vector2(4056, -3)
 scale = Vector2(-1, 1)
-color = Color(0, 1, 1, 1)
+color = Color(0.9607843, 0.65882355, 0.45882353, 1)
 polygon = PackedVector2Array(1988, 920, 1999, 917, 2013, 921, 2023, 936, 2013, 945, 2003, 974, 1995, 979, 1986, 978, 1980, 968, 1985, 955)
+
+[node name="RightShoe" type="Polygon2D" parent="RearView/Legs"]
+position = Vector2(3782, 10)
+scale = Vector2(-1, 1)
+color = Color(9.866804e-07, 0, 0.4788519, 1)
+polygon = PackedVector2Array(1711, 928, 1715, 935, 1725, 939, 1735, 939, 1738, 937, 1727, 967, 1717, 970, 1707, 967, 1703, 956, 1704, 948, 1709, 940)
+
+[node name="RightKneePad" type="Polygon2D" parent="RearView/Legs"]
+position = Vector2(4898, 32)
+scale = Vector2(-1, 1)
+color = Color(0, 0, 0, 1)
+polygon = PackedVector2Array(2828, 897, 2833, 905, 2845, 910, 2856, 910, 2852, 919, 2841, 920, 2829, 915, 2827, 909)
 
 [node name="Body" type="Polygon2D" parent="RearView"]
 position = Vector2(-1051, 11)
 color = Color(0, 0, 1, 1)
-polygon = PackedVector2Array(1985, 845, 1973, 852, 1955, 880, 1942, 910, 1960, 928, 1970, 920, 1972, 905, 1989, 885, 1998, 905, 2011, 911, 2048, 912, 2062, 903, 2070, 887, 2096, 922, 2111, 918, 2119, 907, 2099, 874, 2084, 852, 2074, 843, 2044, 838, 2015, 838)
+polygon = PackedVector2Array(1985, 845, 1973, 852, 1955, 880, 1942, 910, 1960, 928, 1970, 920, 1972, 905, 1992, 876, 1995, 903, 2011, 911, 2048, 912, 2063, 903, 2067, 876, 2096, 922, 2111, 918, 2119, 907, 2099, 874, 2084, 852, 2074, 843, 2044, 838, 2015, 838)
+
+[node name="BackArmor" type="Polygon2D" parent="RearView/Body"]
+position = Vector2(270, 44)
+color = Color(0.19793725, 0.19793722, 0.19793722, 1)
+polygon = PackedVector2Array(1716, 799, 1728, 798, 1738, 818, 1760, 831, 1785, 818, 1791, 796, 1803, 801, 1797, 843, 1782, 854, 1738, 852, 1722, 840)
 
 [node name="Hips" type="Polygon2D" parent="RearView"]
 position = Vector2(-1668, 11)
 color = Color(0.09215703, 0.023533627, 0.61525565, 1)
-polygon = PackedVector2Array(2631, 888, 2661, 888, 2685, 892, 2685, 908, 2658, 929, 2634, 929, 2606, 909, 2607, 892)
+polygon = PackedVector2Array(2627, 888, 2665, 889, 2686, 901, 2687, 914, 2656, 929, 2638, 929, 2606, 914, 2607, 901)
 
-[node name="FrontHead" parent="RearView" instance=ExtResource("2_2ypqn")]
-offset_left = 698.0
-offset_top = 543.0
-offset_right = 1258.0
-offset_bottom = 1103.0
-view_direction = "back"
-preview_scale = 1.0
-show_hair = false
-head_width = 1.16
-chin_length = 1.3
-chin_roundness = 0.32
-ear_size = 0.71
-ear_spacing = -2.9000000000000004
-eye_y_offset = 9.0
-pupil_x_offset = -3.0
-mouth_y_offset = 14.8
-mouth_width = 5.0
-mouth_angle_degrees = 6.399999999999999
-show_anchors = false
-show_guides = false
-metadata/_edit_lock_ = true
+[node name="Shorts" type="Polygon2D" parent="RearView/Hips"]
+position = Vector2(-842, 37)
+color = Color(9.866804e-07, 0, 0.4788519, 1)
+polygon = PackedVector2Array(3477, 895, 3499, 895, 3519, 889, 3531, 881, 3527, 861, 3507, 849, 3470, 849, 3449, 862, 3447, 881, 3459, 890)
+
+[node name="HeadPolygons" type="Node2D" parent="RearView"]
+
+[node name="Head" type="Polygon2D" parent="RearView/HeadPolygons"]
+color = Color(0.982, 0.798, 0.681, 1)
+polygon = PackedVector2Array(978, 775.5, 987, 776.6, 995.5, 779.6, 1003.5, 784.3, 1010.3, 790.8, 1015.7, 798.5, 1019.4, 807.5, 1021.5, 817.3, 1021.5, 827.7, 1019.4, 837.5, 1015.7, 846.5, 1010.3, 854.2, 1003.5, 860.7, 995.5, 865.4, 987, 868.4, 978, 869.5, 969, 868.4, 960.5, 865.4, 952.5, 860.7, 945.7, 854.2, 940.3, 846.5, 936.6, 837.5, 934.5, 827.7, 934.5, 817.3, 936.6, 807.5, 940.3, 798.5, 945.7, 790.8, 952.5, 784.3, 960.5, 779.6, 969, 776.6)
+
+[node name="LeftEar" type="Polygon2D" parent="RearView/HeadPolygons"]
+color = Color(0.982, 0.798, 0.681, 1)
+polygon = PackedVector2Array(931, 816, 927, 821, 926, 831, 929, 840, 934, 843, 937, 837, 937, 824)
+
+[node name="RightEar" type="Polygon2D" parent="RearView/HeadPolygons"]
+color = Color(0.982, 0.798, 0.681, 1)
+polygon = PackedVector2Array(1025, 816, 1029, 821, 1030, 831, 1027, 840, 1022, 843, 1019, 837, 1019, 824)
 
 [node name="ScalpHair_Front" type="Node2D" parent="RearView"]
 position = Vector2(-431, 5)
@@ -230,27 +253,35 @@ position = Vector2(270, 44)
 color = Color(0.19793725, 0.19793722, 0.19793722, 1)
 polygon = PackedVector2Array(1716, 799, 1728, 798, 1738, 818, 1760, 831, 1785, 818, 1791, 796, 1803, 801, 1797, 843, 1782, 854, 1738, 852, 1722, 840)
 
-[node name="FrontHead" parent="FrontView" instance=ExtResource("2_2ypqn")]
-offset_left = 698.0
-offset_top = 543.0
-offset_right = 1258.0
-offset_bottom = 1103.0
-view_direction = "front"
-preview_scale = 1.0
-show_hair = false
-head_width = 1.16
-chin_length = 1.3
-chin_roundness = 0.32
-ear_size = 0.71
-ear_spacing = -2.9000000000000004
-eye_y_offset = 9.0
-pupil_x_offset = -3.0
-mouth_y_offset = 14.8
-mouth_width = 5.0
-mouth_angle_degrees = 6.399999999999999
-show_anchors = false
-show_guides = false
-metadata/_edit_lock_ = true
+[node name="HeadPolygons" type="Node2D" parent="FrontView"]
+
+[node name="Head" type="Polygon2D" parent="FrontView/HeadPolygons"]
+color = Color(0.982, 0.798, 0.681, 1)
+polygon = PackedVector2Array(978, 764, 957, 767, 940, 779, 931, 797, 929, 819, 931, 841, 938, 858, 950, 870, 964, 878, 972, 881, 978, 882, 984, 881, 992, 878, 1006, 870, 1018, 858, 1025, 841, 1027, 819, 1025, 797, 1016, 779, 999, 767)
+
+[node name="LeftEar" type="Polygon2D" parent="FrontView/HeadPolygons"]
+color = Color(0.982, 0.798, 0.681, 1)
+polygon = PackedVector2Array(931, 817, 927, 822, 926, 832, 929, 841, 934, 844, 937, 838, 937, 825)
+
+[node name="RightEar" type="Polygon2D" parent="FrontView/HeadPolygons"]
+color = Color(0.982, 0.798, 0.681, 1)
+polygon = PackedVector2Array(1025, 817, 1029, 822, 1030, 832, 1027, 841, 1022, 844, 1019, 838, 1019, 825)
+
+[node name="LeftEye" type="Polygon2D" parent="FrontView/HeadPolygons"]
+color = Color(0.94, 0.95, 1, 1)
+polygon = PackedVector2Array(951, 847, 956, 841, 966, 840, 973, 846, 967, 854, 957, 855)
+
+[node name="LeftPupil" type="Polygon2D" parent="FrontView/HeadPolygons"]
+color = Color(0.38, 0.12, 0.68, 1)
+polygon = PackedVector2Array(958, 843, 964, 843, 967, 848, 965, 853, 960, 854, 957, 849)
+
+[node name="RightEye" type="Polygon2D" parent="FrontView/HeadPolygons"]
+color = Color(0.94, 0.95, 1, 1)
+polygon = PackedVector2Array(985, 846, 992, 840, 1002, 841, 1007, 847, 1001, 855, 991, 854)
+
+[node name="RightPupil" type="Polygon2D" parent="FrontView/HeadPolygons"]
+color = Color(0.38, 0.12, 0.68, 1)
+polygon = PackedVector2Array(992, 843, 998, 843, 1001, 849, 998, 854, 993, 853, 990, 848)
 
 [node name="ScalpHair_Front" type="Node2D" parent="FrontView"]
 position = Vector2(-431, 5)
@@ -318,57 +349,39 @@ position = Vector2(873, 219)
 color = Color(0.19793725, 0.19793722, 0.19793722, 1)
 polygon = PackedVector2Array(285, 647, 256, 639, 233, 660, 247, 689, 267, 701, 288, 694, 293, 661)
 
-[node name="ProfileReference" parent="SideView" instance=ExtResource("2_2ypqn")]
-offset_left = 860.0
-offset_top = 539.0
-offset_right = 1420.0
-offset_bottom = 1099.0
-preview_scale = 1.0
-show_hair = false
-head_width = 1.16
-side_cranium_x_offset = -3.6999999999999993
-side_cranium_width = 1.09
-side_jaw_adjustment = 3.6000000000000014
-side_jaw_height = 51.6
-side_chin_tip_x_offset = 8.899999999999999
-side_cranium_front_x_offset = 4.5
-side_cranium_front_y_offset = 14.1
-side_cranium_front_top_curve = -21.9
-side_cranium_front_face_curve = 0.6999999999999993
-side_forehead_x_offset = -11.7
-side_forehead_y_offset = -9.1
-side_brow_join_x_offset = -3.1999999999999993
-side_brow_join_y_offset = 1.6999999999999993
-side_nose_x_offset = 8.5
-side_nose_y_offset = 12.799999999999995
-side_nose_bridge_x_offset = 1.6000000000000014
-side_nose_tip_y_offset = 18.0
-side_upper_lip_x_offset = 2.5
-side_upper_lip_y_offset = 18.0
-side_ear_size = 0.64
-side_ear_y_offset = 28.200000000000003
-side_eye_x_offset = -8.5
-side_eye_width = 0.66
-side_eye_height = 1.05
-side_eye_y_offset = 8.5
-side_brow_front_y_offset = -2.9000000000000004
-side_brow_rear_x_offset = -2.5
-side_brow_rear_y_offset = 7.899999999999999
-side_mouth_x_offset = 7.800000000000001
-side_mouth_y_offset = 13.0
-side_mouth_width = 5.0
-side_mouth_angle_degrees = -12.7
-side_mouth_curve = -0.5
-side_mouth_taper = 0.55
-ear_size = 0.71
-ear_spacing = -2.9000000000000004
-eye_y_offset = 7.100000000000001
-pupil_x_offset = -3.0
-mouth_y_offset = 13.0
-mouth_width = 5.0
-mouth_angle_degrees = 6.399999999999999
-show_anchors = false
-show_guides = false
+[node name="HeadPolygons" type="Node2D" parent="SideView"]
+
+[node name="Head" type="Polygon2D" parent="SideView/HeadPolygons"]
+color = Color(0.982, 0.798, 0.681, 1)
+polygon = PackedVector2Array(1143, 752, 1160, 756, 1172, 769, 1178, 788, 1177, 807, 1172, 823, 1165, 837, 1158, 850, 1151, 865, 1140, 879, 1128, 873, 1119, 861, 1111, 848, 1105, 835, 1097, 827, 1092, 817, 1096, 807, 1102, 800, 1104, 784, 1114, 767, 1127, 756)
+
+[node name="Ear" type="Polygon2D" parent="SideView/HeadPolygons"]
+color = Color(0.945, 0.72, 0.62, 1)
+polygon = PackedVector2Array(1158, 822, 1165, 818, 1170, 824, 1169, 836, 1163, 843, 1157, 839)
+
+[node name="Eye" type="Polygon2D" parent="SideView/HeadPolygons"]
+color = Color(0.94, 0.95, 1, 1)
+polygon = PackedVector2Array(1100, 820, 1107, 814, 1117, 816, 1122, 822, 1115, 828, 1106, 827)
+
+[node name="Pupil" type="Polygon2D" parent="SideView/HeadPolygons"]
+color = Color(0.38, 0.12, 0.68, 1)
+polygon = PackedVector2Array(1107, 816, 1113, 817, 1116, 822, 1113, 827, 1108, 825, 1105, 821)
+
+[node name="SideArmor" type="Polygon2D" parent="SideView"]
+color = Color(0.075, 0.075, 0.12, 1)
+polygon = PackedVector2Array(1108, 870, 1128, 858, 1150, 863, 1162, 884, 1158, 914, 1134, 925, 1115, 913)
+
+[node name="SideShorts" type="Polygon2D" parent="SideView"]
+color = Color(9.866804e-07, 0, 0.4788519, 1)
+polygon = PackedVector2Array(1111, 906, 1128, 899, 1147, 901, 1160, 915, 1151, 928, 1129, 933, 1114, 923)
+
+[node name="FrontShoe_Side" type="Polygon2D" parent="SideView"]
+color = Color(9.866804e-07, 0, 0.4788519, 1)
+polygon = PackedVector2Array(1140, 963, 1151, 963, 1161, 968, 1163, 977, 1157, 982, 1141, 981, 1135, 974)
+
+[node name="FrontKneePad_Side" type="Polygon2D" parent="SideView"]
+color = Color(0, 0, 0, 1)
+polygon = PackedVector2Array(1140, 937, 1154, 935, 1160, 942, 1157, 950, 1143, 951, 1138, 945)
 
 [node name="SideArm" type="Polygon2D" parent="SideView"]
 position = Vector2(906, 561)
