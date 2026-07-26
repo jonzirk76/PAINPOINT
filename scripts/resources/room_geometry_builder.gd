@@ -6,6 +6,7 @@ const CELL_TILE_COLUMNS := 32
 const CELL_TILE_ROWS := 18
 const WALL_TILE_SIZE: float = CELL_SIZE.x / float(CELL_TILE_COLUMNS)
 const WALL_THICKNESS := WALL_TILE_SIZE
+const DEFAULT_WALL_HEIGHT_TILES := 3
 const OPENING_WIDTH := WALL_TILE_SIZE * 4.0
 const TRIGGER_DEPTH := WALL_TILE_SIZE * 2.0
 const ENTRY_MARGIN := 96.0
@@ -78,7 +79,7 @@ static func get_cell_rect(cells: Array[Vector2i], local_cell: Vector2i) -> Rect2
 
 static func build_wall_rects(cells: Array[Vector2i], connection_edges: Dictionary = {}) -> Array[Rect2]:
 	var wall_top_tiles := build_wall_tile_rects(cells, connection_edges)
-	return merge_wall_tiles(build_wall_body_tile_rects(wall_top_tiles, cells, connection_edges))
+	return merge_wall_tiles(build_wall_collision_tile_rects(wall_top_tiles, cells, connection_edges))
 
 
 static func get_exposed_edges(cells: Array[Vector2i], facing_direction: String = "") -> Array[Dictionary]:
@@ -116,18 +117,36 @@ static func build_wall_tile_rects(cells: Array[Vector2i], connection_edges: Dict
 	return walls
 
 
-static func build_wall_body_tile_rects(wall_top_tiles: Array[Rect2], cells: Array[Vector2i], connection_edges: Dictionary = {}) -> Array[Rect2]:
+static func build_wall_body_tile_rects(
+	wall_top_tiles: Array[Rect2],
+	cells: Array[Vector2i],
+	connection_edges: Dictionary = {},
+	wall_height_tiles: int = DEFAULT_WALL_HEIGHT_TILES
+) -> Array[Rect2]:
 	var body_tiles: Array[Rect2] = []
 	var body_lookup := {}
 	var body_opening_rects := _get_wall_body_connection_opening_rects(cells, connection_edges)
 	for wall_top in wall_top_tiles:
-		var body_tile := Rect2(wall_top.position + Vector2(0.0, WALL_TILE_SIZE), wall_top.size)
-		if not _rect_fits_wall_body_envelope(cells, body_tile):
+		var first_body_tile := Rect2(wall_top.position + Vector2(0.0, WALL_TILE_SIZE), wall_top.size)
+		if not _rect_fits_wall_body_envelope(cells, first_body_tile):
 			continue
-		if _tile_is_inside_any_opening(body_tile, body_opening_rects):
+		if _tile_is_inside_any_opening(first_body_tile, body_opening_rects):
 			continue
-		_append_unique_wall_tile(body_tiles, body_lookup, body_tile)
+		for depth_index in range(1, max(wall_height_tiles, 1) + 1):
+			var body_tile := Rect2(
+				wall_top.position + Vector2(0.0, WALL_TILE_SIZE * float(depth_index)),
+				wall_top.size
+			)
+			_append_unique_wall_tile(body_tiles, body_lookup, body_tile)
 	return body_tiles
+
+
+static func build_wall_collision_tile_rects(
+	wall_top_tiles: Array[Rect2],
+	cells: Array[Vector2i],
+	connection_edges: Dictionary = {}
+) -> Array[Rect2]:
+	return build_wall_body_tile_rects(wall_top_tiles, cells, connection_edges, 1)
 
 
 static func get_wall_body_opening_rect(cells: Array[Vector2i], local_cell: Vector2i, direction: String) -> Rect2:

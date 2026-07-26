@@ -76,6 +76,8 @@ const GENERATED_ENCOUNTER_TESTS := [
 const CAT_DEBUG_LEVEL_IDS := ["cat_behavior_test", "cat_peaceful_test"]
 const FLOOR_EXIT_PORTAL_SCENE := preload("res://scenes/entities/floor_exit_portal_entity.tscn")
 const AGENT_BOSS_GENERATOR := preload("res://scripts/resources/agent_boss_generator.gd")
+const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_builder.gd")
+const WALL_OCCLUSION_LAYERS := preload("res://scripts/arena/wall_occlusion_layers.gd")
 const BOLD_PIXELS_FONT := preload("res://art/fonts/BoldPixels.ttf")
 const LOADING_PROGRESS_FLOOR_LAYOUT_START := 0.08
 const LOADING_PROGRESS_FLOOR_LAYOUT_DONE := 0.18
@@ -520,6 +522,7 @@ func _connect_once(source: Object, signal_name: StringName, target: Callable) ->
 func _initialize_managers() -> void:
 	_capture_hud_authoring_state()
 	var depth_sort_layer: Node2D = $World/DepthSortLayer
+	WALL_OCCLUSION_LAYERS.open_visibility_path(depth_sort_layer)
 	input_manager.initialize({
 		"aim_origin_provider": Callable(player_manager, "get_player_position")
 	})
@@ -5254,11 +5257,21 @@ func _get_current_camera_bounds(level_definition) -> Rect2:
 		if _is_cleared_floor_map_active:
 			var visible_bounds: Rect2 = dungeon_manager.get_full_floor_visible_bounds(dungeon_manager.current_room_id)
 			if visible_bounds.size != Vector2.ZERO:
-				return visible_bounds
+				return _get_wall_aware_camera_bounds(level_definition, visible_bounds)
 		var active_bounds: Rect2 = dungeon_manager.get_full_floor_room_bounds(dungeon_manager.current_room_id)
 		if active_bounds.size != Vector2.ZERO:
-			return active_bounds
-	return level_definition.arena_bounds
+			return _get_wall_aware_camera_bounds(level_definition, active_bounds)
+	return _get_wall_aware_camera_bounds(level_definition, level_definition.arena_bounds)
+
+
+func _get_wall_aware_camera_bounds(level_definition, base_bounds: Rect2) -> Rect2:
+	if level_definition == null or base_bounds.size == Vector2.ZERO:
+		return base_bounds
+	var wall_height_tiles: int = max(int(level_definition.get_meta("wall_height_tiles", 1)), 1)
+	if wall_height_tiles <= 1:
+		return base_bounds
+	var boundary_margin: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
+	return base_bounds.grow_individual(0.0, boundary_margin, 0.0, boundary_margin)
 
 
 func _activate_boss_exit_portal(boss_position: Vector2, boss_radius: float) -> void:

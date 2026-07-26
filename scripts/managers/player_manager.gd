@@ -1,6 +1,8 @@
 extends Node
 class_name PlayerManager
 
+const WALL_OCCLUSION_LAYERS := preload("res://scripts/arena/wall_occlusion_layers.gd")
+
 signal player_spawned(player)
 signal player_health_changed(old_value: int, new_value: int)
 signal player_invulnerability_changed(remaining: float, duration: float)
@@ -75,6 +77,7 @@ func reset_run() -> void:
 	if player != null and is_instance_valid(player):
 		player.queue_free()
 	player = player_scene.instantiate()
+	WALL_OCCLUSION_LAYERS.mark_entity_tree(player)
 	player.global_position = spawn_position
 	player.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
 	player.health_changed.connect(_on_player_health_changed)

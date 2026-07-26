@@ -506,8 +506,10 @@ func _build_floor_level_definition_from_geometry(cleared_room_ids: Array[String]
 	level.void_rects = empty_voids
 	var wall_top_tiles: Array[Rect2] = _get_cleared_floor_wall_top_tiles(cleared_room_ids, min_world_cell, floor_cells)
 	var wall_body_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(wall_top_tiles, floor_cells)
-	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(wall_body_tiles)
+	var wall_collision_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_collision_tile_rects(wall_top_tiles, floor_cells)
+	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(wall_collision_tiles)
 	level.set_meta("footprint_cells", floor_cells.duplicate())
+	level.set_meta("wall_height_tiles", ROOM_GEOMETRY_BUILDER.DEFAULT_WALL_HEIGHT_TILES)
 	level.set_meta("connection_edges", {})
 	level.set_meta("wall_top_tile_rects", wall_top_tiles)
 	level.set_meta("wall_body_tile_rects", wall_body_tiles)
@@ -1916,11 +1918,14 @@ func _apply_room_geometry(level, piece, connection_edges: Dictionary) -> void:
 	level.set_meta("connection_edges", connection_edges.duplicate())
 	var wall_top_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_tile_rects(piece.footprint_cells, connection_edges)
 	wall_top_tiles.append_array(ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(piece.wall_rects))
-	var wall_body_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(wall_top_tiles, piece.footprint_cells, connection_edges)
-	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(wall_body_tiles)
+	var wall_height_tiles: int = max(int(piece.wall_height_tiles), 1)
+	var wall_body_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(wall_top_tiles, piece.footprint_cells, connection_edges, wall_height_tiles)
+	var wall_collision_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_collision_tile_rects(wall_top_tiles, piece.footprint_cells, connection_edges)
+	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(wall_collision_tiles)
 	level.set_meta("wall_top_tile_rects", wall_top_tiles)
 	level.set_meta("wall_body_tile_rects", wall_body_tiles)
 	level.set_meta("wall_tile_rects", wall_top_tiles)
+	level.set_meta("wall_height_tiles", wall_height_tiles)
 
 
 func _get_extra_spawner_count(room_kind: String) -> int:

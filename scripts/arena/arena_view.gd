@@ -5,6 +5,7 @@ const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_bu
 const ARENA_WALL_TOP_OVERLAY_SCRIPT := preload("res://scripts/arena/arena_wall_top_overlay.gd")
 const ARENA_WALL_BODY_VISUAL_SCRIPT := preload("res://scripts/arena/arena_wall_body_visual.gd")
 const ARENA_FLOOR_TILE_VISUAL_SCRIPT := preload("res://scripts/arena/arena_floor_tile_visual.gd")
+const WALL_OCCLUSION_OVERLAY_SCRIPT := preload("res://scripts/arena/wall_occlusion_overlay.gd")
 const WALL_BODY_FILL_COLOR := Color(0.16, 0.17, 0.19)
 const WALL_BODY_OUTLINE_COLOR := Color(0.5, 0.58, 0.64)
 const WALL_TOP_FILL_COLOR := Color(0.09, 0.1, 0.12)
@@ -31,6 +32,8 @@ const FLOOR_TILE_SIZE := 40.0
 @export var floor_chip_color := Color("#37393b")
 ## [Description] Thin recessed color used by procedural cracks.
 @export var floor_crack_color := Color("#252a2d")
+## [Description] Opacity of character pixels shown over wall faces while the character is geometrically behind them.
+@export_range(0.0, 1.0, 0.05) var behind_wall_entity_opacity: float = 0.5
 
 var _wall_bodies: Array[StaticBody2D] = []
 var _void_bodies: Array[StaticBody2D] = []
@@ -50,6 +53,7 @@ var _wall_body_depth_visuals_enabled: bool = false
 var _blocker_rebuild_deferred: bool = false
 var _floor_wear_seed: int = 0
 var _floor_tile_visual = null
+var _wall_occlusion_overlay = null
 
 
 func configure(level_definition) -> void:
@@ -81,6 +85,7 @@ func configure(level_definition) -> void:
 	_configure_floor_tile_visual()
 	_configure_wall_top_overlay()
 	_configure_wall_body_depth_visuals()
+	_configure_wall_occlusion_overlay()
 	_rebuild_blocker_bodies()
 	queue_redraw()
 
@@ -88,6 +93,7 @@ func configure(level_definition) -> void:
 func _exit_tree() -> void:
 	_clear_floor_tile_visual()
 	_clear_wall_body_depth_visuals()
+	_clear_wall_occlusion_overlay()
 
 
 func _draw() -> void:
@@ -428,6 +434,28 @@ func _clear_wall_body_depth_visuals() -> void:
 			visual.queue_free()
 	_wall_body_visuals.clear()
 	_wall_body_depth_visuals_enabled = false
+
+
+func _configure_wall_occlusion_overlay() -> void:
+	if not _uses_canonical_wall_tiles:
+		_clear_wall_occlusion_overlay()
+		return
+	if _wall_occlusion_overlay == null or not is_instance_valid(_wall_occlusion_overlay):
+		_wall_occlusion_overlay = WALL_OCCLUSION_OVERLAY_SCRIPT.new()
+		_wall_occlusion_overlay.name = "WallOcclusionOverlay"
+		add_child(_wall_occlusion_overlay)
+	_wall_occlusion_overlay.configure(
+		_wall_draw_rects,
+		get_viewport(),
+		behind_wall_entity_opacity
+	)
+
+
+func _clear_wall_occlusion_overlay() -> void:
+	if _wall_occlusion_overlay != null and is_instance_valid(_wall_occlusion_overlay):
+		_wall_occlusion_overlay.clear()
+		_wall_occlusion_overlay.queue_free()
+	_wall_occlusion_overlay = null
 
 
 func _get_depth_sort_layer() -> Node2D:

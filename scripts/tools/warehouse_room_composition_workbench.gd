@@ -101,7 +101,7 @@ func _draw() -> void:
 		_draw_grid(room_bounds, ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE * 2.0, Color(0.28, 0.31, 0.34, 0.5), 1.5)
 
 	for body_tile in wall_body_tiles:
-		draw_rect(body_tile.translated(Vector2(4.0, 5.0)), shadow_color, true)
+		draw_rect(Rect2(body_tile.position + Vector2(4.0, 5.0), body_tile.size), shadow_color, true)
 	for body_tile in wall_body_tiles:
 		draw_rect(body_tile, wall_face_color, true)
 		draw_line(body_tile.position, Vector2(body_tile.end.x, body_tile.position.y), wall_face_color.lightened(0.18), 1.5)

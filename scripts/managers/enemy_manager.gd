@@ -1,6 +1,8 @@
 extends Node
 class_name EnemyManager
 
+const WALL_OCCLUSION_LAYERS := preload("res://scripts/arena/wall_occlusion_layers.gd")
+
 signal enemy_defeated(enemy, score_value: int)
 signal enemy_health_changed(enemy, old_value: int, new_value: int)
 signal enemy_count_changed(count: int)
@@ -136,6 +138,7 @@ func spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary = {})
 	if not enabled and not allow_when_disabled:
 		return null
 	var enemy = enemy_scene.instantiate()
+	WALL_OCCLUSION_LAYERS.mark_entity_tree(enemy)
 	var selected_profile = profile if profile != null else default_enemy_profile
 	enemy.initialize(selected_profile)
 	enemy.global_position = _constrain_spawn_position(spawn_position, float(enemy.body_radius))

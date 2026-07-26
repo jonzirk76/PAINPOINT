@@ -903,7 +903,13 @@ func _apply_wall_tiles(level, wall_tiles: Array[Rect2]) -> void:
 	level.set_meta("wall_top_tile_rects", wall_tiles)
 	level.set_meta("wall_body_tile_rects", wall_body_tiles)
 	level.set_meta("wall_tile_rects", wall_tiles)
-	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(wall_body_tiles)
+	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(
+		ROOM_GEOMETRY_BUILDER.build_wall_collision_tile_rects(
+			wall_tiles,
+			_get_level_footprint_cells(level),
+			Dictionary(level.get_meta("connection_edges", {}))
+		)
+	)
 
 
 func _build_wall_body_tiles(level, wall_top_tiles: Array[Rect2]) -> Array[Rect2]:
@@ -912,7 +918,13 @@ func _build_wall_body_tiles(level, wall_top_tiles: Array[Rect2]) -> Array[Rect2]
 	var connection_edges: Dictionary = {}
 	if level.has_meta("connection_edges"):
 		connection_edges = level.get_meta("connection_edges")
-	return ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(wall_top_tiles, _get_level_footprint_cells(level), connection_edges)
+	var wall_height_tiles: int = max(int(level.get_meta("wall_height_tiles", ROOM_GEOMETRY_BUILDER.DEFAULT_WALL_HEIGHT_TILES)), 1)
+	return ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(
+		wall_top_tiles,
+		_get_level_footprint_cells(level),
+		connection_edges,
+		wall_height_tiles
+	)
 
 
 func _apply_void_rects(level, void_rects: Array[Rect2]) -> void:

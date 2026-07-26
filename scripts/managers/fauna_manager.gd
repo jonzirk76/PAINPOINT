@@ -1,6 +1,8 @@
 extends Node
 class_name FaunaManager
 
+const WALL_OCCLUSION_LAYERS := preload("res://scripts/arena/wall_occlusion_layers.gd")
+
 signal cat_meowed(pitch_center: float, pitch_variation: float)
 
 const CAT_TEXTURES := [
@@ -173,6 +175,7 @@ func spawn_cat(spawn_position: Vector2, movement_seed: int = 0):
 		return _cat
 	var cat_seed: int = max(movement_seed, 1)
 	var cat = cat_scene.instantiate()
+	WALL_OCCLUSION_LAYERS.mark_entity_tree(cat)
 	_cat = cat
 	_connect_cat_signals(cat)
 	if cat.has_method("set_cat_texture"):
