@@ -1,8 +1,5 @@
 @tool
-extends TextureRect
+extends SubViewportContainer
 class_name CircularPortrait
 
-@export var portrait: Texture2D:
-	set(value):
-		portrait = value
-		texture = value
+## Displays the polygon-authored character portrait through the circular HUD mask.

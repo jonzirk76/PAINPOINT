@@ -711,11 +711,17 @@ func _test_scene_loads(failures: Array[String]) -> void:
 					if health_label.visible or overdrive_label.visible or super_label.visible:
 						failures.append("Combat resource bars should not need visible Life/Overdrive/Special text labels.")
 				if instance.has_node("UI/CombatPanel/CircularPortraitMask/CharacterPortrait"):
-					var character_portrait: Control = instance.get_node("UI/CombatPanel/CircularPortraitMask/CharacterPortrait")
+					var character_portrait: SubViewportContainer = instance.get_node("UI/CombatPanel/CircularPortraitMask/CharacterPortrait")
 					if character_portrait.get_script() == null:
 						failures.append("Character portrait should use the circular portrait drawing script.")
-					elif character_portrait.get("texture") == null:
-						failures.append("Character combat panel should use the canon sheet portrait texture.")
+					elif not character_portrait.has_node("PortraitViewport/VolettePortrait/Artwork"):
+						failures.append("Character combat panel should instance the canonical polygon-authored Volette portrait.")
+					elif not character_portrait.has_node("PortraitViewport/VolettePortrait/ReferencePortrait"):
+						failures.append("Canonical Volette portrait should retain its hidden bitmap reference for refinement.")
+					else:
+						var portrait_reference: Sprite2D = character_portrait.get_node("PortraitViewport/VolettePortrait/ReferencePortrait")
+						if portrait_reference.visible:
+							failures.append("Canonical Volette portrait reference should stay hidden in the combat HUD.")
 					var portrait_mask: Control = instance.get_node("UI/CombatPanel/CircularPortraitMask")
 					if abs(portrait_mask.size.x - portrait_mask.size.y) > 0.01:
 						failures.append("Character portrait should draw into a square circular mask area.")
@@ -941,8 +947,8 @@ func _test_character_hud_visibility(failures: Array[String]) -> void:
 
 func _test_character_hud_feedback_and_manual_layout(failures: Array[String]) -> void:
 	var portrait_source := _read_text("res://scenes/character_portrait.gd")
-	if portrait_source.contains("stretch_mode") or portrait_source.contains("expand_mode"):
-		failures.append("Character portrait script should not override manually authored TextureRect sizing.")
+	if portrait_source.contains("TextureRect"):
+		failures.append("Character portrait should render the canonical polygon scene instead of the old bitmap TextureRect.")
 	var scene = load("res://scenes/main.tscn")
 	if scene == null:
 		failures.append("Main scene failed to load for character HUD feedback test.")
