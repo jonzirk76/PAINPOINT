@@ -1,0 +1,34 @@
+[gd_scene format=3 uid="uid://dmhfcdcc4p434"]
+
+[ext_resource type="PackedScene" uid="uid://dn0142nlf4sw0" path="res://scenes/characters/volette_visual.tscn" id="1_visual"]
+[ext_resource type="Script" uid="uid://x7rnwbwmhlp3" path="res://scripts/tools/character_walk_cycle_preview.gd" id="2_preview"]
+
+[node name="VoletteWalkCyclePreview" type="Control" unique_id=258307227]
+custom_minimum_size = Vector2(720, 560)
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_preview")
+character_scene = ExtResource("1_visual")
+view_mode = "rear"
+character_scale = 2.0
+walk_speed = 10.5
+stride_distance = 4.0
+leg_swing_degrees = 3.0
+body_bob_distance = 1.5
+knee_lift_distance = 1.5
+foot_lift_distance = 2.5
+hip_tilt_degrees = 3.0
+invert_hip_tilt = true
+body_bounce_distance = 2.0
+bounce_speed_multiplier = 0.65
+head_bounce_distance = 1.0
+hair_bounce_distance = 2.0
+gun_bounce_distance = 2.0
+front_right_leg_path = NodePath("FrontView/Legs/RightLeg")
+side_back_leg_path = NodePath("SideView/Legs/BackLeg")
+side_front_leg_path = NodePath("SideView/Legs/FrontLeg")
+head_target_paths = "FrontView/HeadPolygons,SideView/HeadPolygons,RearView/HeadPolygons"
