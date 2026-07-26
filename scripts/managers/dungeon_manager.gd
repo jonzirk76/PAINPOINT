@@ -148,6 +148,7 @@ func get_current_level_definition():
 	level.display_name = "%s - %s" % [piece.display_name, String(state["id"]).capitalize()]
 	level.difficulty_label = "Floor %d %s" % [floor_number, piece.room_kind.capitalize()]
 	level.floor_number = max(floor_number, 1)
+	level.set_meta("floor_visual_seed", floor_generation_seed)
 	_apply_floor_scaling(level, String(piece.room_kind))
 	return level
 
@@ -492,6 +493,7 @@ func _build_floor_level_definition_from_geometry(cleared_room_ids: Array[String]
 	level.display_name = display_name
 	level.difficulty_label = difficulty_label
 	level.floor_number = max(floor_number, 1)
+	level.set_meta("floor_visual_seed", floor_generation_seed)
 	level.arena_shape = 0
 	level.arena_bounds = ROOM_GEOMETRY_BUILDER.get_bounds(floor_cells)
 	level.use_default_spawners = false
@@ -1774,6 +1776,7 @@ func _generate_room_interiors() -> void:
 			level.floor_number = max(floor_number, 1)
 			_apply_floor_scaling(level, room_kind)
 			_apply_room_geometry(level, piece, state["connection_edges"])
+		level.set_meta("floor_visual_seed", floor_generation_seed)
 		state["level_definition"] = level
 		_rooms[room_id] = state
 

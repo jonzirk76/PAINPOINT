@@ -8,6 +8,10 @@ const WALL_BODY_FILL_COLOR := Color(0.16, 0.17, 0.19)
 const WALL_BODY_OUTLINE_COLOR := Color(0.5, 0.58, 0.64)
 const WALL_TOP_FILL_COLOR := Color(0.09, 0.1, 0.12)
 const WALL_TOP_OUTLINE_COLOR := Color(0.72, 0.78, 0.82)
+const FLOOR_TILE_SIZE := 40.0
+const FLOOR_PANEL_SIZE := 19.0
+const FLOOR_PANEL_INSET := 0.67
+const FLOOR_PANEL_STEP := 19.67
 
 @export var arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 @export var grid_size: float = 60.0
@@ -15,6 +19,20 @@ const WALL_TOP_OUTLINE_COLOR := Color(0.72, 0.78, 0.82)
 @export var wall_rects: Array[Rect2] = []
 @export var void_rects: Array[Rect2] = []
 @export var depth_sort_layer_path: NodePath = ^"../DepthSortLayer"
+
+@export_group("Procedural Floor Wear")
+## [Description] Controls how often small chips appear along the edges of the inset floor panels.
+@export_range(0.0, 1.0, 0.01) var floor_chip_density: float = 0.34
+## [Description] Controls how often a two-to-four-tile crack run begins on the canonical floor grid.
+@export_range(0.0, 0.2, 0.002) var floor_crack_density: float = 0.026
+## [Description] Base fill beneath the four inset panels that make up each canonical floor tile.
+@export var floor_base_color := Color("#34373a")
+## [Description] Main top-facing color of each inset concrete floor panel.
+@export var floor_panel_color := Color("#5b5958")
+## [Description] Dark worn-concrete color used for edge chips.
+@export var floor_chip_color := Color("#37393b")
+## [Description] Thin recessed color used by procedural cracks.
+@export var floor_crack_color := Color("#252a2d")
 
 var _wall_bodies: Array[StaticBody2D] = []
 var _void_bodies: Array[StaticBody2D] = []
@@ -32,6 +50,7 @@ var _wall_top_overlay = null
 var _wall_body_visuals: Array[Node2D] = []
 var _wall_body_depth_visuals_enabled: bool = false
 var _blocker_rebuild_deferred: bool = false
+var _floor_wear_seed: int = 0
 
 
 func configure(level_definition) -> void:
@@ -54,6 +73,10 @@ func configure(level_definition) -> void:
 		_wall_draw_rects = wall_rects.duplicate()
 		_void_draw_rects = void_rects.duplicate()
 	_footprint_cells = _get_meta_cells(level_definition, "footprint_cells")
+	_floor_wear_seed = int(level_definition.get_meta(
+		"floor_visual_seed",
+		String(level_definition.id).hash() ^ (int(level_definition.floor_number) * 7919)
+	))
 	_fog_rects = _get_meta_rects(level_definition, "fog_rects", [])
 	_inactive_room_dim_rects = _get_meta_rects(level_definition, "inactive_room_dim_rects", [])
 	_configure_wall_top_overlay()
@@ -72,6 +95,7 @@ func _draw() -> void:
 		draw_rect(arena_bounds.grow(960.0), Color.BLACK, true)
 		_draw_canonical_floor()
 		_draw_canonical_grid()
+		_draw_canonical_floor_wear()
 	else:
 		draw_colored_polygon(polygon, Color(0.07, 0.08, 0.09))
 		_draw_clipped_grid(polygon)
@@ -157,24 +181,161 @@ func _dedupe_sorted_values(values: Array[float]) -> Array[float]:
 
 
 func _draw_canonical_floor() -> void:
-	var floor_color := Color(0.045, 0.052, 0.058)
 	for cell in _footprint_cells:
-		draw_rect(_cell_rect(cell), floor_color, true)
+		var cell_rect := _cell_rect(cell)
+		draw_rect(cell_rect, floor_base_color, true)
+		var tile_count := Vector2i(
+			roundi(cell_rect.size.x / FLOOR_TILE_SIZE),
+			roundi(cell_rect.size.y / FLOOR_TILE_SIZE)
+		)
+		for tile_y in range(tile_count.y):
+			for tile_x in range(tile_count.x):
+				var tile_origin := cell_rect.position + Vector2(tile_x, tile_y) * FLOOR_TILE_SIZE
+				for panel_y in range(2):
+					for panel_x in range(2):
+						var panel_position := tile_origin + Vector2(
+							FLOOR_PANEL_INSET + float(panel_x) * FLOOR_PANEL_STEP,
+							FLOOR_PANEL_INSET + float(panel_y) * FLOOR_PANEL_STEP
+						)
+						draw_rect(Rect2(panel_position, Vector2.ONE * FLOOR_PANEL_SIZE), floor_panel_color, true)
 
 
 func _draw_canonical_grid() -> void:
-	var tile_size := 40.0
 	var grid_color := Color(0.085, 0.092, 0.102, 0.58)
 	for cell in _footprint_cells:
 		var rect := _cell_rect(cell)
 		var x := rect.position.x
 		while x <= rect.position.x + rect.size.x + 0.5:
 			draw_line(Vector2(x, rect.position.y), Vector2(x, rect.position.y + rect.size.y), grid_color, 1.0)
-			x += tile_size
+			x += FLOOR_TILE_SIZE
 		var y := rect.position.y
 		while y <= rect.position.y + rect.size.y + 0.5:
 			draw_line(Vector2(rect.position.x, y), Vector2(rect.position.x + rect.size.x, y), grid_color, 1.0)
-			y += tile_size
+			y += FLOOR_TILE_SIZE
+
+
+func _draw_canonical_floor_wear() -> void:
+	var tile_lookup := _build_floor_tile_lookup()
+	var sorted_keys: Array = tile_lookup.keys()
+	sorted_keys.sort()
+	for key_value in sorted_keys:
+		var tile_coord: Vector2i = tile_lookup[key_value]
+		var tile_origin := arena_bounds.position + Vector2(tile_coord) * FLOOR_TILE_SIZE
+		_draw_tile_chips(tile_origin, tile_coord)
+		if _wear_value(tile_coord, 701) < floor_crack_density:
+			_draw_crack_run(tile_coord, tile_lookup)
+
+
+func _build_floor_tile_lookup() -> Dictionary:
+	var lookup := {}
+	var tiles_per_cell := Vector2i(
+		roundi(ROOM_GEOMETRY_BUILDER.CELL_SIZE.x / FLOOR_TILE_SIZE),
+		roundi(ROOM_GEOMETRY_BUILDER.CELL_SIZE.y / FLOOR_TILE_SIZE)
+	)
+	for cell in _footprint_cells:
+		var first_tile := Vector2i(cell.x * tiles_per_cell.x, cell.y * tiles_per_cell.y)
+		for tile_y in range(tiles_per_cell.y):
+			for tile_x in range(tiles_per_cell.x):
+				var tile_coord := first_tile + Vector2i(tile_x, tile_y)
+				lookup[_floor_tile_key(tile_coord)] = tile_coord
+	return lookup
+
+
+func _draw_tile_chips(tile_origin: Vector2, tile_coord: Vector2i) -> void:
+	for panel_index in range(4):
+		var salt := 101 + panel_index * 37
+		if _wear_value(tile_coord, salt) >= floor_chip_density:
+			continue
+		var panel_coord := Vector2i(panel_index % 2, panel_index / 2)
+		var panel_origin := tile_origin + Vector2(
+			FLOOR_PANEL_INSET + float(panel_coord.x) * FLOOR_PANEL_STEP,
+			FLOOR_PANEL_INSET + float(panel_coord.y) * FLOOR_PANEL_STEP
+		)
+		var edge := int(floor(_wear_value(tile_coord, salt + 1) * 4.0)) % 4
+		var edge_offset := 3.0 + _wear_value(tile_coord, salt + 2) * 11.0
+		var size := 1.4 + _wear_value(tile_coord, salt + 3) * 1.8
+		var points := _chip_points_for_edge(panel_origin, edge, edge_offset, size)
+		draw_colored_polygon(points, floor_chip_color)
+
+
+func _chip_points_for_edge(panel_origin: Vector2, edge: int, edge_offset: float, size: float) -> PackedVector2Array:
+	match edge:
+		0:
+			return PackedVector2Array([
+				panel_origin + Vector2(edge_offset, 0.0),
+				panel_origin + Vector2(edge_offset + size, 0.0),
+				panel_origin + Vector2(edge_offset + size * 0.45, size)
+			])
+		1:
+			return PackedVector2Array([
+				panel_origin + Vector2(FLOOR_PANEL_SIZE, edge_offset),
+				panel_origin + Vector2(FLOOR_PANEL_SIZE, edge_offset + size),
+				panel_origin + Vector2(FLOOR_PANEL_SIZE - size, edge_offset + size * 0.55)
+			])
+		2:
+			return PackedVector2Array([
+				panel_origin + Vector2(edge_offset, FLOOR_PANEL_SIZE),
+				panel_origin + Vector2(edge_offset + size, FLOOR_PANEL_SIZE),
+				panel_origin + Vector2(edge_offset + size * 0.55, FLOOR_PANEL_SIZE - size)
+			])
+		_:
+			return PackedVector2Array([
+				panel_origin + Vector2(0.0, edge_offset),
+				panel_origin + Vector2(0.0, edge_offset + size),
+				panel_origin + Vector2(size, edge_offset + size * 0.45)
+			])
+
+
+func _draw_crack_run(start_coord: Vector2i, tile_lookup: Dictionary) -> void:
+	var horizontal := _wear_value(start_coord, 709) < 0.5
+	var direction := Vector2i.RIGHT if horizontal else Vector2i.DOWN
+	var run_length := 2 + int(floor(_wear_value(start_coord, 719) * 3.0))
+	var valid_length := 1
+	for step in range(1, run_length):
+		if not tile_lookup.has(_floor_tile_key(start_coord + direction * step)):
+			break
+		valid_length += 1
+	if valid_length < 2:
+		return
+	var cross_offset := 7.0 + _wear_value(start_coord, 727) * 26.0
+	var points := PackedVector2Array()
+	for point_index in range(valid_length * 2 + 1):
+		var progress := float(point_index) / float(valid_length * 2)
+		var along := progress * float(valid_length) * FLOOR_TILE_SIZE
+		var bend := (_wear_value(start_coord, 733 + point_index * 11) - 0.5) * 6.0
+		var local_point := Vector2(along, cross_offset + bend) if horizontal else Vector2(cross_offset + bend, along)
+		points.append(arena_bounds.position + Vector2(start_coord) * FLOOR_TILE_SIZE + local_point)
+	draw_polyline(points, floor_crack_color, 1.35, true)
+	if points.size() >= 4 and _wear_value(start_coord, 811) < 0.7:
+		var branch_index := 1 + int(floor(_wear_value(start_coord, 821) * float(points.size() - 2)))
+		var branch_start := points[branch_index]
+		var branch_direction := Vector2(0.65, -1.0) if horizontal else Vector2(-1.0, 0.65)
+		if _wear_value(start_coord, 823) < 0.5:
+			branch_direction *= -1.0
+		draw_polyline(
+			PackedVector2Array([
+				branch_start,
+				branch_start + branch_direction * 5.0,
+				branch_start + branch_direction * 9.0 + Vector2(2.0, -1.0)
+			]),
+			floor_crack_color,
+			1.1,
+			true
+		)
+
+
+func _floor_tile_key(tile_coord: Vector2i) -> String:
+	return "%d:%d" % [tile_coord.x, tile_coord.y]
+
+
+func _wear_value(tile_coord: Vector2i, salt: int) -> float:
+	var value := sin(
+		float(tile_coord.x) * 12.9898
+		+ float(tile_coord.y) * 78.233
+		+ float(_floor_wear_seed) * 0.00013
+		+ float(salt) * 0.9187
+	) * 43758.5453
+	return value - floor(value)
 
 
 func _cell_rect(cell: Vector2i) -> Rect2:
