@@ -453,9 +453,9 @@ func _configure_wall_occlusion_overlay() -> void:
 		add_child(_wall_occlusion_overlay)
 	var occlusion_rects: Array[Rect2] = _wall_draw_rects.duplicate()
 	occlusion_rects.append_array(ROOM_GEOMETRY_BUILDER.merge_wall_tiles(_wall_top_tile_rects))
+	occlusion_rects.append_array(_fog_rects)
 	_wall_occlusion_overlay.configure(
 		occlusion_rects,
-		_fog_rects,
 		get_viewport(),
 		behind_wall_entity_opacity,
 		wall_occlusion_candidate_margin

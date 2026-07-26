@@ -34,8 +34,8 @@ func _process(_delta: float) -> void:
 func _ensure_mask() -> void:
 	if _mask != null:
 		return
-	# Opaque undiscovered fog must cover the translucent wall-occlusion composite.
-	layer = 1
+	# Opaque fog sits beneath the masked 50% entity composite and above the world.
+	layer = 0
 	_mask = FOG_MASK_SCRIPT.new()
 	_mask.name = "FogMask"
 	add_child(_mask)

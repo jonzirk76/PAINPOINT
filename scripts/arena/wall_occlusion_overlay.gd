@@ -9,14 +9,12 @@ var _entity_viewport: SubViewport = null
 var _mask = null
 var _entity_texture: TextureRect = null
 var _wall_rects: Array[Rect2] = []
-var _opaque_fog_rects: Array[Rect2] = []
 var _candidate_margin: float = 180.0
 var _candidate_capture_states: Dictionary = {}
 
 
 func configure(
 	rects: Array[Rect2],
-	opaque_fog_rects: Array[Rect2],
 	source_viewport: Viewport,
 	opacity: float = 0.5,
 	candidate_margin: float = 180.0
@@ -27,7 +25,6 @@ func configure(
 		return
 	_ensure_nodes()
 	_wall_rects = rects.duplicate()
-	_opaque_fog_rects = opaque_fog_rects.duplicate()
 	_candidate_margin = max(candidate_margin, 0.0)
 	_mask.configure(rects)
 	_entity_texture.modulate = Color(1.0, 1.0, 1.0, clamp(opacity, 0.0, 1.0))
@@ -39,7 +36,6 @@ func configure(
 func clear() -> void:
 	visible = false
 	_wall_rects.clear()
-	_opaque_fog_rects.clear()
 	_disable_all_candidates()
 	if _mask != null:
 		var empty_rects: Array[Rect2] = []
@@ -60,8 +56,8 @@ func _process(_delta: float) -> void:
 func _ensure_nodes() -> void:
 	if _entity_viewport != null:
 		return
-	# Gameplay overlays remain below the scene's UI CanvasLayer.
-	layer = 0
+	# The translucent entity composite sits above opaque fog and below UI.
+	layer = 1
 	_entity_viewport = SubViewport.new()
 	_entity_viewport.name = "EntityOnlyViewport"
 	_entity_viewport.transparent_bg = true
@@ -129,9 +125,6 @@ func _candidate_overlaps_wall(candidate: Node) -> bool:
 	if _wall_rects.is_empty() or not candidate is Node2D:
 		return false
 	var candidate_position: Vector2 = (candidate as Node2D).global_position
-	for fog_rect in _opaque_fog_rects:
-		if fog_rect.has_point(candidate_position):
-			return false
 	for wall_rect in _wall_rects:
 		if wall_rect.grow(_candidate_margin).has_point(candidate_position):
 			return true
