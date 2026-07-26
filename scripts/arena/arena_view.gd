@@ -37,6 +37,8 @@ const FLOOR_TILE_SIZE := 40.0
 @export_range(0.0, 1.0, 0.05) var behind_wall_entity_opacity: float = 0.5
 ## [Description] Distance around wall masks where entities remain eligible for the secondary occlusion render pass.
 @export_range(40.0, 320.0, 10.0) var wall_occlusion_candidate_margin: float = 180.0
+## [Description] Resolution scale of the secondary perspective-information viewport; 0.5 renders one quarter as many pixels.
+@export_range(0.25, 1.0, 0.05) var wall_occlusion_viewport_scale: float = 0.5
 
 var _wall_bodies: Array[StaticBody2D] = []
 var _void_bodies: Array[StaticBody2D] = []
@@ -461,6 +463,7 @@ func _configure_wall_occlusion_overlay() -> void:
 		get_viewport(),
 		behind_wall_entity_opacity,
 		wall_occlusion_candidate_margin,
+		wall_occlusion_viewport_scale,
 		_active_room_id
 	)
 
