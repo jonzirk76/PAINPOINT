@@ -4,14 +4,12 @@ class_name ArenaView
 const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_builder.gd")
 const ARENA_WALL_TOP_OVERLAY_SCRIPT := preload("res://scripts/arena/arena_wall_top_overlay.gd")
 const ARENA_WALL_BODY_VISUAL_SCRIPT := preload("res://scripts/arena/arena_wall_body_visual.gd")
+const ARENA_FLOOR_TILE_VISUAL_SCRIPT := preload("res://scripts/arena/arena_floor_tile_visual.gd")
 const WALL_BODY_FILL_COLOR := Color(0.16, 0.17, 0.19)
 const WALL_BODY_OUTLINE_COLOR := Color(0.5, 0.58, 0.64)
 const WALL_TOP_FILL_COLOR := Color(0.09, 0.1, 0.12)
 const WALL_TOP_OUTLINE_COLOR := Color(0.72, 0.78, 0.82)
 const FLOOR_TILE_SIZE := 40.0
-const FLOOR_PANEL_SIZE := 19.0
-const FLOOR_PANEL_INSET := 0.67
-const FLOOR_PANEL_STEP := 19.67
 
 @export var arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 @export var grid_size: float = 60.0
@@ -51,6 +49,7 @@ var _wall_body_visuals: Array[Node2D] = []
 var _wall_body_depth_visuals_enabled: bool = false
 var _blocker_rebuild_deferred: bool = false
 var _floor_wear_seed: int = 0
+var _floor_tile_visual = null
 
 
 func configure(level_definition) -> void:
@@ -79,6 +78,7 @@ func configure(level_definition) -> void:
 	))
 	_fog_rects = _get_meta_rects(level_definition, "fog_rects", [])
 	_inactive_room_dim_rects = _get_meta_rects(level_definition, "inactive_room_dim_rects", [])
+	_configure_floor_tile_visual()
 	_configure_wall_top_overlay()
 	_configure_wall_body_depth_visuals()
 	_rebuild_blocker_bodies()
@@ -86,14 +86,13 @@ func configure(level_definition) -> void:
 
 
 func _exit_tree() -> void:
+	_clear_floor_tile_visual()
 	_clear_wall_body_depth_visuals()
 
 
 func _draw() -> void:
 	var polygon := _get_arena_polygon()
 	if _uses_canonical_wall_tiles:
-		draw_rect(arena_bounds.grow(960.0), Color.BLACK, true)
-		_draw_canonical_floor()
 		_draw_canonical_grid()
 		_draw_canonical_floor_wear()
 	else:
@@ -180,26 +179,6 @@ func _dedupe_sorted_values(values: Array[float]) -> Array[float]:
 	return deduped
 
 
-func _draw_canonical_floor() -> void:
-	for cell in _footprint_cells:
-		var cell_rect := _cell_rect(cell)
-		draw_rect(cell_rect, floor_base_color, true)
-		var tile_count := Vector2i(
-			roundi(cell_rect.size.x / FLOOR_TILE_SIZE),
-			roundi(cell_rect.size.y / FLOOR_TILE_SIZE)
-		)
-		for tile_y in range(tile_count.y):
-			for tile_x in range(tile_count.x):
-				var tile_origin := cell_rect.position + Vector2(tile_x, tile_y) * FLOOR_TILE_SIZE
-				for panel_y in range(2):
-					for panel_x in range(2):
-						var panel_position := tile_origin + Vector2(
-							FLOOR_PANEL_INSET + float(panel_x) * FLOOR_PANEL_STEP,
-							FLOOR_PANEL_INSET + float(panel_y) * FLOOR_PANEL_STEP
-						)
-						draw_rect(Rect2(panel_position, Vector2.ONE * FLOOR_PANEL_SIZE), floor_panel_color, true)
-
-
 func _draw_canonical_grid() -> void:
 	var grid_color := Color(0.085, 0.092, 0.102, 0.58)
 	for cell in _footprint_cells:
@@ -220,8 +199,6 @@ func _draw_canonical_floor_wear() -> void:
 	sorted_keys.sort()
 	for key_value in sorted_keys:
 		var tile_coord: Vector2i = tile_lookup[key_value]
-		var tile_origin := arena_bounds.position + Vector2(tile_coord) * FLOOR_TILE_SIZE
-		_draw_tile_chips(tile_origin, tile_coord)
 		if _wear_value(tile_coord, 701) < floor_crack_density:
 			_draw_crack_run(tile_coord, tile_lookup)
 
@@ -241,62 +218,46 @@ func _build_floor_tile_lookup() -> Dictionary:
 	return lookup
 
 
-func _draw_tile_chips(tile_origin: Vector2, tile_coord: Vector2i) -> void:
-	for panel_index in range(4):
-		var salt := 101 + panel_index * 37
-		if _wear_value(tile_coord, salt) >= floor_chip_density:
-			continue
-		var panel_coord := Vector2i(panel_index % 2, panel_index / 2)
-		var panel_origin := tile_origin + Vector2(
-			FLOOR_PANEL_INSET + float(panel_coord.x) * FLOOR_PANEL_STEP,
-			FLOOR_PANEL_INSET + float(panel_coord.y) * FLOOR_PANEL_STEP
-		)
-		var edge := int(floor(_wear_value(tile_coord, salt + 1) * 4.0)) % 4
-		var edge_offset := 3.0 + _wear_value(tile_coord, salt + 2) * 11.0
-		var size := 1.4 + _wear_value(tile_coord, salt + 3) * 1.8
-		var points := _chip_points_for_edge(panel_origin, edge, edge_offset, size)
-		draw_colored_polygon(points, floor_chip_color)
+func _configure_floor_tile_visual() -> void:
+	if not _uses_canonical_wall_tiles:
+		_clear_floor_tile_visual()
+		return
+	if _floor_tile_visual == null or not is_instance_valid(_floor_tile_visual):
+		_floor_tile_visual = ARENA_FLOOR_TILE_VISUAL_SCRIPT.new()
+		_floor_tile_visual.name = "FloorTileVisual"
+		_floor_tile_visual.z_index = -10
+		add_child(_floor_tile_visual)
+	var tile_lookup := _build_floor_tile_lookup()
+	var tile_coordinates: Array[Vector2i] = []
+	for tile_coord_value in tile_lookup.values():
+		tile_coordinates.append(tile_coord_value)
+	_floor_tile_visual.configure(
+		tile_coordinates,
+		arena_bounds.position,
+		arena_bounds.grow(960.0),
+		_floor_wear_seed,
+		floor_chip_density,
+		floor_base_color,
+		floor_panel_color,
+		floor_chip_color
+	)
 
 
-func _chip_points_for_edge(panel_origin: Vector2, edge: int, edge_offset: float, size: float) -> PackedVector2Array:
-	match edge:
-		0:
-			return PackedVector2Array([
-				panel_origin + Vector2(edge_offset, 0.0),
-				panel_origin + Vector2(edge_offset + size, 0.0),
-				panel_origin + Vector2(edge_offset + size * 0.45, size)
-			])
-		1:
-			return PackedVector2Array([
-				panel_origin + Vector2(FLOOR_PANEL_SIZE, edge_offset),
-				panel_origin + Vector2(FLOOR_PANEL_SIZE, edge_offset + size),
-				panel_origin + Vector2(FLOOR_PANEL_SIZE - size, edge_offset + size * 0.55)
-			])
-		2:
-			return PackedVector2Array([
-				panel_origin + Vector2(edge_offset, FLOOR_PANEL_SIZE),
-				panel_origin + Vector2(edge_offset + size, FLOOR_PANEL_SIZE),
-				panel_origin + Vector2(edge_offset + size * 0.55, FLOOR_PANEL_SIZE - size)
-			])
-		_:
-			return PackedVector2Array([
-				panel_origin + Vector2(0.0, edge_offset),
-				panel_origin + Vector2(0.0, edge_offset + size),
-				panel_origin + Vector2(size, edge_offset + size * 0.45)
-			])
+func _clear_floor_tile_visual() -> void:
+	if _floor_tile_visual != null and is_instance_valid(_floor_tile_visual):
+		_floor_tile_visual.queue_free()
+	_floor_tile_visual = null
 
 
 func _draw_crack_run(start_coord: Vector2i, tile_lookup: Dictionary) -> void:
 	var horizontal := _wear_value(start_coord, 709) < 0.5
 	var direction := Vector2i.RIGHT if horizontal else Vector2i.DOWN
-	var run_length := 2 + int(floor(_wear_value(start_coord, 719) * 3.0))
+	var run_length := 2 if _wear_value(start_coord, 719) < 0.28 else 1
 	var valid_length := 1
 	for step in range(1, run_length):
 		if not tile_lookup.has(_floor_tile_key(start_coord + direction * step)):
 			break
 		valid_length += 1
-	if valid_length < 2:
-		return
 	var cross_offset := 7.0 + _wear_value(start_coord, 727) * 26.0
 	var points := PackedVector2Array()
 	for point_index in range(valid_length * 2 + 1):
