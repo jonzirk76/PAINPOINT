@@ -573,6 +573,38 @@ func get_full_floor_traversal_door_infos() -> Array:
 	return door_infos
 
 
+func get_full_floor_welcome_mat_infos() -> Array:
+	var mat_infos: Array = []
+	if not _ensure_full_floor_geometry_cache():
+		return mat_infos
+	for room_id in _get_full_floor_visible_room_ids(current_room_id):
+		if room_id.is_empty() or not _rooms.has(room_id):
+			continue
+		var state: Dictionary = _rooms[room_id]
+		var piece: RoomPieceDefinition = state.get("piece", null) as RoomPieceDefinition
+		if piece == null:
+			continue
+		var connections: Dictionary = state.get("connections", {})
+		var connection_edges: Dictionary = state.get("connection_edges", {})
+		var offset: Vector2 = _get_cached_full_floor_room_offset(room_id)
+		for direction in CARDINAL_DIRECTIONS:
+			if not connections.has(direction):
+				continue
+			var edge: Dictionary = connection_edges.get(direction, {})
+			var source_cell: Vector2i = edge.get("source_cell", Vector2i.ZERO)
+			var opening_rect := ROOM_GEOMETRY_BUILDER.get_gate_visual_rect(
+				piece.footprint_cells,
+				source_cell,
+				direction
+			)
+			mat_infos.append({
+				"direction": direction,
+				"opening_rect": _translated_rect(opening_rect, offset),
+				"source_room_id": room_id
+			})
+	return mat_infos
+
+
 func get_full_floor_position_for_room_position(room_id: String, room_position: Vector2) -> Vector2:
 	return _get_floor_position_for_room_position(room_id, room_position, _get_full_floor_room_ids())
 

@@ -3549,7 +3549,12 @@ func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = 
 		item_manager.rehydrate_floor_permanent_pickups()
 	if not preserve_pickups:
 		effects_manager.reset_run()
-	room_manager.load_room(level_definition, dungeon_manager.get_full_floor_traversal_door_infos(), true)
+	room_manager.load_room(
+		level_definition,
+		dungeon_manager.get_full_floor_traversal_door_infos(),
+		true,
+		dungeon_manager.get_full_floor_welcome_mat_infos()
+	)
 	room_manager.set_doors_unlocked(true)
 	_set_cleared_floor_map_active(true)
 	player_manager.set_player_position(player_position)

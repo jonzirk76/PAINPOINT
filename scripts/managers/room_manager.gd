@@ -40,7 +40,7 @@ func set_enabled(value: bool) -> void:
 				door.set_deferred("monitoring", value)
 
 
-func load_room(level_definition, door_infos: Array, doors_unlocked: bool) -> void:
+func load_room(level_definition, door_infos: Array, doors_unlocked: bool, welcome_mat_infos: Array = []) -> void:
 	clear_doors()
 	if level_definition == null:
 		return
@@ -62,13 +62,20 @@ func load_room(level_definition, door_infos: Array, doors_unlocked: bool) -> voi
 		if door_info.has("opening_rect") and door.has_method("set_visual_rect"):
 			var opening_rect: Rect2 = door_info["opening_rect"]
 			door.set_visual_rect(opening_rect.get_center(), opening_rect.size)
-			_add_welcome_mat(opening_rect, direction)
 		if door_info.has("passage_rect") and door.has_method("set_passage_rect"):
 			var passage_rect: Rect2 = door_info["passage_rect"]
 			door.set_passage_rect(passage_rect.get_center(), passage_rect.size)
 		door.entered.connect(_on_door_entered)
 		_doors.append(door)
 		_add_child_safely(_get_door_parent(), door)
+	var resolved_mat_infos: Array = welcome_mat_infos if not welcome_mat_infos.is_empty() else door_infos
+	for mat_info in resolved_mat_infos:
+		if not mat_info is Dictionary or not mat_info.has("opening_rect"):
+			continue
+		_add_welcome_mat(
+			mat_info["opening_rect"],
+			String(mat_info.get("direction", "north"))
+		)
 	set_enabled(enabled)
 
 
