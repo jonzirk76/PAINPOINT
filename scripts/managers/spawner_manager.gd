@@ -1,6 +1,8 @@
 extends Node
 class_name SpawnerManager
 
+const WALL_OCCLUSION_LAYERS := preload("res://scripts/arena/wall_occlusion_layers.gd")
+
 signal spawn_requested(spawn_position: Vector2, profile)
 signal spawner_count_changed(count: int)
 signal spawner_destroyed(spawner, score_value: int)
@@ -205,6 +207,7 @@ func _spawn_spawner(placement, index: int) -> void:
 		spawn_position = placement.position
 		warmup = placement.warmup_seconds
 	var spawner = spawner_scene.instantiate()
+	WALL_OCCLUSION_LAYERS.mark_entity_tree(spawner)
 	spawner.warmup_seconds = warmup
 	if profile != null and spawner.has_method("initialize_from_profile"):
 		spawner.initialize_from_profile(profile)

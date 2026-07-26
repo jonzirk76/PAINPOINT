@@ -1019,8 +1019,13 @@ func _get_full_floor_inactive_room_dim_rects(active_room_id: String, room_ids: A
 		if piece == null:
 			continue
 		var offset: Vector2 = _get_cached_full_floor_room_offset(room_id) if use_full_floor_cache else _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
+		var height_offset := Vector2(
+			0.0,
+			-ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE * float(max(int(piece.wall_height_tiles), 1))
+		)
 		for local_cell: Vector2i in piece.footprint_cells:
 			var cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(piece.footprint_cells, local_cell)
+			cell_rect.position += height_offset
 			dim_rects.append(_translated_rect(cell_rect, offset))
 	return dim_rects
 
