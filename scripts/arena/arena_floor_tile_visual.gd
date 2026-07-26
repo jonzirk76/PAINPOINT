@@ -2,9 +2,7 @@ extends Node2D
 class_name ArenaFloorTileVisual
 
 const TILE_SIZE := 40.0
-const PANEL_SIZE := 19.0
-const PANEL_INSET := 0.67
-const PANEL_STEP := 19.67
+const FLOOR_TILE_SOURCE := preload("res://scenes/tools/warehouse_floor_tile_source.tscn")
 
 var _mesh_nodes: Array[MultiMeshInstance2D] = []
 
@@ -23,6 +21,10 @@ func configure(
 	var base_transforms: Array[Transform2D] = []
 	var panel_transforms: Array[Transform2D] = []
 	var chip_transforms: Array[Array] = [[], [], [], []]
+	var source_meshes := _build_source_meshes()
+	var base_mesh: Mesh = source_meshes.get("base")
+	var panel_mesh: Mesh = source_meshes.get("panels")
+	var chip_meshes: Array = source_meshes.get("chips", [])
 	_add_instances(
 		"FloorVoid",
 		_quad_mesh(),
@@ -31,35 +33,18 @@ func configure(
 	)
 	for tile_coord in tile_coordinates:
 		var tile_origin := world_origin + Vector2(tile_coord) * TILE_SIZE
-		base_transforms.append(_scaled_transform(0.0, Vector2.ONE * TILE_SIZE, tile_origin + Vector2.ONE * TILE_SIZE * 0.5))
-		for panel_index in range(4):
-			var panel_coord := Vector2i(panel_index % 2, floori(float(panel_index) / 2.0))
-			var panel_origin := tile_origin + Vector2(
-				PANEL_INSET + float(panel_coord.x) * PANEL_STEP,
-				PANEL_INSET + float(panel_coord.y) * PANEL_STEP
-			)
-			panel_transforms.append(_scaled_transform(
-				0.0,
-				Vector2.ONE * PANEL_SIZE,
-				panel_origin + Vector2.ONE * PANEL_SIZE * 0.5
-			))
-			var salt := 101 + panel_index * 37
+		var tile_transform := Transform2D(0.0, tile_origin)
+		base_transforms.append(tile_transform)
+		panel_transforms.append(tile_transform)
+		for chip_index in range(chip_meshes.size()):
+			var salt := 101 + chip_index * 37
 			if _wear_value(tile_coord, wear_seed, salt) >= chip_density:
 				continue
-			var edge := int(floor(_wear_value(tile_coord, wear_seed, salt + 1) * 4.0)) % 4
-			var edge_offset := 3.0 + _wear_value(tile_coord, wear_seed, salt + 2) * 11.0
-			var size := 1.4 + _wear_value(tile_coord, wear_seed, salt + 3) * 1.8
-			var chip_position := _chip_position(panel_origin, edge, edge_offset, size)
-			chip_transforms[edge].append(_scaled_transform(
-				float(edge) * PI * 0.5,
-				Vector2.ONE * size,
-				chip_position
-			))
-	_add_instances("FloorBases", _quad_mesh(), base_transforms, base_color)
-	_add_instances("FloorPanels", _quad_mesh(), panel_transforms, panel_color)
-	var chip_mesh := _chip_mesh()
-	for edge in range(4):
-		_add_instances("FloorChips%d" % edge, chip_mesh, chip_transforms[edge], chip_color)
+			chip_transforms[chip_index].append(tile_transform)
+	_add_instances("FloorBases", base_mesh, base_transforms, base_color)
+	_add_instances("FloorPanels", panel_mesh, panel_transforms, panel_color)
+	for chip_index in range(chip_meshes.size()):
+		_add_instances("FloorChips%d" % chip_index, chip_meshes[chip_index], chip_transforms[chip_index], chip_color)
 
 
 func clear() -> void:
@@ -96,33 +81,56 @@ func _quad_mesh() -> QuadMesh:
 	return mesh
 
 
-func _chip_mesh() -> ArrayMesh:
+func _build_source_meshes() -> Dictionary:
+	var source := FLOOR_TILE_SOURCE.instantiate() as Node2D
+	var base_polygons: Array[PackedVector2Array] = []
+	var panel_polygons: Array[PackedVector2Array] = []
+	var chip_polygons: Array[PackedVector2Array] = []
+	for node in source.find_children("*", "Polygon2D", true, false):
+		var polygon := node as Polygon2D
+		var transformed_points := PackedVector2Array()
+		var relative_transform := source.global_transform.affine_inverse() * polygon.global_transform
+		for point in polygon.polygon:
+			transformed_points.append(relative_transform * point)
+		match String(polygon.get_meta("runtime_layer", "")):
+			"base":
+				base_polygons.append(transformed_points)
+			"panel":
+				panel_polygons.append(transformed_points)
+			"chip":
+				chip_polygons.append(transformed_points)
+	var chip_meshes: Array[Mesh] = []
+	for chip_polygon in chip_polygons:
+		chip_meshes.append(_polygon_meshes([chip_polygon]))
+	source.free()
+	return {
+		"base": _polygon_meshes(base_polygons),
+		"panels": _polygon_meshes(panel_polygons),
+		"chips": chip_meshes
+	}
+
+
+func _polygon_meshes(polygons: Array[PackedVector2Array]) -> ArrayMesh:
+	var vertices := PackedVector3Array()
+	var indices := PackedInt32Array()
+	for polygon in polygons:
+		var local_indices := Geometry2D.triangulate_polygon(polygon)
+		var vertex_offset := vertices.size()
+		for point in polygon:
+			vertices.append(Vector3(point.x, point.y, 0.0))
+		for index in local_indices:
+			indices.append(vertex_offset + index)
 	var arrays: Array = []
 	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array([
-		Vector3(-0.5, 0.0, 0.0),
-		Vector3(0.5, 0.0, 0.0),
-		Vector3(0.0, 1.0, 0.0)
-	])
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_INDEX] = indices
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return mesh
 
 
-func _chip_position(panel_origin: Vector2, edge: int, edge_offset: float, size: float) -> Vector2:
-	match edge:
-		0:
-			return panel_origin + Vector2(edge_offset + size * 0.5, 0.0)
-		1:
-			return panel_origin + Vector2(PANEL_SIZE, edge_offset + size * 0.5)
-		2:
-			return panel_origin + Vector2(edge_offset + size * 0.5, PANEL_SIZE)
-		_:
-			return panel_origin + Vector2(0.0, edge_offset + size * 0.5)
-
-
-func _scaled_transform(rotation: float, scale_value: Vector2, position_value: Vector2) -> Transform2D:
-	return Transform2D(rotation, scale_value, 0.0, position_value)
+func _scaled_transform(rotation_radians: float, scale_value: Vector2, position_value: Vector2) -> Transform2D:
+	return Transform2D(rotation_radians, scale_value, 0.0, position_value)
 
 
 func _wear_value(tile_coord: Vector2i, wear_seed: int, salt: int) -> float:
