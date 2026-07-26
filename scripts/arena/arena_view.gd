@@ -455,6 +455,7 @@ func _configure_wall_occlusion_overlay() -> void:
 	occlusion_rects.append_array(ROOM_GEOMETRY_BUILDER.merge_wall_tiles(_wall_top_tile_rects))
 	_wall_occlusion_overlay.configure(
 		occlusion_rects,
+		_fog_rects,
 		get_viewport(),
 		behind_wall_entity_opacity,
 		wall_occlusion_candidate_margin
