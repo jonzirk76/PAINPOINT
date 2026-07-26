@@ -17,6 +17,15 @@ func _initialize() -> void:
 
 
 func _build() -> void:
+	if FileAccess.file_exists(OUTPUT_PATH) and not OS.get_cmdline_user_args().has("--force"):
+		push_error(
+			(
+				"%s already exists. Refusing to overwrite manually refined polygons. "
+				+ "Pass -- --force only when intentionally rebuilding the scaffold."
+			) % OUTPUT_PATH
+		)
+		quit(1)
+		return
 	var workbench := Node2D.new()
 	workbench.name = "WarehouseTileWorkbench"
 	workbench.set_script(WORKBENCH_SCRIPT)
