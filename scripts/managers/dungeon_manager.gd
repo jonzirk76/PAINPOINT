@@ -506,13 +506,13 @@ func _build_floor_level_definition_from_geometry(cleared_room_ids: Array[String]
 	level.destructible_prop_placements = empty_props
 	level.void_rects = empty_voids
 	var wall_floor_tiles: Array[Rect2] = _get_cleared_floor_wall_top_tiles(cleared_room_ids, min_world_cell, floor_cells)
-	var wall_height_tiles := ROOM_GEOMETRY_BUILDER.DEFAULT_WALL_HEIGHT_TILES
+	var wall_height_tiles := _get_floor_wall_height_tiles(cleared_room_ids)
 	var wall_body_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(wall_floor_tiles, floor_cells, {}, wall_height_tiles)
 	var wall_top_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_top_visual_tile_rects(wall_floor_tiles, wall_height_tiles)
 	var wall_collision_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_collision_tile_rects(wall_floor_tiles, floor_cells)
 	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(wall_collision_tiles)
 	level.set_meta("footprint_cells", floor_cells.duplicate())
-	level.set_meta("wall_height_tiles", ROOM_GEOMETRY_BUILDER.DEFAULT_WALL_HEIGHT_TILES)
+	level.set_meta("wall_height_tiles", wall_height_tiles)
 	level.set_meta("connection_edges", {})
 	level.set_meta("wall_top_tile_rects", wall_top_tiles)
 	level.set_meta("wall_body_tile_rects", wall_body_tiles)
@@ -721,7 +721,24 @@ func get_room_ids() -> Array[String]:
 
 func _get_cleared_floor_wall_tiles(cleared_room_ids: Array[String], min_world_cell: Vector2i, floor_cells: Array[Vector2i]) -> Array[Rect2]:
 	var wall_top_tiles: Array[Rect2] = _get_cleared_floor_wall_top_tiles(cleared_room_ids, min_world_cell, floor_cells)
-	return ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(wall_top_tiles, floor_cells)
+	return ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(
+		wall_top_tiles,
+		floor_cells,
+		{},
+		_get_floor_wall_height_tiles(cleared_room_ids)
+	)
+
+
+func _get_floor_wall_height_tiles(room_ids: Array[String]) -> int:
+	var resolved_height := 1
+	for room_id in room_ids:
+		if room_id.is_empty() or not _rooms.has(room_id):
+			continue
+		var state: Dictionary = _rooms[room_id]
+		var piece: RoomPieceDefinition = state.get("piece", null) as RoomPieceDefinition
+		if piece != null:
+			resolved_height = max(resolved_height, int(piece.wall_height_tiles))
+	return resolved_height
 
 
 func _get_cleared_floor_wall_top_tiles(cleared_room_ids: Array[String], min_world_cell: Vector2i, floor_cells: Array[Vector2i]) -> Array[Rect2]:
@@ -800,7 +817,12 @@ func _get_room_shell_body_tiles(state: Dictionary) -> Array[Rect2]:
 		var empty_tiles: Array[Rect2] = []
 		return empty_tiles
 	var wall_top_tiles := ROOM_GEOMETRY_BUILDER.build_wall_tile_rects(piece.footprint_cells, connection_edges)
-	return ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(wall_top_tiles, piece.footprint_cells, connection_edges)
+	return ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(
+		wall_top_tiles,
+		piece.footprint_cells,
+		connection_edges,
+		max(int(piece.wall_height_tiles), 1)
+	)
 
 
 func _get_full_floor_room_ids() -> Array[String]:

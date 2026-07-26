@@ -35,6 +35,8 @@ const FLOOR_TILE_SIZE := 40.0
 @export var floor_crack_color := Color("#252a2d")
 ## [Description] Opacity of character pixels shown over wall faces while the character is geometrically behind them.
 @export_range(0.0, 1.0, 0.05) var behind_wall_entity_opacity: float = 0.5
+## [Description] Distance around wall masks where entities remain eligible for the secondary occlusion render pass.
+@export_range(40.0, 320.0, 10.0) var wall_occlusion_candidate_margin: float = 180.0
 
 var _wall_bodies: Array[StaticBody2D] = []
 var _void_bodies: Array[StaticBody2D] = []
@@ -454,7 +456,8 @@ func _configure_wall_occlusion_overlay() -> void:
 	_wall_occlusion_overlay.configure(
 		occlusion_rects,
 		get_viewport(),
-		behind_wall_entity_opacity
+		behind_wall_entity_opacity,
+		wall_occlusion_candidate_margin
 	)
 
 

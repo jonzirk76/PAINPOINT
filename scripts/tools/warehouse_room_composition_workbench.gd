@@ -47,6 +47,12 @@ const ROOM_CELLS: Array[Vector2i] = [Vector2i.ZERO]
 		show_measurements = value
 		queue_redraw()
 
+## [Description] Number of canonical 40 px wall-body tiers shown beneath the wall tops.
+@export_range(1, 8, 1) var wall_height_tiles: int = ROOM_GEOMETRY_BUILDER.DEFAULT_WALL_HEIGHT_TILES:
+	set(value):
+		wall_height_tiles = max(value, 1)
+		queue_redraw()
+
 @export_group("Preview Palette")
 ## Empty space outside the generated room.
 @export var void_color := Color("#111317"):
@@ -90,11 +96,12 @@ func _draw() -> void:
 	var wall_body_tiles := ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(
 		wall_floor_tiles,
 		ROOM_CELLS,
-		connection_edges
+		connection_edges,
+		wall_height_tiles
 	)
 	var wall_top_tiles := ROOM_GEOMETRY_BUILDER.build_wall_top_visual_tile_rects(
 		wall_floor_tiles,
-		ROOM_GEOMETRY_BUILDER.DEFAULT_WALL_HEIGHT_TILES
+		wall_height_tiles
 	)
 
 	draw_rect(room_bounds.grow(160.0), void_color, true)

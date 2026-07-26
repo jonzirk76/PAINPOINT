@@ -2,6 +2,7 @@ extends Node
 class_name RoomManager
 
 const DOOR_WELCOME_MAT_VISUAL_SCRIPT := preload("res://scripts/entities/door_welcome_mat_visual.gd")
+const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_builder.gd")
 
 signal door_entered(direction: String, target_room_id: String)
 
@@ -49,7 +50,10 @@ func load_room(level_definition, door_infos: Array, doors_unlocked: bool) -> voi
 		if door.has_method("set_wall_height_tiles"):
 			door.set_wall_height_tiles(int(door_info.get(
 				"wall_height_tiles",
-				level_definition.get_meta("wall_height_tiles", 3)
+				level_definition.get_meta(
+					"wall_height_tiles",
+					ROOM_GEOMETRY_BUILDER.DEFAULT_WALL_HEIGHT_TILES
+				)
 			)))
 		var rect: Rect2 = door_info.get("trigger_rect", _get_door_rect(level_definition.arena_bounds, direction))
 		door.initialize(direction, target_id, rect.get_center(), rect.size, doors_unlocked, target_kind)

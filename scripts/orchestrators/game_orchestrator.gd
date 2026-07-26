@@ -5267,7 +5267,10 @@ func _get_current_camera_bounds(level_definition) -> Rect2:
 func _get_wall_aware_camera_bounds(level_definition, base_bounds: Rect2) -> Rect2:
 	if level_definition == null or base_bounds.size == Vector2.ZERO:
 		return base_bounds
-	var wall_height_tiles: int = max(int(level_definition.get_meta("wall_height_tiles", 1)), 1)
+	var wall_height_tiles: int = max(int(level_definition.get_meta(
+		"wall_height_tiles",
+		ROOM_GEOMETRY_BUILDER.DEFAULT_WALL_HEIGHT_TILES
+	)), 1)
 	if wall_height_tiles <= 1:
 		return base_bounds
 	var top_margin: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE * float(wall_height_tiles)

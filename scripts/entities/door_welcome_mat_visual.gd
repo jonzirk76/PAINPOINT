@@ -36,7 +36,7 @@ func configure(opening_rect: Rect2, direction: String, depth_tiles: int, color: 
 	position = world_rect.get_center()
 	mat_rect = Rect2(-world_rect.size * 0.5, world_rect.size)
 	mat_color = color
-	visibility_layer |= WALL_OCCLUSION_LAYERS.ENTITY_VISIBILITY_LAYER
+	WALL_OCCLUSION_LAYERS.mark_entity_tree(self)
 	queue_redraw()
 
 
