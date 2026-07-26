@@ -1,0 +1,261 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Texture2D" path="res://art/concept_art/experiment.png" id="1_reference"]
+
+[node name="ExperimentPolygonTrace" type="Node2D"]
+
+[node name="Reference" type="Sprite2D" parent="."]
+position = Vector2(171.5, 143.25)
+scale = Vector2(0.25, 0.25)
+texture = ExtResource("1_reference")
+
+[node name="Artwork" type="Node2D" parent="."]
+position = Vector2(390, 0)
+
+[node name="HairBack" type="Polygon2D" parent="Artwork"]
+color = Color(0.105, 0.071, 0.22, 1)
+polygon = PackedVector2Array(18, 264, 30, 232, 49, 204, 65, 178, 72, 145, 67, 125, 78, 95, 77, 72, 86, 43, 104, 20, 142, 5, 187, 4, 218, 18, 242, 42, 258, 72, 270, 104, 273, 133, 284, 159, 295, 190, 312, 221, 324, 270, 303, 264, 283, 243, 267, 219, 252, 197, 242, 180, 232, 201, 219, 220, 202, 230, 177, 236, 150, 231, 126, 218, 106, 200, 85, 220, 63, 240, 37, 259)
+
+[node name="HairBackShadowLeft" type="Polygon2D" parent="Artwork"]
+color = Color(0.067, 0.043, 0.145, 1)
+polygon = PackedVector2Array(18, 264, 31, 229, 53, 193, 70, 157, 78, 123, 86, 100, 90, 130, 82, 168, 67, 204, 45, 239, 37, 259)
+
+[node name="HairBackShadowRight" type="Polygon2D" parent="Artwork"]
+color = Color(0.062, 0.04, 0.137, 1)
+polygon = PackedVector2Array(226, 82, 252, 102, 268, 136, 276, 173, 295, 213, 321, 270, 304, 264, 282, 240, 258, 207, 241, 180, 225, 154)
+
+[node name="Shoulders" type="Polygon2D" parent="Artwork"]
+color = Color(0.025, 0.061, 0.13, 1)
+polygon = PackedVector2Array(28, 270, 39, 249, 75, 233, 112, 225, 143, 231, 171, 238, 198, 230, 234, 224, 274, 236, 307, 255, 316, 270)
+
+[node name="LeftShoulderShadow" type="Polygon2D" parent="Artwork"]
+color = Color(0.025, 0.09, 0.18, 1)
+polygon = PackedVector2Array(28, 270, 40, 249, 76, 235, 91, 245, 112, 270)
+
+[node name="RightShoulderShadow" type="Polygon2D" parent="Artwork"]
+color = Color(0.023, 0.075, 0.15, 1)
+polygon = PackedVector2Array(220, 270, 244, 242, 274, 236, 307, 255, 316, 270)
+
+[node name="LeftJacket" type="Polygon2D" parent="Artwork"]
+color = Color(0.025, 0.245, 0.59, 1)
+polygon = PackedVector2Array(39, 249, 76, 232, 114, 225, 136, 235, 124, 250, 135, 270, 104, 270, 84, 255, 62, 246)
+
+[node name="LeftJacketHighlight" type="Polygon2D" parent="Artwork"]
+color = Color(0.055, 0.39, 0.83, 1)
+polygon = PackedVector2Array(75, 233, 92, 225, 115, 226, 101, 238, 113, 256, 91, 247)
+
+[node name="RightJacket" type="Polygon2D" parent="Artwork"]
+color = Color(0.025, 0.245, 0.59, 1)
+polygon = PackedVector2Array(207, 232, 234, 224, 273, 237, 302, 255, 315, 270, 270, 270, 247, 254, 222, 266, 234, 245)
+
+[node name="RightJacketHighlight" type="Polygon2D" parent="Artwork"]
+color = Color(0.055, 0.39, 0.83, 1)
+polygon = PackedVector2Array(234, 225, 251, 232, 263, 250, 244, 258, 231, 246, 218, 239)
+
+[node name="ChestArmor" type="Polygon2D" parent="Artwork"]
+color = Color(0.052, 0.071, 0.135, 1)
+polygon = PackedVector2Array(112, 224, 135, 211, 172, 213, 207, 224, 230, 242, 218, 270, 132, 270, 119, 249)
+
+[node name="ChestArmorLight" type="Polygon2D" parent="Artwork"]
+color = Color(0.09, 0.112, 0.195, 1)
+polygon = PackedVector2Array(133, 233, 171, 239, 207, 230, 220, 270, 139, 270)
+
+[node name="Neck" type="Polygon2D" parent="Artwork"]
+color = Color(0.66, 0.39, 0.35, 1)
+polygon = PackedVector2Array(132, 181, 153, 194, 172, 202, 192, 188, 191, 221, 174, 231, 151, 220, 135, 205)
+
+[node name="NeckLight" type="Polygon2D" parent="Artwork"]
+color = Color(0.84, 0.56, 0.48, 1)
+polygon = PackedVector2Array(151, 191, 173, 202, 191, 190, 189, 215, 174, 224, 153, 214)
+
+[node name="HighCollarLeft" type="Polygon2D" parent="Artwork"]
+color = Color(0.025, 0.041, 0.087, 1)
+polygon = PackedVector2Array(111, 207, 137, 195, 162, 213, 160, 239, 140, 235, 119, 248)
+
+[node name="HighCollarRight" type="Polygon2D" parent="Artwork"]
+color = Color(0.025, 0.041, 0.087, 1)
+polygon = PackedVector2Array(187, 202, 208, 214, 225, 244, 199, 235, 181, 239, 181, 213)
+
+[node name="Face" type="Polygon2D" parent="Artwork"]
+color = Color(0.89, 0.69, 0.61, 1)
+antialiased = true
+polygon = PackedVector2Array(102, 92, 111, 72, 128, 58, 151, 49, 178, 48, 204, 58, 223, 77, 232, 101, 230, 128, 221, 151, 210, 169, 194, 185, 174, 198, 154, 191, 135, 179, 119, 164, 108, 146, 101, 123)
+
+[node name="FaceShadowLeft" type="Polygon2D" parent="Artwork"]
+color = Color(0.75, 0.49, 0.45, 0.48)
+polygon = PackedVector2Array(101, 116, 107, 145, 121, 166, 140, 181, 154, 191, 138, 179, 120, 161, 109, 140)
+
+[node name="LeftEar" type="Polygon2D" parent="Artwork"]
+color = Color(0.82, 0.58, 0.52, 1)
+polygon = PackedVector2Array(96, 116, 90, 114, 86, 119, 87, 134, 94, 146, 102, 146, 104, 131)
+
+[node name="LeftEarShadow" type="Polygon2D" parent="Artwork"]
+color = Color(0.58, 0.35, 0.35, 1)
+polygon = PackedVector2Array(91, 120, 95, 118, 101, 129, 98, 140, 94, 136, 94, 127, 90, 132)
+
+[node name="HairUnderlay" type="Polygon2D" parent="Artwork"]
+color = Color(0.175, 0.105, 0.355, 1)
+antialiased = true
+polygon = PackedVector2Array(61, 102, 67, 72, 81, 45, 103, 23, 135, 7, 171, 4, 203, 12, 230, 30, 250, 56, 263, 87, 268, 108, 253, 101, 239, 94, 227, 103, 214, 98, 204, 112, 190, 103, 178, 117, 164, 105, 151, 116, 138, 103, 124, 112, 112, 99, 99, 111, 84, 103, 72, 110)
+
+[node name="LeftBlush" type="Polygon2D" parent="Artwork"]
+color = Color(0.93, 0.5, 0.52, 0.27)
+polygon = PackedVector2Array(108, 140, 125, 141, 145, 145, 138, 158, 119, 153)
+
+[node name="RightBlush" type="Polygon2D" parent="Artwork"]
+color = Color(0.93, 0.5, 0.52, 0.25)
+polygon = PackedVector2Array(198, 142, 219, 136, 225, 150, 204, 155)
+
+[node name="LeftBrow" type="Polygon2D" parent="Artwork"]
+color = Color(0.09, 0.055, 0.17, 1)
+polygon = PackedVector2Array(116, 104, 129, 101, 148, 106, 156, 111, 145, 107, 130, 104, 117, 108)
+
+[node name="RightBrow" type="Polygon2D" parent="Artwork"]
+color = Color(0.09, 0.055, 0.17, 1)
+polygon = PackedVector2Array(190, 108, 202, 103, 220, 103, 229, 108, 218, 106, 203, 106, 191, 112)
+
+[node name="LeftEye" type="Node2D" parent="Artwork"]
+
+[node name="EyeWhite" type="Polygon2D" parent="Artwork/LeftEye"]
+color = Color(0.96, 0.92, 0.94, 1)
+polygon = PackedVector2Array(123, 119, 130, 113, 142, 112, 153, 117, 157, 125, 153, 137, 144, 143, 132, 140, 124, 132)
+
+[node name="Iris" type="Polygon2D" parent="Artwork/LeftEye"]
+color = Color(0.42, 0.22, 0.72, 1)
+polygon = PackedVector2Array(132, 114, 142, 112, 151, 118, 153, 129, 149, 138, 141, 143, 133, 138, 129, 129)
+
+[node name="IrisLight" type="Polygon2D" parent="Artwork/LeftEye"]
+color = Color(0.62, 0.35, 0.86, 1)
+polygon = PackedVector2Array(132, 130, 139, 126, 150, 128, 150, 137, 142, 142, 134, 138)
+
+[node name="Pupil" type="Polygon2D" parent="Artwork/LeftEye"]
+color = Color(0.12, 0.055, 0.24, 1)
+polygon = PackedVector2Array(138, 116, 145, 116, 148, 124, 146, 134, 141, 137, 136, 131, 136, 122)
+
+[node name="HighlightLarge" type="Polygon2D" parent="Artwork/LeftEye"]
+color = Color(1, 1, 1, 1)
+polygon = PackedVector2Array(131, 116, 136, 113, 141, 116, 140, 122, 134, 123, 131, 120)
+
+[node name="HighlightSmall" type="Polygon2D" parent="Artwork/LeftEye"]
+color = Color(0.95, 0.9, 1, 1)
+polygon = PackedVector2Array(145, 132, 149, 130, 151, 133, 148, 136)
+
+[node name="Lash" type="Polygon2D" parent="Artwork/LeftEye"]
+color = Color(0.055, 0.035, 0.11, 1)
+polygon = PackedVector2Array(119, 119, 126, 112, 139, 108, 151, 111, 161, 120, 166, 127, 158, 123, 153, 117, 142, 112, 131, 114, 124, 121, 124, 132, 120, 128)
+
+[node name="RightEye" type="Node2D" parent="Artwork"]
+
+[node name="EyeWhite" type="Polygon2D" parent="Artwork/RightEye"]
+color = Color(0.96, 0.92, 0.94, 1)
+polygon = PackedVector2Array(196, 120, 203, 114, 214, 114, 223, 119, 228, 127, 225, 137, 216, 144, 205, 143, 198, 136)
+
+[node name="Iris" type="Polygon2D" parent="Artwork/RightEye"]
+color = Color(0.42, 0.22, 0.72, 1)
+polygon = PackedVector2Array(202, 117, 211, 114, 220, 119, 223, 129, 220, 139, 213, 145, 204, 141, 200, 132)
+
+[node name="IrisLight" type="Polygon2D" parent="Artwork/RightEye"]
+color = Color(0.62, 0.35, 0.86, 1)
+polygon = PackedVector2Array(202, 132, 210, 128, 220, 131, 219, 140, 211, 144, 204, 140)
+
+[node name="Pupil" type="Polygon2D" parent="Artwork/RightEye"]
+color = Color(0.12, 0.055, 0.24, 1)
+polygon = PackedVector2Array(207, 118, 214, 117, 217, 125, 216, 135, 211, 139, 206, 133, 205, 124)
+
+[node name="HighlightLarge" type="Polygon2D" parent="Artwork/RightEye"]
+color = Color(1, 1, 1, 1)
+polygon = PackedVector2Array(201, 118, 206, 115, 211, 118, 210, 124, 204, 125, 201, 122)
+
+[node name="HighlightSmall" type="Polygon2D" parent="Artwork/RightEye"]
+color = Color(0.95, 0.9, 1, 1)
+polygon = PackedVector2Array(216, 133, 220, 131, 222, 134, 219, 137)
+
+[node name="Lash" type="Polygon2D" parent="Artwork/RightEye"]
+color = Color(0.055, 0.035, 0.11, 1)
+polygon = PackedVector2Array(191, 122, 199, 114, 211, 110, 223, 113, 232, 120, 237, 126, 229, 124, 223, 119, 214, 114, 203, 115, 196, 122, 197, 134, 193, 130)
+
+[node name="NoseShadow" type="Polygon2D" parent="Artwork"]
+color = Color(0.66, 0.4, 0.42, 0.7)
+polygon = PackedVector2Array(183, 132, 187, 143, 184, 153, 189, 158, 183, 163, 179, 156, 181, 145)
+
+[node name="NoseLight" type="Polygon2D" parent="Artwork"]
+color = Color(0.96, 0.78, 0.69, 0.72)
+polygon = PackedVector2Array(181, 134, 184, 143, 181, 153, 178, 151)
+
+[node name="Mouth" type="Polygon2D" parent="Artwork"]
+color = Color(0.43, 0.24, 0.29, 1)
+polygon = PackedVector2Array(168, 176, 176, 175, 184, 176, 189, 175, 185, 178, 176, 178)
+
+[node name="LowerLip" type="Polygon2D" parent="Artwork"]
+color = Color(0.92, 0.66, 0.63, 0.8)
+polygon = PackedVector2Array(174, 181, 182, 181, 178, 184)
+
+[node name="ScalpBase" type="Polygon2D" parent="Artwork"]
+color = Color(0.19, 0.12, 0.38, 1)
+antialiased = true
+polygon = PackedVector2Array(59, 101, 71, 67, 90, 36, 116, 16, 142, 5, 187, 4, 218, 17, 239, 38, 258, 68, 268, 101, 258, 93, 251, 83, 244, 70, 235, 54, 220, 37, 204, 26, 187, 19, 166, 17, 143, 24, 122, 33, 105, 48, 91, 67, 82, 88)
+
+[node name="LeftCrownHighlight" type="Polygon2D" parent="Artwork"]
+color = Color(0.34, 0.22, 0.59, 1)
+polygon = PackedVector2Array(72, 72, 83, 48, 101, 28, 123, 17, 115, 30, 124, 43, 113, 39, 117, 50, 103, 44, 109, 57, 96, 50, 101, 63, 88, 57, 91, 70)
+
+[node name="CenterCrownHighlight" type="Polygon2D" parent="Artwork"]
+color = Color(0.32, 0.2, 0.56, 1)
+polygon = PackedVector2Array(126, 18, 157, 11, 183, 17, 197, 29, 185, 26, 173, 31, 162, 37, 148, 43, 134, 51, 123, 45, 133, 36)
+
+[node name="RightCrownHighlight" type="Polygon2D" parent="Artwork"]
+color = Color(0.35, 0.22, 0.62, 1)
+polygon = PackedVector2Array(205, 25, 225, 38, 240, 57, 252, 82, 245, 75, 238, 66, 232, 72, 226, 59, 220, 66, 216, 50, 210, 42, 201, 36)
+
+[node name="LeftSideLock" type="Polygon2D" parent="Artwork"]
+color = Color(0.18, 0.11, 0.36, 1)
+polygon = PackedVector2Array(78, 73, 95, 50, 113, 35, 104, 56, 99, 82, 98, 109, 105, 136, 118, 156, 129, 164, 116, 160, 106, 150, 100, 137, 96, 119, 92, 145, 84, 173, 75, 193, 67, 204, 72, 175, 77, 148, 78, 119, 73, 98)
+
+[node name="LeftOuterLock" type="Polygon2D" parent="Artwork"]
+color = Color(0.22, 0.14, 0.43, 1)
+polygon = PackedVector2Array(88, 46, 74, 67, 66, 91, 60, 111, 48, 124, 57, 122, 68, 114, 76, 101, 73, 126, 64, 153, 50, 177, 37, 195, 52, 184, 68, 165, 78, 143, 87, 119, 94, 91, 101, 66)
+
+[node name="LeftFlipLock" type="Polygon2D" parent="Artwork"]
+color = Color(0.25, 0.16, 0.48, 1)
+polygon = PackedVector2Array(60, 93, 48, 101, 35, 104, 47, 96, 55, 83, 63, 66, 68, 85, 67, 105, 60, 117, 48, 121, 36, 118, 52, 112)
+
+[node name="CenterBangLeft" type="Polygon2D" parent="Artwork"]
+color = Color(0.205, 0.13, 0.41, 1)
+polygon = PackedVector2Array(122, 33, 143, 20, 161, 15, 151, 31, 143, 50, 139, 73, 137, 99, 145, 123, 157, 139, 167, 144, 155, 139, 145, 130, 137, 116, 128, 134, 117, 143, 123, 128, 126, 107, 126, 84, 123, 60)
+
+[node name="CenterBangRight" type="Polygon2D" parent="Artwork"]
+color = Color(0.185, 0.115, 0.38, 1)
+polygon = PackedVector2Array(169, 15, 186, 21, 201, 36, 207, 59, 210, 84, 211, 110, 220, 134, 211, 127, 204, 116, 198, 134, 188, 143, 171, 144, 180, 132, 185, 115, 183, 94, 178, 70, 173, 49)
+
+[node name="RightSideLock" type="Polygon2D" parent="Artwork"]
+color = Color(0.2, 0.125, 0.41, 1)
+polygon = PackedVector2Array(203, 34, 220, 41, 235, 55, 246, 77, 252, 101, 256, 126, 267, 139, 282, 144, 270, 136, 261, 124, 258, 153, 267, 178, 281, 198, 267, 187, 253, 171, 244, 151, 238, 128, 233, 102, 226, 78, 216, 56)
+
+[node name="RightInnerLock" type="Polygon2D" parent="Artwork"]
+color = Color(0.165, 0.1, 0.34, 1)
+polygon = PackedVector2Array(220, 45, 234, 57, 244, 77, 250, 101, 249, 126, 241, 151, 229, 171, 217, 184, 224, 165, 230, 145, 230, 125, 225, 108, 218, 124, 209, 138, 213, 120, 214, 95, 210, 69)
+
+[node name="RightFlipLock" type="Polygon2D" parent="Artwork"]
+color = Color(0.25, 0.16, 0.48, 1)
+polygon = PackedVector2Array(246, 77, 258, 89, 269, 94, 280, 93, 270, 97, 259, 106, 250, 112, 253, 91)
+
+[node name="TopDarkBreakLeft" type="Polygon2D" parent="Artwork"]
+color = Color(0.075, 0.043, 0.16, 1)
+polygon = PackedVector2Array(145, 28, 155, 19, 168, 14, 178, 18, 166, 20, 156, 24)
+
+[node name="TopDarkBreakRight" type="Polygon2D" parent="Artwork"]
+color = Color(0.07, 0.04, 0.15, 1)
+polygon = PackedVector2Array(187, 15, 194, 24, 202, 28, 197, 19, 193, 14)
+
+[node name="CollarGem" type="Polygon2D" parent="Artwork"]
+color = Color(0.035, 0.28, 0.65, 1)
+polygon = PackedVector2Array(166, 237, 177, 234, 186, 242, 183, 253, 175, 258, 166, 252, 162, 243)
+
+[node name="CollarGemHighlight" type="Polygon2D" parent="Artwork"]
+color = Color(0.08, 0.42, 0.88, 1)
+polygon = PackedVector2Array(166, 239, 176, 235, 181, 240, 172, 244)
+
+[node name="Divider" type="Line2D" parent="."]
+points = PackedVector2Array(365, 0, 365, 286)
+width = 2.0
+default_color = Color(0.2, 0.85, 1, 0.45)
