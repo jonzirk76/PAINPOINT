@@ -1,0 +1,288 @@
+[gd_resource type="Resource" script_class="CharacterVectorCapture" format=3 uid="uid://cuj8e5h71xxju"]
+
+[ext_resource type="Script" uid="uid://dlfwcivlh1hm4" path="res://scripts/resources/character_vector_capture.gd" id="1_ck0lv"]
+[ext_resource type="Script" uid="uid://8d84iy06xosx" path="res://scripts/resources/character_vector_shape.gd" id="2_ck0lv"]
+
+[sub_resource type="Resource" id="Resource_b4vsh"]
+script = ExtResource("2_ck0lv")
+view_direction = "front"
+role = "hair_back_left"
+layer_order = 10
+source_node_path = "FrontView/BackHair_L"
+source_workbench_path = "FrontView/FrontHead"
+color = Color(0.16470589, 0.0627451, 0.29803923, 1)
+points = PackedVector2Array(64, -2, 47.62111, -0.00012207031, 31.241589, 13, 20.896553, 28.999878, 10.551933, 63, -18.758408, 103, -21.344406, 119.99988, -25.654755, 131, -25.654755, 138, -17.896553, 141, -11.861862, 141, -4.965515, 143.99988, 64, 132)
+
+[sub_resource type="Resource" id="Resource_vhgfo"]
+script = ExtResource("2_ck0lv")
+view_direction = "front"
+role = "hair_back_right"
+layer_order = 10
+source_node_path = "FrontView/BackHair_R"
+source_workbench_path = "FrontView/FrontHead"
+color = Color(0.16470589, 0.0627451, 0.29803923, 1)
+points = PackedVector2Array(63.99979, -2.0002441, 80.379105, -0.00012207031, 96.75862, 12.999756, 107.10324, 28.999878, 117.44785, 62.999756, 146.7584, 102.999756, 149.34462, 119.99988, 153.65497, 130.99988, 153.65497, 137.99976, 145.89633, 140.99988, 139.86206, 140.99988, 132.9653, 143.99988, 63.99979, 131.99976)
+mirror_x = true
+
+[sub_resource type="Resource" id="Resource_06qym"]
+script = ExtResource("2_ck0lv")
+view_direction = "front"
+role = "hair_back_inner_left"
+layer_order = 11
+source_node_path = "FrontView/BackHair_L/FrontBackHair"
+source_workbench_path = "FrontView/FrontHead"
+color = Color(0.29157248, 0.09197434, 0.5423048, 1)
+points = PackedVector2Array(27.793526, 18.000122, 21.59172, 28.330933, 8.6221695, 62.05896, -17.317139, 102.94116, -25.654755, 130.53674, -25.654755, 137.69128, -17.317139, 144.84546, 9.548431, 152, 5.842968, 109.07361, 13.254108, 86.58826, 25.297398, 49.79419, 35.552147, 8.000122)
+
+[sub_resource type="Resource" id="Resource_q7i3n"]
+script = ExtResource("2_ck0lv")
+view_direction = "front"
+role = "hair_back_inner_right"
+layer_order = 11
+source_node_path = "FrontView/BackHair_R/FrontBackHair"
+source_workbench_path = "FrontView/FrontHead"
+color = Color(0.29157248, 0.09197434, 0.5423048, 1)
+points = PackedVector2Array(100.206474, 18, 106.40849, 28.33081, 119.37783, 62.058838, 145.31735, 102.94104, 153.65497, 130.53674, 153.65497, 137.69116, 145.31735, 144.84546, 118.45157, 151.99988, 122.15703, 109.073364, 114.7461, 86.58801, 102.70261, 49.794067, 92.44785, 7.999756)
+mirror_x = true
+
+[sub_resource type="Resource" id="Resource_t6sps"]
+script = ExtResource("2_ck0lv")
+view_direction = "front"
+role = "leg_left"
+layer_order = 20
+source_node_path = "FrontView/Legs/LeftLeg"
+source_workbench_path = "FrontView/FrontHead"
+color = Color(0, 1, 1, 1)
+points = PackedVector2Array(29.517242, 163, 39.00042, 159.99988, 51.068966, 163.99988, 59.689655, 178.99988, 51.068966, 187.99988, 42.448277, 217, 35.551933, 222, 27.793312, 221, 22.6209, 211, 26.931244, 197.99988)
+
+[sub_resource type="Resource" id="Resource_mbujt"]
+script = ExtResource("2_ck0lv")
+view_direction = "front"
+role = "leg_right"
+layer_order = 20
+source_node_path = "FrontView/Legs/RightLeg"
+source_workbench_path = "FrontView/FrontHead"
+color = Color(0, 1, 1, 1)
+points = PackedVector2Array(99.345245, 163, 89.86207, 159.99988, 77.793526, 163.99988, 69.17284, 178.99988, 77.793526, 187.99988, 86.414215, 217, 93.310555, 222, 101.069176, 221, 106.24159, 211, 101.931244, 197.99988)
+mirror_x = true
+
+[sub_resource type="Resource" id="Resource_n8nih"]
+script = ExtResource("2_ck0lv")
+view_direction = "front"
+role = "hips"
+layer_order = 30
+source_node_path = "FrontView/Hips"
+source_workbench_path = "FrontView/FrontHead"
+color = Color(0.09215703, 0.023533627, 0.61525565, 1)
+points = PackedVector2Array(52.793312, 132, 81.24138, 133, 101.931244, 144.99988, 99.345245, 164.99988, 69.17284, 182.99988, 51.068966, 179.99988, 29.517242, 161, 30.37973, 144)
+
+[sub_resource type="Resource" id="Resource_u2rf5"]
+script = ExtResource("2_ck0lv")
+view_direction = "front"
+role = "torso"
+layer_order = 40
+source_node_path = "FrontView/Body"
+source_workbench_path = "FrontView/FrontHead"
+color = Color(0, 0, 1, 1)
+points = PackedVector2Array(26.068966, 97, 15.72435, 104, 0.20689774, 132, -11, 162, 4.5172424, 179.99988, 13.137932, 172, 14.862068, 157, 29.517242, 137, 37.276073, 157, 48.48297, 163, 80.37952, 164, 92.44827, 154.99988, 99.344826, 139, 121.758835, 174, 134.68987, 169.99988, 141.58621, 159, 124.344826, 126, 111.41379, 104, 102.793106, 94.99988, 76.93103, 89.99988, 51.931034, 89.99988)
+
+[sub_resource type="Resource" id="Resource_3edkr"]
+script = ExtResource("2_ck0lv")
+view_direction = "front"
+role = "hair_scalp_right"
+layer_order = 80
+source_node_path = "FrontView/ScalpHair_Front/ScalpHair_R"
+source_workbench_path = "FrontView/FrontHead"
+color = Color(0.29157248, 0.09197434, 0.5423048, 1)
+points = PackedVector2Array(64.86207, -4, 79.51724, -1.9998779, 95.034485, 8.000122, 102.793106, 19, 109.68965, 37, 111.41379, 56, 99.344826, 83.00012, 91.58642, 49, 64.86207, 48.000122)
+mirror_x = true
+
+[sub_resource type="Resource" id="Resource_fkm38"]
+script = ExtResource("2_ck0lv")
+view_direction = "front"
+role = "hair_scalp_left"
+layer_order = 80
+source_node_path = "FrontView/ScalpHair_Front/ScalpHair_L"
+source_workbench_path = "FrontView/FrontHead"
+color = Color(0.29157248, 0.09197434, 0.5423048, 1)
+points = PackedVector2Array(64.86207, -4, 50.207108, -1.9998779, 34.689655, 8.000122, 26.931244, 19, 20.896553, 37, 18.310555, 56, 30.37931, 83.00012, 38.13793, 49, 64.86207, 48.000122)
+
+[sub_resource type="Resource" id="Resource_hgxx1"]
+script = ExtResource("2_ck0lv")
+view_direction = "front"
+role = "hair_bangs"
+layer_order = 90
+source_node_path = "FrontView/Bang_Front"
+source_workbench_path = "FrontView/FrontHead"
+color = Color(0.41960785, 0.16078432, 0.7607843, 1)
+points = PackedVector2Array(64, 16, 49.34504, 16, 32.10366, 32, 18.310555, 58.000122, 25.206898, 86, 34.69008, 99.99988, 45.03469, 101, 38.13793, 93.00012, 35.551933, 84, 43.31077, 79.99988, 49.34504, 69.99988, 52.793312, 84, 62.276073, 98.00012, 76.069176, 83.00012, 81.24138, 69.99988, 84.689865, 78.00012, 93.310555, 87, 90.72456, 94.99988, 86.414215, 99, 99.345245, 96, 106.24159, 83.00012, 111.41379, 56, 98.48276, 29, 80.37952, 14)
+
+[sub_resource type="Resource" id="Resource_0pnfh"]
+script = ExtResource("2_ck0lv")
+view_direction = "side_left"
+role = "hair_back_mass"
+layer_order = 5
+source_node_path = "SideView/BackHair_Side"
+source_workbench_path = "SideView/ProfileReference"
+color = Color(0.29157248, 0.09197434, 0.5423048, 1)
+points = PackedVector2Array(48.482548, 12, 68.310135, 15, 79.51703, 28.999878, 93.310135, 68, 84.689445, 115, 87.27565, 136, 98.482544, 151, 121.75841, 153, 143.31013, 143.99988, 151.06854, 120, 139.86186, 88.99988, 136.41357, 58, 132.9653, 33.999878, 122.62048, 17, 106.241165, 3.999878, 92.44807, 0, 74.34462, 1, 57.965305, 5)
+
+[sub_resource type="Resource" id="Resource_ysyhp"]
+script = ExtResource("2_ck0lv")
+view_direction = "side_left"
+role = "leg_back"
+layer_order = 20
+source_node_path = "SideView/BackLeg_Side"
+source_workbench_path = "SideView/ProfileReference"
+color = Color(0, 0.47105628, 0.47105616, 1)
+points = PackedVector2Array(47.62048, 162.00012, 47.62048, 192.00012, 39.86207, 203.99988, 44.172413, 213, 57.103447, 216, 66.586, 208, 68.310135, 181, 72.62048, 168.99988, 68.310135, 158.99988, 56.24117, 153.99988)
+
+[sub_resource type="Resource" id="Resource_eq431"]
+script = ExtResource("2_ck0lv")
+view_direction = "side_left"
+role = "leg_front"
+layer_order = 21
+source_node_path = "SideView/FrontLeg_Side"
+source_workbench_path = "SideView/ProfileReference"
+color = Color(0, 1, 1, 1)
+points = PackedVector2Array(64.86165, 172.00012, 70.89634, 196, 63.99979, 213, 63.99979, 221, 77.79268, 225, 85.55151, 216, 89.86186, 191, 89.86186, 178.99988, 85.55151, 168.99988, 73.48234, 163.99988)
+
+[sub_resource type="Resource" id="Resource_w0y4i"]
+script = ExtResource("2_ck0lv")
+view_direction = "side_left"
+role = "hips"
+layer_order = 30
+source_node_path = "SideView/SideHips"
+source_workbench_path = "SideView/ProfileReference"
+color = Color(0.103743516, 0.10374353, 0.103743516, 1)
+points = PackedVector2Array(43.310345, 153.99988, 58.827377, 146, 73.48276, 147.99988, 86.413795, 167.99988, 61.41379, 180, 45.89634, 170)
+
+[sub_resource type="Resource" id="Resource_yfca5"]
+script = ExtResource("2_ck0lv")
+view_direction = "side_left"
+role = "torso"
+layer_order = 40
+source_node_path = "SideView/SideBody"
+source_workbench_path = "SideView/ProfileReference"
+color = Color(0.19793725, 0.19793722, 0.19793722, 1)
+points = PackedVector2Array(79.51703, 111, 54.51703, 103, 34.689445, 123.99988, 46.75862, 153, 63.99979, 165, 82.10303, 158, 86.413376, 125)
+
+[sub_resource type="Resource" id="Resource_hqiku"]
+script = ExtResource("2_ck0lv")
+view_direction = "side_left"
+role = "arm_front"
+layer_order = 50
+source_node_path = "SideView/SideArm"
+source_workbench_path = "SideView/ProfileReference"
+color = Color(0, 0, 1, 1)
+points = PackedVector2Array(64.86207, 121, 76.930824, 114.00012, 85.55151, 114.00012, 97.62048, 132.00012, 101.06897, 156, 103.655174, 182.00012, 78.655174, 186, 72.62048, 160, 65.72414, 141)
+
+[sub_resource type="Resource" id="Resource_qfhp1"]
+script = ExtResource("2_ck0lv")
+view_direction = "side_left"
+role = "hair_scalp"
+layer_order = 82
+source_node_path = "SideView/ScalpHair_Side"
+source_workbench_path = "SideView/ProfileReference"
+color = Color(0.41960785, 0.16078432, 0.7607843, 1)
+points = PackedVector2Array(45.896763, 20.999878, 35.551723, 40, 72.62048, 60.999878, 77.793106, 103, 83.82759, 97, 89, 82, 95.89655, 80, 104.51724, 78, 112.27586, 63, 109.68965, 43.999878, 105.37931, 33.999878, 91.586205, 18.999878, 64.86207, 12)
+
+[sub_resource type="Resource" id="Resource_t1eyg"]
+script = ExtResource("2_ck0lv")
+view_direction = "side_left"
+role = "hair_bangs"
+layer_order = 90
+source_node_path = "SideView/Bang_Side"
+source_workbench_path = "SideView/ProfileReference"
+color = Color(0.41960785, 0.16078432, 0.75686276, 1)
+points = PackedVector2Array(56.24138, 8, 71.75841, 11, 82.96531, 43.999878, 87.27565, 78.99988, 79.51703, 117, 68.310135, 128.99988, 61.41358, 133, 56.24138, 140, 58.827377, 123.99988, 63.137722, 115, 63.99979, 86, 56.24138, 73, 58.827377, 83.99988, 51.931034, 77, 45.89634, 58.999878, 40.723927, 80, 45.03427, 91, 32.96531, 86, 26.930824, 77, 24.344616, 68.99988, 23.482548, 75, 25.206898, 81, 19.172203, 75, 16.586208, 60, 20.896553, 41, 33.827587, 22, 50.206688, 10)
+
+[resource]
+script = ExtResource("1_ck0lv")
+capture_id = "back_hair_test_vector_capture"
+source_scene_path = "res://scenes/tools/Back Hair Test.tscn"
+workbench_properties = {
+"FrontView/FrontHead": {
+"chin_length": 1.3,
+"chin_roundness": 0.32,
+"head_height": 1.0,
+"head_width": 1.16,
+"preview_scale": 1.0,
+"show_hair": false,
+"side_brow_front_x_offset": 0.0,
+"side_brow_front_y_offset": 0.0,
+"side_brow_rear_x_offset": 0.0,
+"side_brow_rear_y_offset": 0.0,
+"side_chin_tip_x_offset": 2.3,
+"side_cranium_front_face_curve": 0.0,
+"side_cranium_front_top_curve": 0.0,
+"side_cranium_front_x_offset": 0.0,
+"side_cranium_front_y_offset": 0.0,
+"side_cranium_width": 1.12,
+"side_cranium_x_offset": -3.4,
+"side_eye_height": 0.91,
+"side_eye_width": 0.76,
+"side_eye_x_offset": -4.300000000000001,
+"side_eye_y_offset": 5.9,
+"side_face_projection": -8.0,
+"side_jaw_adjustment": 0.8,
+"side_jaw_height": 47.5,
+"side_mouth_angle_degrees": 3.4,
+"side_mouth_curve": 0.0,
+"side_mouth_taper": 0.53,
+"side_mouth_width": 10.0,
+"side_mouth_x_offset": 0.0,
+"side_mouth_y_offset": 9.8,
+"side_nose_bridge_x_offset": 0.0,
+"side_nose_bridge_y_offset": 24.0,
+"side_nose_tip_x_offset": 0.0,
+"side_nose_tip_y_offset": 0.0,
+"side_nose_x_offset": 0.0,
+"side_nose_y_offset": 8.0,
+"side_upper_lip_x_offset": 0.0,
+"side_upper_lip_y_offset": 0.0,
+"view_direction": "front"
+},
+"SideView/ProfileReference": {
+"chin_length": 1.01,
+"chin_roundness": 0.0,
+"head_height": 1.0,
+"head_width": 1.16,
+"preview_scale": 1.0,
+"show_hair": false,
+"side_brow_front_x_offset": 0.0,
+"side_brow_front_y_offset": -2.9000000000000004,
+"side_brow_rear_x_offset": -2.5,
+"side_brow_rear_y_offset": 7.899999999999999,
+"side_chin_tip_x_offset": 8.899999999999999,
+"side_cranium_front_face_curve": 0.6999999999999993,
+"side_cranium_front_top_curve": -21.9,
+"side_cranium_front_x_offset": 4.5,
+"side_cranium_front_y_offset": 14.1,
+"side_cranium_width": 1.09,
+"side_cranium_x_offset": -3.6999999999999993,
+"side_eye_height": 1.05,
+"side_eye_width": 0.66,
+"side_eye_x_offset": -8.5,
+"side_eye_y_offset": 8.5,
+"side_face_projection": -8.0,
+"side_jaw_adjustment": 3.6000000000000014,
+"side_jaw_height": 51.6,
+"side_mouth_angle_degrees": -12.7,
+"side_mouth_curve": -0.5,
+"side_mouth_taper": 0.55,
+"side_mouth_width": 5.0,
+"side_mouth_x_offset": 7.800000000000001,
+"side_mouth_y_offset": 13.0,
+"side_nose_bridge_x_offset": 1.6000000000000014,
+"side_nose_bridge_y_offset": 24.0,
+"side_nose_tip_x_offset": 0.0,
+"side_nose_tip_y_offset": 18.0,
+"side_nose_x_offset": 8.5,
+"side_nose_y_offset": 12.799999999999995,
+"side_upper_lip_x_offset": 2.5,
+"side_upper_lip_y_offset": 18.0,
+"view_direction": "side_left"
+}
+}
+shapes = Array[Resource]([SubResource("Resource_b4vsh"), SubResource("Resource_vhgfo"), SubResource("Resource_06qym"), SubResource("Resource_q7i3n"), SubResource("Resource_t6sps"), SubResource("Resource_mbujt"), SubResource("Resource_n8nih"), SubResource("Resource_u2rf5"), SubResource("Resource_3edkr"), SubResource("Resource_fkm38"), SubResource("Resource_hgxx1"), SubResource("Resource_0pnfh"), SubResource("Resource_ysyhp"), SubResource("Resource_eq431"), SubResource("Resource_w0y4i"), SubResource("Resource_yfca5"), SubResource("Resource_hqiku"), SubResource("Resource_qfhp1"), SubResource("Resource_t1eyg")])

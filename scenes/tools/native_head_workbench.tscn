@@ -1,0 +1,38 @@
+[gd_scene load_steps=2 format=3 uid="uid://bb6yturq6oeje"]
+
+[ext_resource type="Script" uid="uid://dthdaxspmhd78" path="res://scripts/tools/native_head_workbench.gd" id="1"]
+
+[node name="NativeHeadWorkbench" type="Control"]
+custom_minimum_size = Vector2(560, 560)
+layout_mode = 3
+anchors_preset = 0
+offset_left = 48.0
+offset_right = 608.0
+offset_bottom = 560.0
+script = ExtResource("1")
+view_direction = "side_left"
+head_width = 1.08
+chin_length = 1.01
+chin_roundness = 0.0
+side_nose_bridge_y_offset = 24.0
+side_eye_x_offset = -4.300000000000001
+ear_angle_degrees = 12.0
+ear_size = 0.98
+ear_spacing = 1.5999999999999996
+ear_y_offset = 16.0
+eye_width = 0.9
+eye_height = 0.91
+eye_roundness = 0.0
+eye_angle_degrees = -9.6
+eye_spacing = 4.5
+eye_y_offset = 5.9
+pupil_x_offset = -0.5
+pupil_y_offset = 2.1999999999999993
+pupil_width = 1.16
+pupil_height = 1.1
+mouth_y_offset = 9.8
+mouth_width = 10.0
+mouth_angle_degrees = -6.5
+mouth_curve = 0.0
+mouth_line_width = 0.7
+mouth_taper = 0.53

@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>Traced Top Down Head Shape With Eye Cutouts</title>
+  <defs>
+    <radialGradient id="skin_fill" cx="50%" cy="42%" r="70%">
+      <stop offset="0" stop-color="#ffd0aa"/>
+      <stop offset="0.58" stop-color="#f4b284"/>
+      <stop offset="1" stop-color="#e99b6e"/>
+    </radialGradient>
+    <linearGradient id="skin_shadow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff1e6" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#b95f3c" stop-opacity="0.22"/>
+    </linearGradient>
+    <linearGradient id="ear_shadow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffd0aa"/>
+      <stop offset="1" stop-color="#d68058"/>
+    </linearGradient>
+  </defs>
+
+  <g id="ears">
+    <path d="M24.2 62.8 C16.8 57.8 11.2 63.1 11.3 72.2 C11.6 85.8 22.4 95.4 33.2 90.4 C29.6 81.6 26.6 72.5 24.2 62.8 Z" fill="url(#ear_shadow)" stroke="#050505" stroke-width="3.2" stroke-linejoin="round"/>
+    <path d="M103.8 62.8 C111.2 57.8 116.8 63.1 116.7 72.2 C116.4 85.8 105.6 95.4 94.8 90.4 C98.4 81.6 101.4 72.5 103.8 62.8 Z" fill="url(#ear_shadow)" stroke="#050505" stroke-width="3.2" stroke-linejoin="round"/>
+    <path d="M20.2 69.7 C25.5 70.8 29.3 78.5 30.0 86.2 C25.0 84.4 19.6 77.5 20.2 69.7 Z" fill="#e19a72" opacity="0.72"/>
+    <path d="M107.8 69.7 C102.5 70.8 98.7 78.5 98.0 86.2 C103.0 84.4 108.4 77.5 107.8 69.7 Z" fill="#e19a72" opacity="0.72"/>
+    <path d="M19.7 70.0 C24.4 71.8 27.4 78.3 27.5 85.0 M22.9 77.3 C25.2 78.9 27.2 82.8 27.5 86.5" fill="none" stroke="#7a2f25" stroke-width="1.5" stroke-linecap="round" opacity="0.72"/>
+    <path d="M108.3 70.0 C103.6 71.8 100.6 78.3 100.5 85.0 M105.1 77.3 C102.8 78.9 100.8 82.8 100.5 86.5" fill="none" stroke="#7a2f25" stroke-width="1.5" stroke-linecap="round" opacity="0.72"/>
+  </g>
+
+  <g id="head_shell">
+    <path id="head_with_eye_cutouts" fill="url(#skin_fill)" fill-rule="evenodd" d="
+      M64.0 5.0
+      C37.0 5.2 22.0 23.5 21.7 55.4
+      C21.6 68.0 24.3 80.8 30.3 91.9
+      C36.4 103.2 49.0 113.0 61.8 117.9
+      C63.2 118.4 64.8 118.4 66.2 117.9
+      C79.0 113.0 91.6 103.2 97.7 91.9
+      C103.7 80.8 106.4 68.0 106.3 55.4
+      C106.0 23.5 91.0 5.2 64.0 5.0 Z
+
+      M28.3 77.0
+      C39.0 76.3 49.6 79.2 58.5 85.6
+      C52.8 88.6 43.2 91.1 35.5 87.6
+      C31.8 85.9 29.4 82.3 28.3 77.0 Z
+
+      M99.7 77.0
+      C89.0 76.3 78.4 79.2 69.5 85.6
+      C75.2 88.6 84.8 91.1 92.5 87.6
+      C96.2 85.9 98.6 82.3 99.7 77.0 Z"/>
+    <path d="
+      M64.0 5.0
+      C37.0 5.2 22.0 23.5 21.7 55.4
+      C21.6 68.0 24.3 80.8 30.3 91.9
+      C36.4 103.2 49.0 113.0 61.8 117.9
+      C63.2 118.4 64.8 118.4 66.2 117.9
+      C79.0 113.0 91.6 103.2 97.7 91.9
+      C103.7 80.8 106.4 68.0 106.3 55.4
+      C106.0 23.5 91.0 5.2 64.0 5.0 Z" fill="url(#skin_shadow)" opacity="0.55"/>
+    <path d="
+      M64.0 5.0
+      C37.0 5.2 22.0 23.5 21.7 55.4
+      C21.6 68.0 24.3 80.8 30.3 91.9
+      C36.4 103.2 49.0 113.0 61.8 117.9
+      C63.2 118.4 64.8 118.4 66.2 117.9
+      C79.0 113.0 91.6 103.2 97.7 91.9
+      C103.7 80.8 106.4 68.0 106.3 55.4
+      C106.0 23.5 91.0 5.2 64.0 5.0 Z" fill="none" stroke="#050505" stroke-width="3.2" stroke-linejoin="round"/>
+  </g>
+
+  <g id="eye_cutout_rims">
+    <path d="M27.7 76.4 C39.4 75.7 50.8 78.9 60.4 86.6 C57.5 81.7 45.8 76.8 28.1 75.9 Z" fill="#050505"/>
+    <path d="M100.3 76.4 C88.6 75.7 77.2 78.9 67.6 86.6 C70.5 81.7 82.2 76.8 99.9 75.9 Z" fill="#050505"/>
+    <path d="M29.4 79.3 C38.7 78.8 48.4 81.1 56.6 86.5" fill="none" stroke="#050505" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M98.6 79.3 C89.3 78.8 79.6 81.1 71.4 86.5" fill="none" stroke="#050505" stroke-width="2.4" stroke-linecap="round"/>
+  </g>
+
+  <g id="skin_highlights">
+    <path d="M34.0 44.0 C34.2 33.5 43.5 22.6 49.6 25.4 C54.2 27.5 48.0 36.7 42.6 44.3 C38.6 50.0 35.4 56.3 32.6 64.4 C31.4 57.6 32.2 50.2 34.0 44.0 Z" fill="#fff5f0" opacity="0.72"/>
+    <path d="M94.0 44.0 C93.8 33.5 84.5 22.6 78.4 25.4 C73.8 27.5 80.0 36.7 85.4 44.3 C89.4 50.0 92.6 56.3 95.4 64.4 C96.6 57.6 95.8 50.2 94.0 44.0 Z" fill="#fff5f0" opacity="0.72"/>
+  </g>
+</svg>

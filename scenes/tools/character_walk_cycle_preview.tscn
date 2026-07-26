@@ -1,0 +1,24 @@
+[gd_scene load_steps=2 format=3 uid="uid://dcf6n275mbgea"]
+
+[ext_resource type="Script" uid="uid://x7rnwbwmhlp3" path="res://scripts/tools/character_walk_cycle_preview.gd" id="1_dh6tv"]
+
+[node name="CharacterWalkCyclePreview" type="Control"]
+custom_minimum_size = Vector2(720, 560)
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_dh6tv")
+walk_speed = 10.5
+hip_tilt_degrees = 5.7
+hip_tilt_phase_offset = -0.51
+body_bounce_distance = 5.0
+bounce_speed_multiplier = 0.45999999999999996
+body_bounce_phase_offset = 0.18999999999999995
+head_bounce_distance = 0.75
+head_bounce_phase_offset = 0.17999999999999994
+hair_bounce_distance = 2.0
+gun_bounce_distance = 6.25
+gun_bounce_phase_offset = 0.18999999999999995

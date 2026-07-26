@@ -1,0 +1,11 @@
+[gd_scene format=3 uid="uid://fbm40bhcs1la"]
+
+[node name="RightGun" type="Node2D"]
+
+[node name="GunHandle" type="Polygon2D" parent="."]
+color = Color(0.12103007, 0.12103007, 0.12103007, 1)
+polygon = PackedVector2Array(2590, 966, 2605, 948, 2594, 927, 2585, 921, 2571, 937, 2581, 961)
+
+[node name="GunBarrel" type="Polygon2D" parent="."]
+color = Color(0.2509804, 0.2509804, 0.2509804, 1)
+polygon = PackedVector2Array(2526, 962, 2586, 894, 2604, 905, 2604, 929, 2545, 999, 2526, 988)
