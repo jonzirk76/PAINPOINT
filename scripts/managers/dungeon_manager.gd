@@ -141,7 +141,9 @@ func get_current_level_definition():
 	if state.is_empty():
 		return null
 	if state.has("level_definition") and state["level_definition"] != null:
-		return state["level_definition"]
+		var cached_level = state["level_definition"]
+		cached_level.set_meta("active_room_id", current_room_id)
+		return cached_level
 	var piece = state["piece"]
 	var level = piece.create_level_definition()
 	level.id = String(state["id"])
@@ -149,6 +151,7 @@ func get_current_level_definition():
 	level.difficulty_label = "Floor %d %s" % [floor_number, piece.room_kind.capitalize()]
 	level.floor_number = max(floor_number, 1)
 	level.set_meta("floor_visual_seed", floor_generation_seed)
+	level.set_meta("active_room_id", current_room_id)
 	_apply_floor_scaling(level, String(piece.room_kind))
 	return level
 

@@ -55,6 +55,7 @@ var _wall_body_visuals: Array[Node2D] = []
 var _wall_body_depth_visuals_enabled: bool = false
 var _blocker_rebuild_deferred: bool = false
 var _floor_wear_seed: int = 0
+var _active_room_id: String = ""
 var _floor_tile_visual = null
 var _wall_occlusion_overlay = null
 var _fog_of_war_overlay = null
@@ -84,6 +85,7 @@ func configure(level_definition) -> void:
 		"floor_visual_seed",
 		String(level_definition.id).hash() ^ (int(level_definition.floor_number) * 7919)
 	))
+	_active_room_id = String(level_definition.get_meta("active_room_id", ""))
 	_fog_rects = _get_meta_rects(level_definition, "fog_rects", [])
 	_inactive_room_dim_rects = _get_meta_rects(level_definition, "inactive_room_dim_rects", [])
 	_configure_floor_tile_visual()
@@ -458,7 +460,8 @@ func _configure_wall_occlusion_overlay() -> void:
 		occlusion_rects,
 		get_viewport(),
 		behind_wall_entity_opacity,
-		wall_occlusion_candidate_margin
+		wall_occlusion_candidate_margin,
+		_active_room_id
 	)
 
 

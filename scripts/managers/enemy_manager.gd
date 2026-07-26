@@ -34,6 +34,7 @@ var _level_wall_rects: Array[Rect2] = []
 var _void_rects: Array[Rect2] = []
 var _playable_rects: Array[Rect2] = []
 var _boss_add_timer: float = 0.0
+var _perspective_room_id: String = ""
 
 
 func initialize(context: Dictionary) -> void:
@@ -88,6 +89,7 @@ func set_entities_active(value: bool, materialize_preloaded: bool = false) -> vo
 func set_arena_definition(level_definition) -> void:
 	if level_definition == null:
 		return
+	_perspective_room_id = String(level_definition.get_meta("active_room_id", ""))
 	_arena_bounds = level_definition.arena_bounds
 	_arena_shape = int(level_definition.arena_shape)
 	_level_wall_rects = _get_level_collision_rects(level_definition, "active_room_wall_rects", level_definition.wall_rects)
@@ -138,7 +140,7 @@ func spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary = {})
 	if not enabled and not allow_when_disabled:
 		return null
 	var enemy = enemy_scene.instantiate()
-	WALL_OCCLUSION_LAYERS.mark_entity_tree(enemy)
+	WALL_OCCLUSION_LAYERS.mark_entity_tree(enemy, _perspective_room_id)
 	var selected_profile = profile if profile != null else default_enemy_profile
 	enemy.initialize(selected_profile)
 	enemy.global_position = _constrain_spawn_position(spawn_position, float(enemy.body_radius))

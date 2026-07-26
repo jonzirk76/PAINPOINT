@@ -10,6 +10,7 @@ var _mask = null
 var _entity_texture: TextureRect = null
 var _wall_rects: Array[Rect2] = []
 var _candidate_margin: float = 180.0
+var _active_room_id: String = ""
 var _candidate_capture_states: Dictionary = {}
 
 
@@ -17,7 +18,8 @@ func configure(
 	rects: Array[Rect2],
 	source_viewport: Viewport,
 	opacity: float = 0.5,
-	candidate_margin: float = 180.0
+	candidate_margin: float = 180.0,
+	active_room_id: String = ""
 ) -> void:
 	_source_viewport = source_viewport
 	if _source_viewport == null:
@@ -26,6 +28,7 @@ func configure(
 	_ensure_nodes()
 	_wall_rects = rects.duplicate()
 	_candidate_margin = max(candidate_margin, 0.0)
+	_active_room_id = active_room_id
 	_mask.configure(rects)
 	_entity_texture.modulate = Color(1.0, 1.0, 1.0, clamp(opacity, 0.0, 1.0))
 	_sync_candidates()
@@ -124,11 +127,22 @@ func _sync_candidates() -> void:
 func _candidate_overlaps_wall(candidate: Node) -> bool:
 	if _wall_rects.is_empty() or not candidate is Node2D:
 		return false
+	if not _candidate_belongs_to_active_room(candidate):
+		return false
 	var candidate_position: Vector2 = (candidate as Node2D).global_position
 	for wall_rect in _wall_rects:
 		if wall_rect.grow(_candidate_margin).has_point(candidate_position):
 			return true
 	return false
+
+
+func _candidate_belongs_to_active_room(candidate: Node) -> bool:
+	if candidate.is_in_group("player"):
+		return true
+	if _active_room_id.is_empty():
+		return true
+	var candidate_room_id := String(candidate.get_meta(OCCLUSION_LAYERS.ROOM_ID_META, ""))
+	return not candidate_room_id.is_empty() and candidate_room_id == _active_room_id
 
 
 func _disable_all_candidates() -> void:

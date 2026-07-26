@@ -568,7 +568,8 @@ func _initialize_managers() -> void:
 	upgrade_manager.initialize({})
 	combat_manager.initialize({})
 	effects_manager.initialize({
-		"effect_layer": effect_layer
+		"effect_layer": effect_layer,
+		"perspective_room_id_provider": Callable(self, "_get_perspective_room_id")
 	})
 	dungeon_manager.initialize({})
 	room_manager.initialize({
@@ -3331,6 +3332,12 @@ func _on_reward_focus_changed(_effect, description: String) -> void:
 
 func _get_player_ref():
 	return player_manager.player
+
+
+func _get_perspective_room_id() -> String:
+	if not _is_dungeon_run or dungeon_manager == null:
+		return ""
+	return String(dungeon_manager.current_room_id)
 
 
 func _on_room_door_entered(direction: String, target_room_id: String = "") -> void:

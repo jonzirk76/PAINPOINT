@@ -3,14 +3,21 @@ class_name WallOcclusionLayers
 
 const ENTITY_LAYER_INDEX := 19
 const ENTITY_VISIBILITY_LAYER := 1 << ENTITY_LAYER_INDEX
-const CANDIDATE_GROUP := &"wall_occlusion_candidates"
+const CANDIDATE_GROUP := &"perspective_information_candidates"
+const ROOM_ID_META := &"perspective_room_id"
 
 
-static func mark_entity_tree(root: Node) -> void:
+static func mark_entity_tree(root: Node, room_id: String = "") -> void:
 	if root == null:
 		return
 	root.add_to_group(CANDIDATE_GROUP)
+	root.set_meta(ROOM_ID_META, room_id)
 	set_entity_capture_enabled(root, true)
+
+
+static func set_candidate_room_id(root: Node, room_id: String) -> void:
+	if root != null:
+		root.set_meta(ROOM_ID_META, room_id)
 
 
 static func set_entity_capture_enabled(root: Node, enabled: bool) -> void:

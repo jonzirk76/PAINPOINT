@@ -48,6 +48,7 @@ var _player_provider: Callable
 var _initial_spawns_pending: bool = false
 var _initial_spawn_delay_remaining: float = 0.0
 var _preloaded_initial_spawn_activation_pending: bool = false
+var _perspective_room_id: String = ""
 
 
 func initialize(context: Dictionary) -> void:
@@ -164,6 +165,7 @@ func consume_initial_spawn_requests() -> Array[Dictionary]:
 func set_arena_definition(level_definition) -> void:
 	if level_definition == null:
 		return
+	_perspective_room_id = String(level_definition.get_meta("active_room_id", ""))
 	_arena_bounds = level_definition.arena_bounds
 	_arena_shape = int(level_definition.arena_shape)
 	_level_wall_rects = _get_level_collision_rects(level_definition, "active_room_wall_rects", level_definition.wall_rects)
@@ -207,7 +209,7 @@ func _spawn_spawner(placement, index: int) -> void:
 		spawn_position = placement.position
 		warmup = placement.warmup_seconds
 	var spawner = spawner_scene.instantiate()
-	WALL_OCCLUSION_LAYERS.mark_entity_tree(spawner)
+	WALL_OCCLUSION_LAYERS.mark_entity_tree(spawner, _perspective_room_id)
 	spawner.warmup_seconds = warmup
 	if profile != null and spawner.has_method("initialize_from_profile"):
 		spawner.initialize_from_profile(profile)

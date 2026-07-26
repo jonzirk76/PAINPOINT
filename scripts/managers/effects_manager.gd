@@ -13,10 +13,12 @@ const WALL_OCCLUSION_LAYERS := preload("res://scripts/arena/wall_occlusion_layer
 var enabled: bool = false
 var _effect_layer: Node = null
 var _effects: Array = []
+var _perspective_room_id_provider: Callable
 
 
 func initialize(context: Dictionary) -> void:
 	_effect_layer = context.get("effect_layer", null)
+	_perspective_room_id_provider = context.get("perspective_room_id_provider", Callable())
 
 
 func reset_run() -> void:
@@ -81,7 +83,7 @@ func play_projectile_impact(spawn_position: Vector2, direction: Vector2, radius:
 		return
 	_trim_effects()
 	var effect = projectile_impact_scene.instantiate()
-	WALL_OCCLUSION_LAYERS.mark_entity_tree(effect)
+	WALL_OCCLUSION_LAYERS.mark_entity_tree(effect, _get_perspective_room_id())
 	_configure_effect_process_mode(effect)
 	if _effect_layer != null:
 		_effect_layer.add_child(effect)
@@ -97,7 +99,7 @@ func play_muzzle_flash(spawn_position: Vector2, direction: Vector2, radius: floa
 		return
 	_trim_effects()
 	var effect = muzzle_flash_scene.instantiate()
-	WALL_OCCLUSION_LAYERS.mark_entity_tree(effect)
+	WALL_OCCLUSION_LAYERS.mark_entity_tree(effect, _get_perspective_room_id())
 	_configure_effect_process_mode(effect)
 	if _effect_layer != null:
 		_effect_layer.add_child(effect)
@@ -142,6 +144,12 @@ func _on_effect_expired(effect) -> void:
 
 func _configure_effect_process_mode(effect: Node, ignore_pause: bool = false) -> void:
 	effect.process_mode = Node.PROCESS_MODE_ALWAYS if ignore_pause else Node.PROCESS_MODE_PAUSABLE
+
+
+func _get_perspective_room_id() -> String:
+	if _perspective_room_id_provider.is_valid():
+		return String(_perspective_room_id_provider.call())
+	return ""
 
 
 func _trim_effects() -> void:

@@ -87,6 +87,7 @@ var _has_cat_activity_bounds: bool = false
 var _cat_visibility_bounds: Rect2 = Rect2()
 var _has_cat_visibility_bounds: bool = false
 var _cat_texture_rng := RandomNumberGenerator.new()
+var _perspective_room_id: String = ""
 var _last_player_position: Vector2 = Vector2.INF
 var _has_last_player_position: bool = false
 
@@ -124,6 +125,7 @@ func set_enabled(value: bool) -> void:
 func set_arena_definition(level_definition) -> void:
 	if level_definition == null:
 		return
+	_perspective_room_id = String(level_definition.get_meta("active_room_id", ""))
 	_arena_bounds = level_definition.arena_bounds
 	_arena_shape = int(level_definition.arena_shape)
 	_level_wall_rects = level_definition.wall_rects
@@ -175,7 +177,7 @@ func spawn_cat(spawn_position: Vector2, movement_seed: int = 0):
 		return _cat
 	var cat_seed: int = max(movement_seed, 1)
 	var cat = cat_scene.instantiate()
-	WALL_OCCLUSION_LAYERS.mark_entity_tree(cat)
+	WALL_OCCLUSION_LAYERS.mark_entity_tree(cat, _perspective_room_id)
 	_cat = cat
 	_connect_cat_signals(cat)
 	if cat.has_method("set_cat_texture"):

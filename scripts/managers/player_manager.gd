@@ -381,6 +381,11 @@ func set_arena_bounds(bounds: Rect2) -> void:
 func set_arena_definition(level_definition) -> void:
 	if level_definition == null:
 		return
+	if _has_player():
+		WALL_OCCLUSION_LAYERS.set_candidate_room_id(
+			player,
+			String(level_definition.get_meta("active_room_id", ""))
+		)
 	_arena_bounds = level_definition.arena_bounds
 	_arena_shape = int(level_definition.arena_shape)
 	_level_wall_rects = _get_level_collision_rects(level_definition, "active_room_wall_rects", level_definition.wall_rects)

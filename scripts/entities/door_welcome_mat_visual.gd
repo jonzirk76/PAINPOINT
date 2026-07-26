@@ -8,7 +8,7 @@ var mat_rect: Rect2 = Rect2()
 var mat_color: Color = Color(0.12, 0.13, 0.14, 0.72)
 
 
-func configure(opening_rect: Rect2, direction: String, depth_tiles: int, color: Color) -> void:
+func configure(opening_rect: Rect2, direction: String, depth_tiles: int, color: Color, room_id: String = "") -> void:
 	var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
 	var depth: float = tile_size * float(max(depth_tiles, 1))
 	var world_rect := opening_rect
@@ -36,7 +36,7 @@ func configure(opening_rect: Rect2, direction: String, depth_tiles: int, color: 
 	position = world_rect.get_center()
 	mat_rect = Rect2(-world_rect.size * 0.5, world_rect.size)
 	mat_color = color
-	WALL_OCCLUSION_LAYERS.mark_entity_tree(self)
+	WALL_OCCLUSION_LAYERS.mark_entity_tree(self, room_id)
 	queue_redraw()
 
 

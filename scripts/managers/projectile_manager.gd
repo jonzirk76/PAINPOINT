@@ -29,6 +29,7 @@ var _projectile_layer: Node = null
 var _projectiles: Array = []
 var _arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 var _arena_shape: int = 0
+var _perspective_room_id: String = ""
 
 
 func initialize(context: Dictionary) -> void:
@@ -53,6 +54,7 @@ func set_enabled(value: bool) -> void:
 func set_arena_definition(level_definition) -> void:
 	if level_definition == null:
 		return
+	_perspective_room_id = String(level_definition.get_meta("active_room_id", ""))
 	_arena_bounds = level_definition.arena_bounds
 	_arena_shape = int(level_definition.arena_shape)
 	for projectile in _projectiles:
@@ -80,7 +82,7 @@ func fire(origin: Vector2, direction: Vector2, modifiers: Dictionary) -> void:
 		var shot_direction := Vector2.RIGHT.rotated(shot_angle)
 		var packet = _create_damage_packet(modifiers, origin, shot_direction)
 		var projectile = projectile_scene.instantiate()
-		WALL_OCCLUSION_LAYERS.mark_entity_tree(projectile)
+		WALL_OCCLUSION_LAYERS.mark_entity_tree(projectile, _perspective_room_id)
 		projectile.set_arena_definition(_arena_bounds, _arena_shape)
 		projectile.set_projectile_team("player")
 		projectile.initialize(origin, shot_direction, packet, base_projectile_speed, visual_reveal_distance)
@@ -98,7 +100,7 @@ func fire_super_shot(origin: Vector2, direction: Vector2, charge_ratio: float, v
 	var packet = _create_super_damage_packet(origin, shot_direction, normalized_charge)
 	var reveal_distance: float = max(visual_reveal_distance, 0.0)
 	var projectile = projectile_scene.instantiate()
-	WALL_OCCLUSION_LAYERS.mark_entity_tree(projectile)
+	WALL_OCCLUSION_LAYERS.mark_entity_tree(projectile, _perspective_room_id)
 	projectile.lifetime_seconds = 1.55
 	projectile.set_arena_definition(_arena_bounds, _arena_shape)
 	projectile.set_projectile_team("player")
@@ -195,7 +197,7 @@ func get_player_projectile_positions() -> Array[Vector2]:
 func _spawn_hostile_projectile(origin: Vector2, direction: Vector2, shot_config: Dictionary, shot_speed: float) -> void:
 	var packet = _create_hostile_damage_packet(shot_config, origin, direction)
 	var projectile = projectile_scene.instantiate()
-	WALL_OCCLUSION_LAYERS.mark_entity_tree(projectile)
+	WALL_OCCLUSION_LAYERS.mark_entity_tree(projectile, _perspective_room_id)
 	projectile.body_radius = float(shot_config.get("radius", 7.0))
 	var player_projectile_range: float = base_projectile_speed * projectile.lifetime_seconds
 	var requested_lifetime: float = float(shot_config.get("lifetime", 0.0))

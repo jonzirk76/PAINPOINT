@@ -74,7 +74,8 @@ func load_room(level_definition, door_infos: Array, doors_unlocked: bool, welcom
 			continue
 		_add_welcome_mat(
 			mat_info["opening_rect"],
-			String(mat_info.get("direction", "north"))
+			String(mat_info.get("direction", "north")),
+			String(mat_info.get("source_room_id", ""))
 		)
 	set_enabled(enabled)
 
@@ -90,14 +91,15 @@ func clear_doors() -> void:
 	_doors.clear()
 
 
-func _add_welcome_mat(opening_rect: Rect2, direction: String) -> void:
+func _add_welcome_mat(opening_rect: Rect2, direction: String, room_id: String = "") -> void:
 	var welcome_mat = DOOR_WELCOME_MAT_VISUAL_SCRIPT.new()
 	welcome_mat.name = "DoorWelcomeMat"
 	welcome_mat.configure(
 		opening_rect,
 		direction,
 		door_welcome_mat_depth_tiles,
-		door_welcome_mat_color
+		door_welcome_mat_color,
+		room_id
 	)
 	_door_welcome_mats.append(welcome_mat)
 	_add_child_safely(_get_door_mat_parent(), welcome_mat)
