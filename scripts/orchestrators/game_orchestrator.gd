@@ -522,11 +522,13 @@ func _connect_once(source: Object, signal_name: StringName, target: Callable) ->
 func _initialize_managers() -> void:
 	_capture_hud_authoring_state()
 	var depth_sort_layer: Node2D = $World/DepthSortLayer
+	var projectile_layer: Node2D = $World/ProjectileLayer
 	var door_mat_layer := Node2D.new()
 	door_mat_layer.name = "DoorMatLayer"
 	$World.add_child(door_mat_layer)
 	$World.move_child(door_mat_layer, $World/Arena.get_index() + 1)
 	WALL_OCCLUSION_LAYERS.open_visibility_path(depth_sort_layer)
+	WALL_OCCLUSION_LAYERS.open_visibility_path(projectile_layer)
 	WALL_OCCLUSION_LAYERS.open_visibility_path(door_mat_layer)
 	$UI.layer = 2
 	input_manager.initialize({
@@ -536,7 +538,7 @@ func _initialize_managers() -> void:
 		"player_layer": depth_sort_layer
 	})
 	projectile_manager.initialize({
-		"projectile_layer": $World/ProjectileLayer
+		"projectile_layer": projectile_layer
 	})
 	enemy_manager.initialize({
 		"enemy_layer": depth_sort_layer,
