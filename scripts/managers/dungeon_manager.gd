@@ -988,12 +988,13 @@ func _get_full_floor_fog_rects(active_room_id: String, room_ids: Array[String]) 
 		if piece == null:
 			continue
 		var offset: Vector2 = _get_cached_full_floor_room_offset(room_id) if use_full_floor_cache else _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
-		var wall_top_depth := ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE * float(max(int(piece.wall_height_tiles), 1))
-		for local_cell: Vector2i in piece.footprint_cells:
-			var fog_rect := _translated_rect(ROOM_GEOMETRY_BUILDER.get_cell_rect(piece.footprint_cells, local_cell), offset)
-			fog_rect.position.y -= wall_top_depth
-			fog_rect.size.y += wall_top_depth
-			fog_rects.append(fog_rect)
+		var wall_floor_tiles: Array[Rect2] = _get_room_wall_top_tiles(state)
+		var wall_top_tiles := ROOM_GEOMETRY_BUILDER.build_wall_top_visual_tile_rects(
+			wall_floor_tiles,
+			max(int(piece.wall_height_tiles), 1)
+		)
+		for wall_top_rect: Rect2 in wall_top_tiles:
+			fog_rects.append(_translated_rect(wall_top_rect, offset))
 	return fog_rects
 
 

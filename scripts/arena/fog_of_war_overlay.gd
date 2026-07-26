@@ -21,7 +21,8 @@ func configure(rects: Array[Rect2], source_viewport: Viewport) -> void:
 func clear() -> void:
 	visible = false
 	if _mask != null:
-		_mask.configure([])
+		var empty_rects: Array[Rect2] = []
+		_mask.configure(empty_rects)
 
 
 func _process(_delta: float) -> void:
@@ -33,8 +34,8 @@ func _process(_delta: float) -> void:
 func _ensure_mask() -> void:
 	if _mask != null:
 		return
-	# Share the gameplay overlay layer so the scene's later UI CanvasLayer stays above fog.
-	layer = 1
+	# Share the gameplay overlay layer while remaining below the scene UI.
+	layer = 0
 	_mask = FOG_MASK_SCRIPT.new()
 	_mask.name = "FogMask"
 	add_child(_mask)

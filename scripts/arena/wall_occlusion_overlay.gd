@@ -25,7 +25,8 @@ func configure(rects: Array[Rect2], source_viewport: Viewport, opacity: float = 
 func clear() -> void:
 	visible = false
 	if _mask != null:
-		_mask.configure([])
+		var empty_rects: Array[Rect2] = []
+		_mask.configure(empty_rects)
 
 
 func _process(_delta: float) -> void:
@@ -37,7 +38,8 @@ func _process(_delta: float) -> void:
 func _ensure_nodes() -> void:
 	if _entity_viewport != null:
 		return
-	layer = 1
+	# Gameplay overlays remain below the scene's UI CanvasLayer.
+	layer = 0
 	_entity_viewport = SubViewport.new()
 	_entity_viewport.name = "EntityOnlyViewport"
 	_entity_viewport.transparent_bg = true
