@@ -4,11 +4,6 @@ class_name DoorEntity
 signal entered(door)
 
 @export var door_size: Vector2 = Vector2(88.0, 28.0)
-## [Description] Slightly darkens the canonical floor tiles immediately inside each doorway.
-@export var welcome_mat_color: Color = Color(0.12, 0.13, 0.14, 0.72)
-## [Description] Controls how many floor tiles the doorway welcome mat extends into the room.
-@export_range(1, 3, 1) var welcome_mat_depth_tiles: int = 1
-
 const DOOR_GATE_TOP_VISUAL_SCRIPT := preload("res://scripts/entities/door_gate_top_visual.gd")
 const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_builder.gd")
 const ARM_DELAY_SECONDS := 0.12
@@ -179,7 +174,6 @@ func _draw() -> void:
 	var fill_rect := _get_visual_fill_rect()
 	var drawn_rect := _get_visual_draw_rect()
 	var trim_color := Color(0.16, 0.17, 0.18, 1.0)
-	_draw_welcome_mat(fill_rect)
 	if not unlocked:
 		_draw_locked_gate_body(fill_rect, trim_color)
 		var locked_marker_rect := _get_passage_draw_rect(drawn_rect)
@@ -187,37 +181,6 @@ func _draw() -> void:
 	elif has_special_marker():
 		var passage_rect := _get_passage_draw_rect(drawn_rect)
 		_draw_room_kind_marker(_get_floor_marker_center(passage_rect), min(passage_rect.size.x, passage_rect.size.y))
-
-
-func _draw_welcome_mat(opening_rect: Rect2) -> void:
-	var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
-	var depth: float = tile_size * float(max(welcome_mat_depth_tiles, 1))
-	var mat_rect := opening_rect
-	match direction:
-		"north":
-			mat_rect = Rect2(
-				Vector2(opening_rect.position.x, opening_rect.end.y),
-				Vector2(opening_rect.size.x, depth)
-			)
-		"south":
-			mat_rect = Rect2(
-				Vector2(opening_rect.position.x, opening_rect.position.y - depth),
-				Vector2(opening_rect.size.x, depth)
-			)
-		"east":
-			mat_rect = Rect2(
-				Vector2(opening_rect.position.x - depth, opening_rect.position.y),
-				Vector2(depth, opening_rect.size.y)
-			)
-		"west":
-			mat_rect = Rect2(
-				Vector2(opening_rect.end.x, opening_rect.position.y),
-				Vector2(depth, opening_rect.size.y)
-			)
-	for tile_rect in _rect_to_gate_tiles(mat_rect):
-		var inset_rect := tile_rect.grow(-2.0)
-		draw_rect(inset_rect, welcome_mat_color, true)
-		draw_rect(inset_rect, Color(0.28, 0.29, 0.3, 0.34), false, 1.0)
 
 
 func _draw_locked_gate_body(fill_rect: Rect2, trim_color: Color) -> void:

@@ -1,15 +1,22 @@
 extends Node
 class_name RoomManager
 
+const DOOR_WELCOME_MAT_VISUAL_SCRIPT := preload("res://scripts/entities/door_welcome_mat_visual.gd")
+
 signal door_entered(direction: String, target_room_id: String)
 
 @export var door_scene: PackedScene = preload("res://scenes/entities/door_entity.tscn")
 @export var door_depth: float = 28.0
 @export var door_width: float = 92.0
+## [Description] Slightly darkens the canonical floor tiles immediately inside each doorway.
+@export var door_welcome_mat_color: Color = Color(0.12, 0.13, 0.14, 0.72)
+## [Description] Controls how many floor tiles each doorway welcome mat extends into the room.
+@export_range(1, 3, 1) var door_welcome_mat_depth_tiles: int = 1
 
 var enabled: bool = false
 var _door_layer: Node = null
 var _doors: Array = []
+var _door_welcome_mats: Array[Node2D] = []
 
 
 func initialize(context: Dictionary) -> void:
@@ -49,6 +56,7 @@ func load_room(level_definition, door_infos: Array, doors_unlocked: bool) -> voi
 		if door_info.has("opening_rect") and door.has_method("set_visual_rect"):
 			var opening_rect: Rect2 = door_info["opening_rect"]
 			door.set_visual_rect(opening_rect.get_center(), opening_rect.size)
+			_add_welcome_mat(opening_rect, direction)
 		if door_info.has("passage_rect") and door.has_method("set_passage_rect"):
 			var passage_rect: Rect2 = door_info["passage_rect"]
 			door.set_passage_rect(passage_rect.get_center(), passage_rect.size)
@@ -59,10 +67,27 @@ func load_room(level_definition, door_infos: Array, doors_unlocked: bool) -> voi
 
 
 func clear_doors() -> void:
+	for welcome_mat in _door_welcome_mats:
+		if is_instance_valid(welcome_mat):
+			welcome_mat.queue_free()
+	_door_welcome_mats.clear()
 	for door in _doors:
 		if is_instance_valid(door):
 			door.queue_free()
 	_doors.clear()
+
+
+func _add_welcome_mat(opening_rect: Rect2, direction: String) -> void:
+	var welcome_mat = DOOR_WELCOME_MAT_VISUAL_SCRIPT.new()
+	welcome_mat.name = "DoorWelcomeMat"
+	welcome_mat.configure(
+		opening_rect,
+		direction,
+		door_welcome_mat_depth_tiles,
+		door_welcome_mat_color
+	)
+	_door_welcome_mats.append(welcome_mat)
+	_add_child_safely(_get_door_parent(), welcome_mat)
 
 
 func set_doors_unlocked(value: bool) -> void:
