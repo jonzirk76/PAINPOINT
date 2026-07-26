@@ -5270,8 +5270,9 @@ func _get_wall_aware_camera_bounds(level_definition, base_bounds: Rect2) -> Rect
 	var wall_height_tiles: int = max(int(level_definition.get_meta("wall_height_tiles", 1)), 1)
 	if wall_height_tiles <= 1:
 		return base_bounds
-	var boundary_margin: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
-	return base_bounds.grow_individual(0.0, boundary_margin, 0.0, boundary_margin)
+	var top_margin: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE * float(wall_height_tiles)
+	var bottom_margin: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
+	return base_bounds.grow_individual(0.0, top_margin, 0.0, bottom_margin)
 
 
 func _activate_boss_exit_portal(boss_position: Vector2, boss_radius: float) -> void:

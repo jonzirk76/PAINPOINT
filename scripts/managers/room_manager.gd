@@ -39,6 +39,11 @@ func load_room(level_definition, door_infos: Array, doors_unlocked: bool) -> voi
 		var target_id := String(door_info.get("target_room_id", ""))
 		var target_kind := String(door_info.get("target_room_kind", ""))
 		var door = door_scene.instantiate()
+		if door.has_method("set_wall_height_tiles"):
+			door.set_wall_height_tiles(int(door_info.get(
+				"wall_height_tiles",
+				level_definition.get_meta("wall_height_tiles", 3)
+			)))
 		var rect: Rect2 = door_info.get("trigger_rect", _get_door_rect(level_definition.arena_bounds, direction))
 		door.initialize(direction, target_id, rect.get_center(), rect.size, doors_unlocked, target_kind)
 		if door_info.has("opening_rect") and door.has_method("set_visual_rect"):

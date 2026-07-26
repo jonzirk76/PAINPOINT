@@ -6,7 +6,7 @@ const OCCLUSION_MASK_SCRIPT := preload("res://scripts/arena/wall_occlusion_mask.
 
 var _source_viewport: Viewport = null
 var _entity_viewport: SubViewport = null
-var _mask: WallOcclusionMask = null
+var _mask = null
 var _entity_texture: TextureRect = null
 
 

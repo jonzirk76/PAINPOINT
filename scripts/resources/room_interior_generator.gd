@@ -900,8 +900,11 @@ func _get_room_spawn_position(level) -> Vector2:
 func _apply_wall_tiles(level, wall_tiles: Array[Rect2]) -> void:
 	wall_tiles = _filter_rects_to_level_envelope(level, wall_tiles)
 	var wall_body_tiles := _build_wall_body_tiles(level, wall_tiles)
-	level.set_meta("wall_top_tile_rects", wall_tiles)
+	var wall_height_tiles: int = max(int(level.get_meta("wall_height_tiles", ROOM_GEOMETRY_BUILDER.DEFAULT_WALL_HEIGHT_TILES)), 1)
+	var wall_top_tiles := ROOM_GEOMETRY_BUILDER.build_wall_top_visual_tile_rects(wall_tiles, wall_height_tiles)
+	level.set_meta("wall_top_tile_rects", wall_top_tiles)
 	level.set_meta("wall_body_tile_rects", wall_body_tiles)
+	level.set_meta("wall_floor_tile_rects", wall_tiles)
 	level.set_meta("wall_tile_rects", wall_tiles)
 	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(
 		ROOM_GEOMETRY_BUILDER.build_wall_collision_tile_rects(
@@ -945,9 +948,9 @@ func _filter_rects_to_level_envelope(level, rects: Array[Rect2]) -> Array[Rect2]
 
 
 func _get_level_wall_tiles(level) -> Array[Rect2]:
-	if level != null and level.has_meta("wall_top_tile_rects"):
+	if level != null and level.has_meta("wall_floor_tile_rects"):
 		var typed_tiles: Array[Rect2] = []
-		for rect in level.get_meta("wall_top_tile_rects"):
+		for rect in level.get_meta("wall_floor_tile_rects"):
 			typed_tiles.append(rect)
 		return typed_tiles
 	if level != null and level.has_meta("wall_tile_rects"):
@@ -955,6 +958,11 @@ func _get_level_wall_tiles(level) -> Array[Rect2]:
 		for rect in level.get_meta("wall_tile_rects"):
 			legacy_tiles.append(rect)
 		return legacy_tiles
+	if level != null and level.has_meta("wall_top_tile_rects"):
+		var legacy_top_tiles: Array[Rect2] = []
+		for rect in level.get_meta("wall_top_tile_rects"):
+			legacy_top_tiles.append(rect)
+		return legacy_top_tiles
 	return ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(level.wall_rects)
 
 

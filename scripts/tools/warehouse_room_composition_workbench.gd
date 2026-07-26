@@ -86,11 +86,15 @@ func _ready() -> void:
 func _draw() -> void:
 	var room_bounds := ROOM_GEOMETRY_BUILDER.get_bounds(ROOM_CELLS)
 	var connection_edges := _connection_edges()
-	var wall_top_tiles := ROOM_GEOMETRY_BUILDER.build_wall_tile_rects(ROOM_CELLS, connection_edges)
+	var wall_floor_tiles := ROOM_GEOMETRY_BUILDER.build_wall_tile_rects(ROOM_CELLS, connection_edges)
 	var wall_body_tiles := ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(
-		wall_top_tiles,
+		wall_floor_tiles,
 		ROOM_CELLS,
 		connection_edges
+	)
+	var wall_top_tiles := ROOM_GEOMETRY_BUILDER.build_wall_top_visual_tile_rects(
+		wall_floor_tiles,
+		ROOM_GEOMETRY_BUILDER.DEFAULT_WALL_HEIGHT_TILES
 	)
 
 	draw_rect(room_bounds.grow(160.0), void_color, true)

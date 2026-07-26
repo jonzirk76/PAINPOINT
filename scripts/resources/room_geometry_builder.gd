@@ -118,7 +118,7 @@ static func build_wall_tile_rects(cells: Array[Vector2i], connection_edges: Dict
 
 
 static func build_wall_body_tile_rects(
-	wall_top_tiles: Array[Rect2],
+	wall_floor_tiles: Array[Rect2],
 	cells: Array[Vector2i],
 	connection_edges: Dictionary = {},
 	wall_height_tiles: int = DEFAULT_WALL_HEIGHT_TILES
@@ -126,27 +126,46 @@ static func build_wall_body_tile_rects(
 	var body_tiles: Array[Rect2] = []
 	var body_lookup := {}
 	var body_opening_rects := _get_wall_body_connection_opening_rects(cells, connection_edges)
-	for wall_top in wall_top_tiles:
-		var first_body_tile := Rect2(wall_top.position + Vector2(0.0, WALL_TILE_SIZE), wall_top.size)
-		if not _rect_fits_wall_body_envelope(cells, first_body_tile):
+	for wall_floor in wall_floor_tiles:
+		if not _rect_fits_wall_floor_envelope(cells, wall_floor):
 			continue
-		if _tile_is_inside_any_opening(first_body_tile, body_opening_rects):
+		if _tile_is_inside_any_opening(wall_floor, body_opening_rects):
 			continue
-		for depth_index in range(1, max(wall_height_tiles, 1) + 1):
+		for height_index in range(max(wall_height_tiles, 1)):
 			var body_tile := Rect2(
-				wall_top.position + Vector2(0.0, WALL_TILE_SIZE * float(depth_index)),
-				wall_top.size
+				wall_floor.position - Vector2(0.0, WALL_TILE_SIZE * float(height_index)),
+				wall_floor.size
 			)
 			_append_unique_wall_tile(body_tiles, body_lookup, body_tile)
 	return body_tiles
 
 
 static func build_wall_collision_tile_rects(
-	wall_top_tiles: Array[Rect2],
+	wall_floor_tiles: Array[Rect2],
 	cells: Array[Vector2i],
 	connection_edges: Dictionary = {}
 ) -> Array[Rect2]:
-	return build_wall_body_tile_rects(wall_top_tiles, cells, connection_edges, 1)
+	var collision_tiles: Array[Rect2] = []
+	var collision_lookup := {}
+	var body_opening_rects := _get_wall_body_connection_opening_rects(cells, connection_edges)
+	for wall_floor in wall_floor_tiles:
+		if not _rect_fits_wall_floor_envelope(cells, wall_floor):
+			continue
+		if _tile_is_inside_any_opening(wall_floor, body_opening_rects):
+			continue
+		_append_unique_wall_tile(collision_tiles, collision_lookup, wall_floor)
+	return collision_tiles
+
+
+static func build_wall_top_visual_tile_rects(
+	wall_floor_tiles: Array[Rect2],
+	wall_height_tiles: int = DEFAULT_WALL_HEIGHT_TILES
+) -> Array[Rect2]:
+	var top_tiles: Array[Rect2] = []
+	var height_offset := Vector2(0.0, WALL_TILE_SIZE * float(max(wall_height_tiles, 1)))
+	for wall_floor in wall_floor_tiles:
+		top_tiles.append(Rect2(wall_floor.position - height_offset, wall_floor.size))
+	return top_tiles
 
 
 static func get_wall_body_opening_rect(cells: Array[Vector2i], local_cell: Vector2i, direction: String) -> Rect2:
@@ -170,12 +189,7 @@ static func get_wall_top_opening_rect(cells: Array[Vector2i], local_cell: Vector
 
 
 static func get_gate_visual_rect(cells: Array[Vector2i], local_cell: Vector2i, direction: String) -> Rect2:
-	var opening := get_opening_rect(cells, local_cell, direction)
-	if opening.size == Vector2.ZERO:
-		return opening
-	if direction == "north":
-		return Rect2(opening.position, Vector2(opening.size.x, opening.size.y + WALL_TILE_SIZE))
-	return opening
+	return get_opening_rect(cells, local_cell, direction)
 
 
 static func get_gate_passage_rect(cells: Array[Vector2i], local_cell: Vector2i, direction: String) -> Rect2:
@@ -444,7 +458,7 @@ static func _get_wall_body_connection_opening_rects(cells: Array[Vector2i], conn
 	return opening_rects
 
 
-static func _rect_fits_wall_body_envelope(cells: Array[Vector2i], rect: Rect2) -> bool:
+static func _rect_fits_wall_floor_envelope(cells: Array[Vector2i], rect: Rect2) -> bool:
 	if cells.is_empty() or rect.size.x <= 0.0 or rect.size.y <= 0.0:
 		return false
 	var inset: float = min(1.0, min(rect.size.x, rect.size.y) * 0.25)
@@ -456,7 +470,7 @@ static func _rect_fits_wall_body_envelope(cells: Array[Vector2i], rect: Rect2) -
 		rect.get_center()
 	]
 	for point in points:
-		if not _point_is_in_footprint(cells, point - Vector2(0.0, WALL_TILE_SIZE)):
+		if not _point_is_in_footprint(cells, point):
 			return false
 	return true
 
