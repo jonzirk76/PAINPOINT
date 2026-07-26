@@ -988,35 +988,14 @@ func _get_full_floor_fog_rects(active_room_id: String, room_ids: Array[String]) 
 		if piece == null:
 			continue
 		var offset: Vector2 = _get_cached_full_floor_room_offset(room_id) if use_full_floor_cache else _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
-		var wall_floor_tiles: Array[Rect2] = _get_room_wall_top_tiles(state)
-		var wall_body_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(
-			wall_floor_tiles,
-			piece.footprint_cells,
-			Dictionary(state.get("connection_edges", {})),
-			max(int(piece.wall_height_tiles), 1)
+		var height_offset := Vector2(
+			0.0,
+			-ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE * float(max(int(piece.wall_height_tiles), 1))
 		)
-		var wall_top_tiles := ROOM_GEOMETRY_BUILDER.build_wall_top_visual_tile_rects(
-			wall_floor_tiles,
-			max(int(piece.wall_height_tiles), 1)
-		)
-		for wall_body_rect: Rect2 in wall_body_tiles:
-			fog_rects.append(_translated_rect(wall_body_rect, offset))
-		for wall_top_rect: Rect2 in wall_top_tiles:
-			fog_rects.append(_translated_rect(wall_top_rect, offset))
-		var cell_lookup: Dictionary = {}
 		for local_cell: Vector2i in piece.footprint_cells:
-			cell_lookup[_cell_key(local_cell)] = true
-		var inset: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
-		for local_cell: Vector2i in piece.footprint_cells:
-			var interior_rect := ROOM_GEOMETRY_BUILDER.get_cell_rect(piece.footprint_cells, local_cell)
-			var left_inset := inset if not cell_lookup.has(_cell_key(local_cell + Vector2i.LEFT)) else 0.0
-			var right_inset := inset if not cell_lookup.has(_cell_key(local_cell + Vector2i.RIGHT)) else 0.0
-			var top_inset := inset if not cell_lookup.has(_cell_key(local_cell + Vector2i.UP)) else 0.0
-			var bottom_inset := inset if not cell_lookup.has(_cell_key(local_cell + Vector2i.DOWN)) else 0.0
-			interior_rect.position += Vector2(left_inset, top_inset)
-			interior_rect.size -= Vector2(left_inset + right_inset, top_inset + bottom_inset)
-			if interior_rect.size.x > 0.0 and interior_rect.size.y > 0.0:
-				fog_rects.append(_translated_rect(interior_rect, offset))
+			var room_envelope_rect := ROOM_GEOMETRY_BUILDER.get_cell_rect(piece.footprint_cells, local_cell)
+			room_envelope_rect.position += height_offset
+			fog_rects.append(_translated_rect(room_envelope_rect, offset))
 	return fog_rects
 
 
