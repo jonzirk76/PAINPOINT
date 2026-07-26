@@ -1,7 +1,7 @@
 extends Node
 class_name RoomManager
 
-const DOOR_WELCOME_MAT_VISUAL_SCRIPT := preload("res://scripts/entities/door_welcome_mat_visual.gd")
+const DOOR_PATH_VISUAL_SCRIPT := preload("res://scripts/entities/door_path_visual.gd")
 const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_builder.gd")
 
 signal door_entered(direction: String, target_room_id: String)
@@ -13,12 +13,22 @@ signal door_entered(direction: String, target_room_id: String)
 @export var door_welcome_mat_color: Color = Color(0.12, 0.13, 0.14, 0.72)
 ## [Description] Controls how many floor tiles each doorway welcome mat extends into the room.
 @export_range(1, 3, 1) var door_welcome_mat_depth_tiles: int = 1
+## [Description] Fill color of the smooth rendering-only paths between selected doorway mats.
+@export var door_path_color: Color = Color(0.19, 0.2, 0.21, 0.78)
+## [Description] Border shared by doorway mats and their connecting paths.
+@export var door_path_border_color: Color = Color(0.08, 0.09, 0.1, 0.9)
+## [Description] Width of smooth doorway paths in pixels.
+@export_range(8.0, 40.0, 1.0) var door_path_width: float = 24.0
+## [Description] Width of the darker border around mats and paths.
+@export_range(1.0, 10.0, 0.5) var door_path_border_width: float = 5.0
+## [Description] Deterministic chance that a paired set of doors receives a visible path.
+@export_range(0.0, 1.0, 0.05) var door_path_connection_chance: float = 0.7
 
 var enabled: bool = false
 var _door_layer: Node = null
 var _door_mat_layer: Node = null
 var _doors: Array = []
-var _door_welcome_mats: Array[Node2D] = []
+var _door_path_visuals: Array[Node2D] = []
 
 
 func initialize(context: Dictionary) -> void:
@@ -69,40 +79,53 @@ func load_room(level_definition, door_infos: Array, doors_unlocked: bool, welcom
 		_doors.append(door)
 		_add_child_safely(_get_door_parent(), door)
 	var resolved_mat_infos: Array = welcome_mat_infos if not welcome_mat_infos.is_empty() else door_infos
+	var fallback_room_id := String(level_definition.get_meta("active_room_id", ""))
+	var infos_by_room: Dictionary = {}
 	for mat_info in resolved_mat_infos:
 		if not mat_info is Dictionary or not mat_info.has("opening_rect"):
 			continue
-		_add_welcome_mat(
-			mat_info["opening_rect"],
-			String(mat_info.get("direction", "north")),
-			String(mat_info.get("source_room_id", ""))
+		var source_room_id := String(mat_info.get("source_room_id", fallback_room_id))
+		var room_infos: Array = infos_by_room.get(source_room_id, [])
+		room_infos.append(mat_info)
+		infos_by_room[source_room_id] = room_infos
+	var floor_visual_seed := int(level_definition.get_meta("floor_visual_seed", String(level_definition.id).hash()))
+	for source_room_id in infos_by_room.keys():
+		_add_door_path_visual(
+			infos_by_room[source_room_id],
+			String(source_room_id),
+			floor_visual_seed ^ String(source_room_id).hash()
 		)
 	set_enabled(enabled)
 
 
 func clear_doors() -> void:
-	for welcome_mat in _door_welcome_mats:
-		if is_instance_valid(welcome_mat):
-			welcome_mat.queue_free()
-	_door_welcome_mats.clear()
+	for path_visual in _door_path_visuals:
+		if is_instance_valid(path_visual):
+			path_visual.queue_free()
+	_door_path_visuals.clear()
 	for door in _doors:
 		if is_instance_valid(door):
 			door.queue_free()
 	_doors.clear()
 
 
-func _add_welcome_mat(opening_rect: Rect2, direction: String, room_id: String = "") -> void:
-	var welcome_mat = DOOR_WELCOME_MAT_VISUAL_SCRIPT.new()
-	welcome_mat.name = "DoorWelcomeMat"
-	welcome_mat.configure(
-		opening_rect,
-		direction,
+func _add_door_path_visual(opening_infos: Array, room_id: String, visual_seed: int) -> void:
+	var path_visual = DOOR_PATH_VISUAL_SCRIPT.new()
+	path_visual.name = "DoorPathVisual"
+	path_visual.configure(
+		opening_infos,
 		door_welcome_mat_depth_tiles,
 		door_welcome_mat_color,
+		door_path_color,
+		door_path_border_color,
+		door_path_width,
+		door_path_border_width,
+		door_path_connection_chance,
+		visual_seed,
 		room_id
 	)
-	_door_welcome_mats.append(welcome_mat)
-	_add_child_safely(_get_door_mat_parent(), welcome_mat)
+	_door_path_visuals.append(path_visual)
+	_add_child_safely(_get_door_mat_parent(), path_visual)
 
 
 func set_doors_unlocked(value: bool) -> void:

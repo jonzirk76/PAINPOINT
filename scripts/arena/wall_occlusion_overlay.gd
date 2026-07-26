@@ -141,6 +141,15 @@ func _candidate_overlaps_wall(candidate: Node) -> bool:
 		return false
 	if not _candidate_belongs_to_active_room(candidate):
 		return false
+	if candidate.has_method("get_perspective_world_rect"):
+		var candidate_rect: Rect2 = candidate.call("get_perspective_world_rect")
+		var min_cell := _candidate_cell_coord(candidate_rect.position)
+		var max_cell := _candidate_cell_coord(candidate_rect.end)
+		for cell_y in range(min_cell.y, max_cell.y + 1):
+			for cell_x in range(min_cell.x, max_cell.x + 1):
+				if _candidate_cell_lookup.has(_candidate_cell_key_from_coord(Vector2i(cell_x, cell_y))):
+					return true
+		return false
 	var candidate_position: Vector2 = (candidate as Node2D).global_position
 	return _candidate_cell_lookup.has(_candidate_cell_key(candidate_position))
 
