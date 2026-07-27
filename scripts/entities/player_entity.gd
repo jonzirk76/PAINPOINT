@@ -176,7 +176,7 @@ func get_fire_origin() -> Vector2:
 
 
 func get_perspective_world_rect() -> Rect2:
-	var visual_extent := max(body_radius * 3.0, body_radius + 28.0)
+	var visual_extent: float = max(body_radius * 3.0, body_radius + 28.0)
 	return Rect2(
 		global_position - Vector2(visual_extent, visual_extent),
 		Vector2.ONE * visual_extent * 2.0
