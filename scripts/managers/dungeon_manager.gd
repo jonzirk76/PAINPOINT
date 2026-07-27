@@ -1045,14 +1045,12 @@ func _get_full_floor_fog_rects(active_room_id: String, room_ids: Array[String]) 
 		if piece == null:
 			continue
 		var offset: Vector2 = _get_cached_full_floor_room_offset(room_id) if use_full_floor_cache else _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
-		var height_offset := Vector2(
-			0.0,
-			-ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE * float(max(int(piece.wall_height_tiles), 1))
-		)
 		for local_cell: Vector2i in piece.footprint_cells:
 			var room_envelope_rect := ROOM_GEOMETRY_BUILDER.get_cell_rect(piece.footprint_cells, local_cell)
-			room_envelope_rect.position += height_offset
-			fog_rects.append(_translated_rect(room_envelope_rect, offset))
+			fog_rects.append(_raise_fog_rect(
+				_translated_rect(room_envelope_rect, offset),
+				max(int(piece.wall_height_tiles), 1)
+			))
 	fog_rects.append_array(_get_full_floor_outer_envelope_fog_rects(floor_cells, room_ids))
 	return fog_rects
 
@@ -1065,34 +1063,40 @@ func _get_full_floor_outer_envelope_fog_rects(
 	if floor_cells.is_empty():
 		return envelope_rects
 	var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
-	var wall_height: float = tile_size * float(_get_floor_wall_height_tiles(room_ids))
+	var wall_height_tiles: int = _get_floor_wall_height_tiles(room_ids)
 	for edge in ROOM_GEOMETRY_BUILDER.get_exposed_edges(floor_cells):
 		var cell: Vector2i = edge.get("cell", Vector2i.ZERO)
 		var direction := String(edge.get("direction", ""))
-		var shifted_cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(floor_cells, cell)
-		shifted_cell_rect.position.y -= wall_height
+		var cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(floor_cells, cell)
+		var envelope_rect := Rect2()
 		match direction:
 			"north":
-				envelope_rects.append(Rect2(
-					shifted_cell_rect.position,
-					Vector2(shifted_cell_rect.size.x, tile_size)
-				))
+				envelope_rect = Rect2(cell_rect.position, Vector2(cell_rect.size.x, tile_size))
 			"south":
-				envelope_rects.append(Rect2(
-					Vector2(shifted_cell_rect.position.x, shifted_cell_rect.end.y - tile_size),
-					Vector2(shifted_cell_rect.size.x, tile_size)
-				))
+				envelope_rect = Rect2(
+					Vector2(cell_rect.position.x, cell_rect.end.y - tile_size),
+					Vector2(cell_rect.size.x, tile_size)
+				)
 			"west":
-				envelope_rects.append(Rect2(
-					shifted_cell_rect.position,
-					Vector2(tile_size, shifted_cell_rect.size.y)
-				))
+				envelope_rect = Rect2(cell_rect.position, Vector2(tile_size, cell_rect.size.y))
 			"east":
-				envelope_rects.append(Rect2(
-					Vector2(shifted_cell_rect.end.x - tile_size, shifted_cell_rect.position.y),
-					Vector2(tile_size, shifted_cell_rect.size.y)
-				))
+				envelope_rect = Rect2(
+					Vector2(cell_rect.end.x - tile_size, cell_rect.position.y),
+					Vector2(tile_size, cell_rect.size.y)
+				)
+		if envelope_rect.size != Vector2.ZERO:
+			envelope_rects.append(_raise_fog_rect(envelope_rect, wall_height_tiles))
 	return envelope_rects
+
+
+func _raise_fog_rect(rect: Rect2, wall_height_tiles: int) -> Rect2:
+	return Rect2(
+		rect.position + Vector2(
+			0.0,
+			-ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE * float(max(wall_height_tiles, 1))
+		),
+		rect.size
+	)
 
 
 func _get_full_floor_inactive_room_dim_rects(active_room_id: String, room_ids: Array[String]) -> Array[Rect2]:
@@ -1115,14 +1119,12 @@ func _get_full_floor_inactive_room_dim_rects(active_room_id: String, room_ids: A
 		if piece == null:
 			continue
 		var offset: Vector2 = _get_cached_full_floor_room_offset(room_id) if use_full_floor_cache else _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
-		var height_offset := Vector2(
-			0.0,
-			-ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE * float(max(int(piece.wall_height_tiles), 1))
-		)
 		for local_cell: Vector2i in piece.footprint_cells:
 			var cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(piece.footprint_cells, local_cell)
-			cell_rect.position += height_offset
-			dim_rects.append(_translated_rect(cell_rect, offset))
+			dim_rects.append(_raise_fog_rect(
+				_translated_rect(cell_rect, offset),
+				max(int(piece.wall_height_tiles), 1)
+			))
 	return dim_rects
 
 
