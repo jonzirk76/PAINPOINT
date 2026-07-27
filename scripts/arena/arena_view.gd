@@ -475,7 +475,29 @@ func _configure_fog_of_war_overlay() -> void:
 		_fog_of_war_overlay = FOG_OF_WAR_OVERLAY_SCRIPT.new()
 		_fog_of_war_overlay.name = "FogOfWarOverlay"
 		add_child(_fog_of_war_overlay)
-	_fog_of_war_overlay.configure(_fog_rects, get_viewport())
+	_fog_of_war_overlay.configure(
+		_fog_rects,
+		get_viewport(),
+		_get_north_wall_boundary_segments(),
+		WALL_TOP_OUTLINE_COLOR,
+		2.0
+	)
+
+
+func _get_north_wall_boundary_segments() -> Array[PackedVector2Array]:
+	var segments: Array[PackedVector2Array] = []
+	var lookup: Dictionary = _build_tile_lookup(_wall_top_tile_rects)
+	var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
+	var height_offset: float = tile_size * float(_wall_height_tiles)
+	for tile in _wall_top_tile_rects:
+		var cell: Vector2i = _tile_key_vector(tile.position, tile_size)
+		if lookup.has(_tile_key(cell + Vector2i(0, -1))):
+			continue
+		segments.append(PackedVector2Array([
+			Vector2(tile.position.x, tile.position.y + height_offset),
+			Vector2(tile.end.x, tile.position.y + height_offset)
+		]))
+	return segments
 
 
 func _clear_fog_of_war_overlay() -> void:

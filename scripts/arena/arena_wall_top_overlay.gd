@@ -54,7 +54,14 @@ func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_co
 		var right := tile.position.x + tile.size.x
 		var bottom := tile.position.y + tile.size.y
 		if not lookup.has(_tile_key(cell + Vector2i(0, -1))):
-			_draw_dotted_horizontal(left, right, top, outline_color, outline_width)
+			draw_line(Vector2(left, top), Vector2(right, top), outline_color, outline_width)
+			_draw_dotted_horizontal(
+				left,
+				right,
+				top + height_offset,
+				outline_color,
+				outline_width
+			)
 		if not lookup.has(_tile_key(cell + Vector2i(0, 1))):
 			draw_line(Vector2(left, bottom), Vector2(right, bottom), outline_color, outline_width)
 			var south_start := Vector2(left, bottom + height_offset)
