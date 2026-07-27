@@ -1,6 +1,8 @@
 extends Control
 class_name WallOcclusionMask
 
+const MASK_SEAM_OVERLAP: float = 1.0
+
 var wall_rects: Array[Rect2] = []
 var canvas_transform: Transform2D = Transform2D.IDENTITY
 
@@ -19,10 +21,11 @@ func update_canvas_transform(next_transform: Transform2D) -> void:
 
 func _draw() -> void:
 	for rect in wall_rects:
+		var seam_safe_rect: Rect2 = rect.grow(MASK_SEAM_OVERLAP)
 		var points := PackedVector2Array([
-			canvas_transform * rect.position,
-			canvas_transform * Vector2(rect.end.x, rect.position.y),
-			canvas_transform * rect.end,
-			canvas_transform * Vector2(rect.position.x, rect.end.y)
+			canvas_transform * seam_safe_rect.position,
+			canvas_transform * Vector2(seam_safe_rect.end.x, seam_safe_rect.position.y),
+			canvas_transform * seam_safe_rect.end,
+			canvas_transform * Vector2(seam_safe_rect.position.x, seam_safe_rect.end.y)
 		])
 		draw_colored_polygon(points, Color.WHITE)
