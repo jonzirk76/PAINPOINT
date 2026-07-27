@@ -21,6 +21,8 @@ var visual_size: Vector2 = Vector2.ZERO
 var visual_offset: Vector2 = Vector2.ZERO
 var passage_size: Vector2 = Vector2.ZERO
 var passage_offset: Vector2 = Vector2.ZERO
+var floor_marker_offset: Vector2 = Vector2.ZERO
+var has_floor_marker_offset: bool = false
 var wall_height_tiles: int = ROOM_GEOMETRY_BUILDER.DEFAULT_WALL_HEIGHT_TILES
 var _collision_shape: CollisionShape2D = null
 var _gate_body: StaticBody2D = null
@@ -87,6 +89,12 @@ func set_passage_rect(center_position: Vector2, size: Vector2) -> void:
 	var snapped_center := Vector2(round(center_position.x), round(center_position.y))
 	passage_offset = snapped_center - global_position
 	passage_size = Vector2(round(size.x), round(size.y))
+	queue_redraw()
+
+
+func set_floor_marker_world_position(marker_position: Vector2) -> void:
+	floor_marker_offset = marker_position - global_position
+	has_floor_marker_offset = true
 	queue_redraw()
 
 
@@ -338,6 +346,8 @@ func _get_passage_draw_rect(fallback_rect: Rect2) -> Rect2:
 
 
 func _get_floor_marker_center(rect: Rect2) -> Vector2:
+	if has_floor_marker_offset:
+		return floor_marker_offset
 	return rect.get_center() + _get_floor_marker_offset()
 
 

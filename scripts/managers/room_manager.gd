@@ -72,6 +72,10 @@ func load_room(level_definition, door_infos: Array, doors_unlocked: bool, welcom
 		if door_info.has("opening_rect") and door.has_method("set_visual_rect"):
 			var opening_rect: Rect2 = door_info["opening_rect"]
 			door.set_visual_rect(opening_rect.get_center(), opening_rect.size)
+			if door.has_method("set_floor_marker_world_position"):
+				door.set_floor_marker_world_position(
+					_get_welcome_mat_rect(opening_rect, direction).get_center()
+				)
 		if door_info.has("passage_rect") and door.has_method("set_passage_rect"):
 			var passage_rect: Rect2 = door_info["passage_rect"]
 			door.set_passage_rect(passage_rect.get_center(), passage_rect.size)
@@ -126,6 +130,33 @@ func _add_door_path_visual(opening_infos: Array, room_id: String, visual_seed: i
 	)
 	_door_path_visuals.append(path_visual)
 	_add_child_safely(_get_door_mat_parent(), path_visual)
+
+
+func _get_welcome_mat_rect(opening_rect: Rect2, direction: String) -> Rect2:
+	var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
+	var depth: float = tile_size * float(max(door_welcome_mat_depth_tiles, 1))
+	match direction:
+		"north":
+			return Rect2(
+				Vector2(opening_rect.position.x, opening_rect.end.y),
+				Vector2(opening_rect.size.x, depth)
+			)
+		"south":
+			return Rect2(
+				Vector2(opening_rect.position.x, opening_rect.position.y - depth),
+				Vector2(opening_rect.size.x, depth)
+			)
+		"east":
+			return Rect2(
+				Vector2(opening_rect.position.x - depth, opening_rect.position.y),
+				Vector2(depth, opening_rect.size.y)
+			)
+		"west":
+			return Rect2(
+				Vector2(opening_rect.end.x, opening_rect.position.y),
+				Vector2(depth, opening_rect.size.y)
+			)
+	return opening_rect
 
 
 func set_doors_unlocked(value: bool) -> void:

@@ -5,6 +5,7 @@ const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_bu
 
 var _local_fill_rects: Array[Rect2] = []
 var _edge_segments: Array[PackedVector2Array] = []
+var _hidden_edge_segments: Array[PackedVector2Array] = []
 var _fill_color: Color = Color(0.16, 0.17, 0.19)
 var _outline_color: Color = Color(0.5, 0.58, 0.64)
 var _outline_width: float = 3.0
@@ -12,6 +13,7 @@ var _outline_width: float = 3.0
 
 func configure(tile_rects: Array[Rect2], wall_body_lookup: Dictionary, fill_color: Color, outline_color: Color, outline_width: float) -> void:
 	_edge_segments.clear()
+	_hidden_edge_segments.clear()
 	if tile_rects.is_empty():
 		visible = false
 		queue_redraw()
@@ -37,6 +39,9 @@ func _draw() -> void:
 	for segment in _edge_segments:
 		if segment.size() >= 2:
 			draw_line(segment[0], segment[1], _outline_color, _outline_width)
+	for segment in _hidden_edge_segments:
+		if segment.size() >= 2:
+			_draw_hidden_line(segment[0], segment[1])
 
 
 func _get_bounds(tile_rects: Array[Rect2]) -> Rect2:
@@ -62,6 +67,13 @@ func _add_exposed_tile_edges(tile: Rect2, wall_body_lookup: Dictionary, tile_siz
 		_append_edge(Vector2(left, top), Vector2(right, top))
 	if not wall_body_lookup.has(_tile_key(cell + Vector2i(0, 1))):
 		_append_edge(Vector2(left, bottom), Vector2(right, bottom))
+		_add_south_corner_topology(
+			cell,
+			Vector2(left, bottom),
+			Vector2(right, bottom),
+			wall_body_lookup,
+			tile_size
+		)
 	if not wall_body_lookup.has(_tile_key(cell + Vector2i(-1, 0))):
 		_append_edge(Vector2(left, top), Vector2(left, bottom))
 	if not wall_body_lookup.has(_tile_key(cell + Vector2i(1, 0))):
@@ -73,6 +85,67 @@ func _append_edge(start: Vector2, end: Vector2) -> void:
 	segment.append(start)
 	segment.append(end)
 	_edge_segments.append(segment)
+
+
+func _add_south_corner_topology(
+	cell: Vector2i,
+	left_corner: Vector2,
+	right_corner: Vector2,
+	wall_body_lookup: Dictionary,
+	tile_size: float
+) -> void:
+	var corner_return: float = min(tile_size * 0.28, 12.0)
+	var west_filled: bool = wall_body_lookup.has(_tile_key(cell + Vector2i(-1, 0)))
+	var east_filled: bool = wall_body_lookup.has(_tile_key(cell + Vector2i(1, 0)))
+	var southwest_filled: bool = wall_body_lookup.has(_tile_key(cell + Vector2i(-1, 1)))
+	var southeast_filled: bool = wall_body_lookup.has(_tile_key(cell + Vector2i(1, 1)))
+	if not west_filled or southwest_filled:
+		_append_edge(left_corner, left_corner + Vector2(0.0, -corner_return))
+	if not east_filled or southeast_filled:
+		_append_edge(right_corner, right_corner + Vector2(0.0, -corner_return))
+	if west_filled and southwest_filled:
+		_append_hidden_edge(
+			left_corner,
+			left_corner + Vector2(0.0, -tile_size * 0.72)
+		)
+	if east_filled and southeast_filled:
+		_append_hidden_edge(
+			right_corner,
+			right_corner + Vector2(0.0, -tile_size * 0.72)
+		)
+
+
+func _append_hidden_edge(start: Vector2, end: Vector2) -> void:
+	var segment := PackedVector2Array()
+	segment.append(start)
+	segment.append(end)
+	_hidden_edge_segments.append(segment)
+
+
+func _draw_hidden_line(start: Vector2, end: Vector2) -> void:
+	var delta: Vector2 = end - start
+	var length: float = delta.length()
+	if length <= 0.001:
+		return
+	var direction: Vector2 = delta / length
+	var dash_length: float = 5.0
+	var gap_length: float = 4.0
+	var distance: float = 0.0
+	var hidden_color := Color(
+		_outline_color.r,
+		_outline_color.g,
+		_outline_color.b,
+		_outline_color.a * 0.58
+	)
+	while distance < length:
+		var dash_end: float = min(distance + dash_length, length)
+		draw_line(
+			start + direction * distance,
+			start + direction * dash_end,
+			hidden_color,
+			max(_outline_width * 0.72, 1.0)
+		)
+		distance += dash_length + gap_length
 
 
 func _tile_key_vector(world_position: Vector2, tile_size: float) -> Vector2i:
