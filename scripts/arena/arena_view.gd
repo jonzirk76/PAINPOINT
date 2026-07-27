@@ -394,7 +394,7 @@ func _configure_wall_body_depth_visuals() -> void:
 	if depth_sort_layer == null:
 		return
 	var wall_body_lookup := _build_tile_lookup(_wall_draw_tile_rects)
-	var wall_body_runs := _build_horizontal_wall_body_runs(_wall_draw_tile_rects)
+	var wall_body_runs := _build_wall_body_floor_runs(_wall_draw_tile_rects, wall_body_lookup)
 	for index in range(wall_body_runs.size()):
 		var visual: ArenaWallBodyVisual = ARENA_WALL_BODY_VISUAL_SCRIPT.new()
 		var run_tiles: Array[Rect2] = []
@@ -407,34 +407,21 @@ func _configure_wall_body_depth_visuals() -> void:
 	_wall_body_depth_visuals_enabled = true
 
 
-func _build_horizontal_wall_body_runs(tile_rects: Array[Rect2]) -> Array:
-	var rows := {}
+func _build_wall_body_floor_runs(tile_rects: Array[Rect2], tile_lookup: Dictionary) -> Array:
+	var floor_runs := {}
+	var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
 	for tile in tile_rects:
-		var key := "%d:%d" % [int(round(tile.position.y)), int(round(tile.size.y))]
-		var row: Array = rows.get(key, [])
-		row.append(tile)
-		rows[key] = row
+		var cell: Vector2i = _tile_key_vector(tile.position, tile_size)
+		var bottom_cell := cell
+		while tile_lookup.has(_tile_key(bottom_cell + Vector2i(0, 1))):
+			bottom_cell.y += 1
+		var floor_y: int = int(round(float(bottom_cell.y + 1) * tile_size))
+		var run: Array = floor_runs.get(floor_y, [])
+		run.append(tile)
+		floor_runs[floor_y] = run
 	var runs: Array = []
-	for key in rows.keys():
-		var row: Array = rows[key]
-		row.sort_custom(func(a: Rect2, b: Rect2) -> bool:
-			return a.position.x < b.position.x
-		)
-		var current_run: Array[Rect2] = []
-		for tile in row:
-			if current_run.is_empty():
-				current_run.append(tile)
-				continue
-			var previous: Rect2 = current_run[current_run.size() - 1]
-			var touches: bool = abs((previous.position.x + previous.size.x) - tile.position.x) <= 0.5
-			if touches:
-				current_run.append(tile)
-			else:
-				runs.append(current_run)
-				current_run = []
-				current_run.append(tile)
-		if not current_run.is_empty():
-			runs.append(current_run)
+	for floor_y in floor_runs.keys():
+		runs.append(floor_runs[floor_y])
 	return runs
 
 

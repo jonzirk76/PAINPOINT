@@ -3,7 +3,7 @@ class_name ArenaWallBodyVisual
 
 const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_builder.gd")
 
-var _local_rect: Rect2 = Rect2()
+var _local_fill_rects: Array[Rect2] = []
 var _edge_segments: Array[PackedVector2Array] = []
 var _fill_color: Color = Color(0.16, 0.17, 0.19)
 var _outline_color: Color = Color(0.5, 0.58, 0.64)
@@ -19,7 +19,9 @@ func configure(tile_rects: Array[Rect2], wall_body_lookup: Dictionary, fill_colo
 	var bounds: Rect2 = _get_bounds(tile_rects)
 	var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
 	position = Vector2(bounds.get_center().x, bounds.position.y + bounds.size.y)
-	_local_rect = Rect2(bounds.position - position, bounds.size)
+	_local_fill_rects.clear()
+	for fill_rect in ROOM_GEOMETRY_BUILDER.merge_wall_tiles(tile_rects):
+		_local_fill_rects.append(Rect2(fill_rect.position - position, fill_rect.size))
 	_fill_color = fill_color
 	_outline_color = outline_color
 	_outline_width = outline_width
@@ -30,7 +32,8 @@ func configure(tile_rects: Array[Rect2], wall_body_lookup: Dictionary, fill_colo
 
 
 func _draw() -> void:
-	draw_rect(_local_rect, _fill_color, true)
+	for fill_rect in _local_fill_rects:
+		draw_rect(fill_rect, _fill_color, true)
 	for segment in _edge_segments:
 		if segment.size() >= 2:
 			draw_line(segment[0], segment[1], _outline_color, _outline_width)
