@@ -154,6 +154,8 @@ func consume_initial_spawn_requests() -> Array[Dictionary]:
 				_preloaded_initial_spawn_activation_pending = not requests.is_empty()
 				return requests
 			var spawn_position: Vector2 = _get_initial_spawn_position(spawner, spawner_index, spawn_index, spawn_count)
+			if spawn_position == Vector2.INF:
+				continue
 			requests.append({"position": spawn_position, "profile": profile})
 			projected_enemy_count += 1
 	_initial_spawns_pending = false
@@ -237,6 +239,8 @@ func _on_spawner_spawn_ready(_spawner, _spawn_position: Vector2) -> void:
 		if projected_enemy_count >= max_active_enemies:
 			return
 		var batch_position := _get_spawn_position_around_spawner(_spawner, spawn_index, batch_count)
+		if batch_position == Vector2.INF:
+			continue
 		spawn_requested.emit(batch_position, profile)
 		projected_enemy_count += 1
 
@@ -300,6 +304,8 @@ func _emit_initial_spawn_requests() -> void:
 			if projected_enemy_count >= max_active_enemies:
 				return
 			var spawn_position := _get_initial_spawn_position(spawner, spawner_index, spawn_index, spawn_count)
+			if spawn_position == Vector2.INF:
+				continue
 			spawn_requested.emit(spawn_position, profile)
 			projected_enemy_count += 1
 
@@ -504,9 +510,12 @@ func _get_biased_spawn_position(spawner, spawn_index: int, spawn_count: int, bas
 		var distance: float = max(base_distance + radial_stagger + floor(float(attempt) / 4.0) * 18.0, float(spawner.body_radius) + 28.0)
 		var angle: float = bias_direction.angle() + fan_offset + side_step
 		var candidate: Vector2 = _constrain_spawn_position(spawner.global_position + Vector2.RIGHT.rotated(angle) * distance, 24.0)
-		if _position_is_clear_of_walls(candidate):
+		if _spawn_position_is_valid(candidate, 24.0):
 			return candidate
-	return _constrain_spawn_position(spawner.global_position, 24.0)
+	var fallback_origin: Vector2 = spawner.global_position + Vector2.RIGHT.rotated(
+		bias_direction.angle() + fan_offset
+	) * base_distance
+	return _find_safe_interior_spawn_position(fallback_origin, 24.0)
 
 
 func _get_spawn_bias_direction(spawner) -> Vector2:
@@ -531,14 +540,47 @@ func _get_spawn_radial_stagger(spawn_index: int, spawn_count: int) -> float:
 	return (float(spawn_index % 3) - 1.0) * 10.0
 
 
-func _position_is_clear_of_walls(position: Vector2) -> bool:
+func _spawn_position_is_valid(position: Vector2, clearance: float) -> bool:
+	if position == Vector2.INF:
+		return false
+	var reconstrained: Vector2 = _constrain_spawn_position(position, clearance)
+	if reconstrained.distance_squared_to(position) > 0.25:
+		return false
+	return _position_is_clear_of_walls(position, clearance)
+
+
+func _find_safe_interior_spawn_position(origin: Vector2, clearance: float) -> Vector2:
+	var candidates: Array[Vector2] = []
+	var search_rects: Array[Rect2] = _playable_rects.duplicate()
+	if search_rects.is_empty():
+		search_rects.append(_arena_bounds)
+	for playable_rect in search_rects:
+		var safe_rect: Rect2 = playable_rect.grow(-clearance)
+		if safe_rect.size.x <= 1.0 or safe_rect.size.y <= 1.0:
+			continue
+		for y_ratio in [0.2, 0.5, 0.8]:
+			for x_ratio in [0.2, 0.5, 0.8]:
+				candidates.append(Vector2(
+					lerp(safe_rect.position.x, safe_rect.end.x, float(x_ratio)),
+					lerp(safe_rect.position.y, safe_rect.end.y, float(y_ratio))
+				))
+	candidates.sort_custom(func(a: Vector2, b: Vector2) -> bool:
+		return a.distance_squared_to(origin) < b.distance_squared_to(origin)
+	)
+	for candidate in candidates:
+		if _spawn_position_is_valid(candidate, clearance):
+			return candidate
+	return Vector2.INF
+
+
+func _position_is_clear_of_walls(position: Vector2, clearance: float = 24.0) -> bool:
 	if _level_definition == null:
 		return true
 	for wall_rect in _wall_rects:
-		if wall_rect.grow(24.0).has_point(position):
+		if wall_rect.grow(clearance).has_point(position):
 			return false
 	for void_rect in _void_rects:
-		if void_rect.grow(24.0).has_point(position):
+		if void_rect.grow(clearance).has_point(position):
 			return false
 	return true
 
