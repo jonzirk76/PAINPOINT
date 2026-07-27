@@ -562,6 +562,14 @@ func _get_playable_rects(level_definition) -> Array[Rect2]:
 					rects.append(active_rect)
 			if not rects.is_empty():
 				return rects
+	if level_definition.has_meta("active_room_id") and level_definition.has_meta("active_room_bounds"):
+		var active_room_id := String(level_definition.get_meta("active_room_id", ""))
+		var active_room_bounds_value: Variant = level_definition.get_meta("active_room_bounds")
+		if not active_room_id.is_empty() and active_room_bounds_value is Rect2:
+			var active_room_bounds: Rect2 = active_room_bounds_value
+			if active_room_bounds.size != Vector2.ZERO:
+				rects.append(active_room_bounds)
+				return rects
 	if not level_definition.has_meta("footprint_cells"):
 		return rects
 	rects.append_array(ArenaGeometry.get_footprint_cell_rects(level_definition.arena_bounds, level_definition.get_meta("footprint_cells")))
