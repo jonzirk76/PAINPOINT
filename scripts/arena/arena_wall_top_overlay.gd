@@ -55,6 +55,7 @@ func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_co
 		var right := tile.position.x + tile.size.x
 		var bottom := tile.position.y + tile.size.y
 		if not lookup.has(_tile_key(cell + Vector2i(0, -1))):
+			draw_line(Vector2(left, top), Vector2(right, top), outline_color, outline_width)
 			_draw_hidden_line(
 				Vector2(left, top + height_offset),
 				Vector2(right, top + height_offset),
@@ -62,6 +63,7 @@ func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_co
 				outline_width
 			)
 		if not lookup.has(_tile_key(cell + Vector2i(0, 1))):
+			draw_line(Vector2(left, bottom), Vector2(right, bottom), outline_color, outline_width)
 			draw_line(
 				Vector2(left, bottom + height_offset),
 				Vector2(right, bottom + height_offset),
@@ -69,6 +71,7 @@ func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_co
 				outline_width
 			)
 		if not lookup.has(_tile_key(cell + Vector2i(-1, 0))):
+			draw_line(Vector2(left, top), Vector2(left, bottom), outline_color, outline_width)
 			draw_line(
 				Vector2(left, top),
 				Vector2(left, bottom + height_offset),
@@ -76,6 +79,7 @@ func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_co
 				outline_width
 			)
 		if not lookup.has(_tile_key(cell + Vector2i(1, 0))):
+			draw_line(Vector2(right, top), Vector2(right, bottom), outline_color, outline_width)
 			draw_line(
 				Vector2(right, top),
 				Vector2(right, bottom + height_offset),
