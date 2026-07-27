@@ -63,7 +63,14 @@ func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_co
 			draw_line(Vector2(left, bottom), Vector2(right, bottom), outline_color, outline_width)
 			var south_start := Vector2(left, bottom + height_offset)
 			var south_end := Vector2(right, bottom + height_offset)
-			if not _segment_intersects_opaque_fog(south_start, south_end):
+			if (
+				not _horizontal_segment_intersects_wall_top(
+					south_start,
+					south_end,
+					tile_rects
+				)
+				and not _segment_intersects_opaque_fog(south_start, south_end)
+			):
 				draw_line(
 					south_start,
 					south_end,
@@ -94,6 +101,23 @@ func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_co
 						outline_color,
 						outline_width
 					)
+
+
+func _horizontal_segment_intersects_wall_top(
+	start: Vector2,
+	end: Vector2,
+	tile_rects: Array[Rect2]
+) -> bool:
+	var left: float = min(start.x, end.x)
+	var right: float = max(start.x, end.x)
+	var y: float = start.y
+	for rect in tile_rects:
+		var overlaps_x: bool = right > rect.position.x and left < rect.end.x
+		var overlaps_y: bool = y >= rect.position.y and y <= rect.end.y
+		if overlaps_x and overlaps_y:
+			return true
+	return false
+
 
 func _build_tile_lookup(tile_rects: Array[Rect2]) -> Dictionary:
 	var lookup := {}
