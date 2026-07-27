@@ -177,13 +177,13 @@ func spawn_cat(spawn_position: Vector2, movement_seed: int = 0):
 		return _cat
 	var cat_seed: int = max(movement_seed, 1)
 	var cat = cat_scene.instantiate()
-	WALL_OCCLUSION_LAYERS.mark_entity_tree(cat, _perspective_room_id)
 	_cat = cat
 	_connect_cat_signals(cat)
 	if cat.has_method("set_cat_texture"):
 		cat.set_cat_texture(_pick_cat_texture())
 	if cat.has_method("initialize"):
 		cat.initialize(spawn_position, cat_seed)
+	WALL_OCCLUSION_LAYERS.mark_entity_tree(cat, _perspective_room_id)
 	_sync_cat_simulation_state()
 	_add_child_safely(_get_fauna_parent(), cat)
 	return cat

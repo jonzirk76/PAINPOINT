@@ -1,6 +1,8 @@
 extends Node
 class_name ItemManager
 
+const WALL_OCCLUSION_LAYERS := preload("res://scripts/arena/wall_occlusion_layers.gd")
+
 signal pickup_collected(effect)
 signal pickup_count_changed(count: int)
 signal reward_focus_changed(effect, description: String)
@@ -109,6 +111,7 @@ func rehydrate_floor_permanent_pickups() -> void:
 		var saved_pickups: Array = _persistent_permanent_pickups.get(room_key, [])
 		for saved in saved_pickups:
 			var data: Dictionary = Dictionary(saved)
+			data["room_id"] = String(room_key).trim_prefix(floor_prefix)
 			_spawn_pickup_from_persistent_data(data)
 	pickup_count_changed.emit(_pickups.size())
 
@@ -138,6 +141,7 @@ func spawn_pickup(effect, spawn_position: Vector2, requires_confirm: bool = fals
 	persist_for_floor = persist_for_floor or _should_persist_for_floor(effect)
 	var pickup = pickup_scene.instantiate()
 	pickup.initialize(effect, spawn_position, requires_confirm, choice_group_id, persist_for_floor)
+	WALL_OCCLUSION_LAYERS.mark_entity_tree(pickup, _current_room_id)
 	pickup.collected.connect(_on_pickup_collected)
 	pickup.expired.connect(_on_pickup_expired)
 	if pickup.has_signal("focused"):
@@ -341,7 +345,8 @@ func _register_persistent_pickup(pickup, effect, spawn_position: Vector2, requir
 		"effect": effect,
 		"position": spawn_position,
 		"requires_confirm": requires_confirm,
-		"choice_group_id": choice_group_id
+		"choice_group_id": choice_group_id,
+		"room_id": _current_room_id
 	}
 	var saved_pickups := _get_persistent_room_pickups(room_key)
 	saved_pickups.append(data)
@@ -355,6 +360,10 @@ func _spawn_pickup_from_persistent_data(data: Dictionary):
 	var requires_confirm := bool(data.get("requires_confirm", false))
 	var choice_group_id := String(data.get("choice_group_id", ""))
 	pickup.initialize(effect, spawn_position, requires_confirm, choice_group_id, true)
+	WALL_OCCLUSION_LAYERS.mark_entity_tree(
+		pickup,
+		String(data.get("room_id", _current_room_id))
+	)
 	pickup.set_meta("persistent_pickup_id", String(data.get("id", "")))
 	pickup.collected.connect(_on_pickup_collected)
 	pickup.expired.connect(_on_pickup_expired)
