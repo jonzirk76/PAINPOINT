@@ -4,6 +4,7 @@ class_name SpawnerManager
 const WALL_OCCLUSION_LAYERS := preload("res://scripts/arena/wall_occlusion_layers.gd")
 
 signal spawn_requested(spawn_position: Vector2, profile)
+signal spawn_proposed(proposal: Dictionary)
 signal spawner_count_changed(count: int)
 signal spawner_destroyed(spawner, score_value: int)
 signal hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: Dictionary)
@@ -49,11 +50,18 @@ var _initial_spawns_pending: bool = false
 var _initial_spawn_delay_remaining: float = 0.0
 var _preloaded_initial_spawn_activation_pending: bool = false
 var _perspective_room_id: String = ""
+var _spawn_room_id: String = ""
+var _spawn_generation: int = 0
 
 
 func initialize(context: Dictionary) -> void:
 	_spawner_layer = context.get("spawner_layer", null)
 	_player_provider = context.get("player_position_provider", Callable())
+
+
+func set_spawn_context(room_id: String, generation: int) -> void:
+	_spawn_room_id = room_id
+	_spawn_generation = generation
 
 
 func reset_run(level_definition = null) -> void:
@@ -156,7 +164,15 @@ func consume_initial_spawn_requests() -> Array[Dictionary]:
 			var spawn_position: Vector2 = _get_initial_spawn_position(spawner, spawner_index, spawn_index, spawn_count)
 			if spawn_position == Vector2.INF:
 				continue
-			requests.append({"position": spawn_position, "profile": profile})
+			requests.append(_build_spawn_proposal(
+				spawn_position,
+				profile,
+				spawner,
+				spawner_index,
+				spawn_index,
+				spawn_count,
+				true
+			))
 			projected_enemy_count += 1
 	_initial_spawns_pending = false
 	_initial_spawn_delay_remaining = 0.0
@@ -241,6 +257,15 @@ func _on_spawner_spawn_ready(_spawner, _spawn_position: Vector2) -> void:
 		var batch_position := _get_spawn_position_around_spawner(_spawner, spawn_index, batch_count)
 		if batch_position == Vector2.INF:
 			continue
+		spawn_proposed.emit(_build_spawn_proposal(
+			batch_position,
+			profile,
+			_spawner,
+			_spawners.find(_spawner),
+			spawn_index,
+			batch_count,
+			false
+		))
 		spawn_requested.emit(batch_position, profile)
 		projected_enemy_count += 1
 
@@ -306,8 +331,76 @@ func _emit_initial_spawn_requests() -> void:
 			var spawn_position := _get_initial_spawn_position(spawner, spawner_index, spawn_index, spawn_count)
 			if spawn_position == Vector2.INF:
 				continue
+			spawn_proposed.emit(_build_spawn_proposal(
+				spawn_position,
+				profile,
+				spawner,
+				spawner_index,
+				spawn_index,
+				spawn_count,
+				true
+			))
 			spawn_requested.emit(spawn_position, profile)
 			projected_enemy_count += 1
+
+
+func request_spawn_reroll(proposal: Dictionary) -> void:
+	if String(proposal.get("room_id", "")) != _spawn_room_id:
+		return
+	if int(proposal.get("generation", -1)) != _spawn_generation:
+		return
+	var retry_count: int = int(proposal.get("retry_count", 0)) + 1
+	if retry_count > 3:
+		return
+	var spawner = proposal.get("source_spawner", null)
+	if spawner == null or not is_instance_valid(spawner):
+		return
+	var spawn_index: int = int(proposal.get("spawn_index", 0))
+	var spawn_count: int = max(int(proposal.get("spawn_count", 1)), 1)
+	var initial_horde: bool = bool(proposal.get("initial_horde", false))
+	var base_distance: float = max(
+		float(spawner.body_radius) + (46.0 if initial_horde else 36.0),
+		64.0 if initial_horde else 54.0
+	)
+	var fan_degrees: float = initial_spawn_player_bias_fan_degrees if initial_horde else spawn_player_bias_fan_degrees
+	var phase: float = float(proposal.get("spawner_index", 0)) * 0.09 + float(retry_count) * 0.47
+	var position: Vector2 = _get_biased_spawn_position(
+		spawner,
+		spawn_index,
+		spawn_count,
+		base_distance,
+		deg_to_rad(fan_degrees),
+		phase
+	)
+	if position == Vector2.INF:
+		return
+	var rerolled: Dictionary = proposal.duplicate()
+	rerolled["position"] = position
+	rerolled["retry_count"] = retry_count
+	spawn_proposed.emit(rerolled)
+
+
+func _build_spawn_proposal(
+	position: Vector2,
+	profile,
+	spawner,
+	spawner_index: int,
+	spawn_index: int,
+	spawn_count: int,
+	initial_horde: bool
+) -> Dictionary:
+	return {
+		"position": position,
+		"profile": profile,
+		"source_spawner": spawner,
+		"spawner_index": spawner_index,
+		"spawn_index": spawn_index,
+		"spawn_count": spawn_count,
+		"initial_horde": initial_horde,
+		"room_id": _spawn_room_id,
+		"generation": _spawn_generation,
+		"retry_count": 0
+	}
 
 
 func apply_damage(target: Node, packet) -> bool:

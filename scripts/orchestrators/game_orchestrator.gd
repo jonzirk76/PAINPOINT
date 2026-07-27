@@ -195,6 +195,7 @@ var _selected_level_index: int = 0
 var _level_select_page: String = "main"
 var _level_select_option_index: int = 0
 var _current_level = null
+var _spawn_generation: int = 0
 var _is_dungeon_run: bool = false
 var _is_main_loop_run: bool = false
 var _active_generated_encounter_test_index: int = -1
@@ -497,7 +498,7 @@ func _connect_manager_signals() -> void:
 	_connect_once(enemy_manager, &"hostile_shot_requested", _on_hostile_shot_requested)
 	_connect_once(enemy_manager, &"repair_requested", _on_enemy_repair_requested)
 
-	_connect_once(spawner_manager, &"spawn_requested", _on_spawn_requested)
+	_connect_once(spawner_manager, &"spawn_proposed", _on_spawn_proposed)
 	_connect_once(spawner_manager, &"spawner_destroyed", _on_spawner_destroyed)
 	_connect_once(spawner_manager, &"spawner_count_changed", _on_spawner_count_changed)
 	_connect_once(spawner_manager, &"hostile_shot_requested", _on_hostile_shot_requested)
@@ -2016,6 +2017,7 @@ func _start_level(level_definition) -> void:
 	_set_room_entry_transition_active(false)
 	_set_cleared_floor_map_active(false)
 	_current_level = level_definition
+	_advance_spawn_context(level_definition)
 	_score = 0
 	_run_seed = 0
 	_paused_previous_status = ""
@@ -2777,8 +2779,34 @@ func _on_player_damage_resolved(amount: int) -> void:
 	player_manager.apply_damage(amount)
 
 
-func _on_spawn_requested(spawn_position: Vector2, profile) -> void:
-	enemy_manager.spawn_enemy(profile, spawn_position, {"birth": true})
+func _on_spawn_proposed(proposal: Dictionary) -> void:
+	if not _spawn_proposal_matches_current_room(proposal):
+		return
+	var spawn_position: Vector2 = proposal.get("position", Vector2.INF)
+	var profile = proposal.get("profile", null)
+	var spawn_flags: Dictionary = proposal.get("spawn_flags", {"birth": true})
+	var result: Dictionary = enemy_manager.try_spawn_enemy(profile, spawn_position, spawn_flags)
+	if not bool(result.get("ok", false)):
+		spawner_manager.request_spawn_reroll(proposal)
+
+
+func _spawn_proposal_matches_current_room(proposal: Dictionary) -> bool:
+	if int(proposal.get("generation", -1)) != _spawn_generation:
+		return false
+	var expected_room_id := _get_spawn_room_id(_current_level)
+	return String(proposal.get("room_id", "")) == expected_room_id
+
+
+func _advance_spawn_context(level_definition) -> void:
+	_spawn_generation += 1
+	spawner_manager.set_spawn_context(_get_spawn_room_id(level_definition), _spawn_generation)
+
+
+func _get_spawn_room_id(level_definition) -> String:
+	if level_definition == null:
+		return ""
+	var fallback_id := String(level_definition.id)
+	return String(level_definition.get_meta("active_room_id", fallback_id))
 
 
 func _on_enemy_repair_requested(_enemy, repair_target, amount: int) -> void:
@@ -3415,6 +3443,7 @@ func _load_room_entry_transition(player_position: Vector2) -> bool:
 		return false
 	_is_loading_room = true
 	_current_level = level_definition
+	_advance_spawn_context(level_definition)
 	_entry_transition_player_target_position = _get_room_entry_transition_player_target_position(level_definition)
 	if _entry_transition_player_target_position != Vector2.INF:
 		_entry_transition_floor_entry_position = _entry_transition_player_target_position
@@ -3469,9 +3498,8 @@ func _load_room_entry_transition(player_position: Vector2) -> bool:
 func _preload_pending_initial_spawner_enemies() -> void:
 	var spawn_requests: Array[Dictionary] = spawner_manager.consume_initial_spawn_requests()
 	for spawn_request in spawn_requests:
-		var spawn_position: Vector2 = spawn_request.get("position", Vector2.ZERO)
-		var profile: Resource = spawn_request.get("profile", null) as Resource
-		enemy_manager.spawn_enemy(profile, spawn_position, {"inactive": true, "allow_when_disabled": true})
+		spawn_request["spawn_flags"] = {"inactive": true, "allow_when_disabled": true}
+		_on_spawn_proposed(spawn_request)
 
 
 func _preload_pending_initial_spawner_enemies_with_loading(progress_start: float, progress_end: float) -> void:
@@ -3483,9 +3511,8 @@ func _preload_pending_initial_spawner_enemies_with_loading(progress_start: float
 	_set_loading_progress(progress_start, "Loading enemies 0/%d" % enemy_total)
 	for spawn_index: int in range(enemy_total):
 		var spawn_request: Dictionary = spawn_requests[spawn_index]
-		var spawn_position: Vector2 = spawn_request.get("position", Vector2.ZERO)
-		var profile: Resource = spawn_request.get("profile", null) as Resource
-		enemy_manager.spawn_enemy(profile, spawn_position, {"inactive": true, "allow_when_disabled": true})
+		spawn_request["spawn_flags"] = {"inactive": true, "allow_when_disabled": true}
+		_on_spawn_proposed(spawn_request)
 		var loaded_count: int = spawn_index + 1
 		var progress_ratio: float = float(loaded_count) / float(enemy_total)
 		_set_loading_progress(
@@ -3539,6 +3566,7 @@ func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = 
 		preserved_camera_position = gameplay_camera.global_position
 	_is_loading_room = true
 	_current_level = level_definition
+	_advance_spawn_context(level_definition)
 	_clear_floor_exit_portal(true)
 	if arena_view != null:
 		arena_view.configure(level_definition)
@@ -4690,6 +4718,7 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool, ove
 	if should_update_loading_screen:
 		_set_loading_progress(max(float(loading_screen.get("progress")), LOADING_PROGRESS_ROOM_GEOMETRY), "Building room geometry")
 	_current_level = level_definition
+	_advance_spawn_context(level_definition)
 	_is_loading_room = true
 	_set_all_enabled(false)
 	_clear_floor_exit_portal(true)

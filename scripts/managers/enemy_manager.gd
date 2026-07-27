@@ -136,14 +136,23 @@ func _physics_process(delta: float) -> void:
 
 
 func spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary = {}):
+	var result: Dictionary = try_spawn_enemy(profile, spawn_position, spawn_flags)
+	return result.get("enemy", null)
+
+
+func try_spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary = {}) -> Dictionary:
 	var allow_when_disabled: bool = bool(spawn_flags.get("allow_when_disabled", false))
 	if not enabled and not allow_when_disabled:
-		return null
+		return {"ok": false, "reason": "manager_disabled", "enemy": null}
 	var enemy = enemy_scene.instantiate()
 	WALL_OCCLUSION_LAYERS.mark_entity_tree(enemy, _perspective_room_id)
 	var selected_profile = profile if profile != null else default_enemy_profile
 	enemy.initialize(selected_profile)
-	enemy.global_position = _constrain_spawn_position(spawn_position, float(enemy.body_radius))
+	var body_clearance: float = float(enemy.body_radius)
+	if not _spawn_position_is_valid(spawn_position, body_clearance):
+		enemy.free()
+		return {"ok": false, "reason": "invalid_active_room_position", "enemy": null}
+	enemy.global_position = spawn_position
 	enemy.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
 	if bool(spawn_flags.get("boss_add", false)):
 		enemy.set_meta("boss_add", true)
@@ -163,7 +172,7 @@ func spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary = {})
 		enemy.set_physics_process(false)
 	enemy_count_changed.emit(_enemies.size())
 	_add_child_safely(_get_enemy_parent(), enemy)
-	return enemy
+	return {"ok": true, "reason": "", "enemy": enemy}
 
 
 func apply_damage(target: Node, packet) -> bool:
@@ -501,6 +510,21 @@ func _constrain_spawn_position(position: Vector2, clearance: float) -> Vector2:
 	blockers.append_array(_wall_rects)
 	blockers.append_array(_void_rects)
 	return ArenaGeometry.constrain_point_to_playable_regions(position, _arena_bounds, _arena_shape, _playable_rects, blockers, clearance)
+
+
+func _spawn_position_is_valid(position: Vector2, clearance: float) -> bool:
+	if position == Vector2.INF:
+		return false
+	var constrained: Vector2 = _constrain_spawn_position(position, clearance)
+	if constrained.distance_squared_to(position) > 0.25:
+		return false
+	for wall_rect in _wall_rects:
+		if wall_rect.grow(clearance).has_point(position):
+			return false
+	for void_rect in _void_rects:
+		if void_rect.grow(clearance).has_point(position):
+			return false
+	return true
 
 
 func _get_playable_rects(level_definition) -> Array[Rect2]:
