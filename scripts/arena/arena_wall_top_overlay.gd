@@ -53,9 +53,13 @@ func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_co
 		var top := tile.position.y
 		var right := tile.position.x + tile.size.x
 		var bottom := tile.position.y + tile.size.y
-		if not lookup.has(_tile_key(cell + Vector2i(0, -1))):
+		var north_exposed: bool = not lookup.has(_tile_key(cell + Vector2i(0, -1)))
+		var south_exposed: bool = not lookup.has(_tile_key(cell + Vector2i(0, 1)))
+		var west_exposed: bool = not lookup.has(_tile_key(cell + Vector2i(-1, 0)))
+		var east_exposed: bool = not lookup.has(_tile_key(cell + Vector2i(1, 0)))
+		if north_exposed:
 			draw_line(Vector2(left, top), Vector2(right, top), outline_color, outline_width)
-		if not lookup.has(_tile_key(cell + Vector2i(0, 1))):
+		if south_exposed:
 			draw_line(Vector2(left, bottom), Vector2(right, bottom), outline_color, outline_width)
 			var south_start := Vector2(left, bottom + height_offset)
 			var south_end := Vector2(right, bottom + height_offset)
@@ -66,28 +70,30 @@ func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_co
 					outline_color,
 					outline_width
 				)
-		if not lookup.has(_tile_key(cell + Vector2i(-1, 0))):
+		if west_exposed:
 			draw_line(Vector2(left, top), Vector2(left, bottom), outline_color, outline_width)
-			var west_start := Vector2(left, bottom)
-			var west_end := Vector2(left, bottom + height_offset)
-			if not _segment_intersects_opaque_fog(west_start, west_end):
-				draw_line(
-					west_start,
-					west_end,
-					outline_color,
-					outline_width
-				)
-		if not lookup.has(_tile_key(cell + Vector2i(1, 0))):
+			if south_exposed:
+				var west_start := Vector2(left, bottom)
+				var west_end := Vector2(left, bottom + height_offset)
+				if not _segment_intersects_opaque_fog(west_start, west_end):
+					draw_line(
+						west_start,
+						west_end,
+						outline_color,
+						outline_width
+					)
+		if east_exposed:
 			draw_line(Vector2(right, top), Vector2(right, bottom), outline_color, outline_width)
-			var east_start := Vector2(right, bottom)
-			var east_end := Vector2(right, bottom + height_offset)
-			if not _segment_intersects_opaque_fog(east_start, east_end):
-				draw_line(
-					east_start,
-					east_end,
-					outline_color,
-					outline_width
-				)
+			if south_exposed:
+				var east_start := Vector2(right, bottom)
+				var east_end := Vector2(right, bottom + height_offset)
+				if not _segment_intersects_opaque_fog(east_start, east_end):
+					draw_line(
+						east_start,
+						east_end,
+						outline_color,
+						outline_width
+					)
 
 func _build_tile_lookup(tile_rects: Array[Rect2]) -> Dictionary:
 	var lookup := {}
