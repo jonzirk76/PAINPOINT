@@ -54,16 +54,7 @@ func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_co
 		var right := tile.position.x + tile.size.x
 		var bottom := tile.position.y + tile.size.y
 		if not lookup.has(_tile_key(cell + Vector2i(0, -1))):
-			draw_line(Vector2(left, top), Vector2(right, top), outline_color, outline_width)
-			var hidden_start := Vector2(left, top + height_offset)
-			var hidden_end := Vector2(right, top + height_offset)
-			if not _segment_intersects_opaque_fog(hidden_start, hidden_end):
-				_draw_hidden_line(
-					hidden_start,
-					hidden_end,
-					outline_color,
-					outline_width
-				)
+			_draw_dotted_horizontal(left, right, top, outline_color, outline_width)
 		if not lookup.has(_tile_key(cell + Vector2i(0, 1))):
 			draw_line(Vector2(left, bottom), Vector2(right, bottom), outline_color, outline_width)
 			var south_start := Vector2(left, bottom + height_offset)
@@ -80,7 +71,7 @@ func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_co
 			var west_start := Vector2(left, bottom)
 			var west_end := Vector2(left, bottom + height_offset)
 			if not _segment_intersects_opaque_fog(west_start, west_end):
-				_draw_hidden_line(
+				draw_line(
 					west_start,
 					west_end,
 					outline_color,
@@ -91,7 +82,7 @@ func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_co
 			var east_start := Vector2(right, bottom)
 			var east_end := Vector2(right, bottom + height_offset)
 			if not _segment_intersects_opaque_fog(east_start, east_end):
-				_draw_hidden_line(
+				draw_line(
 					east_start,
 					east_end,
 					outline_color,
@@ -99,30 +90,21 @@ func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_co
 				)
 
 
-func _draw_hidden_line(
-	start: Vector2,
-	end: Vector2,
+func _draw_dotted_horizontal(
+	left: float,
+	right: float,
+	y: float,
 	color: Color,
 	width: float
 ) -> void:
-	var delta: Vector2 = end - start
-	var length: float = delta.length()
-	if length <= 0.001:
-		return
-	var direction: Vector2 = delta / length
-	var hidden_color := Color(color.r, color.g, color.b, color.a * 0.58)
 	var dash_length: float = 5.0
 	var gap_length: float = 4.0
-	var distance: float = 0.0
-	while distance < length:
-		var dash_end: float = min(distance + dash_length, length)
-		draw_line(
-			start + direction * distance,
-			start + direction * dash_end,
-			hidden_color,
-			max(width * 0.72, 1.0)
-		)
-		distance += dash_length + gap_length
+	var x: float = left
+	var dotted_color := Color(color.r, color.g, color.b, color.a * 0.58)
+	while x < right:
+		var dash_end: float = min(x + dash_length, right)
+		draw_line(Vector2(x, y), Vector2(dash_end, y), dotted_color, max(width * 0.72, 1.0))
+		x += dash_length + gap_length
 
 
 func _build_tile_lookup(tile_rects: Array[Rect2]) -> Dictionary:
