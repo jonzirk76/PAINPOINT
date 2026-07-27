@@ -52,13 +52,44 @@ func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_co
 		var right := tile.position.x + tile.size.x
 		var bottom := tile.position.y + tile.size.y
 		if not lookup.has(_tile_key(cell + Vector2i(0, -1))):
-			draw_line(Vector2(left, top), Vector2(right, top), outline_color, outline_width)
+			_draw_hidden_line(
+				Vector2(left, top),
+				Vector2(right, top),
+				outline_color,
+				outline_width
+			)
 		if not lookup.has(_tile_key(cell + Vector2i(0, 1))):
 			draw_line(Vector2(left, bottom), Vector2(right, bottom), outline_color, outline_width)
 		if not lookup.has(_tile_key(cell + Vector2i(-1, 0))):
 			draw_line(Vector2(left, top), Vector2(left, bottom), outline_color, outline_width)
 		if not lookup.has(_tile_key(cell + Vector2i(1, 0))):
 			draw_line(Vector2(right, top), Vector2(right, bottom), outline_color, outline_width)
+
+
+func _draw_hidden_line(
+	start: Vector2,
+	end: Vector2,
+	color: Color,
+	width: float
+) -> void:
+	var delta: Vector2 = end - start
+	var length: float = delta.length()
+	if length <= 0.001:
+		return
+	var direction: Vector2 = delta / length
+	var hidden_color := Color(color.r, color.g, color.b, color.a * 0.58)
+	var dash_length: float = 5.0
+	var gap_length: float = 4.0
+	var distance: float = 0.0
+	while distance < length:
+		var dash_end: float = min(distance + dash_length, length)
+		draw_line(
+			start + direction * distance,
+			start + direction * dash_end,
+			hidden_color,
+			max(width * 0.72, 1.0)
+		)
+		distance += dash_length + gap_length
 
 
 func _build_tile_lookup(tile_rects: Array[Rect2]) -> Dictionary:

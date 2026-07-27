@@ -64,16 +64,9 @@ func _add_exposed_tile_edges(tile: Rect2, wall_body_lookup: Dictionary, tile_siz
 	var right := tile.position.x + tile.size.x - position.x
 	var bottom := tile.position.y + tile.size.y - position.y
 	if not wall_body_lookup.has(_tile_key(cell + Vector2i(0, -1))):
-		_append_edge(Vector2(left, top), Vector2(right, top))
+		_append_hidden_edge(Vector2(left, top), Vector2(right, top))
 	if not wall_body_lookup.has(_tile_key(cell + Vector2i(0, 1))):
 		_append_edge(Vector2(left, bottom), Vector2(right, bottom))
-		_add_south_corner_topology(
-			cell,
-			Vector2(left, bottom),
-			Vector2(right, bottom),
-			wall_body_lookup,
-			tile_size
-		)
 	if not wall_body_lookup.has(_tile_key(cell + Vector2i(-1, 0))):
 		_append_edge(Vector2(left, top), Vector2(left, bottom))
 	if not wall_body_lookup.has(_tile_key(cell + Vector2i(1, 0))):
@@ -85,34 +78,6 @@ func _append_edge(start: Vector2, end: Vector2) -> void:
 	segment.append(start)
 	segment.append(end)
 	_edge_segments.append(segment)
-
-
-func _add_south_corner_topology(
-	cell: Vector2i,
-	left_corner: Vector2,
-	right_corner: Vector2,
-	wall_body_lookup: Dictionary,
-	tile_size: float
-) -> void:
-	var corner_return: float = min(tile_size * 0.28, 12.0)
-	var west_filled: bool = wall_body_lookup.has(_tile_key(cell + Vector2i(-1, 0)))
-	var east_filled: bool = wall_body_lookup.has(_tile_key(cell + Vector2i(1, 0)))
-	var southwest_filled: bool = wall_body_lookup.has(_tile_key(cell + Vector2i(-1, 1)))
-	var southeast_filled: bool = wall_body_lookup.has(_tile_key(cell + Vector2i(1, 1)))
-	if not west_filled or southwest_filled:
-		_append_edge(left_corner, left_corner + Vector2(0.0, -corner_return))
-	if not east_filled or southeast_filled:
-		_append_edge(right_corner, right_corner + Vector2(0.0, -corner_return))
-	if west_filled and southwest_filled:
-		_append_hidden_edge(
-			left_corner,
-			left_corner + Vector2(0.0, -tile_size * 0.72)
-		)
-	if east_filled and southeast_filled:
-		_append_hidden_edge(
-			right_corner,
-			right_corner + Vector2(0.0, -tile_size * 0.72)
-		)
 
 
 func _append_hidden_edge(start: Vector2, end: Vector2) -> void:
