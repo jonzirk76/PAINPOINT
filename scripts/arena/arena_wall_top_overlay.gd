@@ -5,7 +5,7 @@ const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_bu
 
 var _tile_rects: Array[Rect2] = []
 var _draw_rects: Array[Rect2] = []
-var _fog_rects: Array[Rect2] = []
+var _opaque_fog_rects: Array[Rect2] = []
 var _dim_rects: Array[Rect2] = []
 var _wall_height_tiles: int = ROOM_GEOMETRY_BUILDER.DEFAULT_WALL_HEIGHT_TILES
 var _fill_color: Color = Color(0.09, 0.1, 0.12)
@@ -13,23 +13,23 @@ var _outline_color: Color = Color(0.72, 0.78, 0.82)
 var _outline_width: float = 2.0
 
 
-func configure(tile_rects: Array[Rect2], draw_rects: Array[Rect2], fog_rects: Array[Rect2], dim_rects: Array[Rect2], wall_height_tiles: int, fill_color: Color, outline_color: Color, outline_width: float) -> void:
+func configure(tile_rects: Array[Rect2], draw_rects: Array[Rect2], opaque_fog_rects: Array[Rect2], dim_rects: Array[Rect2], wall_height_tiles: int, fill_color: Color, outline_color: Color, outline_width: float) -> void:
 	_tile_rects = tile_rects.duplicate()
 	_draw_rects = draw_rects.duplicate()
-	_fog_rects = fog_rects.duplicate()
+	_opaque_fog_rects = opaque_fog_rects.duplicate()
 	_dim_rects = dim_rects.duplicate()
 	_wall_height_tiles = max(wall_height_tiles, 1)
 	_fill_color = fill_color
 	_outline_color = outline_color
 	_outline_width = outline_width
-	visible = not _tile_rects.is_empty() or not _fog_rects.is_empty() or not _dim_rects.is_empty()
+	visible = not _tile_rects.is_empty() or not _dim_rects.is_empty()
 	queue_redraw()
 
 
 func clear() -> void:
 	_tile_rects.clear()
 	_draw_rects.clear()
-	_fog_rects.clear()
+	_opaque_fog_rects.clear()
 	_dim_rects.clear()
 	visible = false
 	queue_redraw()
@@ -39,7 +39,6 @@ func _draw() -> void:
 	if not _tile_rects.is_empty():
 		_draw_tile_mass(_tile_rects, _draw_rects, _fill_color, _outline_color, _outline_width)
 	_draw_dim()
-	_draw_fog()
 
 
 func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_color: Color, outline_color: Color, outline_width: float) -> void:
@@ -54,38 +53,43 @@ func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_co
 		var top := tile.position.y
 		var right := tile.position.x + tile.size.x
 		var bottom := tile.position.y + tile.size.y
+		var show_topology_guides: bool = not _rect_is_under_opaque_fog(tile)
 		if not lookup.has(_tile_key(cell + Vector2i(0, -1))):
 			draw_line(Vector2(left, top), Vector2(right, top), outline_color, outline_width)
-			_draw_hidden_line(
-				Vector2(left, top + height_offset),
-				Vector2(right, top + height_offset),
-				outline_color,
-				outline_width
-			)
+			if show_topology_guides:
+				_draw_hidden_line(
+					Vector2(left, top + height_offset),
+					Vector2(right, top + height_offset),
+					outline_color,
+					outline_width
+				)
 		if not lookup.has(_tile_key(cell + Vector2i(0, 1))):
 			draw_line(Vector2(left, bottom), Vector2(right, bottom), outline_color, outline_width)
-			draw_line(
-				Vector2(left, bottom + height_offset),
-				Vector2(right, bottom + height_offset),
-				outline_color,
-				outline_width
-			)
+			if show_topology_guides:
+				draw_line(
+					Vector2(left, bottom + height_offset),
+					Vector2(right, bottom + height_offset),
+					outline_color,
+					outline_width
+				)
 		if not lookup.has(_tile_key(cell + Vector2i(-1, 0))):
 			draw_line(Vector2(left, top), Vector2(left, bottom), outline_color, outline_width)
-			draw_line(
-				Vector2(left, top),
-				Vector2(left, bottom + height_offset),
-				outline_color,
-				outline_width
-			)
+			if show_topology_guides:
+				draw_line(
+					Vector2(left, top),
+					Vector2(left, bottom + height_offset),
+					outline_color,
+					outline_width
+				)
 		if not lookup.has(_tile_key(cell + Vector2i(1, 0))):
 			draw_line(Vector2(right, top), Vector2(right, bottom), outline_color, outline_width)
-			draw_line(
-				Vector2(right, top),
-				Vector2(right, bottom + height_offset),
-				outline_color,
-				outline_width
-			)
+			if show_topology_guides:
+				draw_line(
+					Vector2(right, top),
+					Vector2(right, bottom + height_offset),
+					outline_color,
+					outline_width
+				)
 
 
 func _draw_hidden_line(
@@ -122,12 +126,12 @@ func _build_tile_lookup(tile_rects: Array[Rect2]) -> Dictionary:
 	return lookup
 
 
-func _draw_fog() -> void:
-	if _fog_rects.is_empty():
-		return
-	for rect in _fog_rects:
-		draw_rect(rect.grow(4.0), Color.BLACK, true)
-		draw_rect(rect.grow(-2.0), Color(0.03, 0.09, 0.1, 0.34), false, 2.0)
+func _rect_is_under_opaque_fog(rect: Rect2) -> bool:
+	var center: Vector2 = rect.get_center()
+	for fog_rect in _opaque_fog_rects:
+		if fog_rect.has_point(center):
+			return true
+	return false
 
 
 func _draw_dim() -> void:
