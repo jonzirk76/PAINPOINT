@@ -1062,30 +1062,28 @@ func _get_full_floor_outer_envelope_fog_rects(
 	var envelope_rects: Array[Rect2] = []
 	if floor_cells.is_empty():
 		return envelope_rects
-	var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
 	var wall_height_tiles: int = _get_floor_wall_height_tiles(room_ids)
+	var exterior_cells: Dictionary = {}
 	for edge in ROOM_GEOMETRY_BUILDER.get_exposed_edges(floor_cells):
 		var cell: Vector2i = edge.get("cell", Vector2i.ZERO)
 		var direction := String(edge.get("direction", ""))
-		var cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(floor_cells, cell)
-		var envelope_rect := Rect2()
-		match direction:
-			"north":
-				envelope_rect = Rect2(cell_rect.position, Vector2(cell_rect.size.x, tile_size))
-			"south":
-				envelope_rect = Rect2(
-					Vector2(cell_rect.position.x, cell_rect.end.y - tile_size),
-					Vector2(cell_rect.size.x, tile_size)
-				)
-			"west":
-				envelope_rect = Rect2(cell_rect.position, Vector2(tile_size, cell_rect.size.y))
-			"east":
-				envelope_rect = Rect2(
-					Vector2(cell_rect.end.x - tile_size, cell_rect.position.y),
-					Vector2(tile_size, cell_rect.size.y)
-				)
-		if envelope_rect.size != Vector2.ZERO:
-			envelope_rects.append(_raise_fog_rect(envelope_rect, wall_height_tiles))
+		var direction_offset: Vector2i = ROOM_GEOMETRY_BUILDER.DIRECTION_OFFSETS.get(
+			direction,
+			Vector2i.ZERO
+		)
+		if direction_offset == Vector2i.ZERO:
+			continue
+		var exterior_cell: Vector2i = cell + direction_offset
+		var exterior_key := "%d:%d" % [exterior_cell.x, exterior_cell.y]
+		if exterior_cells.has(exterior_key):
+			continue
+		exterior_cells[exterior_key] = true
+		var source_cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(floor_cells, cell)
+		var exterior_rect := Rect2(
+			source_cell_rect.position + Vector2(direction_offset) * ROOM_GEOMETRY_BUILDER.CELL_SIZE,
+			ROOM_GEOMETRY_BUILDER.CELL_SIZE
+		)
+		envelope_rects.append(_raise_fog_rect(exterior_rect, wall_height_tiles))
 	return envelope_rects
 
 
