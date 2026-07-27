@@ -77,10 +77,10 @@ func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_co
 				)
 		if not lookup.has(_tile_key(cell + Vector2i(-1, 0))):
 			draw_line(Vector2(left, top), Vector2(left, bottom), outline_color, outline_width)
-			var west_start := Vector2(left, top)
+			var west_start := Vector2(left, bottom)
 			var west_end := Vector2(left, bottom + height_offset)
 			if not _segment_intersects_opaque_fog(west_start, west_end):
-				draw_line(
+				_draw_hidden_line(
 					west_start,
 					west_end,
 					outline_color,
@@ -88,10 +88,10 @@ func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_co
 				)
 		if not lookup.has(_tile_key(cell + Vector2i(1, 0))):
 			draw_line(Vector2(right, top), Vector2(right, bottom), outline_color, outline_width)
-			var east_start := Vector2(right, top)
+			var east_start := Vector2(right, bottom)
 			var east_end := Vector2(right, bottom + height_offset)
 			if not _segment_intersects_opaque_fog(east_start, east_end):
-				draw_line(
+				_draw_hidden_line(
 					east_start,
 					east_end,
 					outline_color,
