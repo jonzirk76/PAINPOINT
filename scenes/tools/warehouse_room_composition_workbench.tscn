@@ -1,107 +1,120 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3 uid="uid://4wc257aka82s"]
 
-[ext_resource type="Script" path="res://scripts/tools/warehouse_room_composition_workbench.gd" id="1_room"]
-[ext_resource type="Texture2D" path="res://art/characters/player_body.svg" id="2_player"]
-[ext_resource type="Texture2D" path="res://art/characters/white_0.png" id="3_cat"]
+[ext_resource type="Script" uid="uid://dkb0fsn2e23f" path="res://scripts/tools/warehouse_room_composition_workbench.gd" id="1_room"]
+[ext_resource type="Texture2D" uid="uid://n83sg67gka0u" path="res://art/characters/player_body.svg" id="2_player"]
+[ext_resource type="Texture2D" uid="uid://cdsfvksgtjdnn" path="res://art/characters/white_0.png" id="3_cat"]
 
-[node name="WarehouseRoomCompositionWorkbench" type="Node2D"]
+[node name="WarehouseRoomCompositionWorkbench" type="Node2D" unique_id=2143270442]
 script = ExtResource("1_room")
 
-[node name="PlacementLayer" type="Node2D" parent="."]
+[node name="PlacementLayer" type="Node2D" parent="." unique_id=214046173]
 z_index = 2
 
-[node name="SampleFloorPatch" type="Node2D" parent="PlacementLayer"]
+[node name="SampleFloorPatch" type="Node2D" parent="PlacementLayer" unique_id=329237224]
 position = Vector2(-400, -160)
 
-[node name="TileA" type="Polygon2D" parent="PlacementLayer/SampleFloorPatch"]
+[node name="TileA" type="Polygon2D" parent="PlacementLayer/SampleFloorPatch" unique_id=2139750562]
 color = Color(0.27, 0.28, 0.27, 1)
 polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
 
-[node name="TileB" type="Polygon2D" parent="PlacementLayer/SampleFloorPatch"]
+[node name="TileB" type="Polygon2D" parent="PlacementLayer/SampleFloorPatch" unique_id=670603373]
 position = Vector2(40, 0)
 color = Color(0.22, 0.23, 0.24, 1)
 polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
 
-[node name="TileC" type="Polygon2D" parent="PlacementLayer/SampleFloorPatch"]
+[node name="TileC" type="Polygon2D" parent="PlacementLayer/SampleFloorPatch" unique_id=393725382]
 position = Vector2(0, 40)
 color = Color(0.2, 0.22, 0.23, 1)
 polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
 
-[node name="TileD" type="Polygon2D" parent="PlacementLayer/SampleFloorPatch"]
+[node name="TileD" type="Polygon2D" parent="PlacementLayer/SampleFloorPatch" unique_id=1884397855]
 position = Vector2(40, 40)
 color = Color(0.31, 0.3, 0.27, 1)
 polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
 
-[node name="ScaleReferences" type="Node2D" parent="."]
+[node name="ScaleReferences" type="Node2D" parent="." unique_id=1342138201]
 z_index = 6
 
-[node name="PlayerReference" type="Sprite2D" parent="ScaleReferences"]
+[node name="PlayerReference" type="Sprite2D" parent="ScaleReferences" unique_id=200685000]
+modulate = Color(1, 1, 1, 0.82)
 position = Vector2(0, 80)
 scale = Vector2(0.625, 0.625)
-modulate = Color(1, 1, 1, 0.82)
 texture = ExtResource("2_player")
 
-[node name="PlayerCollision" type="Polygon2D" parent="ScaleReferences"]
+[node name="PlayerCollision" type="Polygon2D" parent="ScaleReferences" unique_id=576777169]
 position = Vector2(0, 80)
 color = Color(1, 0.92, 0.2, 0.28)
 polygon = PackedVector2Array(-17, 0, -15.7, -6.5, -12, -12, -6.5, -15.7, 0, -17, 6.5, -15.7, 12, -12, 15.7, -6.5, 17, 0, 15.7, 6.5, 12, 12, 6.5, 15.7, 0, 17, -6.5, 15.7, -12, 12, -15.7, 6.5)
 
-[node name="PlayerLabel" type="Label" parent="ScaleReferences"]
-position = Vector2(-54, 126)
-text = "PLAYER ~80 px art / 17 px collision"
+[node name="PlayerLabel" type="Label" parent="ScaleReferences" unique_id=577580544]
+offset_left = -54.0
+offset_top = 126.0
+offset_right = -54.0
+offset_bottom = 126.0
 theme_override_font_sizes/font_size = 14
+text = "PLAYER ~80 px art / 17 px collision"
 
-[node name="CatReference" type="Sprite2D" parent="ScaleReferences"]
-position = Vector2(130, 92)
+[node name="CatReference" type="Sprite2D" parent="ScaleReferences" unique_id=1322330460]
+position = Vector2(672.99994, 131)
 scale = Vector2(0.42, 0.42)
 texture = ExtResource("3_cat")
 
-[node name="CatLabel" type="Label" parent="ScaleReferences"]
-position = Vector2(94, 126)
-text = "CAT REFERENCE"
+[node name="CatLabel" type="Label" parent="ScaleReferences" unique_id=640316630]
+offset_left = 565.0
+offset_top = 263.0
+offset_right = 672.0
+offset_bottom = 283.0
 theme_override_font_sizes/font_size = 14
+text = "CAT REFERENCE"
 
-[node name="PropFootprintGuides" type="Node2D" parent="."]
+[node name="PropFootprintGuides" type="Node2D" parent="." unique_id=808199086]
 z_index = 5
 
-[node name="OneTileProp" type="Node2D" parent="PropFootprintGuides"]
+[node name="OneTileProp" type="Node2D" parent="PropFootprintGuides" unique_id=296473870]
 position = Vector2(-300, 110)
 
-[node name="Bounds" type="Polygon2D" parent="PropFootprintGuides/OneTileProp"]
+[node name="Bounds" type="Polygon2D" parent="PropFootprintGuides/OneTileProp" unique_id=1038095001]
 color = Color(0.08, 0.82, 1, 0.18)
 polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
 
-[node name="Label" type="Label" parent="PropFootprintGuides/OneTileProp"]
-position = Vector2(0, 43)
-text = "1×1 PROP — 40×40"
+[node name="Label" type="Label" parent="PropFootprintGuides/OneTileProp" unique_id=963479507]
+offset_top = 43.0
+offset_bottom = 43.0
 theme_override_font_sizes/font_size = 14
+text = "1×1 PROP — 40×40"
 
-[node name="TwoTileCover" type="Node2D" parent="PropFootprintGuides"]
+[node name="TwoTileCover" type="Node2D" parent="PropFootprintGuides" unique_id=79517074]
 position = Vector2(-150, 110)
 
-[node name="Bounds" type="Polygon2D" parent="PropFootprintGuides/TwoTileCover"]
+[node name="Bounds" type="Polygon2D" parent="PropFootprintGuides/TwoTileCover" unique_id=1575670158]
 color = Color(0.08, 0.82, 1, 0.18)
 polygon = PackedVector2Array(0, 0, 80, 0, 80, 40, 0, 40)
 
-[node name="Label" type="Label" parent="PropFootprintGuides/TwoTileCover"]
-position = Vector2(0, 43)
-text = "2×1 COVER — 80×40"
+[node name="Label" type="Label" parent="PropFootprintGuides/TwoTileCover" unique_id=510259494]
+offset_top = 43.0
+offset_bottom = 43.0
 theme_override_font_sizes/font_size = 14
+text = "2×1 COVER — 80×40"
 
-[node name="LargeProp" type="Node2D" parent="PropFootprintGuides"]
+[node name="LargeProp" type="Node2D" parent="PropFootprintGuides" unique_id=1368824289]
 position = Vector2(230, 70)
 
-[node name="Bounds" type="Polygon2D" parent="PropFootprintGuides/LargeProp"]
+[node name="Bounds" type="Polygon2D" parent="PropFootprintGuides/LargeProp" unique_id=213057946]
 color = Color(0.08, 0.82, 1, 0.18)
 polygon = PackedVector2Array(0, 0, 120, 0, 120, 80, 0, 80)
 
-[node name="Label" type="Label" parent="PropFootprintGuides/LargeProp"]
-position = Vector2(0, 83)
-text = "3×2 LARGE PROP — 120×80"
+[node name="Label" type="Label" parent="PropFootprintGuides/LargeProp" unique_id=30603601]
+offset_top = 83.0
+offset_bottom = 83.0
 theme_override_font_sizes/font_size = 14
+text = "3×2 LARGE PROP — 120×80"
 
-[node name="Notes" type="Label" parent="."]
-position = Vector2(-630, 390)
-text = "WORKFLOW: duplicate refined Polygon2D layers into PlacementLayer at scale 1.0.\nMove the cyan prop guides to compare footprint, occlusion, wall depth, and player readability."
+[node name="Notes" type="Label" parent="." unique_id=1145891339]
+offset_left = -630.0
+offset_top = 390.0
+offset_right = -630.0
+offset_bottom = 390.0
 theme_override_colors/font_color = Color(0.72, 0.9, 1, 1)
 theme_override_font_sizes/font_size = 18
+text = "WORKFLOW: duplicate refined Polygon2D layers into PlacementLayer at scale 1.0.
+Move the cyan prop guides to compare footprint, occlusion, wall depth, and player readability."
