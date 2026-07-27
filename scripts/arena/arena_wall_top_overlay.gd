@@ -53,40 +53,47 @@ func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_co
 		var top := tile.position.y
 		var right := tile.position.x + tile.size.x
 		var bottom := tile.position.y + tile.size.y
-		var show_topology_guides: bool = not _rect_is_under_opaque_fog(tile)
 		if not lookup.has(_tile_key(cell + Vector2i(0, -1))):
 			draw_line(Vector2(left, top), Vector2(right, top), outline_color, outline_width)
-			if show_topology_guides:
+			var hidden_start := Vector2(left, top + height_offset)
+			var hidden_end := Vector2(right, top + height_offset)
+			if not _segment_intersects_opaque_fog(hidden_start, hidden_end):
 				_draw_hidden_line(
-					Vector2(left, top + height_offset),
-					Vector2(right, top + height_offset),
+					hidden_start,
+					hidden_end,
 					outline_color,
 					outline_width
 				)
 		if not lookup.has(_tile_key(cell + Vector2i(0, 1))):
 			draw_line(Vector2(left, bottom), Vector2(right, bottom), outline_color, outline_width)
-			if show_topology_guides:
+			var south_start := Vector2(left, bottom + height_offset)
+			var south_end := Vector2(right, bottom + height_offset)
+			if not _segment_intersects_opaque_fog(south_start, south_end):
 				draw_line(
-					Vector2(left, bottom + height_offset),
-					Vector2(right, bottom + height_offset),
+					south_start,
+					south_end,
 					outline_color,
 					outline_width
 				)
 		if not lookup.has(_tile_key(cell + Vector2i(-1, 0))):
 			draw_line(Vector2(left, top), Vector2(left, bottom), outline_color, outline_width)
-			if show_topology_guides:
+			var west_start := Vector2(left, top)
+			var west_end := Vector2(left, bottom + height_offset)
+			if not _segment_intersects_opaque_fog(west_start, west_end):
 				draw_line(
-					Vector2(left, top),
-					Vector2(left, bottom + height_offset),
+					west_start,
+					west_end,
 					outline_color,
 					outline_width
 				)
 		if not lookup.has(_tile_key(cell + Vector2i(1, 0))):
 			draw_line(Vector2(right, top), Vector2(right, bottom), outline_color, outline_width)
-			if show_topology_guides:
+			var east_start := Vector2(right, top)
+			var east_end := Vector2(right, bottom + height_offset)
+			if not _segment_intersects_opaque_fog(east_start, east_end):
 				draw_line(
-					Vector2(right, top),
-					Vector2(right, bottom + height_offset),
+					east_start,
+					east_end,
 					outline_color,
 					outline_width
 				)
@@ -126,10 +133,13 @@ func _build_tile_lookup(tile_rects: Array[Rect2]) -> Dictionary:
 	return lookup
 
 
-func _rect_is_under_opaque_fog(rect: Rect2) -> bool:
-	var center: Vector2 = rect.get_center()
+func _segment_intersects_opaque_fog(start: Vector2, end: Vector2) -> bool:
+	var segment_rect := Rect2(
+		Vector2(min(start.x, end.x), min(start.y, end.y)),
+		Vector2(abs(end.x - start.x), abs(end.y - start.y))
+	).grow(max(_outline_width, 1.0))
 	for fog_rect in _opaque_fog_rects:
-		if fog_rect.has_point(center):
+		if fog_rect.intersects(segment_rect, true):
 			return true
 	return false
 
