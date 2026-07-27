@@ -7,19 +7,13 @@ var _source_viewport: Viewport = null
 var _mask = null
 
 
-func configure(
-	rects: Array[Rect2],
-	source_viewport: Viewport,
-	boundary_segments: Array[PackedVector2Array] = [],
-	boundary_color: Color = Color(0.72, 0.78, 0.82),
-	boundary_width: float = 2.0
-) -> void:
+func configure(rects: Array[Rect2], source_viewport: Viewport) -> void:
 	_source_viewport = source_viewport
 	if _source_viewport == null:
 		visible = false
 		return
 	_ensure_mask()
-	_mask.configure(rects, boundary_segments, boundary_color, boundary_width)
+	_mask.configure(rects)
 	visible = not rects.is_empty()
 	_sync_viewport()
 
@@ -28,8 +22,7 @@ func clear() -> void:
 	visible = false
 	if _mask != null:
 		var empty_rects: Array[Rect2] = []
-		var empty_segments: Array[PackedVector2Array] = []
-		_mask.configure(empty_rects, empty_segments)
+		_mask.configure(empty_rects)
 
 
 func _process(_delta: float) -> void:

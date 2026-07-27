@@ -55,13 +55,6 @@ func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_co
 		var bottom := tile.position.y + tile.size.y
 		if not lookup.has(_tile_key(cell + Vector2i(0, -1))):
 			draw_line(Vector2(left, top), Vector2(right, top), outline_color, outline_width)
-			_draw_dotted_horizontal(
-				left,
-				right,
-				top + height_offset,
-				outline_color,
-				outline_width
-			)
 		if not lookup.has(_tile_key(cell + Vector2i(0, 1))):
 			draw_line(Vector2(left, bottom), Vector2(right, bottom), outline_color, outline_width)
 			var south_start := Vector2(left, bottom + height_offset)
@@ -95,24 +88,6 @@ func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_co
 					outline_color,
 					outline_width
 				)
-
-
-func _draw_dotted_horizontal(
-	left: float,
-	right: float,
-	y: float,
-	color: Color,
-	width: float
-) -> void:
-	var dash_length: float = 5.0
-	var gap_length: float = 4.0
-	var x: float = left
-	var dotted_color := Color(color.r, color.g, color.b, color.a * 0.58)
-	while x < right:
-		var dash_end: float = min(x + dash_length, right)
-		draw_line(Vector2(x, y), Vector2(dash_end, y), dotted_color, max(width * 0.72, 1.0))
-		x += dash_length + gap_length
-
 
 func _build_tile_lookup(tile_rects: Array[Rect2]) -> Dictionary:
 	var lookup := {}
