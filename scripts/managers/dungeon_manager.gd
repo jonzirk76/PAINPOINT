@@ -152,6 +152,7 @@ func get_current_level_definition():
 	level.floor_number = max(floor_number, 1)
 	level.set_meta("floor_visual_seed", floor_generation_seed)
 	level.set_meta("active_room_id", current_room_id)
+	level.set_meta("active_room_spawn_exclusion_rects", _get_room_spawn_exclusion_rects(current_room_id))
 	_apply_floor_scaling(level, String(piece.room_kind))
 	return level
 
@@ -178,6 +179,7 @@ func get_full_floor_level_definition(active_room_id: String = "", include_active
 		level.set_meta("active_room_bounds", overlay.get("active_room_bounds", Rect2()))
 		if overlay.has("active_room_playable_rects"):
 			level.set_meta("active_room_playable_rects", Array(overlay.get("active_room_playable_rects", [])).duplicate())
+		level.set_meta("active_room_spawn_exclusion_rects", _get_full_floor_room_spawn_exclusion_rects(active_room_id))
 	_apply_visible_floor_destructible_prop_placements(level, active_room_id, room_ids, include_active_contents)
 	if include_active_contents:
 		_apply_active_room_contents_to_full_floor_level(level, active_room_id, room_ids)
@@ -304,6 +306,34 @@ func get_current_door_infos() -> Array:
 				"target_cell": edge.get("target_cell", Vector2i.ZERO)
 			})
 	return door_infos
+
+
+func _get_room_spawn_exclusion_rects(room_id: String) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if room_id.is_empty() or not _rooms.has(room_id):
+		return rects
+	var state: Dictionary = _rooms[room_id]
+	var piece: RoomPieceDefinition = state.get("piece", null) as RoomPieceDefinition
+	if piece == null:
+		return rects
+	var connection_edges: Dictionary = state.get("connection_edges", {})
+	for direction in CARDINAL_DIRECTIONS:
+		if not connection_edges.has(direction):
+			continue
+		var edge: Dictionary = Dictionary(connection_edges[direction])
+		var source_cell: Vector2i = edge.get("source_cell", Vector2i.ZERO)
+		rects.append(ROOM_GEOMETRY_BUILDER.get_door_clear_rect(piece.footprint_cells, source_cell, direction))
+	return rects
+
+
+func _get_full_floor_room_spawn_exclusion_rects(room_id: String) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	if room_id.is_empty() or not _ensure_full_floor_geometry_cache():
+		return rects
+	var offset: Vector2 = _full_floor_room_offsets_cache.get(room_id, Vector2.ZERO)
+	for local_rect in _get_room_spawn_exclusion_rects(room_id):
+		rects.append(_translated_rect(local_rect, offset))
+	return rects
 
 
 func get_current_entry_position(entry_direction: String) -> Vector2:

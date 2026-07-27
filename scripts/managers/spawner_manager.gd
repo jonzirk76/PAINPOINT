@@ -45,6 +45,7 @@ var _wall_rects: Array[Rect2] = []
 var _level_wall_rects: Array[Rect2] = []
 var _void_rects: Array[Rect2] = []
 var _playable_rects: Array[Rect2] = []
+var _spawn_exclusion_rects: Array[Rect2] = []
 var _player_provider: Callable
 var _initial_spawns_pending: bool = false
 var _initial_spawn_delay_remaining: float = 0.0
@@ -190,6 +191,7 @@ func set_arena_definition(level_definition) -> void:
 	_wall_rects = _level_wall_rects.duplicate()
 	_void_rects = _get_level_collision_rects(level_definition, "active_room_void_rects", level_definition.void_rects)
 	_playable_rects = _get_playable_rects(level_definition)
+	_spawn_exclusion_rects = _get_level_collision_rects(level_definition, "active_room_spawn_exclusion_rects", [])
 	for spawner in _spawners:
 		if is_instance_valid(spawner) and spawner.has_method("set_arena_definition"):
 			spawner.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
@@ -675,6 +677,9 @@ func _position_is_clear_of_walls(position: Vector2, clearance: float = 24.0) -> 
 	for void_rect in _void_rects:
 		if void_rect.grow(clearance).has_point(position):
 			return false
+	for exclusion_rect in _spawn_exclusion_rects:
+		if exclusion_rect.grow(clearance).has_point(position):
+			return false
 	return true
 
 
@@ -682,6 +687,7 @@ func _constrain_spawn_position(position: Vector2, clearance: float) -> Vector2:
 	var blockers: Array[Rect2] = []
 	blockers.append_array(_wall_rects)
 	blockers.append_array(_void_rects)
+	blockers.append_array(_spawn_exclusion_rects)
 	return ArenaGeometry.constrain_point_to_playable_regions(position, _arena_bounds, _arena_shape, _playable_rects, blockers, clearance)
 
 
