@@ -58,6 +58,7 @@ var _wall_body_depth_visuals_enabled: bool = false
 var _blocker_rebuild_deferred: bool = false
 var _floor_wear_seed: int = 0
 var _active_room_id: String = ""
+var _wall_height_tiles: int = ROOM_GEOMETRY_BUILDER.DEFAULT_WALL_HEIGHT_TILES
 var _floor_tile_visual = null
 var _wall_occlusion_overlay = null
 var _fog_of_war_overlay = null
@@ -88,6 +89,10 @@ func configure(level_definition) -> void:
 		String(level_definition.id).hash() ^ (int(level_definition.floor_number) * 7919)
 	))
 	_active_room_id = String(level_definition.get_meta("active_room_id", ""))
+	_wall_height_tiles = max(int(level_definition.get_meta(
+		"wall_height_tiles",
+		ROOM_GEOMETRY_BUILDER.DEFAULT_WALL_HEIGHT_TILES
+	)), 1)
 	_fog_rects = _get_meta_rects(level_definition, "fog_rects", [])
 	_inactive_room_dim_rects = _get_meta_rects(level_definition, "inactive_room_dim_rects", [])
 	_configure_floor_tile_visual()
@@ -370,6 +375,7 @@ func _configure_wall_top_overlay() -> void:
 		ROOM_GEOMETRY_BUILDER.merge_wall_tiles(_wall_top_tile_rects),
 		no_fog_rects,
 		_inactive_room_dim_rects,
+		_wall_height_tiles,
 		WALL_TOP_FILL_COLOR,
 		WALL_TOP_OUTLINE_COLOR,
 		2.0

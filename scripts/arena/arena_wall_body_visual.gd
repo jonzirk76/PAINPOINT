@@ -63,8 +63,6 @@ func _add_exposed_tile_edges(tile: Rect2, wall_body_lookup: Dictionary, tile_siz
 	var top := tile.position.y - position.y
 	var right := tile.position.x + tile.size.x - position.x
 	var bottom := tile.position.y + tile.size.y - position.y
-	if not wall_body_lookup.has(_tile_key(cell + Vector2i(0, -1))):
-		_append_hidden_edge(Vector2(left, top), Vector2(right, top))
 	if not wall_body_lookup.has(_tile_key(cell + Vector2i(0, 1))):
 		_append_edge(Vector2(left, bottom), Vector2(right, bottom))
 	if not wall_body_lookup.has(_tile_key(cell + Vector2i(-1, 0))):
