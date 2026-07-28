@@ -80,11 +80,13 @@ flattening across the sliced plane.
   mirroring the same local-space construction used on the visible side.
 - The brow is the sphere midline. Brow-to-nose and nose-to-chin form the next
   two approximate thirds; these remain character- and style-tunable.
-- The facial plane joins the two ends of the brow guide to the two chin-side
-  anchors.
-- Paired triangular eye-cavity guides are centered halfway between the brow
-  and nose guides. They are equilateral in facial-plane local space before
-  projection.
+- The facial plane begins where the spherical brow curve meets each flat
+  side-plane brow diameter, then descends to the two chin-side anchors.
+- Each eye cavity uses two projected planes. The upper plane recedes from the
+  brow ridge into the conceptual facial mass; the lower plane returns to the
+  facial surface halfway between the brow and nose guides.
+- A triangular nose block begins near the middle depth of the eye cavities and
+  widens symmetrically to a base constrained to the nose guide.
 - The mouth-bottom guide is halfway between the nose and chin guides.
 - The default jaw profile is neutral, not canonical anatomy. Per-character
   tuning fields are `chin_drop_ratio`, `chin_forward_ratio`,

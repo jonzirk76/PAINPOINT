@@ -337,15 +337,47 @@ func _add_step4_face_guides_and_jaw(parent: Node2D, root: Node2D, construction: 
 		Color(0.48, 0.85, 0.94, 0.48),
 		1.5
 	)
-	for eye_index in range(construction["eye_cavities"].size()):
+	_add_polygon(
+		group,
+		root,
+		"FacialPlaneMass",
+		construction["facial_plane"],
+		Color(0.48, 0.85, 0.94, 0.055)
+	)
+	for plane_index in range(construction["eye_cavity_planes"].size()):
+		var cavity_index := floori(float(plane_index) / 2.0) + 1
+		var plane_name := "Upper" if plane_index % 2 == 0 else "Lower"
+		var plane_points: PackedVector2Array = construction["eye_cavity_planes"][plane_index]
+		_add_polygon(
+			group,
+			root,
+			"EyeCavity%d%sPlaneMass" % [cavity_index, plane_name],
+			plane_points,
+			Color(0.31, 0.20, 0.48, 0.34) if plane_index % 2 == 0 else Color(0.50, 0.34, 0.68, 0.27)
+		)
 		_add_line(
 			group,
 			root,
-			"EyeCavity%d" % (eye_index + 1),
-			construction["eye_cavities"][eye_index],
+			"EyeCavity%d%sPlane" % [cavity_index, plane_name],
+			plane_points,
 			Color(0.72, 0.55, 0.92, 0.72),
 			1.7
 		)
+	_add_polygon(
+		group,
+		root,
+		"NoseBlockMass",
+		construction["nose_block"],
+		Color(0.92, 0.58, 0.35, 0.20)
+	)
+	_add_line(
+		group,
+		root,
+		"NoseBlock",
+		construction["nose_block"],
+		Color(0.97, 0.67, 0.40, 0.82),
+		1.8
+	)
 	_add_line(
 		group,
 		root,
@@ -565,6 +597,21 @@ func _add_line(
 	line.joint_mode = Line2D.LINE_JOINT_ROUND
 	_add_owned(parent, line, root)
 	return line
+
+
+func _add_polygon(
+	parent: Node,
+	root: Node,
+	node_name: String,
+	points: PackedVector2Array,
+	color: Color
+) -> Polygon2D:
+	var polygon := Polygon2D.new()
+	polygon.name = node_name
+	polygon.polygon = _without_duplicate_close(points)
+	polygon.color = color
+	_add_owned(parent, polygon, root)
+	return polygon
 
 
 func _add_anchor(

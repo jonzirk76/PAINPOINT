@@ -233,10 +233,11 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 	)
 	var jawline := PackedVector2Array([jaw_hinge_point, near_chin_point])
 	var far_jawline := PackedVector2Array([far_jaw_hinge_point, far_chin_point])
+	var brow_anchor_x := absf(cut_distance)
 	var facial_plane := _project_local_curve(
 		[
-			Vector3(-radius, 0.0, radius),
-			Vector3(radius, 0.0, radius),
+			Vector3(-brow_anchor_x, 0.0, cut_radius),
+			Vector3(brow_anchor_x, 0.0, cut_radius),
 			Vector3(chin_half_width, chin_local.y, chin_local.z),
 			Vector3(-chin_half_width, chin_local.y, chin_local.z),
 		],
@@ -244,19 +245,47 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 	)
 	var eye_center_y := -radius * nose_drop_ratio * 0.5
 	var eye_center_z := lerpf(radius, radius * nose_forward_ratio, 0.5)
-	var eye_half_span := radius * 0.18
-	var eye_triangle_height := sqrt(3.0) * eye_half_span
-	var eye_cavities: Array[PackedVector2Array] = []
+	var eye_half_span := radius * 0.15
+	var eye_inner_half_span := eye_half_span * 0.62
+	var eye_center_x_offset := brow_anchor_x * 0.48
+	var cavity_inner_y := -radius * nose_drop_ratio * 0.24
+	var cavity_inner_z := lerpf(radius, radius * nose_forward_ratio, 0.24) - radius * 0.12
+	var eye_cavity_planes: Array[PackedVector2Array] = []
 	for eye_sign: float in [-1.0, 1.0]:
-		var eye_center_x := eye_sign * radius * 0.43
-		eye_cavities.append(_project_local_curve(
+		var eye_center_x := eye_sign * eye_center_x_offset
+		var brow_left_x := eye_center_x - eye_half_span
+		var brow_right_x := eye_center_x + eye_half_span
+		var brow_left_z := sqrt(maxf(radius * radius - brow_left_x * brow_left_x, 0.0))
+		var brow_right_z := sqrt(maxf(radius * radius - brow_right_x * brow_right_x, 0.0))
+		eye_cavity_planes.append(_project_local_curve(
 			[
-				Vector3(eye_center_x - eye_half_span, eye_center_y, eye_center_z),
-				Vector3(eye_center_x + eye_half_span, eye_center_y, eye_center_z),
-				Vector3(eye_center_x, eye_center_y - eye_triangle_height, eye_center_z),
+				Vector3(brow_left_x, 0.0, brow_left_z),
+				Vector3(brow_right_x, 0.0, brow_right_z),
+				Vector3(eye_center_x + eye_inner_half_span, cavity_inner_y, cavity_inner_z),
+				Vector3(eye_center_x - eye_inner_half_span, cavity_inner_y, cavity_inner_z),
 			],
 			basis, camera_distance, focal_length, screen_center, true
 		))
+		eye_cavity_planes.append(_project_local_curve(
+			[
+				Vector3(eye_center_x - eye_inner_half_span, cavity_inner_y, cavity_inner_z),
+				Vector3(eye_center_x + eye_inner_half_span, cavity_inner_y, cavity_inner_z),
+				Vector3(eye_center_x + eye_half_span, eye_center_y, eye_center_z),
+				Vector3(eye_center_x - eye_half_span, eye_center_y, eye_center_z),
+			],
+			basis, camera_distance, focal_length, screen_center, true
+		))
+	var nose_top_y := -radius * nose_drop_ratio * 0.25
+	var nose_top_z := lerpf(radius, radius * nose_forward_ratio, 0.25)
+	var nose_half_width := radius * 0.18
+	var nose_block := _project_local_curve(
+		[
+			Vector3(0.0, nose_top_y, nose_top_z),
+			Vector3(nose_half_width, nose_center_local.y, nose_center_local.z),
+			Vector3(-nose_half_width, nose_center_local.y, nose_center_local.z),
+		],
+		basis, camera_distance, focal_length, screen_center, true
+	)
 	var mouth_bottom_y := lerpf(nose_center_local.y, chin_local.y, 0.5)
 	var mouth_bottom_z := lerpf(nose_center_local.z, chin_local.z, 0.5)
 	var mouth_bottom_guide := _project_local_curve(
@@ -314,10 +343,11 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 		"jaw_hinge_point": jaw_hinge_point,
 		"far_jaw_hinge_point": far_jaw_hinge_point,
 		"jawline": jawline,
-		"far_jawline": far_jawline,
-		"facial_plane": facial_plane,
-		"eye_cavities": eye_cavities,
-		"mouth_bottom_guide": mouth_bottom_guide,
+			"far_jawline": far_jawline,
+			"facial_plane": facial_plane,
+			"eye_cavity_planes": eye_cavity_planes,
+			"nose_block": nose_block,
+			"mouth_bottom_guide": mouth_bottom_guide,
 		"jaw_profile": {
 			"nose_drop_ratio": nose_drop_ratio,
 			"nose_forward_ratio": nose_forward_ratio,
