@@ -1,0 +1,645 @@
+[gd_scene format=3]
+
+[ext_resource type="Texture2D" path="res://art/concept_art/experiment.png" id="1_sm4qr"]
+
+[node name="ExperimentPolygonComparisonV2" type="Node2D" unique_id=1365510954]
+
+[node name="Background" type="Polygon2D" parent="." unique_id=1708295697]
+color = Color(0.06666667, 0.09019608, 0.13333334, 1)
+antialiased = true
+polygon = PackedVector2Array(0, 0, 1280, 0, 1280, 720, 0, 720)
+
+[node name="Title" type="Label" parent="." unique_id=1627201081]
+offset_left = 28.0
+offset_top = 18.0
+offset_right = 28.0
+offset_bottom = 18.0
+theme_override_font_sizes/font_size = 25
+theme_override_colors/font_color = Color(0.92941177, 0.9490196, 0.98039216, 1)
+text = "ANIME PORTRAIT POLYGON STUDY — SOURCE / OLD / CONSTRUCTION-DRIVEN"
+
+[node name="Subtitle" type="Label" parent="." unique_id=1385215459]
+offset_left = 29.0
+offset_top = 55.0
+offset_right = 29.0
+offset_bottom = 55.0
+theme_override_font_sizes/font_size = 15
+theme_override_colors/font_color = Color(0.68235296, 0.73333335, 0.8156863, 1)
+text = "The new attempt uses anime proportions over the brow, orbit, nose, mouth, and jaw construction."
+
+[node name="SourcePanel" type="Node2D" parent="." unique_id=1715621547]
+position = Vector2(22, 92)
+
+[node name="Fill" type="Polygon2D" parent="SourcePanel" unique_id=1399205481]
+color = Color(0.09411765, 0.13725491, 0.2, 1)
+antialiased = true
+polygon = PackedVector2Array(0, 0, 390, 0, 390, 600, 0, 600)
+
+[node name="Border" type="Line2D" parent="SourcePanel" unique_id=1432929907]
+points = PackedVector2Array(0, 0, 390, 0, 390, 600, 0, 600, 0, 0)
+width = 1.2
+default_color = Color(0.20784314, 0.26666668, 0.3529412, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="PanelTitle" type="Label" parent="SourcePanel" unique_id=1816397748]
+offset_left = 18.0
+offset_top = 15.0
+offset_right = 18.0
+offset_bottom = 15.0
+theme_override_font_sizes/font_size = 17
+theme_override_colors/font_color = Color(0.68235296, 0.73333335, 0.8156863, 1)
+text = "SOURCE — experiment.png"
+
+[node name="ExperimentReference" type="Sprite2D" parent="SourcePanel" unique_id=1501527201]
+position = Vector2(23, 72)
+scale = Vector2(0.25, 0.25)
+texture = ExtResource("1_sm4qr")
+centered = false
+
+[node name="Notes" type="Label" parent="SourcePanel" unique_id=856209254]
+offset_left = 18.0
+offset_top = 380.0
+offset_right = 18.0
+offset_bottom = 380.0
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7294118, 0.77254903, 0.83137256, 1)
+text = "Reference proportions:
+large anime orbits, compact nose,
+small mouth, tapered jaw,
+large cranial and hair mass."
+
+[node name="OldAttemptPanel" type="Node2D" parent="." unique_id=777169076]
+position = Vector2(445, 92)
+
+[node name="Fill" type="Polygon2D" parent="OldAttemptPanel" unique_id=440602316]
+color = Color(0.09411765, 0.13725491, 0.2, 1)
+antialiased = true
+polygon = PackedVector2Array(0, 0, 390, 0, 390, 600, 0, 600)
+
+[node name="Border" type="Line2D" parent="OldAttemptPanel" unique_id=1732957294]
+points = PackedVector2Array(0, 0, 390, 0, 390, 600, 0, 600, 0, 0)
+width = 1.2
+default_color = Color(0.20784314, 0.26666668, 0.3529412, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="PanelTitle" type="Label" parent="OldAttemptPanel" unique_id=1875249806]
+offset_left = 18.0
+offset_top = 15.0
+offset_right = 18.0
+offset_bottom = 15.0
+theme_override_font_sizes/font_size = 17
+theme_override_colors/font_color = Color(0.9411765, 0.654902, 0.7411765, 1)
+text = "OLD POLYGON ATTEMPT"
+
+[node name="OldArtwork" type="Node2D" parent="OldAttemptPanel" unique_id=1946006089]
+position = Vector2(28, 73)
+
+[node name="HairBack" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=1098620724]
+color = Color(0.105, 0.071, 0.22, 1)
+polygon = PackedVector2Array(18, 264, 30, 232, 49, 204, 65, 178, 72, 145, 67, 125, 78, 95, 77, 72, 86, 43, 104, 20, 142, 5, 187, 4, 218, 18, 242, 42, 258, 72, 270, 104, 273, 133, 284, 159, 295, 190, 312, 221, 324, 270, 303, 264, 283, 243, 267, 219, 252, 197, 242, 180, 232, 201, 219, 220, 202, 230, 177, 236, 150, 231, 126, 218, 106, 200, 85, 220, 63, 240, 37, 259)
+
+[node name="HairBackShadowLeft" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=1985829305]
+color = Color(0.067, 0.043, 0.145, 1)
+polygon = PackedVector2Array(18, 264, 31, 229, 53, 193, 70, 157, 78, 123, 86, 100, 90, 130, 82, 168, 67, 204, 45, 239, 37, 259)
+
+[node name="HairBackShadowRight" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=41847149]
+color = Color(0.062, 0.04, 0.137, 1)
+polygon = PackedVector2Array(226, 82, 252, 102, 268, 136, 276, 173, 295, 213, 321, 270, 304, 264, 282, 240, 258, 207, 241, 180, 225, 154)
+
+[node name="Shoulders" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=1278805661]
+color = Color(0.025, 0.061, 0.13, 1)
+polygon = PackedVector2Array(28, 270, 39, 249, 75, 233, 112, 225, 143, 231, 171, 238, 198, 230, 234, 224, 274, 236, 307, 255, 316, 270)
+
+[node name="LeftShoulderShadow" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=1573162183]
+color = Color(0.025, 0.09, 0.18, 1)
+polygon = PackedVector2Array(28, 270, 40, 249, 76, 235, 91, 245, 112, 270)
+
+[node name="RightShoulderShadow" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=869166381]
+color = Color(0.023, 0.075, 0.15, 1)
+polygon = PackedVector2Array(220, 270, 244, 242, 274, 236, 307, 255, 316, 270)
+
+[node name="LeftJacket" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=879794425]
+color = Color(0.025, 0.245, 0.59, 1)
+polygon = PackedVector2Array(39, 249, 76, 232, 114, 225, 136, 235, 124, 250, 135, 270, 104, 270, 84, 255, 62, 246)
+
+[node name="LeftJacketHighlight" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=1011360860]
+color = Color(0.055, 0.39, 0.83, 1)
+polygon = PackedVector2Array(75, 233, 92, 225, 115, 226, 101, 238, 113, 256, 91, 247)
+
+[node name="RightJacket" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=708048670]
+color = Color(0.025, 0.245, 0.59, 1)
+polygon = PackedVector2Array(207, 232, 234, 224, 273, 237, 302, 255, 315, 270, 270, 270, 247, 254, 222, 266, 234, 245)
+
+[node name="RightJacketHighlight" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=852239824]
+color = Color(0.055, 0.39, 0.83, 1)
+polygon = PackedVector2Array(234, 225, 251, 232, 263, 250, 244, 258, 231, 246, 218, 239)
+
+[node name="ChestArmor" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=1426960403]
+color = Color(0.052, 0.071, 0.135, 1)
+polygon = PackedVector2Array(112, 224, 135, 211, 172, 213, 207, 224, 230, 242, 218, 270, 132, 270, 119, 249)
+
+[node name="ChestArmorLight" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=325901798]
+color = Color(0.09, 0.112, 0.195, 1)
+polygon = PackedVector2Array(133, 233, 171, 239, 207, 230, 220, 270, 139, 270)
+
+[node name="Neck" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=22269002]
+color = Color(0.66, 0.39, 0.35, 1)
+polygon = PackedVector2Array(132, 181, 153, 194, 172, 202, 192, 188, 191, 221, 174, 231, 151, 220, 135, 205)
+
+[node name="NeckLight" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=2034409254]
+color = Color(0.84, 0.56, 0.48, 1)
+polygon = PackedVector2Array(151, 191, 173, 202, 191, 190, 189, 215, 174, 224, 153, 214)
+
+[node name="HighCollarLeft" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=873502859]
+color = Color(0.025, 0.041, 0.087, 1)
+polygon = PackedVector2Array(111, 207, 137, 195, 162, 213, 160, 239, 140, 235, 119, 248)
+
+[node name="HighCollarRight" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=1928849560]
+color = Color(0.025, 0.041, 0.087, 1)
+polygon = PackedVector2Array(187, 202, 208, 214, 225, 244, 199, 235, 181, 239, 181, 213)
+
+[node name="Face" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=1903352488]
+color = Color(0.89, 0.69, 0.61, 1)
+antialiased = true
+polygon = PackedVector2Array(102, 92, 111, 72, 128, 58, 151, 49, 178, 48, 204, 58, 223, 77, 232, 101, 230, 128, 221, 151, 210, 169, 194, 185, 174, 198, 154, 191, 135, 179, 119, 164, 108, 146, 101, 123)
+
+[node name="FaceShadowLeft" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=202294496]
+color = Color(0.75, 0.49, 0.45, 0.48)
+polygon = PackedVector2Array(101, 116, 107, 145, 121, 166, 140, 181, 154, 191, 138, 179, 120, 161, 109, 140)
+
+[node name="LeftEar" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=857303654]
+color = Color(0.82, 0.58, 0.52, 1)
+polygon = PackedVector2Array(96, 116, 90, 114, 86, 119, 87, 134, 94, 146, 102, 146, 104, 131)
+
+[node name="LeftEarShadow" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=1246473989]
+color = Color(0.58, 0.35, 0.35, 1)
+polygon = PackedVector2Array(91, 120, 95, 118, 101, 129, 98, 140, 94, 136, 94, 127, 90, 132)
+
+[node name="HairUnderlay" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=1914180855]
+color = Color(0.175, 0.105, 0.355, 1)
+antialiased = true
+polygon = PackedVector2Array(61, 102, 67, 72, 81, 45, 103, 23, 135, 7, 171, 4, 203, 12, 230, 30, 250, 56, 263, 87, 268, 108, 253, 101, 239, 94, 227, 103, 214, 98, 204, 112, 190, 103, 178, 117, 164, 105, 151, 116, 138, 103, 124, 112, 112, 99, 99, 111, 84, 103, 72, 110)
+
+[node name="LeftBlush" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=221534998]
+color = Color(0.93, 0.5, 0.52, 0.27)
+polygon = PackedVector2Array(108, 140, 125, 141, 145, 145, 138, 158, 119, 153)
+
+[node name="RightBlush" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=491219308]
+color = Color(0.93, 0.5, 0.52, 0.25)
+polygon = PackedVector2Array(198, 142, 219, 136, 225, 150, 204, 155)
+
+[node name="LeftBrow" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=1435804205]
+color = Color(0.09, 0.055, 0.17, 1)
+polygon = PackedVector2Array(116, 104, 129, 101, 148, 106, 156, 111, 145, 107, 130, 104, 117, 108)
+
+[node name="RightBrow" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=365228583]
+color = Color(0.09, 0.055, 0.17, 1)
+polygon = PackedVector2Array(190, 108, 202, 103, 220, 103, 229, 108, 218, 106, 203, 106, 191, 112)
+
+[node name="LeftEye" type="Node2D" parent="OldAttemptPanel/OldArtwork" unique_id=1023918414]
+
+[node name="EyeWhite" type="Polygon2D" parent="OldAttemptPanel/OldArtwork/LeftEye" unique_id=1713750855]
+color = Color(0.96, 0.92, 0.94, 1)
+polygon = PackedVector2Array(123, 119, 130, 113, 142, 112, 153, 117, 157, 125, 153, 137, 144, 143, 132, 140, 124, 132)
+
+[node name="Iris" type="Polygon2D" parent="OldAttemptPanel/OldArtwork/LeftEye" unique_id=107045157]
+color = Color(0.42, 0.22, 0.72, 1)
+polygon = PackedVector2Array(132, 114, 142, 112, 151, 118, 153, 129, 149, 138, 141, 143, 133, 138, 129, 129)
+
+[node name="IrisLight" type="Polygon2D" parent="OldAttemptPanel/OldArtwork/LeftEye" unique_id=619594772]
+color = Color(0.62, 0.35, 0.86, 1)
+polygon = PackedVector2Array(132, 130, 139, 126, 150, 128, 150, 137, 142, 142, 134, 138)
+
+[node name="Pupil" type="Polygon2D" parent="OldAttemptPanel/OldArtwork/LeftEye" unique_id=1319426287]
+color = Color(0.12, 0.055, 0.24, 1)
+polygon = PackedVector2Array(138, 116, 145, 116, 148, 124, 146, 134, 141, 137, 136, 131, 136, 122)
+
+[node name="HighlightLarge" type="Polygon2D" parent="OldAttemptPanel/OldArtwork/LeftEye" unique_id=532540722]
+polygon = PackedVector2Array(131, 116, 136, 113, 141, 116, 140, 122, 134, 123, 131, 120)
+
+[node name="HighlightSmall" type="Polygon2D" parent="OldAttemptPanel/OldArtwork/LeftEye" unique_id=2005638386]
+color = Color(0.95, 0.9, 1, 1)
+polygon = PackedVector2Array(145, 132, 149, 130, 151, 133, 148, 136)
+
+[node name="Lash" type="Polygon2D" parent="OldAttemptPanel/OldArtwork/LeftEye" unique_id=1582037563]
+color = Color(0.055, 0.035, 0.11, 1)
+polygon = PackedVector2Array(119, 119, 126, 112, 139, 108, 151, 111, 161, 120, 166, 127, 158, 123, 153, 117, 142, 112, 131, 114, 124, 121, 124, 132, 120, 128)
+
+[node name="RightEye" type="Node2D" parent="OldAttemptPanel/OldArtwork" unique_id=1681604291]
+
+[node name="EyeWhite" type="Polygon2D" parent="OldAttemptPanel/OldArtwork/RightEye" unique_id=951874469]
+color = Color(0.96, 0.92, 0.94, 1)
+polygon = PackedVector2Array(196, 120, 203, 114, 214, 114, 223, 119, 228, 127, 225, 137, 216, 144, 205, 143, 198, 136)
+
+[node name="Iris" type="Polygon2D" parent="OldAttemptPanel/OldArtwork/RightEye" unique_id=1822241712]
+color = Color(0.42, 0.22, 0.72, 1)
+polygon = PackedVector2Array(202, 117, 211, 114, 220, 119, 223, 129, 220, 139, 213, 145, 204, 141, 200, 132)
+
+[node name="IrisLight" type="Polygon2D" parent="OldAttemptPanel/OldArtwork/RightEye" unique_id=942542354]
+color = Color(0.62, 0.35, 0.86, 1)
+polygon = PackedVector2Array(202, 132, 210, 128, 220, 131, 219, 140, 211, 144, 204, 140)
+
+[node name="Pupil" type="Polygon2D" parent="OldAttemptPanel/OldArtwork/RightEye" unique_id=1357661802]
+color = Color(0.12, 0.055, 0.24, 1)
+polygon = PackedVector2Array(207, 118, 214, 117, 217, 125, 216, 135, 211, 139, 206, 133, 205, 124)
+
+[node name="HighlightLarge" type="Polygon2D" parent="OldAttemptPanel/OldArtwork/RightEye" unique_id=855080818]
+polygon = PackedVector2Array(201, 118, 206, 115, 211, 118, 210, 124, 204, 125, 201, 122)
+
+[node name="HighlightSmall" type="Polygon2D" parent="OldAttemptPanel/OldArtwork/RightEye" unique_id=1252466255]
+color = Color(0.95, 0.9, 1, 1)
+polygon = PackedVector2Array(216, 133, 220, 131, 222, 134, 219, 137)
+
+[node name="Lash" type="Polygon2D" parent="OldAttemptPanel/OldArtwork/RightEye" unique_id=758976302]
+color = Color(0.055, 0.035, 0.11, 1)
+polygon = PackedVector2Array(191, 122, 199, 114, 211, 110, 223, 113, 232, 120, 237, 126, 229, 124, 223, 119, 214, 114, 203, 115, 196, 122, 197, 134, 193, 130)
+
+[node name="NoseShadow" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=797736965]
+color = Color(0.66, 0.4, 0.42, 0.7)
+polygon = PackedVector2Array(183, 132, 187, 143, 184, 153, 189, 158, 183, 163, 179, 156, 181, 145)
+
+[node name="NoseLight" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=946547011]
+color = Color(0.96, 0.78, 0.69, 0.72)
+polygon = PackedVector2Array(181, 134, 184, 143, 181, 153, 178, 151)
+
+[node name="Mouth" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=1751696918]
+color = Color(0.43, 0.24, 0.29, 1)
+polygon = PackedVector2Array(168, 176, 176, 175, 184, 176, 189, 175, 185, 178, 176, 178)
+
+[node name="LowerLip" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=66528772]
+color = Color(0.92, 0.66, 0.63, 0.8)
+polygon = PackedVector2Array(174, 181, 182, 181, 178, 184)
+
+[node name="ScalpBase" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=328503450]
+color = Color(0.19, 0.12, 0.38, 1)
+antialiased = true
+polygon = PackedVector2Array(59, 101, 71, 67, 90, 36, 116, 16, 142, 5, 187, 4, 218, 17, 239, 38, 258, 68, 268, 101, 258, 93, 251, 83, 244, 70, 235, 54, 220, 37, 204, 26, 187, 19, 166, 17, 143, 24, 122, 33, 105, 48, 91, 67, 82, 88)
+
+[node name="LeftCrownHighlight" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=1129081083]
+color = Color(0.34, 0.22, 0.59, 1)
+polygon = PackedVector2Array(72, 72, 83, 48, 101, 28, 123, 17, 115, 30, 124, 43, 113, 39, 117, 50, 103, 44, 109, 57, 96, 50, 101, 63, 88, 57, 91, 70)
+
+[node name="CenterCrownHighlight" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=1726646775]
+color = Color(0.32, 0.2, 0.56, 1)
+polygon = PackedVector2Array(126, 18, 157, 11, 183, 17, 197, 29, 185, 26, 173, 31, 162, 37, 148, 43, 134, 51, 123, 45, 133, 36)
+
+[node name="RightCrownHighlight" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=1755248787]
+color = Color(0.35, 0.22, 0.62, 1)
+polygon = PackedVector2Array(205, 25, 225, 38, 240, 57, 252, 82, 245, 75, 238, 66, 232, 72, 226, 59, 220, 66, 216, 50, 210, 42, 201, 36)
+
+[node name="LeftSideLock" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=63377720]
+color = Color(0.18, 0.11, 0.36, 1)
+polygon = PackedVector2Array(78, 73, 95, 50, 113, 35, 104, 56, 99, 82, 98, 109, 105, 136, 118, 156, 129, 164, 116, 160, 106, 150, 100, 137, 96, 119, 92, 145, 84, 173, 75, 193, 67, 204, 72, 175, 77, 148, 78, 119, 73, 98)
+
+[node name="LeftOuterLock" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=1633307595]
+color = Color(0.22, 0.14, 0.43, 1)
+polygon = PackedVector2Array(88, 46, 74, 67, 66, 91, 60, 111, 48, 124, 57, 122, 68, 114, 76, 101, 73, 126, 64, 153, 50, 177, 37, 195, 52, 184, 68, 165, 78, 143, 87, 119, 94, 91, 101, 66)
+
+[node name="LeftFlipLock" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=1389549729]
+color = Color(0.25, 0.16, 0.48, 1)
+polygon = PackedVector2Array(60, 93, 48, 101, 35, 104, 47, 96, 55, 83, 63, 66, 68, 85, 67, 105, 60, 117, 48, 121, 36, 118, 52, 112)
+
+[node name="CenterBangLeft" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=640927893]
+color = Color(0.205, 0.13, 0.41, 1)
+polygon = PackedVector2Array(122, 33, 143, 20, 161, 15, 151, 31, 143, 50, 139, 73, 137, 99, 145, 123, 157, 139, 167, 144, 155, 139, 145, 130, 137, 116, 128, 134, 117, 143, 123, 128, 126, 107, 126, 84, 123, 60)
+
+[node name="CenterBangRight" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=500522018]
+color = Color(0.185, 0.115, 0.38, 1)
+polygon = PackedVector2Array(169, 15, 186, 21, 201, 36, 207, 59, 210, 84, 211, 110, 220, 134, 211, 127, 204, 116, 198, 134, 188, 143, 171, 144, 180, 132, 185, 115, 183, 94, 178, 70, 173, 49)
+
+[node name="RightSideLock" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=1697762571]
+color = Color(0.2, 0.125, 0.41, 1)
+polygon = PackedVector2Array(203, 34, 220, 41, 235, 55, 246, 77, 252, 101, 256, 126, 267, 139, 282, 144, 270, 136, 261, 124, 258, 153, 267, 178, 281, 198, 267, 187, 253, 171, 244, 151, 238, 128, 233, 102, 226, 78, 216, 56)
+
+[node name="RightInnerLock" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=1599228063]
+color = Color(0.165, 0.1, 0.34, 1)
+polygon = PackedVector2Array(220, 45, 234, 57, 244, 77, 250, 101, 249, 126, 241, 151, 229, 171, 217, 184, 224, 165, 230, 145, 230, 125, 225, 108, 218, 124, 209, 138, 213, 120, 214, 95, 210, 69)
+
+[node name="RightFlipLock" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=1134761134]
+color = Color(0.25, 0.16, 0.48, 1)
+polygon = PackedVector2Array(246, 77, 258, 89, 269, 94, 280, 93, 270, 97, 259, 106, 250, 112, 253, 91)
+
+[node name="TopDarkBreakLeft" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=1705299770]
+color = Color(0.075, 0.043, 0.16, 1)
+polygon = PackedVector2Array(145, 28, 155, 19, 168, 14, 178, 18, 166, 20, 156, 24)
+
+[node name="TopDarkBreakRight" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=803181222]
+color = Color(0.07, 0.04, 0.15, 1)
+polygon = PackedVector2Array(187, 15, 194, 24, 202, 28, 197, 19, 193, 14)
+
+[node name="CollarGem" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=264447065]
+color = Color(0.035, 0.28, 0.65, 1)
+polygon = PackedVector2Array(166, 237, 177, 234, 186, 242, 183, 253, 175, 258, 166, 252, 162, 243)
+
+[node name="CollarGemHighlight" type="Polygon2D" parent="OldAttemptPanel/OldArtwork" unique_id=453650425]
+color = Color(0.08, 0.42, 0.88, 1)
+polygon = PackedVector2Array(166, 239, 176, 235, 181, 240, 172, 244)
+
+[node name="Notes" type="Label" parent="OldAttemptPanel" unique_id=37537606]
+offset_left = 18.0
+offset_top = 380.0
+offset_right = 18.0
+offset_bottom = 380.0
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7294118, 0.77254903, 0.83137256, 1)
+text = "Earlier direct polygon trace.
+Features follow the image,
+but do not share an explicit
+underlying facial-plane model."
+
+[node name="NewAttemptPanel" type="Node2D" parent="." unique_id=1016829915]
+position = Vector2(868, 92)
+
+[node name="Fill" type="Polygon2D" parent="NewAttemptPanel" unique_id=184125104]
+color = Color(0.09411765, 0.13725491, 0.2, 1)
+antialiased = true
+polygon = PackedVector2Array(0, 0, 390, 0, 390, 600, 0, 600)
+
+[node name="Border" type="Line2D" parent="NewAttemptPanel" unique_id=699815378]
+points = PackedVector2Array(0, 0, 390, 0, 390, 600, 0, 600, 0, 0)
+width = 1.2
+default_color = Color(0.20784314, 0.26666668, 0.3529412, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="PanelTitle" type="Label" parent="NewAttemptPanel" unique_id=768435493]
+offset_left = 18.0
+offset_top = 15.0
+offset_right = 18.0
+offset_bottom = 15.0
+theme_override_font_sizes/font_size = 17
+theme_override_colors/font_color = Color(0.43529412, 0.8784314, 0.91764706, 1)
+text = "NEW CONSTRUCTION ATTEMPT"
+
+[node name="NewArtwork" type="Node2D" parent="NewAttemptPanel" unique_id=174085945]
+position = Vector2(28, 73)
+
+[node name="BackHair" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=1949242104]
+color = Color(0.101960786, 0.0627451, 0.21960784, 1)
+antialiased = true
+polygon = PackedVector2Array(22, 266, 30, 218, 53, 174, 63, 118, 72, 70, 105, 24, 145, 5, 193, 7, 232, 31, 258, 70, 272, 116, 283, 166, 304, 222, 321, 269, 279, 252, 247, 217, 221, 234, 181, 243, 139, 237, 100, 215, 65, 248)
+
+[node name="Shoulders" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=612337791]
+color = Color(0.02745098, 0.078431375, 0.1764706, 1)
+antialiased = true
+polygon = PackedVector2Array(27, 270, 43, 245, 86, 228, 126, 220, 160, 228, 195, 222, 239, 227, 282, 243, 316, 270)
+
+[node name="JacketLeft" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=342227706]
+color = Color(0.02745098, 0.33333334, 0.7411765, 1)
+antialiased = true
+polygon = PackedVector2Array(43, 245, 87, 229, 126, 222, 143, 237, 128, 254, 135, 270, 76, 270)
+
+[node name="JacketRight" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=1260418344]
+color = Color(0.023529412, 0.29411766, 0.6627451, 1)
+antialiased = true
+polygon = PackedVector2Array(195, 224, 239, 227, 281, 244, 314, 270, 222, 270, 210, 246)
+
+[node name="ChestArmor" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=1715727655]
+color = Color(0.06666667, 0.09411765, 0.16862746, 1)
+antialiased = true
+polygon = PackedVector2Array(125, 222, 150, 208, 181, 210, 207, 222, 229, 244, 219, 270, 135, 270)
+
+[node name="NeckShadow" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=869209434]
+color = Color(0.6509804, 0.37254903, 0.34901962, 1)
+antialiased = true
+polygon = PackedVector2Array(137, 180, 158, 195, 180, 201, 199, 186, 196, 224, 174, 233, 143, 218)
+
+[node name="Neck" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=1019205944]
+color = Color(0.8509804, 0.5921569, 0.5176471, 1)
+antialiased = true
+polygon = PackedVector2Array(153, 188, 176, 202, 195, 189, 193, 218, 176, 226, 154, 214)
+
+[node name="HighCollar" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=1153385448]
+color = Color(0.03137255, 0.050980393, 0.101960786, 1)
+antialiased = true
+polygon = PackedVector2Array(119, 208, 142, 195, 166, 214, 175, 231, 186, 211, 204, 202, 225, 242, 202, 235, 176, 240, 145, 235, 121, 248)
+
+[node name="FarEar" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=1945304449]
+color = Color(0.7882353, 0.49803922, 0.44705883, 1)
+antialiased = true
+polygon = PackedVector2Array(227, 112, 237, 110, 241, 119, 239, 139, 231, 150, 225, 142)
+
+[node name="NearEar" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=1313368034]
+color = Color(0.8745098, 0.6156863, 0.5294118, 1)
+antialiased = true
+polygon = PackedVector2Array(99, 109, 89, 111, 85, 121, 88, 143, 99, 153, 105, 143)
+
+[node name="FaceBase" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=739817462]
+color = Color(0.8901961, 0.6627451, 0.59607846, 1)
+antialiased = true
+polygon = PackedVector2Array(102, 91, 111, 70, 129, 54, 151, 46, 178, 45, 202, 52, 221, 67, 232, 89, 235, 113, 231, 139, 220, 160, 204, 180, 184, 198, 169, 205, 151, 198, 132, 184, 116, 167, 105, 147, 99, 124, 98, 105)
+
+[node name="FarFacePlane" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=69740652]
+color = Color(0.67, 0.34, 0.4, 0.18)
+antialiased = true
+polygon = PackedVector2Array(176, 47, 202, 53, 221, 68, 232, 90, 234, 116, 226, 140, 214, 160, 192, 177, 180, 159, 184, 132, 180, 104)
+
+[node name="NearCheekPlane" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=1729075248]
+color = Color(0.98, 0.73, 0.67, 0.34)
+antialiased = true
+polygon = PackedVector2Array(104, 132, 122, 146, 153, 151, 174, 161, 165, 192, 150, 198, 129, 181, 115, 164)
+
+[node name="MuzzlePlane" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=1178095162]
+color = Color(0.95, 0.68, 0.62, 0.22)
+antialiased = true
+polygon = PackedVector2Array(151, 153, 177, 148, 203, 158, 196, 184, 174, 193, 151, 184)
+
+[node name="JawPlane" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=309974879]
+color = Color(0.58, 0.29, 0.36, 0.18)
+antialiased = true
+polygon = PackedVector2Array(115, 165, 151, 198, 169, 205, 184, 198, 205, 179, 195, 190, 173, 211, 150, 202, 130, 187)
+
+[node name="NearOrbitUpperPlane" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=533348576]
+color = Color(0.38, 0.16, 0.34, 0.18)
+antialiased = true
+polygon = PackedVector2Array(112, 103, 132, 96, 157, 101, 164, 112, 140, 111, 119, 116)
+
+[node name="NearOrbitLowerPlane" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=798191749]
+color = Color(0.56, 0.3, 0.43, 0.15)
+antialiased = true
+polygon = PackedVector2Array(119, 116, 140, 111, 164, 112, 159, 141, 135, 148, 113, 137)
+
+[node name="FarOrbitUpperPlane" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=1698407748]
+color = Color(0.34, 0.14, 0.32, 0.19)
+antialiased = true
+polygon = PackedVector2Array(188, 105, 205, 100, 225, 104, 233, 114, 214, 113, 194, 117)
+
+[node name="FarOrbitLowerPlane" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=174206554]
+color = Color(0.54, 0.28, 0.42, 0.15)
+antialiased = true
+polygon = PackedVector2Array(194, 117, 214, 113, 233, 114, 229, 140, 211, 146, 192, 136)
+
+[node name="NearEyeWhite" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=2112855491]
+color = Color(0.96862745, 0.9372549, 0.9607843, 1)
+antialiased = true
+polygon = PackedVector2Array(116, 120, 124, 113, 137, 110, 151, 114, 160, 122, 160, 132, 153, 141, 140, 146, 126, 142, 117, 133)
+
+[node name="NearIris" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=901416194]
+color = Color(0.45490196, 0.27058825, 0.73333335, 1)
+antialiased = true
+polygon = PackedVector2Array(130, 112, 143, 111, 153, 119, 156, 131, 151, 142, 140, 146, 131, 139, 127, 126)
+
+[node name="NearPupil" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=945295130]
+color = Color(0.14509805, 0.06666667, 0.2784314, 1)
+antialiased = true
+polygon = PackedVector2Array(137, 115, 145, 115, 150, 124, 149, 136, 142, 141, 136, 134, 134, 123)
+
+[node name="NearEyeHighlight" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=1998536521]
+antialiased = true
+polygon = PackedVector2Array(130, 115, 136, 111, 141, 115, 139, 122, 132, 123)
+
+[node name="NearUpperLash" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=1485306158]
+color = Color(0.078431375, 0.043137256, 0.13333334, 1)
+antialiased = true
+polygon = PackedVector2Array(111, 119, 121, 111, 136, 106, 151, 110, 163, 119, 168, 126, 159, 123, 151, 115, 138, 111, 125, 114, 117, 122)
+
+[node name="FarEyeWhite" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=1122583672]
+color = Color(0.9607843, 0.92941177, 0.95686275, 1)
+antialiased = true
+polygon = PackedVector2Array(191, 121, 198, 115, 209, 112, 220, 116, 228, 123, 229, 132, 223, 140, 213, 145, 202, 141, 194, 134)
+
+[node name="FarIris" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=359014023]
+color = Color(0.43137255, 0.24705882, 0.7019608, 1)
+antialiased = true
+polygon = PackedVector2Array(201, 115, 211, 113, 221, 119, 225, 129, 221, 140, 213, 145, 204, 141, 200, 130)
+
+[node name="FarPupil" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=396655824]
+color = Color(0.14509805, 0.06666667, 0.2784314, 1)
+antialiased = true
+polygon = PackedVector2Array(207, 117, 214, 116, 218, 124, 217, 136, 211, 141, 206, 134, 205, 123)
+
+[node name="FarEyeHighlight" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=185378348]
+antialiased = true
+polygon = PackedVector2Array(201, 118, 206, 114, 211, 118, 209, 124, 203, 125)
+
+[node name="FarUpperLash" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=1711198015]
+color = Color(0.078431375, 0.043137256, 0.13333334, 1)
+antialiased = true
+polygon = PackedVector2Array(187, 121, 196, 113, 209, 108, 222, 112, 231, 120, 236, 126, 228, 123, 220, 117, 210, 113, 199, 115, 192, 123)
+
+[node name="NearBrow" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=1764147031]
+color = Color(0.14509805, 0.08235294, 0.24313726, 1)
+antialiased = true
+polygon = PackedVector2Array(112, 100, 130, 95, 151, 99, 161, 104, 148, 101, 130, 99, 114, 104)
+
+[node name="FarBrow" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=1458991147]
+color = Color(0.12941177, 0.07058824, 0.21568628, 1)
+antialiased = true
+polygon = PackedVector2Array(190, 102, 205, 98, 224, 101, 232, 106, 221, 104, 205, 102, 191, 106)
+
+[node name="NoseSidePlane" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=1840297925]
+color = Color(0.6, 0.28, 0.32, 0.45)
+antialiased = true
+polygon = PackedVector2Array(175, 132, 180, 143, 183, 156, 179, 162, 174, 156, 176, 144)
+
+[node name="NoseFrontPlane" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=126587477]
+color = Color(0.98, 0.77, 0.69, 0.52)
+antialiased = true
+polygon = PackedVector2Array(175, 132, 178, 145, 178, 158, 174, 156)
+
+[node name="NoseBase" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=1674479304]
+color = Color(0.5, 0.23, 0.29, 0.32)
+antialiased = true
+polygon = PackedVector2Array(174, 156, 178, 158, 183, 156, 180, 162, 176, 161)
+
+[node name="Mouth" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=1523946293]
+color = Color(0.42745098, 0.22352941, 0.2784314, 1)
+antialiased = true
+polygon = PackedVector2Array(164, 181, 171, 179, 178, 180, 185, 179, 190, 181, 184, 183, 177, 184, 170, 183)
+
+[node name="LowerLip" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=79447205]
+color = Color(0.95, 0.67, 0.65, 0.68)
+antialiased = true
+polygon = PackedVector2Array(169, 187, 177, 188, 185, 186, 181, 190, 174, 191)
+
+[node name="NearBlush" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=75261559]
+color = Color(0.97, 0.38, 0.47, 0.17)
+antialiased = true
+polygon = PackedVector2Array(111, 147, 134, 150, 153, 156, 143, 166, 120, 159)
+
+[node name="FarBlush" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=1105225669]
+color = Color(0.97, 0.38, 0.47, 0.15)
+antialiased = true
+polygon = PackedVector2Array(198, 150, 219, 144, 227, 156, 207, 163)
+
+[node name="HairCap" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=788819208]
+color = Color(0.2, 0.1254902, 0.36862746, 1)
+antialiased = true
+polygon = PackedVector2Array(60, 104, 68, 72, 83, 43, 106, 21, 139, 7, 176, 4, 210, 14, 237, 35, 256, 64, 267, 96, 254, 91, 241, 78, 228, 62, 212, 45, 192, 31, 168, 23, 143, 26, 121, 39, 102, 57, 89, 79, 80, 104)
+
+[node name="CenterBangNear" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=711403289]
+color = Color(0.28627452, 0.1882353, 0.48235294, 1)
+antialiased = true
+polygon = PackedVector2Array(125, 35, 145, 21, 163, 17, 155, 39, 152, 63, 153, 87, 159, 108, 168, 126, 158, 120, 149, 105, 141, 121, 132, 134, 135, 113, 133, 88, 129, 62)
+
+[node name="CenterBangFar" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=1335884654]
+color = Color(0.21960784, 0.13333334, 0.3882353, 1)
+antialiased = true
+polygon = PackedVector2Array(170, 18, 187, 25, 200, 43, 204, 66, 203, 89, 207, 108, 199, 116, 193, 104, 188, 118, 179, 130, 166, 139, 174, 123, 179, 104, 178, 82, 174, 57)
+
+[node name="NearSideLock" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=415922585]
+color = Color(0.22352941, 0.13725491, 0.4, 1)
+antialiased = true
+polygon = PackedVector2Array(86, 47, 70, 70, 62, 99, 58, 126, 48, 153, 35, 181, 52, 168, 68, 146, 78, 121, 87, 94, 99, 67)
+
+[node name="FarSideLock" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=1010782420]
+color = Color(0.1764706, 0.101960786, 0.33333334, 1)
+antialiased = true
+polygon = PackedVector2Array(207, 35, 226, 46, 241, 66, 250, 94, 254, 123, 267, 146, 282, 151, 270, 141, 260, 126, 257, 155, 266, 183, 281, 207, 265, 196, 249, 176, 239, 153, 232, 127, 226, 96, 217, 63)
+
+[node name="CrownHighlight" type="Polygon2D" parent="NewAttemptPanel/NewArtwork" unique_id=158400630]
+color = Color(0.33333334, 0.21568628, 0.5686275, 1)
+antialiased = true
+polygon = PackedVector2Array(83, 54, 108, 28, 139, 14, 174, 12, 202, 22, 177, 24, 151, 31, 127, 43, 105, 64)
+
+[node name="ConstructionOverlay" type="Node2D" parent="NewAttemptPanel/NewArtwork" unique_id=2066809912]
+visible = false
+
+[node name="BrowGuide" type="Line2D" parent="NewAttemptPanel/NewArtwork/ConstructionOverlay" unique_id=239845046]
+points = PackedVector2Array(101, 104, 128, 98, 158, 101, 187, 104, 232, 108)
+width = 1.5
+default_color = Color(0.9411765, 0.6039216, 0.7529412, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="NoseGuide" type="Line2D" parent="NewAttemptPanel/NewArtwork/ConstructionOverlay" unique_id=1912971975]
+points = PackedVector2Array(102, 154, 136, 151, 177, 157, 229, 151)
+width = 1.5
+default_color = Color(0.9098039, 0.7176471, 0.47058824, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="MouthGuide" type="Line2D" parent="NewAttemptPanel/NewArtwork/ConstructionOverlay" unique_id=831640577]
+points = PackedVector2Array(113, 181, 146, 180, 176, 182, 213, 181)
+width = 1.3
+default_color = Color(0.9098039, 0.4392157, 0.5254902, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="CenterLine" type="Line2D" parent="NewAttemptPanel/NewArtwork/ConstructionOverlay" unique_id=1764636981]
+points = PackedVector2Array(171, 47, 173, 92, 174, 126, 178, 160, 176, 183, 169, 205)
+width = 1.5
+default_color = Color(0.38431373, 0.8627451, 0.9137255, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="JawGuide" type="Line2D" parent="NewAttemptPanel/NewArtwork/ConstructionOverlay" unique_id=1525874682]
+points = PackedVector2Array(99, 124, 116, 167, 151, 198, 169, 205, 204, 180, 231, 139)
+width = 1.5
+default_color = Color(0.9490196, 0.8117647, 0.5137255, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="Notes" type="Label" parent="NewAttemptPanel" unique_id=2090979609]
+offset_left = 18.0
+offset_top = 380.0
+offset_right = 18.0
+offset_bottom = 380.0
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7294118, 0.77254903, 0.83137256, 1)
+text = "Near eye enlarged by perspective;
+far eye compressed; nose follows
+the center plane; mouth sits midway
+to the anime-shortened chin."

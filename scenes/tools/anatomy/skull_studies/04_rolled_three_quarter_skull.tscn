@@ -1,0 +1,369 @@
+[gd_scene format=3]
+
+[ext_resource type="Texture2D" path="res://art/concept_art/skull.webp" id="1_ea7ya"]
+
+[node name="PolygonSkullStudy04" type="Node2D" unique_id=503332165]
+
+[node name="Background" type="Polygon2D" parent="." unique_id=1304984413]
+color = Color(0.0627451, 0.09019608, 0.13333334, 1)
+antialiased = true
+polygon = PackedVector2Array(0, 0, 1280, 0, 1280, 720, 0, 720)
+
+[node name="Title" type="Label" parent="." unique_id=911521012]
+offset_left = 30.0
+offset_top = 20.0
+offset_right = 30.0
+offset_bottom = 20.0
+theme_override_font_sizes/font_size = 27
+theme_override_colors/font_color = Color(0.9490196, 0.91764706, 0.84705883, 1)
+text = "04  POLYGON SKULL STUDY — Rolled Three Quarter"
+
+[node name="Subtitle" type="Label" parent="." unique_id=847516332]
+offset_left = 31.0
+offset_top = 60.0
+offset_right = 31.0
+offset_bottom = 60.0
+theme_override_font_sizes/font_size = 15
+theme_override_colors/font_color = Color(0.68235296, 0.73333335, 0.8156863, 1)
+text = "One projected construction; cranium, orbital recesses, nasal aperture, maxilla, teeth, and mandible."
+
+[node name="SkullPanel" type="Node2D" parent="." unique_id=234977369]
+position = Vector2(28, 98)
+
+[node name="Fill" type="Polygon2D" parent="SkullPanel" unique_id=738646913]
+color = Color(0.09411765, 0.13725491, 0.2, 1)
+antialiased = true
+polygon = PackedVector2Array(0, 0, 785, 0, 785, 585, 0, 585)
+
+[node name="Border" type="Line2D" parent="SkullPanel" unique_id=741824005]
+points = PackedVector2Array(0, 0, 785, 0, 785, 585, 0, 585, 0, 0)
+width = 1.2
+default_color = Color(0.20784314, 0.26666668, 0.3529412, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="ProjectedSkull" type="Node2D" parent="SkullPanel" unique_id=1302683142]
+position = Vector2(392, 295)
+scale = Vector2(2.45, 2.45)
+
+[node name="CranialVault" type="Polygon2D" parent="SkullPanel/ProjectedSkull" unique_id=174797384]
+color = Color(0.84705883, 0.78431374, 0.6431373, 1)
+antialiased = true
+polygon = PackedVector2Array(63.111683, 0, 62.80778, -6.1860266, 61.89901, -12.312478, 60.39411, -18.320354, 58.30759, -24.151794, 55.659534, -29.75064, 52.475445, -35.06297, 48.785988, -40.037624, 44.626698, -44.626698, 40.037624, -48.785988, 35.06297, -52.475445, 29.75064, -55.659534, 24.151794, -58.30759, 18.320354, -60.39411, 12.312478, -61.89901, 6.1860266, -62.80778, 3.864348e-15, -63.111683, -6.1860266, -62.80778, -12.312478, -61.89901, -18.320354, -60.39411, -24.151794, -58.30759, -29.75064, -55.659534, -35.06297, -52.475445, -40.037624, -48.785988, -44.626698, -44.626698, -48.785988, -40.037624, -52.475445, -35.06297, -55.659534, -29.75064, -58.30759, -24.151794, -60.39411, -18.320354, -61.89901, -12.312478, -62.80778, -6.1860266, -63.111683, -7.728696e-15, -62.80778, 6.1860266, -61.89901, 12.312478, -60.39411, 18.320354, -58.30759, 24.151794, -55.659534, 29.75064, -52.475445, 35.06297, -48.785988, 40.037624, -44.626698, 44.626698, -40.037624, 48.785988, -35.06297, 52.475445, -29.75064, 55.659534, -24.151794, 58.30759, -18.320354, 60.39411, -12.312478, 61.89901, -6.1860266, 62.80778, -1.1593044e-14, 63.111683, 6.1860266, 62.80778, 12.312478, 61.89901, 18.320354, 60.39411, 24.151794, 58.30759, 29.75064, 55.659534, 35.06297, 52.475445, 40.037624, 48.785988, 44.626698, 44.626698, 48.785988, 40.037624, 52.475445, 35.06297, 55.659534, 29.75064, 58.30759, 24.151794, 60.39411, 18.320354, 61.89901, 12.312478, 62.80778, 6.1860266)
+
+[node name="NearTemporalMass" type="Polygon2D" parent="SkullPanel/ProjectedSkull" unique_id=619452586]
+color = Color(0.61, 0.51, 0.34, 0.52)
+antialiased = true
+polygon = PackedVector2Array(-46.122562, -37.130074, -42.809837, -38.3596, -39.24289, -39.097946, -35.45262, -39.32443, -31.474216, -39.02352, -27.346952, -38.18558, -23.113867, -36.807503, -18.8213, -34.89333, -14.518259, -32.454666, -10.255689, -29.510963, -6.085587, -26.089636, -2.0600207, -22.225868, 1.769888, -17.96229, 5.355055, -13.348343, 8.649476, -8.439458, 11.611245, -3.2960114, 14.203418, 2.0178697, 16.394802, 7.4356217, 18.160524, 12.889623, 19.48244, 18.312569, 20.349314, 23.63882, 20.756813, 28.805628, 20.70731, 33.754215, 20.209515, 38.430706, 19.277973, 42.786823, 17.932428, 46.780407, 16.197144, 50.375736, 14.100166, 53.543644, 11.672568, 56.261414, 8.947737, 58.51266, 5.9606857, 60.286972, 2.7474124, 61.579483, -0.65563965, 62.39047, -4.2120895, 62.724773, -7.8859925, 62.591373, -11.642197, 62.002796, -15.446575, 60.9747, -19.26623, 59.525402, -23.069613, 57.675457, -26.826597, 55.447346, -30.50853, 52.86512, -34.088223, 49.95417, -37.539932, 46.741013, -40.839344, 43.253128, -43.963478, 39.51885, -46.890697, 35.567257, -49.600616, 31.428158, -52.07409, 27.132036, -54.29317, 22.710073, -56.24111, 18.194136, -57.90238, 13.616816, -59.262703, 9.01144, -60.30911, 4.4120913, -61.030067, -0.14639539, -61.41555, -4.628448, -61.45727, -8.997806, -61.148808, -13.217616, -60.485855, -17.250546, -59.46646, -21.05898, -58.09131, -24.605284, -56.363976, -27.85207, -54.29124, -30.762636, -51.8834, -33.301395, -49.15449, -35.434425)
+
+[node name="FacialPlate" type="Polygon2D" parent="SkullPanel/ProjectedSkull" unique_id=1363877026]
+color = Color(0.7882353, 0.7137255, 0.54901963, 1)
+antialiased = true
+polygon = PackedVector2Array(14.203418, 2.0178697, 57.94122, -24.236002, 85.56112, 66.55645, 68.81053, 81.94812)
+
+[node name="Mandible" type="Polygon2D" parent="SkullPanel/ProjectedSkull" unique_id=1186565858]
+color = Color(0.7254902, 0.6431373, 0.46666667, 1)
+antialiased = true
+polygon = PackedVector2Array(40.55184, 32.645473, 85.56112, 66.55645, 68.81053, 81.94812, -0.65563965, 62.39047)
+
+[node name="Maxilla" type="Polygon2D" parent="SkullPanel/ProjectedSkull" unique_id=1517381880]
+color = Color(0.85882354, 0.79607844, 0.654902, 1)
+antialiased = true
+polygon = PackedVector2Array(33.029305, 50.341534, 86.89173, 9.765632, 77.50448, 55.069763, 61.648933, 68.31146)
+
+[node name="LeftZygomaticAndCheek" type="Polygon2D" parent="SkullPanel/ProjectedSkull" unique_id=658332675]
+color = Color(0.8784314, 0.8235294, 0.69411767, 1)
+antialiased = true
+polygon = PackedVector2Array(37.209156, 18.47317, 49.37207, 10.217043, 55.138466, 33.686153, 61.648933, 58.311462, 70.257965, 55.02672)
+
+[node name="RightZygomaticAndCheek" type="Polygon2D" parent="SkullPanel/ProjectedSkull" unique_id=1866821466]
+color = Color(0.7607843, 0.68235296, 0.5019608, 1)
+antialiased = true
+polygon = PackedVector2Array(58.114403, 4.282791, 69.01208, -3.1144972, 45.19203, 75.298515, 77.50448, 45.069763, 68.53441, 23.59466)
+
+[node name="LeftZygomaticArch" type="Line2D" parent="SkullPanel/ProjectedSkull" unique_id=435319388]
+points = PackedVector2Array(37.209156, 18.47317, 40.55184, 32.645473)
+width = 2.0
+default_color = Color(0.9019608, 0.84313726, 0.7176471, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="RightZygomaticArch" type="Line2D" parent="SkullPanel/ProjectedSkull" unique_id=119301595]
+points = PackedVector2Array(69.01208, -3.1144972, -0.65563965, 62.39047)
+width = 2.0
+default_color = Color(0.84313726, 0.7647059, 0.6039216, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="Orbit1UpperRecess" type="Polygon2D" parent="SkullPanel/ProjectedSkull" unique_id=792961786]
+color = Color(0.16862746, 0.16078432, 0.14901961, 1)
+antialiased = true
+polygon = PackedVector2Array(23.882565, -2.7010138, 40.611603, -11.585478, 36.67811, 2.0661514, 29.002718, 6.9426484)
+
+[node name="Orbit1LowerRecess" type="Polygon2D" parent="SkullPanel/ProjectedSkull" unique_id=664205360]
+color = Color(0.09019608, 0.09803922, 0.101960786, 1)
+antialiased = true
+polygon = PackedVector2Array(29.002718, 6.9426484, 36.67811, 2.0661514, 49.37207, 10.217043, 37.209156, 18.47317)
+
+[node name="Orbit1Rim" type="Line2D" parent="SkullPanel/ProjectedSkull" unique_id=249043905]
+points = PackedVector2Array(23.882565, -2.7010138, 40.611603, -11.585478, 36.67811, 2.0661514, 29.002718, 6.9426484, 23.882565, -2.7010138)
+width = 1.45
+default_color = Color(0.93333334, 0.8862745, 0.77254903, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="Orbit2UpperRecess" type="Polygon2D" parent="SkullPanel/ProjectedSkull" unique_id=1954718901]
+color = Color(0.16862746, 0.16078432, 0.14901961, 1)
+antialiased = true
+polygon = PackedVector2Array(49.62238, -17.04729, 56.717003, -22.499935, 56.92069, -10.7948065, 50.03664, -6.4210844)
+
+[node name="Orbit2LowerRecess" type="Polygon2D" parent="SkullPanel/ProjectedSkull" unique_id=1221994138]
+color = Color(0.09019608, 0.09803922, 0.101960786, 1)
+antialiased = true
+polygon = PackedVector2Array(50.03664, -6.4210844, 56.92069, -10.7948065, 69.01208, -3.1144972, 58.114403, 4.282791)
+
+[node name="Orbit2Rim" type="Line2D" parent="SkullPanel/ProjectedSkull" unique_id=850347320]
+points = PackedVector2Array(49.62238, -17.04729, 56.717003, -22.499935, 56.92069, -10.7948065, 50.03664, -6.4210844, 49.62238, -17.04729)
+width = 1.45
+default_color = Color(0.93333334, 0.8862745, 0.77254903, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="NasalAperture" type="Polygon2D" parent="SkullPanel/ProjectedSkull" unique_id=446537804]
+color = Color(0.09019608, 0.09803922, 0.101960786, 1)
+antialiased = true
+polygon = PackedVector2Array(49.664047, -3.5769238, 68.53441, 23.59466, 55.138466, 33.686153)
+
+[node name="NasalBridge" type="Polygon2D" parent="SkullPanel/ProjectedSkull" unique_id=2118063162]
+color = Color(0.91, 0.84, 0.69, 0.68)
+antialiased = true
+polygon = PackedVector2Array(45.664047, -11.576923, 53.664047, -11.576923, 68.53441, 23.59466, 55.138466, 33.686153)
+
+[node name="Tooth01" type="Polygon2D" parent="SkullPanel/ProjectedSkull" unique_id=682909002]
+color = Color(0.93333334, 0.8980392, 0.8117647, 1)
+antialiased = true
+polygon = PackedVector2Array(61.648933, 52.311462, 63.630875, 50.65625, 63.630875, 62.65625, 61.648933, 64.31146)
+
+[node name="ToothSeam01" type="Line2D" parent="SkullPanel/ProjectedSkull" unique_id=546873109]
+points = PackedVector2Array(63.630875, 50.65625, 63.630875, 62.65625)
+width = 0.7
+default_color = Color(0.34, 0.29, 0.23, 0.68)
+joint_mode = 2
+antialiased = true
+
+[node name="Tooth02" type="Polygon2D" parent="SkullPanel/ProjectedSkull" unique_id=264017208]
+color = Color(0.84705883, 0.8039216, 0.70980394, 1)
+antialiased = true
+polygon = PackedVector2Array(63.630875, 50.65625, 65.61282, 49.001038, 65.61282, 61.001038, 63.630875, 62.65625)
+
+[node name="ToothSeam02" type="Line2D" parent="SkullPanel/ProjectedSkull" unique_id=2104170752]
+points = PackedVector2Array(65.61282, 49.001038, 65.61282, 61.001038)
+width = 0.7
+default_color = Color(0.34, 0.29, 0.23, 0.68)
+joint_mode = 2
+antialiased = true
+
+[node name="Tooth03" type="Polygon2D" parent="SkullPanel/ProjectedSkull" unique_id=824887544]
+color = Color(0.93333334, 0.8980392, 0.8117647, 1)
+antialiased = true
+polygon = PackedVector2Array(65.61282, 49.001038, 67.594765, 47.345825, 67.594765, 59.345825, 65.61282, 61.001038)
+
+[node name="ToothSeam03" type="Line2D" parent="SkullPanel/ProjectedSkull" unique_id=1525533610]
+points = PackedVector2Array(67.594765, 47.345825, 67.594765, 59.345825)
+width = 0.7
+default_color = Color(0.34, 0.29, 0.23, 0.68)
+joint_mode = 2
+antialiased = true
+
+[node name="Tooth04" type="Polygon2D" parent="SkullPanel/ProjectedSkull" unique_id=1081875582]
+color = Color(0.84705883, 0.8039216, 0.70980394, 1)
+antialiased = true
+polygon = PackedVector2Array(67.594765, 47.345825, 69.576706, 45.690613, 69.576706, 57.690613, 67.594765, 59.345825)
+
+[node name="ToothSeam04" type="Line2D" parent="SkullPanel/ProjectedSkull" unique_id=375504542]
+points = PackedVector2Array(69.576706, 45.690613, 69.576706, 57.690613)
+width = 0.7
+default_color = Color(0.34, 0.29, 0.23, 0.68)
+joint_mode = 2
+antialiased = true
+
+[node name="Tooth05" type="Polygon2D" parent="SkullPanel/ProjectedSkull" unique_id=655560142]
+color = Color(0.93333334, 0.8980392, 0.8117647, 1)
+antialiased = true
+polygon = PackedVector2Array(69.576706, 45.690613, 71.55865, 44.0354, 71.55865, 56.0354, 69.576706, 57.690613)
+
+[node name="ToothSeam05" type="Line2D" parent="SkullPanel/ProjectedSkull" unique_id=1516597876]
+points = PackedVector2Array(71.55865, 44.0354, 71.55865, 56.0354)
+width = 0.7
+default_color = Color(0.34, 0.29, 0.23, 0.68)
+joint_mode = 2
+antialiased = true
+
+[node name="Tooth06" type="Polygon2D" parent="SkullPanel/ProjectedSkull" unique_id=544933398]
+color = Color(0.84705883, 0.8039216, 0.70980394, 1)
+antialiased = true
+polygon = PackedVector2Array(71.55865, 44.0354, 73.54059, 42.380188, 73.54059, 54.380188, 71.55865, 56.0354)
+
+[node name="ToothSeam06" type="Line2D" parent="SkullPanel/ProjectedSkull" unique_id=1885850467]
+points = PackedVector2Array(73.54059, 42.380188, 73.54059, 54.380188)
+width = 0.7
+default_color = Color(0.34, 0.29, 0.23, 0.68)
+joint_mode = 2
+antialiased = true
+
+[node name="Tooth07" type="Polygon2D" parent="SkullPanel/ProjectedSkull" unique_id=1856892089]
+color = Color(0.93333334, 0.8980392, 0.8117647, 1)
+antialiased = true
+polygon = PackedVector2Array(73.54059, 42.380188, 75.52254, 40.724976, 75.52254, 52.724976, 73.54059, 54.380188)
+
+[node name="ToothSeam07" type="Line2D" parent="SkullPanel/ProjectedSkull" unique_id=1801381185]
+points = PackedVector2Array(75.52254, 40.724976, 75.52254, 52.724976)
+width = 0.7
+default_color = Color(0.34, 0.29, 0.23, 0.68)
+joint_mode = 2
+antialiased = true
+
+[node name="Tooth08" type="Polygon2D" parent="SkullPanel/ProjectedSkull" unique_id=1715055075]
+color = Color(0.84705883, 0.8039216, 0.70980394, 1)
+antialiased = true
+polygon = PackedVector2Array(75.52254, 40.724976, 77.50448, 39.069763, 77.50448, 51.069763, 75.52254, 52.724976)
+
+[node name="ToothSeam08" type="Line2D" parent="SkullPanel/ProjectedSkull" unique_id=2144263919]
+points = PackedVector2Array(77.50448, 39.069763, 77.50448, 51.069763)
+width = 0.7
+default_color = Color(0.34, 0.29, 0.23, 0.68)
+joint_mode = 2
+antialiased = true
+
+[node name="CraniumContour" type="Line2D" parent="SkullPanel/ProjectedSkull" unique_id=28574780]
+points = PackedVector2Array(63.111683, 0, 62.80778, -6.1860266, 61.89901, -12.312478, 60.39411, -18.320354, 58.30759, -24.151794, 55.659534, -29.75064, 52.475445, -35.06297, 48.785988, -40.037624, 44.626698, -44.626698, 40.037624, -48.785988, 35.06297, -52.475445, 29.75064, -55.659534, 24.151794, -58.30759, 18.320354, -60.39411, 12.312478, -61.89901, 6.1860266, -62.80778, 3.864348e-15, -63.111683, -6.1860266, -62.80778, -12.312478, -61.89901, -18.320354, -60.39411, -24.151794, -58.30759, -29.75064, -55.659534, -35.06297, -52.475445, -40.037624, -48.785988, -44.626698, -44.626698, -48.785988, -40.037624, -52.475445, -35.06297, -55.659534, -29.75064, -58.30759, -24.151794, -60.39411, -18.320354, -61.89901, -12.312478, -62.80778, -6.1860266, -63.111683, -7.728696e-15, -62.80778, 6.1860266, -61.89901, 12.312478, -60.39411, 18.320354, -58.30759, 24.151794, -55.659534, 29.75064, -52.475445, 35.06297, -48.785988, 40.037624, -44.626698, 44.626698, -40.037624, 48.785988, -35.06297, 52.475445, -29.75064, 55.659534, -24.151794, 58.30759, -18.320354, 60.39411, -12.312478, 61.89901, -6.1860266, 62.80778, -1.1593044e-14, 63.111683, 6.1860266, 62.80778, 12.312478, 61.89901, 18.320354, 60.39411, 24.151794, 58.30759, 29.75064, 55.659534, 35.06297, 52.475445, 40.037624, 48.785988, 44.626698, 44.626698, 48.785988, 40.037624, 52.475445, 35.06297, 55.659534, 29.75064, 58.30759, 24.151794, 60.39411, 18.320354, 61.89901, 12.312478, 62.80778, 6.1860266, 63.111683, 0)
+width = 1.6
+default_color = Color(0.9607843, 0.91764706, 0.8235294, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="FacialContour" type="Line2D" parent="SkullPanel/ProjectedSkull" unique_id=2083987722]
+points = PackedVector2Array(14.203418, 2.0178697, 57.94122, -24.236002, 85.56112, 66.55645, 68.81053, 81.94812, 14.203418, 2.0178697)
+width = 1.5
+default_color = Color(0.9607843, 0.91764706, 0.8235294, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="MandibleContour" type="Line2D" parent="SkullPanel/ProjectedSkull" unique_id=1692947431]
+points = PackedVector2Array(40.55184, 32.645473, 85.56112, 66.55645, 68.81053, 81.94812, -0.65563965, 62.39047, 40.55184, 32.645473)
+width = 1.6
+default_color = Color(0.9607843, 0.91764706, 0.8235294, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="NearJaw" type="Line2D" parent="SkullPanel/ProjectedSkull" unique_id=1536459746]
+points = PackedVector2Array(-0.65563965, 62.39047, 68.81053, 81.94812)
+width = 2.0
+default_color = Color(0.9411765, 0.8745098, 0.7411765, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="FarJaw" type="Line2D" parent="SkullPanel/ProjectedSkull" unique_id=1829947899]
+points = PackedVector2Array(40.55184, 32.645473, 85.56112, 66.55645)
+width = 1.4
+default_color = Color(0.94, 0.86, 0.7, 0.55)
+joint_mode = 2
+antialiased = true
+
+[node name="ConstructionScaffold" type="Node2D" parent="SkullPanel/ProjectedSkull" unique_id=386679651]
+visible = false
+
+[node name="Brow" type="Line2D" parent="SkullPanel/ProjectedSkull/ConstructionScaffold" unique_id=1179129230]
+points = PackedVector2Array(1.3661159, 12.309119, 81.2628, -36.1398)
+width = 1.3
+default_color = Color(0.9411765, 0.6039216, 0.7529412, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="Nose" type="Line2D" parent="SkullPanel/ProjectedSkull/ConstructionScaffold" unique_id=2034880478]
+points = PackedVector2Array(33.029305, 50.341534, 86.89173, 9.765632)
+width = 1.3
+default_color = Color(0.9098039, 0.7176471, 0.47058824, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="MouthBottomThroughTeeth" type="Line2D" parent="SkullPanel/ProjectedSkull/ConstructionScaffold" unique_id=1509785041]
+points = PackedVector2Array(61.648933, 58.311462, 77.50448, 45.069763)
+width = 1.3
+default_color = Color(0.9098039, 0.4392157, 0.5254902, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="Chin" type="Line2D" parent="SkullPanel/ProjectedSkull/ConstructionScaffold" unique_id=1690284136]
+points = PackedVector2Array(68.81053, 81.94812, 85.56112, 66.55645)
+width = 1.3
+default_color = Color(0.95686275, 0.84313726, 0.5411765, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="Center" type="Line2D" parent="SkullPanel/ProjectedSkull/ConstructionScaffold" unique_id=47657665]
+points = PackedVector2Array(45.50047, -14.453715, 61.96081, 28.546715, 77.38893, 74.06566)
+width = 1.4
+default_color = Color(0.38431373, 0.8627451, 0.9137255, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="NearSideEllipse" type="Line2D" parent="SkullPanel/ProjectedSkull/ConstructionScaffold" unique_id=847972983]
+points = PackedVector2Array(-46.122562, -37.130074, -42.809837, -38.3596, -39.24289, -39.097946, -35.45262, -39.32443, -31.474216, -39.02352, -27.346952, -38.18558, -23.113867, -36.807503, -18.8213, -34.89333, -14.518259, -32.454666, -10.255689, -29.510963, -6.085587, -26.089636, -2.0600207, -22.225868, 1.769888, -17.96229, 5.355055, -13.348343, 8.649476, -8.439458, 11.611245, -3.2960114, 14.203418, 2.0178697, 16.394802, 7.4356217, 18.160524, 12.889623, 19.48244, 18.312569, 20.349314, 23.63882, 20.756813, 28.805628, 20.70731, 33.754215, 20.209515, 38.430706, 19.277973, 42.786823, 17.932428, 46.780407, 16.197144, 50.375736, 14.100166, 53.543644, 11.672568, 56.261414, 8.947737, 58.51266, 5.9606857, 60.286972, 2.7474124, 61.579483, -0.65563965, 62.39047, -4.2120895, 62.724773, -7.8859925, 62.591373, -11.642197, 62.002796, -15.446575, 60.9747, -19.26623, 59.525402, -23.069613, 57.675457, -26.826597, 55.447346, -30.50853, 52.86512, -34.088223, 49.95417, -37.539932, 46.741013, -40.839344, 43.253128, -43.963478, 39.51885, -46.890697, 35.567257, -49.600616, 31.428158, -52.07409, 27.132036, -54.29317, 22.710073, -56.24111, 18.194136, -57.90238, 13.616816, -59.262703, 9.01144, -60.30911, 4.4120913, -61.030067, -0.14639539, -61.41555, -4.628448, -61.45727, -8.997806, -61.148808, -13.217616, -60.485855, -17.250546, -59.46646, -21.05898, -58.09131, -24.605284, -56.363976, -27.85207, -54.29124, -30.762636, -51.8834, -33.301395, -49.15449, -35.434425, -46.122562, -37.130074)
+width = 1.2
+default_color = Color(0.9490196, 0.627451, 0.43529412, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="FarSideEllipse" type="Line2D" parent="SkullPanel/ProjectedSkull/ConstructionScaffold" unique_id=346481106]
+points = PackedVector2Array(0.6059878, -57.665615, 3.9575973, -58.934975, 7.529204, -59.75953, 11.288699, -60.12018, 15.200272, -60.00243, 19.22468, -59.39703, 23.319618, -58.300488, 27.4402, -56.71559, 31.539593, -54.65174, 35.569714, -52.125202, 39.48206, -49.159157, 43.228596, -45.7836, 46.762665, -42.03504, 50.039932, -37.955997, 53.019318, -33.59433, 55.663803, -29.002377, 57.94122, -24.236002, 59.82485, -19.353483, 61.2939, -14.414394, 62.333836, -9.478435, 62.936462, -4.604303, 63.099934, 0.15136045, 62.828503, 4.734932, 62.13223, 9.096624, 61.026455, 13.191169, 59.5313, 16.978306, 57.670982, 20.423145, 55.473217, 23.496359, 52.96848, 26.174198, 50.189404, 28.438444, 47.170147, 30.27619, 43.945786, 31.67958, 40.55184, 32.645473, 37.023785, 33.17503, 33.396713, 33.27336, 29.704975, 32.94908, 25.981958, 32.21391, 22.259884, 31.082314, 18.569674, 29.571136, 14.940867, 27.699287, 11.401549, 25.487455, 7.9783444, 22.957855, 4.6964087, 20.134064, 1.5794384, 17.040794, -1.350286, 13.703821, -4.0718894, 10.149844, -6.565866, 6.4064403, -8.814075, 2.5019965, -10.799715, -1.5343081, -12.507349, -5.6725245, -13.922928, -9.881945, -15.033846, -14.131101, -15.829006, -18.387796, -16.298925, -22.619118, -16.43586, -26.791487, -16.233953, -30.870722, -15.689419, -34.822144, -14.800726, -38.610725, -13.5688305, -42.20126, -11.997396, -45.558636, -10.093026, -48.64807, -7.8655043, -51.435528, -5.3280187, -53.88811, -2.4973428, -55.974518, 0.6059878, -57.665615)
+width = 1.0
+default_color = Color(0.95, 0.49, 0.39, 0.34)
+joint_mode = 2
+antialiased = true
+
+[node name="ReferencePanel" type="Node2D" parent="." unique_id=1838408076]
+position = Vector2(838, 98)
+
+[node name="Fill" type="Polygon2D" parent="ReferencePanel" unique_id=865459244]
+color = Color(0.09411765, 0.13725491, 0.2, 1)
+antialiased = true
+polygon = PackedVector2Array(0, 0, 414, 0, 414, 585, 0, 585)
+
+[node name="Border" type="Line2D" parent="ReferencePanel" unique_id=673234415]
+points = PackedVector2Array(0, 0, 414, 0, 414, 585, 0, 585, 0, 0)
+width = 1.2
+default_color = Color(0.20784314, 0.26666668, 0.3529412, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="ReferenceTitle" type="Label" parent="ReferencePanel" unique_id=1033846847]
+offset_left = 18.0
+offset_top = 16.0
+offset_right = 18.0
+offset_bottom = 16.0
+theme_override_font_sizes/font_size = 19
+theme_override_colors/font_color = Color(0.9490196, 0.91764706, 0.84705883, 1)
+text = "ANATOMY REFERENCE"
+
+[node name="SkullReference" type="Sprite2D" parent="ReferencePanel" unique_id=1957482497]
+position = Vector2(20, 58)
+scale = Vector2(0.61, 0.61)
+texture = ExtResource("1_ea7ya")
+centered = false
+
+[node name="ReferenceNotes" type="Label" parent="ReferencePanel" unique_id=1941643005]
+offset_left = 18.0
+offset_top = 382.0
+offset_right = 18.0
+offset_bottom = 382.0
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7372549, 0.78039217, 0.8352941, 1)
+text = "Polygon interpretation targets:
+• round cranial vault
+• recessed paired orbits
+• triangular nasal aperture
+• cheekbone bridge into maxilla
+• tooth row above a hinged mandible
+
+ConstructionScaffold can be toggled in the scene tree."

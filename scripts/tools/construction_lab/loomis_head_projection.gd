@@ -342,7 +342,7 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 		"far_chin_point": far_chin_point,
 		"jaw_hinge_point": jaw_hinge_point,
 		"far_jaw_hinge_point": far_jaw_hinge_point,
-		"jawline": jawline,
+			"jawline": jawline,
 			"far_jawline": far_jawline,
 			"facial_plane": facial_plane,
 			"eye_cavity_planes": eye_cavity_planes,
