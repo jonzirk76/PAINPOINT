@@ -8,10 +8,10 @@ This lab projects the first three head-construction elements from one shared
 3. A vertical facial centerline and horizontal brow midline wrapped across the
    front half of the sphere.
 
-A translucent cuboid surrounds the sphere as an orientation audit. The cube is
-not part of the Loomis head and should never influence the eventual silhouette.
-Its only purpose is to make pitch, yaw, roll, and perspective drift easy to
-see.
+A translucent tangent cube surrounds the sphere as an orientation audit. Its
+side length is exactly the sphere diameter, so the sphere touches every cube
+plane at one point. The cube is not part of the Loomis head and should never
+influence the eventual silhouette.
 
 ## Generate the visual batch
 
@@ -33,6 +33,7 @@ Open any generated scene and press F6. In the scene tree, independently toggle:
 - `Step1Sphere`
 - `Step2SidePlaneCut`
 - `Step3Midlines`
+- `Step4FaceGuidesAndJaw`
 
 ## Visual judging criteria
 
@@ -61,16 +62,36 @@ Open any generated scene and press F6. In the scene tree, independently toggle:
 - Looking up or down shifts their curvature coherently.
 - Roll rotates the side plane and both midlines as one construction.
 
+The tangent front-face square includes flat horizontal and vertical midpoint
+lines. These define the same two 3D construction planes as the curved spherical
+midlines. The straight side-plane diameter likewise shows the brow midline
+flattening across the sliced plane.
+
+### Step 4: descending guides and jaw anchors
+
+- The brow, nose, and chin guides are separate local-X lines projected at their
+  own facial heights. Their image-space tilt is calculated rather than copied.
+- The gold center descent continues from the sphere's front-center point
+  through the nose center to the chin.
+- The default orange near-ear jaw hinge is placed at the bottom extent of the
+  side-plane ellipse.
+- The yellow chin and orange hinge are the primary anchors; the jawline is the
+  direct connection between them.
+- The default jaw profile is neutral, not canonical anatomy. Per-character
+  tuning fields are `chin_drop_ratio`, `chin_forward_ratio`,
+  `jaw_hinge_drop_ratio`, and `jaw_hinge_forward_ratio`.
+
 ### Compliance cube
 
 - Red, green, and blue cube edges define the same local X, Y, and Z directions
   used to orient the head.
 - Every guide responds to pitch, yaw, and roll in agreement with the cube.
-- The sphere may touch neither the cube faces nor its corners; the extra space
-  keeps the cube readable as a reference cage.
+- The sphere touches each cube plane once and remains clear of every cube edge
+  and corner.
 
 ## Scope boundary
 
-This stage does not add a jaw, facial thirds, ear placement, features, or
-stylization. Those should wait until the sphere, side-plane ellipse, and
-midline behavior survive visual review across the initial tilt batch.
+This stage adds only the primary chin and near-ear jaw-hinge anchors. It does
+not add facial thirds, anatomical ear placement, features, or stylization.
+Those should wait until the tangent cube, descending guides, and jaw anchors
+survive visual review across the initial tilt batch.

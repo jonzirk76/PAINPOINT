@@ -14,6 +14,10 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 	var focal_length: float = float(spec.get("focal_length", 430.0))
 	var screen_center: Vector2 = spec.get("screen_center", Vector2.ZERO)
 	var segment_count: int = int(spec.get("segments", DEFAULT_SEGMENTS))
+	var nose_drop_ratio: float = float(spec.get("nose_drop_ratio", 0.68))
+	var nose_forward_ratio: float = float(spec.get("nose_forward_ratio", 0.96))
+	var chin_drop_ratio: float = float(spec.get("chin_drop_ratio", 1.42))
+	var chin_forward_ratio: float = float(spec.get("chin_forward_ratio", 0.88))
 	var basis := Basis.from_euler(Vector3(
 		deg_to_rad(rotation_degrees.x),
 		deg_to_rad(rotation_degrees.y),
@@ -31,6 +35,11 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 	var side_sign := 1.0 if local_side_axis.z >= 0.0 else -1.0
 	var cut_distance := radius * side_cut_ratio * side_sign
 	var cut_radius := sqrt(maxf(radius * radius - cut_distance * cut_distance, 0.0))
+	var jaw_hinge_drop_ratio: float = float(spec.get(
+		"jaw_hinge_drop_ratio",
+		cut_radius / maxf(radius, 0.0001)
+	))
+	var jaw_hinge_forward_ratio: float = float(spec.get("jaw_hinge_forward_ratio", 0.0))
 	var side_plane_local: Array[Vector3] = []
 	for index in range(segment_count):
 		var angle := TAU * float(index) / float(segment_count)
@@ -95,8 +104,103 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 		false
 	)
 
+	var front_face_local: Array[Vector3] = [
+		Vector3(-radius, -radius, radius),
+		Vector3(radius, -radius, radius),
+		Vector3(radius, radius, radius),
+		Vector3(-radius, radius, radius),
+	]
+	var front_face_square := _project_local_curve(
+		front_face_local,
+		basis,
+		camera_distance,
+		focal_length,
+		screen_center,
+		true
+	)
+	var front_face_vertical := _project_local_curve(
+		[Vector3(0.0, -radius, radius), Vector3(0.0, radius, radius)],
+		basis,
+		camera_distance,
+		focal_length,
+		screen_center,
+		false
+	)
+	var front_face_horizontal := _project_local_curve(
+		[Vector3(-radius, 0.0, radius), Vector3(radius, 0.0, radius)],
+		basis,
+		camera_distance,
+		focal_length,
+		screen_center,
+		false
+	)
+
+	var face_guides := {
+		"brow": _project_local_curve(
+			[Vector3(-radius, 0.0, radius), Vector3(radius, 0.0, radius)],
+			basis,
+			camera_distance,
+			focal_length,
+			screen_center,
+			false
+		),
+		"nose": _project_local_curve(
+			[
+				Vector3(-radius * 0.72, -radius * nose_drop_ratio, radius * nose_forward_ratio),
+				Vector3(radius * 0.72, -radius * nose_drop_ratio, radius * nose_forward_ratio),
+			],
+			basis,
+			camera_distance,
+			focal_length,
+			screen_center,
+			false
+		),
+		"chin": _project_local_curve(
+			[
+				Vector3(-radius * 0.24, -radius * chin_drop_ratio, radius * chin_forward_ratio),
+				Vector3(radius * 0.24, -radius * chin_drop_ratio, radius * chin_forward_ratio),
+			],
+			basis,
+			camera_distance,
+			focal_length,
+			screen_center,
+			false
+		),
+	}
+	var front_center_local := Vector3(0.0, 0.0, radius)
+	var nose_center_local := Vector3(0.0, -radius * nose_drop_ratio, radius * nose_forward_ratio)
+	var chin_local := Vector3(0.0, -radius * chin_drop_ratio, radius * chin_forward_ratio)
+	var jaw_hinge_local := Vector3(
+		cut_distance,
+		-radius * jaw_hinge_drop_ratio,
+		radius * jaw_hinge_forward_ratio
+	)
+	var face_center_descent := _project_local_curve(
+		[front_center_local, nose_center_local, chin_local],
+		basis,
+		camera_distance,
+		focal_length,
+		screen_center,
+		false
+	)
+	var chin_point := _project_local_point(
+		chin_local,
+		basis,
+		camera_distance,
+		focal_length,
+		screen_center
+	)
+	var jaw_hinge_point := _project_local_point(
+		jaw_hinge_local,
+		basis,
+		camera_distance,
+		focal_length,
+		screen_center
+	)
+	var jawline := PackedVector2Array([jaw_hinge_point, chin_point])
+
 	var cube_spec := {
-		"size": Vector3.ONE * radius * 2.35,
+		"size": Vector3.ONE * radius * 2.0,
 		"rotation_degrees": rotation_degrees,
 		"camera_distance": camera_distance,
 		"focal_length": focal_length,
@@ -130,8 +234,24 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 		"side_depth_axis": side_depth,
 		"vertical_midline": vertical_midline,
 		"brow_midline": brow_midline,
+		"front_face_square": front_face_square,
+		"front_face_vertical_midline": front_face_vertical,
+		"front_face_horizontal_midline": front_face_horizontal,
+		"face_guides": face_guides,
+		"face_center_descent": face_center_descent,
+		"chin_point": chin_point,
+		"jaw_hinge_point": jaw_hinge_point,
+		"jawline": jawline,
+		"jaw_profile": {
+			"nose_drop_ratio": nose_drop_ratio,
+			"nose_forward_ratio": nose_forward_ratio,
+			"chin_drop_ratio": chin_drop_ratio,
+			"chin_forward_ratio": chin_forward_ratio,
+			"jaw_hinge_drop_ratio": jaw_hinge_drop_ratio,
+			"jaw_hinge_forward_ratio": jaw_hinge_forward_ratio,
+		},
 		"front_center": _project_local_point(
-			Vector3(0.0, 0.0, radius),
+			front_center_local,
 			basis,
 			camera_distance,
 			focal_length,
@@ -176,6 +296,12 @@ static func build_default_tilt_batch() -> Array:
 		full_spec["side_cut_ratio"] = 0.55
 		full_spec["screen_center"] = Vector2.ZERO
 		full_spec["segments"] = DEFAULT_SEGMENTS
+		full_spec["nose_drop_ratio"] = 0.68
+		full_spec["nose_forward_ratio"] = 0.96
+		full_spec["chin_drop_ratio"] = 1.42
+		full_spec["chin_forward_ratio"] = 0.88
+		full_spec["jaw_hinge_drop_ratio"] = sqrt(1.0 - 0.55 * 0.55)
+		full_spec["jaw_hinge_forward_ratio"] = 0.0
 		batch.append({
 			"name": full_spec["name"],
 			"construction": build_step3(full_spec),

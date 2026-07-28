@@ -27,10 +27,10 @@ func _initialize() -> void:
 
 	var batch := LoomisProjectionUtil.build_default_tilt_batch()
 	var manifest_lines := PackedStringArray([
-		"Generated Loomis step-3 head tilt batch",
+		"Generated Loomis step-3 plus primary jaw-anchor batch",
 		"",
 		"Open any .tscn in this folder and press F6.",
-		"Toggle ComplianceCube, Step1Sphere, Step2SidePlaneCut, or Step3Midlines in the scene tree.",
+		"Toggle ComplianceCube, Step1Sphere, Step2SidePlaneCut, Step3Midlines, or Step4FaceGuidesAndJaw in the scene tree.",
 		"These generated visual review artifacts are intentionally untracked.",
 		"",
 	])
@@ -73,7 +73,7 @@ func _build_scene(case_data: Dictionary, case_index: int) -> PackedScene:
 		root,
 		"Title",
 		Vector2(30.0, 17.0),
-		"%02d  LOOMIS STEP 3 — %s" % [case_index + 1, case_data["name"]],
+		"%02d  LOOMIS CONSTRUCTION — %s" % [case_index + 1, case_data["name"]],
 		28,
 		Color("#f0f4fa")
 	)
@@ -103,17 +103,18 @@ func _build_scene(case_data: Dictionary, case_index: int) -> PackedScene:
 	display.position = Vector2(395.0, 310.0)
 	display.scale = Vector2(2.25, 2.25)
 	_add_owned(construction_panel, display, root)
-	_add_compliance_cube(display, root, construction["compliance_cube"])
+	_add_compliance_cube(display, root, construction)
 	_add_step1_sphere(display, root, construction)
 	_add_step2_side_plane(display, root, construction)
 	_add_step3_midlines(display, root, construction)
+	_add_step4_face_guides_and_jaw(display, root, construction)
 
 	_add_label(
 		construction_panel,
 		root,
 		"ConstructionCaption",
 		Vector2(18.0, 539.0),
-		"Translucent cube = orientation audit only. It is not part of the head silhouette.",
+		"Tangent cube contains the sphere exactly; the lower jaw remains a tunable character profile.",
 		15,
 		Color("#b9c7d9")
 	)
@@ -140,10 +141,11 @@ func _add_background(root: Node2D) -> void:
 	_add_owned(root, background, root)
 
 
-func _add_compliance_cube(parent: Node2D, root: Node2D, cube: Dictionary) -> void:
+func _add_compliance_cube(parent: Node2D, root: Node2D, construction: Dictionary) -> void:
 	var group := Node2D.new()
 	group.name = "ComplianceCube"
 	_add_owned(parent, group, root)
+	var cube: Dictionary = construction["compliance_cube"]
 	var visible_faces := Node2D.new()
 	visible_faces.name = "TranslucentPolygonFaces"
 	_add_owned(group, visible_faces, root)
@@ -172,6 +174,38 @@ func _add_compliance_cube(parent: Node2D, root: Node2D, cube: Dictionary) -> voi
 				color,
 				1.15
 			)
+	var face_square := Node2D.new()
+	face_square.name = "FrontFaceSquareProof"
+	_add_owned(group, face_square, root)
+	var face_fill := Polygon2D.new()
+	face_fill.name = "TangentFace"
+	face_fill.polygon = _without_duplicate_close(construction["front_face_square"])
+	face_fill.color = Color(0.96, 0.83, 0.48, 0.055)
+	_add_owned(face_square, face_fill, root)
+	_add_line(
+		face_square,
+		root,
+		"FaceSquareOutline",
+		construction["front_face_square"],
+		Color(1.0, 0.88, 0.55, 0.34),
+		1.15
+	)
+	_add_line(
+		face_square,
+		root,
+		"ProjectedVerticalMidline",
+		construction["front_face_vertical_midline"],
+		Color(0.37, 0.88, 0.93, 0.38),
+		1.1
+	)
+	_add_line(
+		face_square,
+		root,
+		"ProjectedHorizontalMidline",
+		construction["front_face_horizontal_midline"],
+		Color(0.94, 0.60, 0.75, 0.38),
+		1.1
+	)
 
 
 func _add_step1_sphere(parent: Node2D, root: Node2D, construction: Dictionary) -> void:
@@ -261,6 +295,56 @@ func _add_step3_midlines(parent: Node2D, root: Node2D, construction: Dictionary)
 	_add_owned(group, center_marker, root)
 
 
+func _add_step4_face_guides_and_jaw(parent: Node2D, root: Node2D, construction: Dictionary) -> void:
+	var group := Node2D.new()
+	group.name = "Step4FaceGuidesAndJaw"
+	_add_owned(parent, group, root)
+	_add_line(
+		group,
+		root,
+		"FaceCenterDescent",
+		construction["face_center_descent"],
+		Color("#f7d488"),
+		1.8
+	)
+	var guide_colors := {
+		"brow": Color(0.94, 0.60, 0.75, 0.68),
+		"nose": Color(0.91, 0.73, 0.48, 0.76),
+		"chin": Color(0.96, 0.84, 0.54, 0.82),
+	}
+	for guide_name: String in ["brow", "nose", "chin"]:
+		_add_line(
+			group,
+			root,
+			"%sGuide" % guide_name.capitalize(),
+			construction["face_guides"][guide_name],
+			guide_colors[guide_name],
+			1.4
+		)
+	_add_line(
+		group,
+		root,
+		"NearJawline",
+		construction["jawline"],
+		Color("#f5c878"),
+		2.5
+	)
+	_add_anchor(
+		group,
+		root,
+		"NearEarJawHinge",
+		construction["jaw_hinge_point"],
+		Color("#f2a06f")
+	)
+	_add_anchor(
+		group,
+		root,
+		"ChinAnchor",
+		construction["chin_point"],
+		Color("#fff3a8")
+	)
+
+
 func _add_reference_panel(root: Node2D, construction: Dictionary, spec: Dictionary) -> void:
 	var panel := _add_panel(
 		root,
@@ -274,7 +358,7 @@ func _add_reference_panel(root: Node2D, construction: Dictionary, spec: Dictiona
 		panel,
 		root,
 		"Step1",
-		80.0,
+		55.0,
 		Color("#dbeaff"),
 		"STEP 1 — SPHERE",
 		"Projected spherical silhouette remains circular."
@@ -283,7 +367,7 @@ func _add_reference_panel(root: Node2D, construction: Dictionary, spec: Dictiona
 		panel,
 		root,
 		"Step2",
-		172.0,
+		132.0,
 		Color("#f2a06f"),
 		"STEP 2 — SIDE-PLANE CUT",
 		"Ellipse is a fixed %.0f%% radius slice on the near side." % (float(spec["side_cut_ratio"]) * 100.0)
@@ -292,28 +376,40 @@ func _add_reference_panel(root: Node2D, construction: Dictionary, spec: Dictiona
 		panel,
 		root,
 		"Step3",
-		278.0,
+		222.0,
 		Color("#5ee0ec"),
 		"STEP 3 — SPHERICAL MIDLINES",
 		"Center and brow curves share the same rotated sphere."
 	)
-	_add_label(panel, root, "ChecksTitle", Vector2(18.0, 386.0), "VISUAL ACCEPTANCE", 18, Color("#fff3a8"))
+	_add_stage_row(
+		panel,
+		root,
+		"Step4",
+		312.0,
+		Color("#f5c878"),
+		"STEP 4 — FACE GUIDES + JAW",
+		"Projected square directions place the chin and near-ear hinge."
+	)
+	_add_label(panel, root, "ChecksTitle", Vector2(18.0, 408.0), "VISUAL ACCEPTANCE", 18, Color("#fff3a8"))
 	_add_label(
 		panel,
 		root,
 		"Checks",
-		Vector2(18.0, 422.0),
-		"• ellipse stays inside the sphere\n• midlines meet at the yellow front center\n• pitch, yaw, and roll move every guide together\n• cube axes agree with the head tilt\n• no jaw or facial proportions are inferred yet",
-		15,
+		Vector2(18.0, 442.0),
+		"• sphere is tangent to all six cube planes\n• flat face midlines match spherical guide planes\n• lower guides preserve projected convergence\n• orange hinge connects directly to yellow chin\n• jaw ratios may change per character",
+		14,
 		Color("#c3cedd")
 	)
 	_add_label(
 		panel,
 		root,
 		"SideReadout",
-		Vector2(18.0, 545.0),
-		"Near-side slice: %s" % ("RIGHT (+X)" if float(construction["side_sign"]) > 0.0 else "LEFT (-X)"),
-		14,
+		Vector2(18.0, 557.0),
+		"Near side: %s   chin drop: %.2fr" % [
+			"RIGHT (+X)" if float(construction["side_sign"]) > 0.0 else "LEFT (-X)",
+			float(construction["jaw_profile"]["chin_drop_ratio"]),
+		],
+		13,
 		Color("#aebbd0")
 	)
 
@@ -420,6 +516,27 @@ func _add_line(
 	line.joint_mode = Line2D.LINE_JOINT_ROUND
 	_add_owned(parent, line, root)
 	return line
+
+
+func _add_anchor(
+	parent: Node,
+	root: Node,
+	node_name: String,
+	position: Vector2,
+	color: Color
+) -> Polygon2D:
+	var marker := Polygon2D.new()
+	marker.name = node_name
+	marker.position = position
+	marker.polygon = PackedVector2Array([
+		Vector2(0.0, -3.1),
+		Vector2(3.1, 0.0),
+		Vector2(0.0, 3.1),
+		Vector2(-3.1, 0.0),
+	])
+	marker.color = color
+	_add_owned(parent, marker, root)
+	return marker
 
 
 func _add_owned(parent: Node, child: Node, root: Node) -> void:
