@@ -155,11 +155,24 @@ func _corridor_is_obstructed(
 	total_width: float,
 	obstruction_rects: Array[Rect2]
 ) -> bool:
+	var corridor_delta: Vector2 = end - start
+	var validation_start: Vector2 = start
+	if corridor_delta.length_squared() > 0.001:
+		var doorway_clearance: float = min(
+			total_width * 0.5 + 1.0,
+			corridor_delta.length()
+		)
+		validation_start += corridor_delta.normalized() * doorway_clearance
 	for obstruction_rect in obstruction_rects:
 		var blocker: Rect2 = obstruction_rect.grow(-1.0)
 		if blocker.size.x <= 0.0 or blocker.size.y <= 0.0:
 			continue
-		if _swept_segment_intersects_rect(start, end, total_width * 0.5, blocker):
+		if _swept_segment_intersects_rect(
+			validation_start,
+			end,
+			total_width * 0.5,
+			blocker
+		):
 			return true
 	return false
 
