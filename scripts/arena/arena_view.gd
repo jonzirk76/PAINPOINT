@@ -369,9 +369,11 @@ func _configure_wall_top_overlay() -> void:
 	if not _uses_canonical_wall_tiles:
 		overlay.clear()
 		return
+	var no_top_tiles: Array[Rect2] = []
+	var no_top_draw_rects: Array[Rect2] = []
 	overlay.configure(
-		_wall_top_tile_rects,
-		ROOM_GEOMETRY_BUILDER.merge_wall_tiles(_wall_top_tile_rects),
+		no_top_tiles,
+		no_top_draw_rects,
 		_fog_rects,
 		_inactive_room_dim_rects,
 		_wall_height_tiles,
@@ -399,35 +401,78 @@ func _configure_wall_body_depth_visuals() -> void:
 	if depth_sort_layer == null:
 		return
 	var wall_body_lookup := _build_tile_lookup(_wall_draw_tile_rects)
-	var wall_body_runs := _build_wall_body_floor_runs(_wall_draw_tile_rects, wall_body_lookup)
-	for index in range(wall_body_runs.size()):
+	var wall_top_lookup := _build_tile_lookup(_wall_top_tile_rects)
+	var wall_depth_slices := _build_wall_depth_slices(
+		_wall_draw_tile_rects,
+		_wall_top_tile_rects,
+		wall_body_lookup
+	)
+	for index in range(wall_depth_slices.size()):
 		var visual: ArenaWallBodyVisual = ARENA_WALL_BODY_VISUAL_SCRIPT.new()
-		var run_tiles: Array[Rect2] = []
-		for tile in wall_body_runs[index]:
-			run_tiles.append(tile)
-		visual.name = "ArenaWallBodyVisual%d" % index
+		var slice: Dictionary = wall_depth_slices[index]
+		var body_tiles: Array[Rect2] = []
+		var top_tiles: Array[Rect2] = []
+		for tile in slice.get("body_tiles", []):
+			body_tiles.append(tile)
+		for tile in slice.get("top_tiles", []):
+			top_tiles.append(tile)
+		visual.name = "ArenaWallDepthSliceVisual%d" % index
 		depth_sort_layer.add_child(visual)
-		visual.configure(run_tiles, wall_body_lookup, WALL_BODY_FILL_COLOR, WALL_BODY_OUTLINE_COLOR, 3.0)
+		visual.configure(
+			body_tiles,
+			top_tiles,
+			wall_body_lookup,
+			wall_top_lookup,
+			_fog_rects,
+			_wall_height_tiles,
+			WALL_BODY_FILL_COLOR,
+			WALL_BODY_OUTLINE_COLOR,
+			WALL_TOP_FILL_COLOR,
+			WALL_TOP_OUTLINE_COLOR,
+			3.0
+		)
 		_wall_body_visuals.append(visual)
 	_wall_body_depth_visuals_enabled = true
 
 
-func _build_wall_body_floor_runs(tile_rects: Array[Rect2], tile_lookup: Dictionary) -> Array:
-	var floor_runs := {}
+func _build_wall_depth_slices(
+	body_tile_rects: Array[Rect2],
+	top_tile_rects: Array[Rect2],
+	body_lookup: Dictionary
+) -> Array:
+	var slices_by_floor_y := {}
 	var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
-	for tile in tile_rects:
+	for tile in body_tile_rects:
 		var cell: Vector2i = _tile_key_vector(tile.position, tile_size)
 		var bottom_cell := cell
-		while tile_lookup.has(_tile_key(bottom_cell + Vector2i(0, 1))):
+		while body_lookup.has(_tile_key(bottom_cell + Vector2i(0, 1))):
 			bottom_cell.y += 1
 		var floor_y: int = int(round(float(bottom_cell.y + 1) * tile_size))
-		var run: Array = floor_runs.get(floor_y, [])
-		run.append(tile)
-		floor_runs[floor_y] = run
-	var runs: Array = []
-	for floor_y in floor_runs.keys():
-		runs.append(floor_runs[floor_y])
-	return runs
+		var slice: Dictionary = slices_by_floor_y.get(
+			floor_y,
+			{"floor_y": floor_y, "body_tiles": [], "top_tiles": []}
+		)
+		var body_tiles: Array = slice["body_tiles"]
+		body_tiles.append(tile)
+		slice["body_tiles"] = body_tiles
+		slices_by_floor_y[floor_y] = slice
+	var height_offset: float = tile_size * float(_wall_height_tiles)
+	for tile in top_tile_rects:
+		var floor_y: int = int(round(tile.end.y + height_offset))
+		var slice: Dictionary = slices_by_floor_y.get(
+			floor_y,
+			{"floor_y": floor_y, "body_tiles": [], "top_tiles": []}
+		)
+		var top_tiles: Array = slice["top_tiles"]
+		top_tiles.append(tile)
+		slice["top_tiles"] = top_tiles
+		slices_by_floor_y[floor_y] = slice
+	var floor_ys: Array = slices_by_floor_y.keys()
+	floor_ys.sort()
+	var slices: Array = []
+	for floor_y in floor_ys:
+		slices.append(slices_by_floor_y[floor_y])
+	return slices
 
 
 func _clear_wall_body_depth_visuals() -> void:
