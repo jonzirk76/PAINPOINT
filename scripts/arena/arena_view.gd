@@ -493,7 +493,7 @@ func _configure_wall_occlusion_overlay() -> void:
 		_wall_occlusion_overlay.name = "WallOcclusionOverlay"
 		add_child(_wall_occlusion_overlay)
 	var occlusion_rects: Array[Rect2] = _inset_rects(_wall_draw_rects, 3.0)
-	occlusion_rects.append_array(_inset_rects(
+	occlusion_rects.append_array(_inset_rects_with_internal_bridges(
 		ROOM_GEOMETRY_BUILDER.merge_wall_tiles(_wall_top_tile_rects),
 		2.0
 	))
@@ -514,6 +514,59 @@ func _inset_rects(rects: Array[Rect2], amount: float) -> Array[Rect2]:
 		var inset_rect: Rect2 = rect.grow(-max(amount, 0.0))
 		if inset_rect.size.x > 0.0 and inset_rect.size.y > 0.0:
 			inset_rects.append(inset_rect)
+	return inset_rects
+
+
+func _inset_rects_with_internal_bridges(
+	rects: Array[Rect2],
+	amount: float
+) -> Array[Rect2]:
+	var inset_amount: float = max(amount, 0.0)
+	var inset_rects: Array[Rect2] = _inset_rects(rects, inset_amount)
+	if inset_amount <= 0.0:
+		return inset_rects
+	for first_index in range(rects.size()):
+		var first: Rect2 = rects[first_index]
+		for second_index in range(first_index + 1, rects.size()):
+			var second: Rect2 = rects[second_index]
+			var horizontal_overlap_start: float = max(first.position.x, second.position.x)
+			var horizontal_overlap_end: float = min(first.end.x, second.end.x)
+			if horizontal_overlap_end - horizontal_overlap_start > inset_amount * 2.0:
+				var shared_y: float = 0.0
+				var shares_horizontal_edge: bool = false
+				if abs(first.end.y - second.position.y) <= 0.5:
+					shared_y = first.end.y
+					shares_horizontal_edge = true
+				elif abs(second.end.y - first.position.y) <= 0.5:
+					shared_y = second.end.y
+					shares_horizontal_edge = true
+				if shares_horizontal_edge:
+					inset_rects.append(Rect2(
+						Vector2(horizontal_overlap_start + inset_amount, shared_y - inset_amount),
+						Vector2(
+							horizontal_overlap_end - horizontal_overlap_start - inset_amount * 2.0,
+							inset_amount * 2.0
+						)
+					))
+			var vertical_overlap_start: float = max(first.position.y, second.position.y)
+			var vertical_overlap_end: float = min(first.end.y, second.end.y)
+			if vertical_overlap_end - vertical_overlap_start > inset_amount * 2.0:
+				var shared_x: float = 0.0
+				var shares_vertical_edge: bool = false
+				if abs(first.end.x - second.position.x) <= 0.5:
+					shared_x = first.end.x
+					shares_vertical_edge = true
+				elif abs(second.end.x - first.position.x) <= 0.5:
+					shared_x = second.end.x
+					shares_vertical_edge = true
+				if shares_vertical_edge:
+					inset_rects.append(Rect2(
+						Vector2(shared_x - inset_amount, vertical_overlap_start + inset_amount),
+						Vector2(
+							inset_amount * 2.0,
+							vertical_overlap_end - vertical_overlap_start - inset_amount * 2.0
+						)
+					))
 	return inset_rects
 
 
