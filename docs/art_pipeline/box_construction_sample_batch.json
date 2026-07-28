@@ -1,0 +1,75 @@
+{
+	"cases": [
+		{
+			"axis_angle_mean_deg": {
+				"x": 0.0,
+				"y": 0.0,
+				"z": 0.0
+			},
+			"corner_rmse_px": 0.0,
+			"edge_angle_mean_deg": 0.0,
+			"face_area_mean_relative_error": 0.0,
+			"face_count": 6,
+			"name": "Calibration",
+			"noise_px": 0.0,
+			"rating": "ready",
+			"score": 100.0,
+			"valid_faces": 6,
+			"winding_matches": 6
+		},
+		{
+			"axis_angle_mean_deg": {
+				"x": 1.17,
+				"y": 1.25,
+				"z": 2.1
+			},
+			"corner_rmse_px": 2.25,
+			"edge_angle_mean_deg": 1.51,
+			"face_area_mean_relative_error": 0.0658,
+			"face_count": 6,
+			"name": "Shallow turn",
+			"noise_px": 3.0,
+			"rating": "solid",
+			"score": 83.08,
+			"valid_faces": 5,
+			"winding_matches": 6
+		},
+		{
+			"axis_angle_mean_deg": {
+				"x": 1.69,
+				"y": 0.79,
+				"z": 4.07
+			},
+			"corner_rmse_px": 5.76,
+			"edge_angle_mean_deg": 2.19,
+			"face_area_mean_relative_error": 0.0691,
+			"face_count": 6,
+			"name": "Tilt and roll",
+			"noise_px": 7.0,
+			"rating": "review",
+			"score": 72.49,
+			"valid_faces": 6,
+			"winding_matches": 6
+		},
+		{
+			"axis_angle_mean_deg": {
+				"x": 4.69,
+				"y": 1.31,
+				"z": 2.63
+			},
+			"corner_rmse_px": 8.49,
+			"edge_angle_mean_deg": 2.88,
+			"face_area_mean_relative_error": 0.0968,
+			"face_count": 6,
+			"name": "Dramatic",
+			"noise_px": 12.0,
+			"rating": "review",
+			"score": 61.57,
+			"valid_faces": 6,
+			"winding_matches": 6
+		}
+	],
+	"purpose": "Deterministic example output for the box construction scoring workflow.",
+	"schema_version": 1,
+	"seed": 250
+}
