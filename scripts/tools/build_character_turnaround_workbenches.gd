@@ -5,6 +5,7 @@ const SHEET_DIRECTORY := "res://art/concept_art"
 
 const CHARACTER_SPECS := {
 	"volette": {
+		"id": "volette",
 		"sheet": "volette_sheet.png",
 		"skin": Color("#d9a98f"),
 		"hair": Color("#33225f"),
@@ -23,6 +24,7 @@ const CHARACTER_SPECS := {
 		],
 	},
 	"jules": {
+		"id": "jules",
 		"sheet": "jules_sheet.png",
 		"skin": Color("#6f4b35"),
 		"hair": Color("#181715"),
@@ -41,6 +43,7 @@ const CHARACTER_SPECS := {
 		],
 	},
 	"kairo": {
+		"id": "kairo",
 		"sheet": "kairo_sheet.png",
 		"skin": Color("#b98067"),
 		"hair": Color("#181a20"),
@@ -57,6 +60,7 @@ const CHARACTER_SPECS := {
 		],
 	},
 	"periwinkle": {
+		"id": "periwinkle",
 		"sheet": "periwinkle_sheet.png",
 		"skin": Color("#9b6848"),
 		"hair": Color("#171b18"),
@@ -290,6 +294,442 @@ func _add_view(root_node: Node2D, view_spec: Array, spec: Dictionary) -> void:
 			Vector2(center.x, shoulder_y + height * 0.075),
 			Vector2(center.x + width * 0.13, shoulder_y + height * 0.11),
 			Vector2(center.x, shoulder_y + height * 0.18),
+		]))
+	_add_character_details(
+		view,
+		String(spec["id"]),
+		facing,
+		center,
+		top,
+		bottom,
+		height,
+		width,
+		spec
+	)
+
+
+func _add_character_details(
+	view: Node2D,
+	character_id: String,
+	facing: String,
+	center: Vector2,
+	top: float,
+	bottom: float,
+	height: float,
+	width: float,
+	spec: Dictionary
+) -> void:
+	match character_id:
+		"volette":
+			_add_volette_details(view, facing, center, top, bottom, height, width, spec)
+		"jules":
+			_add_jules_details(view, facing, center, top, bottom, height, width, spec)
+		"kairo":
+			_add_kairo_details(view, facing, center, top, bottom, height, width, spec)
+		"periwinkle":
+			_add_periwinkle_details(view, facing, center, top, bottom, height, width, spec)
+
+
+func _add_volette_details(
+	view: Node2D,
+	facing: String,
+	center: Vector2,
+	top: float,
+	_bottom: float,
+	height: float,
+	width: float,
+	spec: Dictionary
+) -> void:
+	var waist_y: float = top + height * 0.515
+	var hip_y: float = top + height * 0.59
+	var knee_y: float = top + height * 0.78
+	var rear_facing: bool = facing in ["back", "three_quarter_back"]
+	_add_polygon(view, "LeftHairLock", spec["hair"], PackedVector2Array([
+		Vector2(center.x - width * 0.34, top + height * 0.13),
+		Vector2(center.x - width * 0.5, top + height * 0.27),
+		Vector2(center.x - width * 0.55, top + height * 0.44),
+		Vector2(center.x - width * 0.41, top + height * 0.38),
+		Vector2(center.x - width * 0.28, top + height * 0.2),
+	]))
+	_add_polygon(view, "RightHairLock", spec["hair"], PackedVector2Array([
+		Vector2(center.x + width * 0.32, top + height * 0.13),
+		Vector2(center.x + width * 0.5, top + height * 0.27),
+		Vector2(center.x + width * 0.55, top + height * 0.44),
+		Vector2(center.x + width * 0.4, top + height * 0.38),
+		Vector2(center.x + width * 0.27, top + height * 0.2),
+	]))
+	_add_polygon(view, "LeftJacketPanel", spec["accent"], PackedVector2Array([
+		Vector2(center.x - width * 0.43, top + height * 0.255),
+		Vector2(center.x - width * 0.16, top + height * 0.3),
+		Vector2(center.x - width * 0.2, waist_y),
+		Vector2(center.x - width * 0.38, waist_y),
+	]))
+	_add_polygon(view, "RightJacketPanel", spec["accent"], PackedVector2Array([
+		Vector2(center.x + width * 0.43, top + height * 0.255),
+		Vector2(center.x + width * 0.16, top + height * 0.3),
+		Vector2(center.x + width * 0.2, waist_y),
+		Vector2(center.x + width * 0.38, waist_y),
+	]))
+	_add_polygon(view, "Shorts", Color("#0b1729"), PackedVector2Array([
+		Vector2(center.x - width * 0.4, waist_y),
+		Vector2(center.x + width * 0.4, waist_y),
+		Vector2(center.x + width * 0.35, hip_y + height * 0.055),
+		Vector2(center.x + width * 0.04, hip_y + height * 0.04),
+		Vector2(center.x, hip_y + height * 0.015),
+		Vector2(center.x - width * 0.04, hip_y + height * 0.04),
+		Vector2(center.x - width * 0.35, hip_y + height * 0.055),
+	]))
+	_add_polygon(view, "LeftExposedThigh", spec["skin"], PackedVector2Array([
+		Vector2(center.x - width * 0.34, hip_y + height * 0.045),
+		Vector2(center.x - width * 0.04, hip_y + height * 0.035),
+		Vector2(center.x - width * 0.08, knee_y - height * 0.055),
+		Vector2(center.x - width * 0.39, knee_y - height * 0.055),
+	]))
+	_add_polygon(view, "RightExposedThigh", spec["skin"], PackedVector2Array([
+		Vector2(center.x + width * 0.04, hip_y + height * 0.035),
+		Vector2(center.x + width * 0.34, hip_y + height * 0.045),
+		Vector2(center.x + width * 0.39, knee_y - height * 0.055),
+		Vector2(center.x + width * 0.08, knee_y - height * 0.055),
+	]))
+	for side in [-1.0, 1.0]:
+		var side_name: String = "Left" if side < 0.0 else "Right"
+		_add_polygon(view, "%sThighStrap" % side_name, Color("#17171b"), PackedVector2Array([
+			Vector2(center.x + side * width * 0.37, hip_y + height * 0.075),
+			Vector2(center.x + side * width * 0.05, hip_y + height * 0.065),
+			Vector2(center.x + side * width * 0.06, hip_y + height * 0.09),
+			Vector2(center.x + side * width * 0.38, hip_y + height * 0.1),
+		]))
+		_add_polygon(view, "%sKneeArmor" % side_name, spec["metal"], PackedVector2Array([
+			Vector2(center.x + side * width * 0.4, knee_y - height * 0.04),
+			Vector2(center.x + side * width * 0.08, knee_y - height * 0.045),
+			Vector2(center.x + side * width * 0.07, knee_y + height * 0.035),
+			Vector2(center.x + side * width * 0.38, knee_y + height * 0.04),
+		]))
+	if not rear_facing:
+		_add_polygon(view, "CollarOpening", Color("#090d14"), PackedVector2Array([
+			Vector2(center.x - width * 0.19, top + height * 0.245),
+			Vector2(center.x, top + height * 0.31),
+			Vector2(center.x + width * 0.19, top + height * 0.245),
+			Vector2(center.x, top + height * 0.275),
+		]))
+		_add_polygon(view, "ChestPlateHighlight", Color("#59606b"), PackedVector2Array([
+			Vector2(center.x - width * 0.23, top + height * 0.33),
+			Vector2(center.x + width * 0.23, top + height * 0.33),
+			Vector2(center.x + width * 0.16, top + height * 0.43),
+			Vector2(center.x, top + height * 0.455),
+			Vector2(center.x - width * 0.16, top + height * 0.43),
+		]))
+	if rear_facing:
+		_add_polygon(view, "BlueCape", Color("#073b81"), PackedVector2Array([
+			Vector2(center.x - width * 0.42, top + height * 0.25),
+			Vector2(center.x + width * 0.42, top + height * 0.25),
+			Vector2(center.x + width * 0.56, top + height * 0.54),
+			Vector2(center.x + width * 0.18, top + height * 0.61),
+			Vector2(center.x, top + height * 0.57),
+			Vector2(center.x - width * 0.2, top + height * 0.61),
+			Vector2(center.x - width * 0.55, top + height * 0.54),
+		]))
+	for side in [-1.0, 1.0]:
+		var gun_x: float = center.x + side * width * 0.58
+		_add_polygon(view, "LeftPistol" if side < 0.0 else "RightPistol", Color("#202630"), PackedVector2Array([
+			Vector2(gun_x - width * 0.07, top + height * 0.46),
+			Vector2(gun_x + width * 0.07, top + height * 0.46),
+			Vector2(gun_x + width * 0.06, top + height * 0.63),
+			Vector2(gun_x - width * 0.03, top + height * 0.65),
+			Vector2(gun_x - width * 0.06, top + height * 0.56),
+		]))
+
+
+func _add_jules_details(
+	view: Node2D,
+	facing: String,
+	center: Vector2,
+	top: float,
+	bottom: float,
+	height: float,
+	width: float,
+	spec: Dictionary
+) -> void:
+	var waist_y: float = top + height * 0.515
+	var knee_y: float = top + height * 0.78
+	var rear_facing: bool = facing in ["back", "three_quarter_back"]
+	_add_polygon(view, "HighCollar", Color("#302c22"), PackedVector2Array([
+		Vector2(center.x - width * 0.38, top + height * 0.19),
+		Vector2(center.x - width * 0.16, top + height * 0.145),
+		Vector2(center.x, top + height * 0.21),
+		Vector2(center.x + width * 0.18, top + height * 0.145),
+		Vector2(center.x + width * 0.4, top + height * 0.2),
+		Vector2(center.x + width * 0.28, top + height * 0.29),
+		Vector2(center.x - width * 0.28, top + height * 0.29),
+	]))
+	_add_polygon(view, "LeftCoatTail", Color("#24221e"), PackedVector2Array([
+		Vector2(center.x - width * 0.42, waist_y - height * 0.03),
+		Vector2(center.x - width * 0.02, waist_y),
+		Vector2(center.x - width * 0.1, knee_y + height * 0.06),
+		Vector2(center.x - width * 0.44, knee_y + height * 0.1),
+		Vector2(center.x - width * 0.53, knee_y - height * 0.04),
+	]))
+	_add_polygon(view, "RightCoatTail", Color("#24221e"), PackedVector2Array([
+		Vector2(center.x + width * 0.02, waist_y),
+		Vector2(center.x + width * 0.42, waist_y - height * 0.03),
+		Vector2(center.x + width * 0.53, knee_y - height * 0.04),
+		Vector2(center.x + width * 0.44, knee_y + height * 0.1),
+		Vector2(center.x + width * 0.1, knee_y + height * 0.06),
+	]))
+	_add_polygon(view, "LeftShoulderPlate", spec["metal"], PackedVector2Array([
+		Vector2(center.x - width * 0.47, top + height * 0.25),
+		Vector2(center.x - width * 0.22, top + height * 0.275),
+		Vector2(center.x - width * 0.28, top + height * 0.35),
+		Vector2(center.x - width * 0.52, top + height * 0.33),
+	]))
+	_add_polygon(view, "RightShoulderPlate", spec["metal"], PackedVector2Array([
+		Vector2(center.x + width * 0.22, top + height * 0.275),
+		Vector2(center.x + width * 0.47, top + height * 0.25),
+		Vector2(center.x + width * 0.52, top + height * 0.33),
+		Vector2(center.x + width * 0.28, top + height * 0.35),
+	]))
+	_add_polygon(view, "ChestChevron", spec["accent"], PackedVector2Array([
+		Vector2(center.x - width * 0.12, top + height * 0.32),
+		Vector2(center.x, top + height * 0.36),
+		Vector2(center.x + width * 0.12, top + height * 0.32),
+		Vector2(center.x, top + height * 0.4),
+	]))
+	for side in [-1.0, 1.0]:
+		var side_name: String = "Left" if side < 0.0 else "Right"
+		_add_polygon(view, "%sKneePlate" % side_name, Color("#34383b"), PackedVector2Array([
+			Vector2(center.x + side * width * 0.38, knee_y - height * 0.045),
+			Vector2(center.x + side * width * 0.07, knee_y - height * 0.05),
+			Vector2(center.x + side * width * 0.06, knee_y + height * 0.055),
+			Vector2(center.x + side * width * 0.37, knee_y + height * 0.06),
+		]))
+		_add_polygon(view, "%sBootCuff" % side_name, spec["accent"], PackedVector2Array([
+			Vector2(center.x + side * width * 0.4, bottom - height * 0.13),
+			Vector2(center.x + side * width * 0.11, bottom - height * 0.13),
+			Vector2(center.x + side * width * 0.11, bottom - height * 0.115),
+			Vector2(center.x + side * width * 0.4, bottom - height * 0.115),
+		]))
+	if rear_facing:
+		_add_polygon(view, "BackCoatPanel", Color("#292720"), PackedVector2Array([
+			Vector2(center.x - width * 0.39, top + height * 0.28),
+			Vector2(center.x + width * 0.39, top + height * 0.28),
+			Vector2(center.x + width * 0.42, knee_y + height * 0.06),
+			Vector2(center.x + width * 0.08, knee_y + height * 0.1),
+			Vector2(center.x, knee_y - height * 0.02),
+			Vector2(center.x - width * 0.08, knee_y + height * 0.1),
+			Vector2(center.x - width * 0.42, knee_y + height * 0.06),
+		]))
+		_add_polygon(view, "LargeBackEmblem", spec["accent"], PackedVector2Array([
+			Vector2(center.x - width * 0.17, top + height * 0.36),
+			Vector2(center.x, top + height * 0.32),
+			Vector2(center.x + width * 0.17, top + height * 0.36),
+			Vector2(center.x, top + height * 0.47),
+		]))
+	else:
+		_add_polygon(view, "FaceShadow", Color("#4d3225"), PackedVector2Array([
+			Vector2(center.x - width * 0.23, top + height * 0.135),
+			Vector2(center.x + width * 0.22, top + height * 0.135),
+			Vector2(center.x + width * 0.13, top + height * 0.205),
+			Vector2(center.x - width * 0.16, top + height * 0.2),
+		]))
+
+
+func _add_kairo_details(
+	view: Node2D,
+	facing: String,
+	center: Vector2,
+	top: float,
+	bottom: float,
+	height: float,
+	width: float,
+	spec: Dictionary
+) -> void:
+	var waist_y: float = top + height * 0.515
+	var knee_y: float = top + height * 0.78
+	var rear_facing: bool = facing == "back"
+	_add_polygon(view, "ScarfCollar", Color("#76191f"), PackedVector2Array([
+		Vector2(center.x - width * 0.42, top + height * 0.18),
+		Vector2(center.x - width * 0.18, top + height * 0.145),
+		Vector2(center.x, top + height * 0.19),
+		Vector2(center.x + width * 0.25, top + height * 0.15),
+		Vector2(center.x + width * 0.46, top + height * 0.2),
+		Vector2(center.x + width * 0.3, top + height * 0.28),
+		Vector2(center.x - width * 0.3, top + height * 0.28),
+	]))
+	_add_polygon(view, "ScarfTailUpper", Color("#7e1c23"), PackedVector2Array([
+		Vector2(center.x - width * 0.34, top + height * 0.22),
+		Vector2(center.x - width * 0.72, top + height * 0.37),
+		Vector2(center.x - width * 0.98, top + height * 0.48),
+		Vector2(center.x - width * 0.7, top + height * 0.5),
+		Vector2(center.x - width * 0.35, top + height * 0.38),
+	]))
+	_add_polygon(view, "ScarfTailLower", Color("#5e151c"), PackedVector2Array([
+		Vector2(center.x - width * 0.32, top + height * 0.3),
+		Vector2(center.x - width * 0.64, top + height * 0.55),
+		Vector2(center.x - width * 0.86, top + height * 0.7),
+		Vector2(center.x - width * 0.56, top + height * 0.66),
+		Vector2(center.x - width * 0.28, top + height * 0.43),
+	]))
+	_add_polygon(view, "RedTorsoSeam", spec["accent"], PackedVector2Array([
+		Vector2(center.x - width * 0.03, top + height * 0.29),
+		Vector2(center.x + width * 0.03, top + height * 0.29),
+		Vector2(center.x + width * 0.04, waist_y),
+		Vector2(center.x - width * 0.04, waist_y),
+	]))
+	for side in [-1.0, 1.0]:
+		var side_name: String = "Left" if side < 0.0 else "Right"
+		_add_polygon(view, "%sForearmGuard" % side_name, Color("#25292e"), PackedVector2Array([
+			Vector2(center.x + side * width * 0.58, top + height * 0.4),
+			Vector2(center.x + side * width * 0.38, top + height * 0.39),
+			Vector2(center.x + side * width * 0.4, top + height * 0.53),
+			Vector2(center.x + side * width * 0.57, top + height * 0.52),
+		]))
+		_add_polygon(view, "%sKneeGuard" % side_name, spec["metal"], PackedVector2Array([
+			Vector2(center.x + side * width * 0.39, knee_y - height * 0.045),
+			Vector2(center.x + side * width * 0.07, knee_y - height * 0.05),
+			Vector2(center.x + side * width * 0.07, knee_y + height * 0.04),
+			Vector2(center.x + side * width * 0.37, knee_y + height * 0.045),
+		]))
+	if rear_facing:
+		_add_polygon(view, "BackScarfDrape", Color("#8d2027"), PackedVector2Array([
+			Vector2(center.x - width * 0.35, top + height * 0.2),
+			Vector2(center.x + width * 0.34, top + height * 0.2),
+			Vector2(center.x + width * 0.22, top + height * 0.32),
+			Vector2(center.x, top + height * 0.28),
+			Vector2(center.x - width * 0.22, top + height * 0.32),
+		]))
+		_add_polygon(view, "BackRedEmblem", Color("#cf252b"), PackedVector2Array([
+			Vector2(center.x - width * 0.16, top + height * 0.34),
+			Vector2(center.x, top + height * 0.3),
+			Vector2(center.x + width * 0.16, top + height * 0.34),
+			Vector2(center.x, top + height * 0.44),
+		]))
+	else:
+		_add_polygon(view, "LeftEyeSlash", Color("#e84243"), PackedVector2Array([
+			Vector2(center.x - width * 0.18, top + height * 0.14),
+			Vector2(center.x - width * 0.03, top + height * 0.135),
+			Vector2(center.x - width * 0.07, top + height * 0.155),
+			Vector2(center.x - width * 0.2, top + height * 0.158),
+		]))
+		var blade_start := Vector2(center.x - width * 0.55, top + height * 0.58)
+		var blade_end := Vector2(center.x - width * 1.35, bottom - height * 0.08)
+		if facing == "side":
+			blade_start = Vector2(center.x + width * 0.48, top + height * 0.58)
+			blade_end = Vector2(center.x + width * 1.18, bottom - height * 0.12)
+		_add_polygon(view, "KatanaBlade", Color("#f12b32"), PackedVector2Array([
+			blade_start + Vector2(-4, -3),
+			blade_end + Vector2(-4, 0),
+			blade_end + Vector2(4, 0),
+			blade_start + Vector2(4, 3),
+		]))
+		_add_polygon(view, "KatanaGlow", Color("#ff7772"), PackedVector2Array([
+			blade_start + Vector2(-1.5, -1),
+			blade_end + Vector2(-1.5, 0),
+			blade_end + Vector2(1.5, 0),
+			blade_start + Vector2(1.5, 1),
+		]))
+
+
+func _add_periwinkle_details(
+	view: Node2D,
+	facing: String,
+	center: Vector2,
+	top: float,
+	_bottom: float,
+	height: float,
+	width: float,
+	spec: Dictionary
+) -> void:
+	var waist_y: float = top + height * 0.515
+	var hip_y: float = top + height * 0.59
+	var knee_y: float = top + height * 0.78
+	var rear_facing: bool = facing in ["back", "three_quarter_back"]
+	_add_polygon(view, "HairBun", spec["hair"], PackedVector2Array([
+		Vector2(center.x - width * 0.2, top + height * 0.04),
+		Vector2(center.x - width * 0.1, top - height * 0.025),
+		Vector2(center.x + width * 0.12, top - height * 0.04),
+		Vector2(center.x + width * 0.25, top + height * 0.02),
+		Vector2(center.x + width * 0.18, top + height * 0.08),
+		Vector2(center.x - width * 0.14, top + height * 0.085),
+	]))
+	for side in [-1.0, 1.0]:
+		var side_name: String = "Left" if side < 0.0 else "Right"
+		_add_polygon(view, "%sHairRibbon" % side_name, Color("#814633"), PackedVector2Array([
+			Vector2(center.x + side * width * 0.28, top + height * 0.08),
+			Vector2(center.x + side * width * 0.48, top + height * 0.18),
+			Vector2(center.x + side * width * 0.38, top + height * 0.21),
+			Vector2(center.x + side * width * 0.22, top + height * 0.12),
+		]))
+		_add_polygon(view, "%sUtilityPouch" % side_name, Color("#292d27"), PackedVector2Array([
+			Vector2(center.x + side * width * 0.52, waist_y - height * 0.015),
+			Vector2(center.x + side * width * 0.28, waist_y - height * 0.015),
+			Vector2(center.x + side * width * 0.28, hip_y + height * 0.08),
+			Vector2(center.x + side * width * 0.54, hip_y + height * 0.07),
+		]))
+		_add_polygon(view, "%sBaggyKnee" % side_name, Color("#32362e"), PackedVector2Array([
+			Vector2(center.x + side * width * 0.44, knee_y - height * 0.08),
+			Vector2(center.x + side * width * 0.04, knee_y - height * 0.09),
+			Vector2(center.x + side * width * 0.07, knee_y + height * 0.065),
+			Vector2(center.x + side * width * 0.39, knee_y + height * 0.075),
+		]))
+	_add_polygon(view, "Goggles", Color("#777a70"), PackedVector2Array([
+		Vector2(center.x - width * 0.3, top + height * 0.055),
+		Vector2(center.x - width * 0.08, top + height * 0.035),
+		Vector2(center.x + width * 0.25, top + height * 0.055),
+		Vector2(center.x + width * 0.2, top + height * 0.09),
+		Vector2(center.x - width * 0.25, top + height * 0.09),
+	]))
+	_add_polygon(view, "JacketOpening", Color("#0d120e"), PackedVector2Array([
+		Vector2(center.x - width * 0.2, top + height * 0.25),
+		Vector2(center.x, top + height * 0.36),
+		Vector2(center.x + width * 0.2, top + height * 0.25),
+		Vector2(center.x + width * 0.12, waist_y),
+		Vector2(center.x - width * 0.12, waist_y),
+	]))
+	_add_polygon(view, "GreenChestAccent", spec["accent"], PackedVector2Array([
+		Vector2(center.x - width * 0.08, top + height * 0.29),
+		Vector2(center.x + width * 0.08, top + height * 0.29),
+		Vector2(center.x + width * 0.05, top + height * 0.36),
+		Vector2(center.x - width * 0.05, top + height * 0.36),
+	]))
+	if rear_facing:
+		_add_polygon(view, "Backpack", Color("#252b25"), PackedVector2Array([
+			Vector2(center.x - width * 0.4, top + height * 0.26),
+			Vector2(center.x + width * 0.4, top + height * 0.26),
+			Vector2(center.x + width * 0.44, top + height * 0.52),
+			Vector2(center.x + width * 0.31, top + height * 0.58),
+			Vector2(center.x - width * 0.31, top + height * 0.58),
+			Vector2(center.x - width * 0.44, top + height * 0.52),
+		]))
+		_add_polygon(view, "BackpackEmblem", Color("#79ad2d"), PackedVector2Array([
+			Vector2(center.x - width * 0.15, top + height * 0.36),
+			Vector2(center.x, top + height * 0.32),
+			Vector2(center.x + width * 0.15, top + height * 0.36),
+			Vector2(center.x, top + height * 0.47),
+		]))
+	if facing in ["side", "three_quarter_back", "back"]:
+		_add_polygon(view, "RailgunBackMass", Color("#252a28"), PackedVector2Array([
+			Vector2(center.x + width * 0.35, top + height * 0.14),
+			Vector2(center.x + width * 0.57, top + height * 0.15),
+			Vector2(center.x + width * 0.55, top + height * 0.55),
+			Vector2(center.x + width * 0.38, top + height * 0.55),
+		]))
+		_add_polygon(view, "RailgunGlowStrip", Color("#91c93b"), PackedVector2Array([
+			Vector2(center.x + width * 0.44, top + height * 0.19),
+			Vector2(center.x + width * 0.49, top + height * 0.19),
+			Vector2(center.x + width * 0.48, top + height * 0.49),
+			Vector2(center.x + width * 0.43, top + height * 0.49),
+		]))
+	if not rear_facing:
+		_add_polygon(view, "CheekMarkLeft", Color("#c7a05b"), PackedVector2Array([
+			Vector2(center.x - width * 0.24, top + height * 0.16),
+			Vector2(center.x - width * 0.12, top + height * 0.15),
+			Vector2(center.x - width * 0.17, top + height * 0.18),
+		]))
+		_add_polygon(view, "Smile", Color("#3a1c17"), PackedVector2Array([
+			Vector2(center.x - width * 0.1, top + height * 0.2),
+			Vector2(center.x, top + height * 0.215),
+			Vector2(center.x + width * 0.11, top + height * 0.195),
+			Vector2(center.x, top + height * 0.23),
 		]))
 
 

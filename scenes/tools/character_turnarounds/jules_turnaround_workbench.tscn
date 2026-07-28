@@ -2,328 +2,556 @@
 
 [ext_resource type="Texture2D" path="res://art/concept_art/jules_sheet.png" id="1_ssyo4"]
 
-[node name="JulesTurnaroundWorkbench" type="Node2D" unique_id=261298392]
+[node name="JulesTurnaroundWorkbench" type="Node2D" unique_id=1170234076]
 
-[node name="FrontView" type="Node2D" parent="." unique_id=103325177]
+[node name="FrontView" type="Node2D" parent="." unique_id=1555673268]
 
-[node name="BackHair" type="Polygon2D" parent="FrontView" unique_id=1371475264]
+[node name="BackHair" type="Polygon2D" parent="FrontView" unique_id=1021334481]
 color = Color(0.03529412, 0.039215688, 0.03529412, 1)
 polygon = PackedVector2Array(322.96, 95.6, 431.76, 90.5, 440.72, 246.05, 426.64, 348.05, 378, 350.6, 324.24, 353.15, 314, 240.95)
 
-[node name="LeftLeg" type="Polygon2D" parent="FrontView" unique_id=1142519223]
+[node name="LeftLeg" type="Polygon2D" parent="FrontView" unique_id=1843305078]
 color = Color(0.16078432, 0.15686275, 0.1254902, 1)
 polygon = PackedVector2Array(331.92, 365.9, 375.44, 365.9, 370.32, 462.8, 361.36, 546.95, 329.36, 546.95, 322.96, 462.8)
 
-[node name="RightLeg" type="Polygon2D" parent="FrontView" unique_id=1704391378]
+[node name="RightLeg" type="Polygon2D" parent="FrontView" unique_id=221044263]
 color = Color(0.16078432, 0.15686275, 0.1254902, 1)
 polygon = PackedVector2Array(380.56, 365.9, 424.08, 365.9, 433.04, 462.8, 426.64, 546.95, 394.64, 546.95, 385.68, 462.8)
 
-[node name="LeftBoot" type="Polygon2D" parent="FrontView" unique_id=1749990772]
+[node name="LeftBoot" type="Polygon2D" parent="FrontView" unique_id=201957193]
 color = Color(0.09019608, 0.101960786, 0.11372549, 1)
 polygon = PackedVector2Array(326.8, 513.8, 362.64, 513.8, 365.2, 567.35, 317.84, 575, 311.44, 562.25)
 
-[node name="RightBoot" type="Polygon2D" parent="FrontView" unique_id=2006360052]
+[node name="RightBoot" type="Polygon2D" parent="FrontView" unique_id=794321871]
 color = Color(0.09019608, 0.101960786, 0.11372549, 1)
 polygon = PackedVector2Array(393.36, 513.8, 429.2, 513.8, 444.56, 562.25, 438.16, 575, 390.8, 567.35)
 
-[node name="HipMass" type="Polygon2D" parent="FrontView" unique_id=1224988084]
+[node name="HipMass" type="Polygon2D" parent="FrontView" unique_id=1373870423]
 color = Color(0.09019608, 0.101960786, 0.11372549, 1)
 polygon = PackedVector2Array(324.24, 327.65, 431.76, 327.65, 426.64, 383.75, 378, 393.95, 329.36, 383.75)
 
-[node name="Torso" type="Polygon2D" parent="FrontView" unique_id=840597598]
+[node name="Torso" type="Polygon2D" parent="FrontView" unique_id=765114545]
 color = Color(0.09019608, 0.101960786, 0.11372549, 1)
 polygon = PackedVector2Array(322.96, 189.95, 431.76, 189.95, 421.52, 327.65, 378, 340.4, 334.48, 327.65)
 
-[node name="ChestArmor" type="Polygon2D" parent="FrontView" unique_id=212836166]
+[node name="ChestArmor" type="Polygon2D" parent="FrontView" unique_id=1907080116]
 color = Color(0.25882354, 0.25490198, 0.23137255, 1)
 polygon = PackedVector2Array(337.04, 207.8, 418.96, 207.8, 411.28, 304.7, 378, 327.65, 344.72, 304.7)
 
-[node name="LeftArm" type="Polygon2D" parent="FrontView" unique_id=1258958031]
+[node name="LeftArm" type="Polygon2D" parent="FrontView" unique_id=535905622]
 color = Color(0.16078432, 0.15686275, 0.1254902, 1)
 polygon = PackedVector2Array(322.96, 189.95, 298.64, 212.9, 303.76, 348.05, 322.96, 358.25, 337.04, 235.85)
 
-[node name="RightArm" type="Polygon2D" parent="FrontView" unique_id=1528667725]
+[node name="RightArm" type="Polygon2D" parent="FrontView" unique_id=722208724]
 color = Color(0.16078432, 0.15686275, 0.1254902, 1)
 polygon = PackedVector2Array(431.76, 189.95, 456.08, 215.45, 450.96, 348.05, 431.76, 358.25, 417.68, 235.85)
 
-[node name="BeltAccent" type="Polygon2D" parent="FrontView" unique_id=1460054216]
+[node name="BeltAccent" type="Polygon2D" parent="FrontView" unique_id=98511575]
 color = Color(0.8235294, 0.54901963, 0.07058824, 1)
 polygon = PackedVector2Array(330.64, 318.47, 425.36, 318.47, 424.08, 335.81, 331.92, 335.81)
 
-[node name="Head" type="Polygon2D" parent="FrontView" unique_id=1080694154]
+[node name="Head" type="Polygon2D" parent="FrontView" unique_id=758942734]
 color = Color(0.43529412, 0.29411766, 0.20784314, 1)
 polygon = PackedVector2Array(346, 100.7, 410, 103.25, 415.12, 144.05, 401.04, 174.65, 378, 187.4, 352.4, 172.1, 340.88, 141.5)
 
-[node name="HairCap" type="Polygon2D" parent="FrontView" unique_id=1636845164]
+[node name="HairCap" type="Polygon2D" parent="FrontView" unique_id=1987474023]
 color = Color(0.09411765, 0.09019608, 0.08235294, 1)
 polygon = PackedVector2Array(334.48, 131.3, 343.44, 87.95, 378, 72.65, 417.68, 93.05, 421.52, 136.4, 393.36, 121.1, 378, 156.8, 363.92, 126.2)
 
-[node name="LeftEye" type="Polygon2D" parent="FrontView" unique_id=1522538628]
+[node name="LeftEye" type="Polygon2D" parent="FrontView" unique_id=1588899255]
 color = Color(0.7176471, 0.48235294, 0.09019608, 1)
 polygon = PackedVector2Array(356.24, 138.95, 370.32, 135.38, 367.76, 148.13, 357.52, 147.62)
 
-[node name="RightEye" type="Polygon2D" parent="FrontView" unique_id=288287955]
+[node name="RightEye" type="Polygon2D" parent="FrontView" unique_id=2017908040]
 color = Color(0.7176471, 0.48235294, 0.09019608, 1)
 polygon = PackedVector2Array(385.68, 135.38, 399.76, 138.95, 398.48, 147.62, 388.24, 148.13)
 
-[node name="ThreeQuarterFrontView" type="Node2D" parent="." unique_id=1001267176]
+[node name="HighCollar" type="Polygon2D" parent="FrontView" unique_id=1255465743]
+color = Color(0.1882353, 0.17254902, 0.13333334, 1)
+polygon = PackedVector2Array(329.36, 161.9, 357.52, 138.95, 378, 172.1, 401.04, 138.95, 429.2, 167, 413.84, 212.9, 342.16, 212.9)
 
-[node name="BackHair" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=825773027]
+[node name="LeftCoatTail" type="Polygon2D" parent="FrontView" unique_id=1865653571]
+color = Color(0.14117648, 0.13333334, 0.11764706, 1)
+polygon = PackedVector2Array(324.24, 312.35, 375.44, 327.65, 365.2, 493.4, 321.68, 513.8, 310.16, 442.4)
+
+[node name="RightCoatTail" type="Polygon2D" parent="FrontView" unique_id=1227733189]
+color = Color(0.14117648, 0.13333334, 0.11764706, 1)
+polygon = PackedVector2Array(380.56, 327.65, 431.76, 312.35, 445.84, 442.4, 434.32, 513.8, 390.8, 493.4)
+
+[node name="LeftShoulderPlate" type="Polygon2D" parent="FrontView" unique_id=414049777]
+color = Color(0.25882354, 0.25490198, 0.23137255, 1)
+polygon = PackedVector2Array(317.84, 192.5, 349.84, 205.25, 342.16, 243.5, 311.44, 233.3)
+
+[node name="RightShoulderPlate" type="Polygon2D" parent="FrontView" unique_id=833063435]
+color = Color(0.25882354, 0.25490198, 0.23137255, 1)
+polygon = PackedVector2Array(406.16, 205.25, 438.16, 192.5, 444.56, 233.3, 413.84, 243.5)
+
+[node name="ChestChevron" type="Polygon2D" parent="FrontView" unique_id=870879593]
+color = Color(0.8235294, 0.54901963, 0.07058824, 1)
+polygon = PackedVector2Array(362.64, 228.2, 378, 248.6, 393.36, 228.2, 378, 269)
+
+[node name="LeftKneePlate" type="Polygon2D" parent="FrontView" unique_id=1015157307]
+color = Color(0.20392157, 0.21960784, 0.23137255, 1)
+polygon = PackedVector2Array(329.36, 439.85, 369.04, 437.3, 370.32, 490.85, 330.64, 493.4)
+
+[node name="LeftBootCuff" type="Polygon2D" parent="FrontView" unique_id=2002120588]
+color = Color(0.8235294, 0.54901963, 0.07058824, 1)
+polygon = PackedVector2Array(326.8, 508.7, 363.92, 508.7, 363.92, 516.35, 326.8, 516.35)
+
+[node name="RightKneePlate" type="Polygon2D" parent="FrontView" unique_id=1745355839]
+color = Color(0.20392157, 0.21960784, 0.23137255, 1)
+polygon = PackedVector2Array(426.64, 439.85, 386.96, 437.3, 385.68, 490.85, 425.36, 493.4)
+
+[node name="RightBootCuff" type="Polygon2D" parent="FrontView" unique_id=496333975]
+color = Color(0.8235294, 0.54901963, 0.07058824, 1)
+polygon = PackedVector2Array(429.2, 508.7, 392.08, 508.7, 392.08, 516.35, 429.2, 516.35)
+
+[node name="FaceShadow" type="Polygon2D" parent="FrontView" unique_id=1122571696]
+color = Color(0.3019608, 0.19607843, 0.14509805, 1)
+polygon = PackedVector2Array(348.56, 133.85, 406.16, 133.85, 394.64, 169.55, 357.52, 167)
+
+[node name="ThreeQuarterFrontView" type="Node2D" parent="." unique_id=50543486]
+
+[node name="BackHair" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=1525981371]
 color = Color(0.03529412, 0.039215688, 0.03529412, 1)
 polygon = PackedVector2Array(493.82, 95.6, 600.92, 90.5, 609.74, 246.05, 595.88, 348.05, 548, 350.6, 495.08, 353.15, 485, 240.95)
 
-[node name="LeftLeg" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=853663966]
+[node name="LeftLeg" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=2105838085]
 color = Color(0.16078432, 0.15686275, 0.1254902, 1)
 polygon = PackedVector2Array(502.64, 365.9, 545.48, 365.9, 540.44, 462.8, 531.62, 546.95, 500.12, 546.95, 493.82, 462.8)
 
-[node name="RightLeg" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=1087257696]
+[node name="RightLeg" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=1535541955]
 color = Color(0.16078432, 0.15686275, 0.1254902, 1)
 polygon = PackedVector2Array(550.52, 365.9, 593.36, 365.9, 602.18, 462.8, 595.88, 546.95, 564.38, 546.95, 555.56, 462.8)
 
-[node name="LeftBoot" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=1748373206]
+[node name="LeftBoot" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=639047172]
 color = Color(0.09019608, 0.101960786, 0.11372549, 1)
 polygon = PackedVector2Array(497.6, 513.8, 532.88, 513.8, 535.4, 567.35, 488.78, 575, 482.48, 562.25)
 
-[node name="RightBoot" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=1957131488]
+[node name="RightBoot" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=952174738]
 color = Color(0.09019608, 0.101960786, 0.11372549, 1)
 polygon = PackedVector2Array(563.12, 513.8, 598.4, 513.8, 613.52, 562.25, 607.22, 575, 560.6, 567.35)
 
-[node name="HipMass" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=492350079]
+[node name="HipMass" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=1825174202]
 color = Color(0.09019608, 0.101960786, 0.11372549, 1)
 polygon = PackedVector2Array(495.08, 327.65, 600.92, 327.65, 595.88, 383.75, 548, 393.95, 500.12, 383.75)
 
-[node name="Torso" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=140979894]
+[node name="Torso" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=1640939156]
 color = Color(0.09019608, 0.101960786, 0.11372549, 1)
 polygon = PackedVector2Array(493.82, 189.95, 600.92, 189.95, 590.84, 327.65, 548, 340.4, 505.16, 327.65)
 
-[node name="ChestArmor" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=869461084]
+[node name="ChestArmor" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=83348525]
 color = Color(0.25882354, 0.25490198, 0.23137255, 1)
 polygon = PackedVector2Array(507.68, 207.8, 588.32, 207.8, 580.76, 304.7, 548, 327.65, 515.24, 304.7)
 
-[node name="LeftArm" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=450902115]
+[node name="LeftArm" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=1517117856]
 color = Color(0.16078432, 0.15686275, 0.1254902, 1)
 polygon = PackedVector2Array(493.82, 189.95, 469.88, 212.9, 474.92, 348.05, 493.82, 358.25, 507.68, 235.85)
 
-[node name="RightArm" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=318915678]
+[node name="RightArm" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=253803844]
 color = Color(0.16078432, 0.15686275, 0.1254902, 1)
 polygon = PackedVector2Array(600.92, 189.95, 624.86, 215.45, 619.82, 348.05, 600.92, 358.25, 587.06, 235.85)
 
-[node name="BeltAccent" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=1815601795]
+[node name="BeltAccent" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=1822323097]
 color = Color(0.8235294, 0.54901963, 0.07058824, 1)
 polygon = PackedVector2Array(501.38, 318.47, 594.62, 318.47, 593.36, 335.81, 502.64, 335.81)
 
-[node name="Head" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=1147748412]
+[node name="Head" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=525674307]
 color = Color(0.43529412, 0.29411766, 0.20784314, 1)
 polygon = PackedVector2Array(525.32, 100.7, 588.32, 103.25, 593.36, 144.05, 579.5, 174.65, 556.82, 187.4, 531.62, 172.1, 520.28, 141.5)
 
-[node name="HairCap" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=1565823631]
+[node name="HairCap" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=2030236424]
 color = Color(0.09411765, 0.09019608, 0.08235294, 1)
 polygon = PackedVector2Array(505.16, 131.3, 513.98, 87.95, 548, 72.65, 587.06, 93.05, 590.84, 136.4, 571.94, 121.1, 556.82, 156.8, 542.96, 126.2)
 
-[node name="LeftEye" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=1726809886]
+[node name="LeftEye" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=1141456522]
 color = Color(0.7176471, 0.48235294, 0.09019608, 1)
 polygon = PackedVector2Array(535.4, 138.95, 549.26, 135.38, 546.74, 148.13, 536.66, 147.62)
 
-[node name="RightEye" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=833913211]
+[node name="RightEye" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=817655041]
 color = Color(0.7176471, 0.48235294, 0.09019608, 1)
 polygon = PackedVector2Array(564.38, 135.38, 578.24, 138.95, 576.98, 147.62, 566.9, 148.13)
 
-[node name="SideView" type="Node2D" parent="." unique_id=1760912714]
+[node name="HighCollar" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=617134073]
+color = Color(0.1882353, 0.17254902, 0.13333334, 1)
+polygon = PackedVector2Array(500.12, 161.9, 527.84, 138.95, 548, 172.1, 570.68, 138.95, 598.4, 167, 583.28, 212.9, 512.72, 212.9)
 
-[node name="BackHair" type="Polygon2D" parent="SideView" unique_id=1954582052]
+[node name="LeftCoatTail" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=1659434316]
+color = Color(0.14117648, 0.13333334, 0.11764706, 1)
+polygon = PackedVector2Array(495.08, 312.35, 545.48, 327.65, 535.4, 493.4, 492.56, 513.8, 481.22, 442.4)
+
+[node name="RightCoatTail" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=80151589]
+color = Color(0.14117648, 0.13333334, 0.11764706, 1)
+polygon = PackedVector2Array(550.52, 327.65, 600.92, 312.35, 614.78, 442.4, 603.44, 513.8, 560.6, 493.4)
+
+[node name="LeftShoulderPlate" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=1285858331]
+color = Color(0.25882354, 0.25490198, 0.23137255, 1)
+polygon = PackedVector2Array(488.78, 192.5, 520.28, 205.25, 512.72, 243.5, 482.48, 233.3)
+
+[node name="RightShoulderPlate" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=414499300]
+color = Color(0.25882354, 0.25490198, 0.23137255, 1)
+polygon = PackedVector2Array(575.72, 205.25, 607.22, 192.5, 613.52, 233.3, 583.28, 243.5)
+
+[node name="ChestChevron" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=900079972]
+color = Color(0.8235294, 0.54901963, 0.07058824, 1)
+polygon = PackedVector2Array(532.88, 228.2, 548, 248.6, 563.12, 228.2, 548, 269)
+
+[node name="LeftKneePlate" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=309745381]
+color = Color(0.20392157, 0.21960784, 0.23137255, 1)
+polygon = PackedVector2Array(500.12, 439.85, 539.18, 437.3, 540.44, 490.85, 501.38, 493.4)
+
+[node name="LeftBootCuff" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=1436479253]
+color = Color(0.8235294, 0.54901963, 0.07058824, 1)
+polygon = PackedVector2Array(497.6, 508.7, 534.14, 508.7, 534.14, 516.35, 497.6, 516.35)
+
+[node name="RightKneePlate" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=322965263]
+color = Color(0.20392157, 0.21960784, 0.23137255, 1)
+polygon = PackedVector2Array(595.88, 439.85, 556.82, 437.3, 555.56, 490.85, 594.62, 493.4)
+
+[node name="RightBootCuff" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=619244108]
+color = Color(0.8235294, 0.54901963, 0.07058824, 1)
+polygon = PackedVector2Array(598.4, 508.7, 561.86, 508.7, 561.86, 516.35, 598.4, 516.35)
+
+[node name="FaceShadow" type="Polygon2D" parent="ThreeQuarterFrontView" unique_id=469295510]
+color = Color(0.3019608, 0.19607843, 0.14509805, 1)
+polygon = PackedVector2Array(519.02, 133.85, 575.72, 133.85, 564.38, 169.55, 527.84, 167)
+
+[node name="SideView" type="Node2D" parent="." unique_id=1483131350]
+
+[node name="BackHair" type="Polygon2D" parent="SideView" unique_id=1725576565]
 color = Color(0.03529412, 0.039215688, 0.03529412, 1)
 polygon = PackedVector2Array(670.0128, 95.6, 737.1968, 90.5, 754.96, 246.05, 743.52, 348.05, 704, 350.6, 660.32, 353.15, 652, 240.95)
 
-[node name="LeftLeg" type="Polygon2D" parent="SideView" unique_id=946407548]
+[node name="LeftLeg" type="Polygon2D" parent="SideView" unique_id=399238125]
 color = Color(0.16078432, 0.15686275, 0.1254902, 1)
 polygon = PackedVector2Array(666.56, 365.9, 701.92, 365.9, 697.76, 462.8, 690.48, 546.95, 664.48, 546.95, 659.28, 462.8)
 
-[node name="RightLeg" type="Polygon2D" parent="SideView" unique_id=854249686]
+[node name="RightLeg" type="Polygon2D" parent="SideView" unique_id=168152756]
 color = Color(0.16078432, 0.15686275, 0.1254902, 1)
 polygon = PackedVector2Array(706.08, 365.9, 741.44, 365.9, 748.72, 462.8, 743.52, 546.95, 717.52, 546.95, 710.24, 462.8)
 
-[node name="LeftBoot" type="Polygon2D" parent="SideView" unique_id=576963820]
+[node name="LeftBoot" type="Polygon2D" parent="SideView" unique_id=129395258]
 color = Color(0.09019608, 0.101960786, 0.11372549, 1)
 polygon = PackedVector2Array(662.4, 513.8, 691.52, 513.8, 693.6, 567.35, 655.12, 575, 649.92, 562.25)
 
-[node name="RightBoot" type="Polygon2D" parent="SideView" unique_id=458520294]
+[node name="RightBoot" type="Polygon2D" parent="SideView" unique_id=676091693]
 color = Color(0.09019608, 0.101960786, 0.11372549, 1)
 polygon = PackedVector2Array(716.48, 513.8, 745.6, 513.8, 758.08, 562.25, 752.88, 575, 714.4, 567.35)
 
-[node name="HipMass" type="Polygon2D" parent="SideView" unique_id=1305030642]
+[node name="HipMass" type="Polygon2D" parent="SideView" unique_id=191198829]
 color = Color(0.09019608, 0.101960786, 0.11372549, 1)
 polygon = PackedVector2Array(660.32, 327.65, 747.68, 327.65, 743.52, 383.75, 704, 393.95, 664.48, 383.75)
 
-[node name="Torso" type="Polygon2D" parent="SideView" unique_id=378222655]
+[node name="Torso" type="Polygon2D" parent="SideView" unique_id=1005665973]
 color = Color(0.09019608, 0.101960786, 0.11372549, 1)
 polygon = PackedVector2Array(659.28, 189.95, 747.68, 189.95, 739.36, 327.65, 704, 340.4, 668.64, 327.65)
 
-[node name="ChestArmor" type="Polygon2D" parent="SideView" unique_id=2042036788]
+[node name="ChestArmor" type="Polygon2D" parent="SideView" unique_id=1311755554]
 color = Color(0.25882354, 0.25490198, 0.23137255, 1)
 polygon = PackedVector2Array(670.72, 207.8, 737.28, 207.8, 731.04, 304.7, 704, 327.65, 676.96, 304.7)
 
-[node name="LeftArm" type="Polygon2D" parent="SideView" unique_id=451054826]
+[node name="LeftArm" type="Polygon2D" parent="SideView" unique_id=2072048942]
 color = Color(0.16078432, 0.15686275, 0.1254902, 1)
 polygon = PackedVector2Array(659.28, 189.95, 639.52, 212.9, 643.68, 348.05, 659.28, 358.25, 670.72, 235.85)
 
-[node name="RightArm" type="Polygon2D" parent="SideView" unique_id=274982563]
+[node name="RightArm" type="Polygon2D" parent="SideView" unique_id=2026829831]
 color = Color(0.16078432, 0.15686275, 0.1254902, 1)
 polygon = PackedVector2Array(747.68, 189.95, 767.44, 215.45, 763.28, 348.05, 747.68, 358.25, 736.24, 235.85)
 
-[node name="BeltAccent" type="Polygon2D" parent="SideView" unique_id=821212143]
+[node name="BeltAccent" type="Polygon2D" parent="SideView" unique_id=1815226056]
 color = Color(0.8235294, 0.54901963, 0.07058824, 1)
 polygon = PackedVector2Array(665.52, 318.47, 742.48, 318.47, 741.44, 335.81, 666.56, 335.81)
 
-[node name="Head" type="Polygon2D" parent="SideView" unique_id=1836499586]
+[node name="Head" type="Polygon2D" parent="SideView" unique_id=236889226]
 color = Color(0.43529412, 0.29411766, 0.20784314, 1)
 polygon = PackedVector2Array(691.52, 100.7, 731.04, 103.25, 734.2016, 144.05, 725.5072, 174.65, 711.28, 187.4, 695.472, 172.1, 688.3584, 141.5)
 
-[node name="HairCap" type="Polygon2D" parent="SideView" unique_id=1314637469]
+[node name="HairCap" type="Polygon2D" parent="SideView" unique_id=581742592]
 color = Color(0.09411765, 0.09019608, 0.08235294, 1)
 polygon = PackedVector2Array(677.1264, 131.3, 682.6592, 87.95, 704, 72.65, 728.5024, 93.05, 730.8736, 136.4, 723.76, 121.1, 711.28, 156.8, 699.84, 126.2)
 
-[node name="LeftEye" type="Polygon2D" parent="SideView" unique_id=1904817098]
+[node name="LeftEye" type="Polygon2D" parent="SideView" unique_id=1581574275]
 color = Color(0.7176471, 0.48235294, 0.09019608, 1)
 polygon = PackedVector2Array(693.6, 138.95, 705.04, 135.38, 702.96, 148.13, 694.64, 147.62)
 
-[node name="ThreeQuarterBackView" type="Node2D" parent="." unique_id=1592720045]
+[node name="HighCollar" type="Polygon2D" parent="SideView" unique_id=1664609259]
+color = Color(0.1882353, 0.17254902, 0.13333334, 1)
+polygon = PackedVector2Array(664.48, 161.9, 687.36, 138.95, 704, 172.1, 722.72, 138.95, 745.6, 167, 733.12, 212.9, 674.88, 212.9)
 
-[node name="BackHair" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=1853305995]
+[node name="LeftCoatTail" type="Polygon2D" parent="SideView" unique_id=679202307]
+color = Color(0.14117648, 0.13333334, 0.11764706, 1)
+polygon = PackedVector2Array(660.32, 312.35, 701.92, 327.65, 693.6, 493.4, 658.24, 513.8, 648.88, 442.4)
+
+[node name="RightCoatTail" type="Polygon2D" parent="SideView" unique_id=1772615729]
+color = Color(0.14117648, 0.13333334, 0.11764706, 1)
+polygon = PackedVector2Array(706.08, 327.65, 747.68, 312.35, 759.12, 442.4, 749.76, 513.8, 714.4, 493.4)
+
+[node name="LeftShoulderPlate" type="Polygon2D" parent="SideView" unique_id=1412756235]
+color = Color(0.25882354, 0.25490198, 0.23137255, 1)
+polygon = PackedVector2Array(655.12, 192.5, 681.12, 205.25, 674.88, 243.5, 649.92, 233.3)
+
+[node name="RightShoulderPlate" type="Polygon2D" parent="SideView" unique_id=112565223]
+color = Color(0.25882354, 0.25490198, 0.23137255, 1)
+polygon = PackedVector2Array(726.88, 205.25, 752.88, 192.5, 758.08, 233.3, 733.12, 243.5)
+
+[node name="ChestChevron" type="Polygon2D" parent="SideView" unique_id=1857683647]
+color = Color(0.8235294, 0.54901963, 0.07058824, 1)
+polygon = PackedVector2Array(691.52, 228.2, 704, 248.6, 716.48, 228.2, 704, 269)
+
+[node name="LeftKneePlate" type="Polygon2D" parent="SideView" unique_id=672953011]
+color = Color(0.20392157, 0.21960784, 0.23137255, 1)
+polygon = PackedVector2Array(664.48, 439.85, 696.72, 437.3, 697.76, 490.85, 665.52, 493.4)
+
+[node name="LeftBootCuff" type="Polygon2D" parent="SideView" unique_id=487749333]
+color = Color(0.8235294, 0.54901963, 0.07058824, 1)
+polygon = PackedVector2Array(662.4, 508.7, 692.56, 508.7, 692.56, 516.35, 662.4, 516.35)
+
+[node name="RightKneePlate" type="Polygon2D" parent="SideView" unique_id=1458150465]
+color = Color(0.20392157, 0.21960784, 0.23137255, 1)
+polygon = PackedVector2Array(743.52, 439.85, 711.28, 437.3, 710.24, 490.85, 742.48, 493.4)
+
+[node name="RightBootCuff" type="Polygon2D" parent="SideView" unique_id=6407845]
+color = Color(0.8235294, 0.54901963, 0.07058824, 1)
+polygon = PackedVector2Array(745.6, 508.7, 715.44, 508.7, 715.44, 516.35, 745.6, 516.35)
+
+[node name="FaceShadow" type="Polygon2D" parent="SideView" unique_id=1423299796]
+color = Color(0.3019608, 0.19607843, 0.14509805, 1)
+polygon = PackedVector2Array(680.08, 133.85, 726.88, 133.85, 717.52, 169.55, 687.36, 167)
+
+[node name="ThreeQuarterBackView" type="Node2D" parent="." unique_id=408747091]
+
+[node name="BackHair" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=2063519059]
 color = Color(0.03529412, 0.039215688, 0.03529412, 1)
 polygon = PackedVector2Array(801.82, 95.6, 908.92, 90.5, 917.74, 246.05, 903.88, 348.05, 856, 350.6, 803.08, 353.15, 793, 240.95)
 
-[node name="CapeOrBackMass" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=835534005]
+[node name="CapeOrBackMass" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=501996526]
 color = Color(0.09019608, 0.101960786, 0.11372549, 1)
 polygon = PackedVector2Array(798.04, 189.95, 913.96, 189.95, 929.08, 388.85, 895.06, 427.1, 813.16, 427.1, 784.18, 378.65)
 
-[node name="LeftLeg" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=1489828454]
+[node name="LeftLeg" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=779505919]
 color = Color(0.16078432, 0.15686275, 0.1254902, 1)
 polygon = PackedVector2Array(810.64, 365.9, 853.48, 365.9, 848.44, 462.8, 839.62, 546.95, 808.12, 546.95, 801.82, 462.8)
 
-[node name="RightLeg" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=1225151380]
+[node name="RightLeg" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=1005756594]
 color = Color(0.16078432, 0.15686275, 0.1254902, 1)
 polygon = PackedVector2Array(858.52, 365.9, 901.36, 365.9, 910.18, 462.8, 903.88, 546.95, 872.38, 546.95, 863.56, 462.8)
 
-[node name="LeftBoot" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=1854229260]
+[node name="LeftBoot" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=802874461]
 color = Color(0.09019608, 0.101960786, 0.11372549, 1)
 polygon = PackedVector2Array(805.6, 513.8, 840.88, 513.8, 843.4, 567.35, 796.78, 575, 790.48, 562.25)
 
-[node name="RightBoot" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=35827050]
+[node name="RightBoot" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=1268009768]
 color = Color(0.09019608, 0.101960786, 0.11372549, 1)
 polygon = PackedVector2Array(871.12, 513.8, 906.4, 513.8, 921.52, 562.25, 915.22, 575, 868.6, 567.35)
 
-[node name="HipMass" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=1001184554]
+[node name="HipMass" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=308670365]
 color = Color(0.09019608, 0.101960786, 0.11372549, 1)
 polygon = PackedVector2Array(803.08, 327.65, 908.92, 327.65, 903.88, 383.75, 856, 393.95, 808.12, 383.75)
 
-[node name="Torso" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=1391699638]
+[node name="Torso" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=203143545]
 color = Color(0.09019608, 0.101960786, 0.11372549, 1)
 polygon = PackedVector2Array(801.82, 189.95, 908.92, 189.95, 898.84, 327.65, 856, 340.4, 813.16, 327.65)
 
-[node name="ChestArmor" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=1963582931]
+[node name="ChestArmor" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=399490294]
 color = Color(0.25882354, 0.25490198, 0.23137255, 1)
 polygon = PackedVector2Array(815.68, 207.8, 896.32, 207.8, 888.76, 304.7, 856, 327.65, 823.24, 304.7)
 
-[node name="LeftArm" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=171899958]
+[node name="LeftArm" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=2057354173]
 color = Color(0.16078432, 0.15686275, 0.1254902, 1)
 polygon = PackedVector2Array(801.82, 189.95, 777.88, 212.9, 782.92, 348.05, 801.82, 358.25, 815.68, 235.85)
 
-[node name="RightArm" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=2134515346]
+[node name="RightArm" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=1381156043]
 color = Color(0.16078432, 0.15686275, 0.1254902, 1)
 polygon = PackedVector2Array(908.92, 189.95, 932.86, 215.45, 927.82, 348.05, 908.92, 358.25, 895.06, 235.85)
 
-[node name="BeltAccent" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=458813878]
+[node name="BeltAccent" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=453562564]
 color = Color(0.8235294, 0.54901963, 0.07058824, 1)
 polygon = PackedVector2Array(809.38, 318.47, 902.62, 318.47, 901.36, 335.81, 810.64, 335.81)
 
-[node name="Head" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=1591055071]
+[node name="Head" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=1584238575]
 color = Color(0.43529412, 0.29411766, 0.20784314, 1)
 polygon = PackedVector2Array(824.5, 100.7, 887.5, 103.25, 892.54, 144.05, 878.68, 174.65, 856, 187.4, 830.8, 172.1, 819.46, 141.5)
 
-[node name="HairCap" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=1267602514]
+[node name="HairCap" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=653443953]
 color = Color(0.09411765, 0.09019608, 0.08235294, 1)
 polygon = PackedVector2Array(813.16, 131.3, 821.98, 87.95, 856, 72.65, 895.06, 93.05, 898.84, 136.4, 871.12, 121.1, 856, 156.8, 842.14, 126.2)
 
-[node name="BackEmblemBlock" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=541526163]
+[node name="BackEmblemBlock" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=1071151238]
 color = Color(0.8235294, 0.54901963, 0.07058824, 1)
 polygon = PackedVector2Array(839.62, 246.05, 856, 228.2, 872.38, 246.05, 856, 281.75)
 
-[node name="BackView" type="Node2D" parent="." unique_id=835810678]
+[node name="HighCollar" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=1128554490]
+color = Color(0.1882353, 0.17254902, 0.13333334, 1)
+polygon = PackedVector2Array(808.12, 161.9, 835.84, 138.95, 856, 172.1, 878.68, 138.95, 906.4, 167, 891.28, 212.9, 820.72, 212.9)
 
-[node name="BackHair" type="Polygon2D" parent="BackView" unique_id=2132399441]
+[node name="LeftCoatTail" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=664938219]
+color = Color(0.14117648, 0.13333334, 0.11764706, 1)
+polygon = PackedVector2Array(803.08, 312.35, 853.48, 327.65, 843.4, 493.4, 800.56, 513.8, 789.22, 442.4)
+
+[node name="RightCoatTail" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=1578627057]
+color = Color(0.14117648, 0.13333334, 0.11764706, 1)
+polygon = PackedVector2Array(858.52, 327.65, 908.92, 312.35, 922.78, 442.4, 911.44, 513.8, 868.6, 493.4)
+
+[node name="LeftShoulderPlate" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=351105685]
+color = Color(0.25882354, 0.25490198, 0.23137255, 1)
+polygon = PackedVector2Array(796.78, 192.5, 828.28, 205.25, 820.72, 243.5, 790.48, 233.3)
+
+[node name="RightShoulderPlate" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=707954088]
+color = Color(0.25882354, 0.25490198, 0.23137255, 1)
+polygon = PackedVector2Array(883.72, 205.25, 915.22, 192.5, 921.52, 233.3, 891.28, 243.5)
+
+[node name="ChestChevron" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=1446795051]
+color = Color(0.8235294, 0.54901963, 0.07058824, 1)
+polygon = PackedVector2Array(840.88, 228.2, 856, 248.6, 871.12, 228.2, 856, 269)
+
+[node name="LeftKneePlate" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=1998663973]
+color = Color(0.20392157, 0.21960784, 0.23137255, 1)
+polygon = PackedVector2Array(808.12, 439.85, 847.18, 437.3, 848.44, 490.85, 809.38, 493.4)
+
+[node name="LeftBootCuff" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=1949403948]
+color = Color(0.8235294, 0.54901963, 0.07058824, 1)
+polygon = PackedVector2Array(805.6, 508.7, 842.14, 508.7, 842.14, 516.35, 805.6, 516.35)
+
+[node name="RightKneePlate" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=278393178]
+color = Color(0.20392157, 0.21960784, 0.23137255, 1)
+polygon = PackedVector2Array(903.88, 439.85, 864.82, 437.3, 863.56, 490.85, 902.62, 493.4)
+
+[node name="RightBootCuff" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=1748024719]
+color = Color(0.8235294, 0.54901963, 0.07058824, 1)
+polygon = PackedVector2Array(906.4, 508.7, 869.86, 508.7, 869.86, 516.35, 906.4, 516.35)
+
+[node name="BackCoatPanel" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=1489434841]
+color = Color(0.16078432, 0.15294118, 0.1254902, 1)
+polygon = PackedVector2Array(806.86, 207.8, 905.14, 207.8, 908.92, 493.4, 866.08, 513.8, 856, 452.6, 845.92, 513.8, 803.08, 493.4)
+
+[node name="LargeBackEmblem" type="Polygon2D" parent="ThreeQuarterBackView" unique_id=264650938]
+color = Color(0.8235294, 0.54901963, 0.07058824, 1)
+polygon = PackedVector2Array(834.58, 248.6, 856, 228.2, 877.42, 248.6, 856, 304.7)
+
+[node name="BackView" type="Node2D" parent="." unique_id=713109209]
+
+[node name="BackHair" type="Polygon2D" parent="BackView" unique_id=201731343]
 color = Color(0.03529412, 0.039215688, 0.03529412, 1)
 polygon = PackedVector2Array(958.1, 95.6, 1068.6, 90.5, 1077.7, 246.05, 1063.4, 348.05, 1014, 350.6, 959.4, 353.15, 949, 240.95)
 
-[node name="CapeOrBackMass" type="Polygon2D" parent="BackView" unique_id=760215803]
+[node name="CapeOrBackMass" type="Polygon2D" parent="BackView" unique_id=2028433677]
 color = Color(0.09019608, 0.101960786, 0.11372549, 1)
 polygon = PackedVector2Array(954.2, 189.95, 1073.8, 189.95, 1089.4, 388.85, 1054.3, 427.1, 969.8, 427.1, 939.9, 378.65)
 
-[node name="LeftLeg" type="Polygon2D" parent="BackView" unique_id=2375605]
+[node name="LeftLeg" type="Polygon2D" parent="BackView" unique_id=1532574162]
 color = Color(0.16078432, 0.15686275, 0.1254902, 1)
 polygon = PackedVector2Array(967.2, 365.9, 1011.4, 365.9, 1006.2, 462.8, 997.1, 546.95, 964.6, 546.95, 958.1, 462.8)
 
-[node name="RightLeg" type="Polygon2D" parent="BackView" unique_id=724202634]
+[node name="RightLeg" type="Polygon2D" parent="BackView" unique_id=633111644]
 color = Color(0.16078432, 0.15686275, 0.1254902, 1)
 polygon = PackedVector2Array(1016.6, 365.9, 1060.8, 365.9, 1069.9, 462.8, 1063.4, 546.95, 1030.9, 546.95, 1021.8, 462.8)
 
-[node name="LeftBoot" type="Polygon2D" parent="BackView" unique_id=1368882260]
+[node name="LeftBoot" type="Polygon2D" parent="BackView" unique_id=1402132079]
 color = Color(0.09019608, 0.101960786, 0.11372549, 1)
 polygon = PackedVector2Array(962, 513.8, 998.4, 513.8, 1001, 567.35, 952.9, 575, 946.4, 562.25)
 
-[node name="RightBoot" type="Polygon2D" parent="BackView" unique_id=1377575630]
+[node name="RightBoot" type="Polygon2D" parent="BackView" unique_id=1070884898]
 color = Color(0.09019608, 0.101960786, 0.11372549, 1)
 polygon = PackedVector2Array(1029.6, 513.8, 1066, 513.8, 1081.6, 562.25, 1075.1, 575, 1027, 567.35)
 
-[node name="HipMass" type="Polygon2D" parent="BackView" unique_id=835900314]
+[node name="HipMass" type="Polygon2D" parent="BackView" unique_id=962828811]
 color = Color(0.09019608, 0.101960786, 0.11372549, 1)
 polygon = PackedVector2Array(959.4, 327.65, 1068.6, 327.65, 1063.4, 383.75, 1014, 393.95, 964.6, 383.75)
 
-[node name="Torso" type="Polygon2D" parent="BackView" unique_id=897887968]
+[node name="Torso" type="Polygon2D" parent="BackView" unique_id=290791032]
 color = Color(0.09019608, 0.101960786, 0.11372549, 1)
 polygon = PackedVector2Array(958.1, 189.95, 1068.6, 189.95, 1058.2, 327.65, 1014, 340.4, 969.8, 327.65)
 
-[node name="ChestArmor" type="Polygon2D" parent="BackView" unique_id=2122069124]
+[node name="ChestArmor" type="Polygon2D" parent="BackView" unique_id=2004951340]
 color = Color(0.25882354, 0.25490198, 0.23137255, 1)
 polygon = PackedVector2Array(972.4, 207.8, 1055.6, 207.8, 1047.8, 304.7, 1014, 327.65, 980.2, 304.7)
 
-[node name="LeftArm" type="Polygon2D" parent="BackView" unique_id=354688945]
+[node name="LeftArm" type="Polygon2D" parent="BackView" unique_id=1447979752]
 color = Color(0.16078432, 0.15686275, 0.1254902, 1)
 polygon = PackedVector2Array(958.1, 189.95, 933.4, 212.9, 938.6, 348.05, 958.1, 358.25, 972.4, 235.85)
 
-[node name="RightArm" type="Polygon2D" parent="BackView" unique_id=1535098945]
+[node name="RightArm" type="Polygon2D" parent="BackView" unique_id=481572774]
 color = Color(0.16078432, 0.15686275, 0.1254902, 1)
 polygon = PackedVector2Array(1068.6, 189.95, 1093.3, 215.45, 1088.1, 348.05, 1068.6, 358.25, 1054.3, 235.85)
 
-[node name="BeltAccent" type="Polygon2D" parent="BackView" unique_id=540954896]
+[node name="BeltAccent" type="Polygon2D" parent="BackView" unique_id=620961592]
 color = Color(0.8235294, 0.54901963, 0.07058824, 1)
 polygon = PackedVector2Array(965.9, 318.47, 1062.1, 318.47, 1060.8, 335.81, 967.2, 335.81)
 
-[node name="Head" type="Polygon2D" parent="BackView" unique_id=994917066]
+[node name="Head" type="Polygon2D" parent="BackView" unique_id=1002316485]
 color = Color(0.43529412, 0.29411766, 0.20784314, 1)
 polygon = PackedVector2Array(981.5, 100.7, 1046.5, 103.25, 1051.7, 144.05, 1037.4, 174.65, 1014, 187.4, 988, 172.1, 976.3, 141.5)
 
-[node name="HairCap" type="Polygon2D" parent="BackView" unique_id=1713632264]
+[node name="HairCap" type="Polygon2D" parent="BackView" unique_id=1745924044]
 color = Color(0.09411765, 0.09019608, 0.08235294, 1)
 polygon = PackedVector2Array(969.8, 131.3, 978.9, 87.95, 1014, 72.65, 1054.3, 93.05, 1058.2, 136.4, 1029.6, 121.1, 1014, 156.8, 999.7, 126.2)
 
-[node name="BackEmblemBlock" type="Polygon2D" parent="BackView" unique_id=1871842595]
+[node name="BackEmblemBlock" type="Polygon2D" parent="BackView" unique_id=482819316]
 color = Color(0.8235294, 0.54901963, 0.07058824, 1)
 polygon = PackedVector2Array(997.1, 246.05, 1014, 228.2, 1030.9, 246.05, 1014, 281.75)
 
-[node name="TracingOverlay" type="Sprite2D" parent="." unique_id=614791367]
+[node name="HighCollar" type="Polygon2D" parent="BackView" unique_id=829530442]
+color = Color(0.1882353, 0.17254902, 0.13333334, 1)
+polygon = PackedVector2Array(964.6, 161.9, 993.2, 138.95, 1014, 172.1, 1037.4, 138.95, 1066, 167, 1050.4, 212.9, 977.6, 212.9)
+
+[node name="LeftCoatTail" type="Polygon2D" parent="BackView" unique_id=176113243]
+color = Color(0.14117648, 0.13333334, 0.11764706, 1)
+polygon = PackedVector2Array(959.4, 312.35, 1011.4, 327.65, 1001, 493.4, 956.8, 513.8, 945.1, 442.4)
+
+[node name="RightCoatTail" type="Polygon2D" parent="BackView" unique_id=899191844]
+color = Color(0.14117648, 0.13333334, 0.11764706, 1)
+polygon = PackedVector2Array(1016.6, 327.65, 1068.6, 312.35, 1082.9, 442.4, 1071.2, 513.8, 1027, 493.4)
+
+[node name="LeftShoulderPlate" type="Polygon2D" parent="BackView" unique_id=859893510]
+color = Color(0.25882354, 0.25490198, 0.23137255, 1)
+polygon = PackedVector2Array(952.9, 192.5, 985.4, 205.25, 977.6, 243.5, 946.4, 233.3)
+
+[node name="RightShoulderPlate" type="Polygon2D" parent="BackView" unique_id=287660048]
+color = Color(0.25882354, 0.25490198, 0.23137255, 1)
+polygon = PackedVector2Array(1042.6, 205.25, 1075.1, 192.5, 1081.6, 233.3, 1050.4, 243.5)
+
+[node name="ChestChevron" type="Polygon2D" parent="BackView" unique_id=1677580551]
+color = Color(0.8235294, 0.54901963, 0.07058824, 1)
+polygon = PackedVector2Array(998.4, 228.2, 1014, 248.6, 1029.6, 228.2, 1014, 269)
+
+[node name="LeftKneePlate" type="Polygon2D" parent="BackView" unique_id=613073370]
+color = Color(0.20392157, 0.21960784, 0.23137255, 1)
+polygon = PackedVector2Array(964.6, 439.85, 1004.9, 437.3, 1006.2, 490.85, 965.9, 493.4)
+
+[node name="LeftBootCuff" type="Polygon2D" parent="BackView" unique_id=184051113]
+color = Color(0.8235294, 0.54901963, 0.07058824, 1)
+polygon = PackedVector2Array(962, 508.7, 999.7, 508.7, 999.7, 516.35, 962, 516.35)
+
+[node name="RightKneePlate" type="Polygon2D" parent="BackView" unique_id=766237252]
+color = Color(0.20392157, 0.21960784, 0.23137255, 1)
+polygon = PackedVector2Array(1063.4, 439.85, 1023.1, 437.3, 1021.8, 490.85, 1062.1, 493.4)
+
+[node name="RightBootCuff" type="Polygon2D" parent="BackView" unique_id=440584422]
+color = Color(0.8235294, 0.54901963, 0.07058824, 1)
+polygon = PackedVector2Array(1066, 508.7, 1028.3, 508.7, 1028.3, 516.35, 1066, 516.35)
+
+[node name="BackCoatPanel" type="Polygon2D" parent="BackView" unique_id=523092654]
+color = Color(0.16078432, 0.15294118, 0.1254902, 1)
+polygon = PackedVector2Array(963.3, 207.8, 1064.7, 207.8, 1068.6, 493.4, 1024.4, 513.8, 1014, 452.6, 1003.6, 513.8, 959.4, 493.4)
+
+[node name="LargeBackEmblem" type="Polygon2D" parent="BackView" unique_id=1356922999]
+color = Color(0.8235294, 0.54901963, 0.07058824, 1)
+polygon = PackedVector2Array(991.9, 248.6, 1014, 228.2, 1036.1, 248.6, 1014, 304.7)
+
+[node name="TracingOverlay" type="Sprite2D" parent="." unique_id=948619454]
 modulate = Color(1, 1, 1, 0.62)
 z_index = 20
 texture = ExtResource("1_ssyo4")
 centered = false
 
-[node name="PaletteReference" type="Sprite2D" parent="." unique_id=944982003]
+[node name="PaletteReference" type="Sprite2D" parent="." unique_id=1262360626]
 z_index = 20
 position = Vector2(1660, 100)
 scale = Vector2(0.62, 0.62)
 texture = ExtResource("1_ssyo4")
 centered = false
 
-[node name="WorkbenchInstructions" type="Label" parent="." unique_id=1789928552]
+[node name="WorkbenchInstructions" type="Label" parent="." unique_id=112585416]
 offset_left = 1660.0
 offset_top = 20.0
 offset_right = 1660.0
