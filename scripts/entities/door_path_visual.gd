@@ -72,22 +72,57 @@ func get_perspective_world_rect() -> Rect2:
 
 
 func _draw() -> void:
-	for points in _path_points:
-		_draw_rounded_path(points, _path_width + _border_width * 2.0, _border_color)
-		_draw_rounded_path(points, _path_width, _path_color)
+	_draw_path_regions(_path_width + _border_width * 2.0, _border_color)
+	_draw_path_regions(_path_width, _path_color)
 	for mat_rect in _mat_rects:
 		draw_rect(mat_rect, _border_color, true)
 		draw_rect(mat_rect.grow(-_border_width), _mat_color, true)
 		draw_rect(mat_rect.grow(-_border_width), Color(0.32, 0.33, 0.34, 0.38), false, 1.0)
 
 
-func _draw_rounded_path(points: PackedVector2Array, width: float, color: Color) -> void:
-	if points.size() < 2:
-		return
-	draw_polyline(points, color, width, true)
-	var radius := width * 0.5
-	for point in points:
-		draw_circle(point, radius, color)
+func _draw_path_regions(width: float, color: Color) -> void:
+	for region in _build_path_regions(width):
+		draw_colored_polygon(region, color)
+
+
+func _build_path_regions(width: float) -> Array[PackedVector2Array]:
+	var regions: Array[PackedVector2Array] = []
+	for points in _path_points:
+		for index in range(points.size() - 1):
+			var segment_polygon: PackedVector2Array = _get_segment_polygon(
+				points[index],
+				points[index + 1],
+				width
+			)
+			if segment_polygon.is_empty():
+				continue
+			var region_index: int = 0
+			while region_index < regions.size():
+				var merged: Array[PackedVector2Array] = Geometry2D.merge_polygons(
+					regions[region_index],
+					segment_polygon
+				)
+				if merged.size() == 1:
+					segment_polygon = merged[0]
+					regions.remove_at(region_index)
+					region_index = 0
+					continue
+				region_index += 1
+			regions.append(segment_polygon)
+	return regions
+
+
+func _get_segment_polygon(start: Vector2, end: Vector2, width: float) -> PackedVector2Array:
+	var delta: Vector2 = end - start
+	if delta.length_squared() <= 0.001:
+		return PackedVector2Array()
+	var perpendicular: Vector2 = delta.normalized().orthogonal() * width * 0.5
+	return PackedVector2Array([
+		start + perpendicular,
+		end + perpendicular,
+		end - perpendicular,
+		start - perpendicular
+	])
 
 
 func _build_center_paths(
