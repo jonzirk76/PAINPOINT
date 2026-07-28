@@ -275,5 +275,6 @@ texture = ExtResource("1_s3rpo")
 metadata/_edit_lock_ = true
 
 [node name="ReferencePortrait2" type="Sprite2D" parent="." unique_id=1075051186]
+visible = false
 position = Vector2(254, 86)
 texture = ExtResource("1_s3rpo")
