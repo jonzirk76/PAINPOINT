@@ -239,6 +239,8 @@ static func _build_faces(corners: Array, depths: Array) -> Array:
 			"indices": indices.duplicate(),
 			"points": _points_for_indices(corners, indices),
 			"average_depth": average_depth,
+			"signed_area": _signed_area(_points_for_indices(corners, indices)),
+			"visible": _signed_area(_points_for_indices(corners, indices)) < 0.0,
 		})
 	faces.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return float(a["average_depth"]) > float(b["average_depth"])

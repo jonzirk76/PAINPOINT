@@ -6,23 +6,35 @@ the useful Drawabox feedback loop—construct, extend, inspect, adjust—into
 measurable Godot geometry. It does not attempt to reproduce the human
 pen-control portion of the 250-box exercise.
 
-Open `res://scenes/tools/construction_lab/box_construction_lab.tscn` to review
-the four-case sample batch. Press Space to generate a new deterministic set of
-corner offsets. The underlying cuboids and poses remain fixed.
+Run the visual batch generator, then open any scene in
+`res://scenes/tools/construction_lab/generated/`. Each generated scene is an
+editable Godot artifact built from `Polygon2D`, `Line2D`, and `Label` nodes.
+The generated folder is intentionally left untracked so visual experiments do
+not accumulate in feature commits.
+
+`res://scenes/tools/construction_lab/box_construction_lab.tscn` remains a quick
+four-case overview. Press Space in that overview to generate a new
+deterministic set of corner offsets.
 
 ## What the display means
 
-- Translucent faces and the thin white cage are the exact 3D-to-2D projection.
+- Differently shaded faces are actual `Polygon2D` nodes built from the
+  attempted corners.
+- The thin white cage is the exact 3D-to-2D projection.
 - Red edges are the cuboid's local X family.
 - Green edges are the local Y family.
 - Blue edges are the local Z family.
-- Faint extensions reveal whether each attempted edge family is drifting away
-  from a shared convergence.
+- Each right-side proof panel places the intended vanishing point as a yellow
+  diamond.
+- Thin pale rays show the exact path from the projected vertices to the
+  intended vanishing point.
+- Bright axis-colored extensions continue the attempted edges. Any separation
+  from the diamond makes the construction error visible.
 - White dots are the attempted 2D corners.
 
-The ground truth is deliberately visible in this first lab so the scoring
-system can be judged. A later challenge mode should hide it until an attempt is
-submitted.
+The ground truth and intended vanishing points are deliberately visible in
+this first lab so the scoring system can be judged. A later challenge mode
+should hide them until an attempt is submitted.
 
 ## Scoring criteria
 
@@ -57,8 +69,9 @@ visible usefulness before treating them as locked requirements.
 4. **Check topology.** Look for crossed edges, concave faces, reversed winding,
    or a corner shared inconsistently by adjacent faces.
 5. **Read the metrics.** Use corner RMSE to locate placement trouble and the
-   per-axis convergence values in the JSON report to identify the weakest
-   spatial axis.
+   per-axis convergence labels in the proof scene to identify the weakest
+   spatial axis. The JSON report is machine-readable support, not the human
+   review surface.
 6. **Choose one correction.** Move only the corner or edge family responsible
    for the largest visible error, then reassess. Do not polish individual
    faces independently.
@@ -78,10 +91,12 @@ From the repository root, using the Godot executable available on the machine:
 ```text
 godot --headless --path . --script res://tests/box_construction_lab_test.gd
 godot --headless --path . --script res://scripts/tools/construction_lab/run_box_construction_batch.gd
+godot --headless --path . --script res://scripts/tools/construction_lab/generate_visual_box_batch.gd
 ```
 
-The second command writes the deterministic report to
-`res://docs/art_pipeline/box_construction_sample_batch.json`.
+The second command writes the deterministic machine-readable report to
+`res://docs/art_pipeline/box_construction_sample_batch.json`. The third writes
+the editable visual proof scenes to the untracked generated folder.
 
 ## Next stage
 
