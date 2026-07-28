@@ -633,7 +633,8 @@ func get_full_floor_welcome_mat_infos() -> Array:
 			mat_infos.append({
 				"direction": direction,
 				"opening_rect": _translated_rect(opening_rect, offset),
-				"source_room_id": room_id
+				"source_room_id": room_id,
+				"room_center": get_full_floor_room_bounds(room_id).get_center()
 			})
 	return mat_infos
 

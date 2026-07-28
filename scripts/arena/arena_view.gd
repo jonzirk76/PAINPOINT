@@ -447,8 +447,11 @@ func _configure_wall_occlusion_overlay() -> void:
 		_wall_occlusion_overlay = WALL_OCCLUSION_OVERLAY_SCRIPT.new()
 		_wall_occlusion_overlay.name = "WallOcclusionOverlay"
 		add_child(_wall_occlusion_overlay)
-	var occlusion_rects: Array[Rect2] = _wall_draw_rects.duplicate()
-	occlusion_rects.append_array(ROOM_GEOMETRY_BUILDER.merge_wall_tiles(_wall_top_tile_rects))
+	var occlusion_rects: Array[Rect2] = _inset_rects(_wall_draw_rects, 3.0)
+	occlusion_rects.append_array(_inset_rects(
+		ROOM_GEOMETRY_BUILDER.merge_wall_tiles(_wall_top_tile_rects),
+		2.0
+	))
 	occlusion_rects.append_array(_fog_rects)
 	_wall_occlusion_overlay.configure(
 		occlusion_rects,
@@ -458,6 +461,15 @@ func _configure_wall_occlusion_overlay() -> void:
 		wall_occlusion_viewport_scale,
 		_active_room_id
 	)
+
+
+func _inset_rects(rects: Array[Rect2], amount: float) -> Array[Rect2]:
+	var inset_rects: Array[Rect2] = []
+	for rect in rects:
+		var inset_rect: Rect2 = rect.grow(-max(amount, 0.0))
+		if inset_rect.size.x > 0.0 and inset_rect.size.y > 0.0:
+			inset_rects.append(inset_rect)
+	return inset_rects
 
 
 func _clear_wall_occlusion_overlay() -> void:

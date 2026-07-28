@@ -22,8 +22,8 @@ func configure(
 	border_color: Color,
 	path_width: float,
 	border_width: float,
-	connection_chance: float,
-	visual_seed: int,
+	room_center: Vector2,
+	obstruction_rects: Array[Rect2],
 	room_id: String
 ) -> void:
 	var world_mat_rects: Array[Rect2] = []
@@ -45,12 +45,23 @@ func configure(
 	_mat_rects.clear()
 	for mat_rect in world_mat_rects:
 		_mat_rects.append(Rect2(mat_rect.position - position, mat_rect.size))
-	_path_points = _build_path_pairs(_mat_rects, connection_chance, visual_seed)
+	var local_obstruction_rects: Array[Rect2] = []
+	for obstruction_rect in obstruction_rects:
+		local_obstruction_rects.append(Rect2(
+			obstruction_rect.position - position,
+			obstruction_rect.size
+		))
 	_mat_color = mat_color
 	_path_color = path_color
 	_border_color = border_color
 	_path_width = max(path_width, 4.0)
 	_border_width = max(border_width, 1.0)
+	_path_points = _build_center_paths(
+		_mat_rects,
+		room_center - position,
+		local_obstruction_rects,
+		_path_width + _border_width * 2.0
+	)
 	WALL_OCCLUSION_LAYERS.mark_entity_tree(self, room_id)
 	visible = true
 	queue_redraw()
@@ -79,32 +90,42 @@ func _draw_rounded_path(points: PackedVector2Array, width: float, color: Color) 
 		draw_circle(point, radius, color)
 
 
-func _build_path_pairs(mat_rects: Array[Rect2], connection_chance: float, visual_seed: int) -> Array[PackedVector2Array]:
-	var paths: Array[PackedVector2Array] = []
+func _build_center_paths(
+	mat_rects: Array[Rect2],
+	room_center: Vector2,
+	obstruction_rects: Array[Rect2],
+	total_width: float
+) -> Array[PackedVector2Array]:
+	var clear_spokes: Array[PackedVector2Array] = []
 	if mat_rects.size() < 2:
-		return paths
-	var rng := RandomNumberGenerator.new()
-	rng.seed = visual_seed
-	var available_indices: Array[int] = []
-	for index in range(mat_rects.size()):
-		available_indices.append(index)
-	for index in range(available_indices.size() - 1, 0, -1):
-		var swap_index := rng.randi_range(0, index)
-		var held := available_indices[index]
-		available_indices[index] = available_indices[swap_index]
-		available_indices[swap_index] = held
-	for pair_index in range(0, available_indices.size() - 1, 2):
-		if rng.randf() > clamp(connection_chance, 0.0, 1.0):
+		return clear_spokes
+	for mat_rect in mat_rects:
+		var start: Vector2 = mat_rect.get_center()
+		if _corridor_is_obstructed(start, room_center, total_width, obstruction_rects):
 			continue
-		var start := mat_rects[available_indices[pair_index]].get_center()
-		var end := mat_rects[available_indices[pair_index + 1]].get_center()
-		var bend := Vector2(end.x, start.y) if rng.randi() % 2 == 0 else Vector2(start.x, end.y)
-		var points := PackedVector2Array([start])
-		if start.distance_squared_to(bend) > 1.0 and bend.distance_squared_to(end) > 1.0:
-			points.append(bend)
-		points.append(end)
-		paths.append(points)
-	return paths
+		clear_spokes.append(PackedVector2Array([start, room_center]))
+	if clear_spokes.size() < 2:
+		clear_spokes.clear()
+	return clear_spokes
+
+
+func _corridor_is_obstructed(
+	start: Vector2,
+	end: Vector2,
+	total_width: float,
+	obstruction_rects: Array[Rect2]
+) -> bool:
+	var corridor := Rect2(
+		Vector2(min(start.x, end.x), min(start.y, end.y)),
+		Vector2(abs(end.x - start.x), abs(end.y - start.y))
+	).grow(total_width * 0.5)
+	for obstruction_rect in obstruction_rects:
+		var blocker: Rect2 = obstruction_rect.grow(-1.0)
+		if blocker.size.x <= 0.0 or blocker.size.y <= 0.0:
+			continue
+		if corridor.intersects(blocker, false):
+			return true
+	return false
 
 
 func _get_world_mat_rect(opening_rect: Rect2, direction: String, depth_tiles: int) -> Rect2:

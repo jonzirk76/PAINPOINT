@@ -17,12 +17,10 @@ signal door_entered(direction: String, target_room_id: String)
 @export var door_path_color: Color = Color(0.19, 0.2, 0.21, 0.78)
 ## [Description] Border shared by doorway mats and their connecting paths.
 @export var door_path_border_color: Color = Color(0.08, 0.09, 0.1, 0.9)
-## [Description] Width of smooth doorway paths in pixels.
-@export_range(8.0, 40.0, 1.0) var door_path_width: float = 24.0
+## [Description] Width of smooth doorway paths measured in canonical wall/floor tiles.
+@export_range(1, 8, 1) var door_path_width_tiles: int = 4
 ## [Description] Width of the darker border around mats and paths.
 @export_range(1.0, 10.0, 0.5) var door_path_border_width: float = 5.0
-## [Description] Deterministic chance that a paired set of doors receives a visible path.
-@export_range(0.0, 1.0, 0.05) var door_path_connection_chance: float = 0.7
 
 var enabled: bool = false
 var _door_layer: Node = null
@@ -92,12 +90,12 @@ func load_room(level_definition, door_infos: Array, doors_unlocked: bool, welcom
 		var room_infos: Array = infos_by_room.get(source_room_id, [])
 		room_infos.append(mat_info)
 		infos_by_room[source_room_id] = room_infos
-	var floor_visual_seed := int(level_definition.get_meta("floor_visual_seed", String(level_definition.id).hash()))
+	var path_obstruction_rects: Array[Rect2] = _get_path_obstruction_rects(level_definition)
 	for source_room_id in infos_by_room.keys():
 		_add_door_path_visual(
 			infos_by_room[source_room_id],
 			String(source_room_id),
-			floor_visual_seed ^ String(source_room_id).hash()
+			path_obstruction_rects
 		)
 	set_enabled(enabled)
 
@@ -113,7 +111,15 @@ func clear_doors() -> void:
 	_doors.clear()
 
 
-func _add_door_path_visual(opening_infos: Array, room_id: String, visual_seed: int) -> void:
+func _add_door_path_visual(
+	opening_infos: Array,
+	room_id: String,
+	obstruction_rects: Array[Rect2]
+) -> void:
+	if opening_infos.is_empty():
+		return
+	var first_info: Dictionary = opening_infos[0]
+	var room_center: Vector2 = first_info.get("room_center", Vector2.ZERO)
 	var path_visual = DOOR_PATH_VISUAL_SCRIPT.new()
 	path_visual.name = "DoorPathVisual"
 	path_visual.configure(
@@ -122,14 +128,33 @@ func _add_door_path_visual(opening_infos: Array, room_id: String, visual_seed: i
 		door_welcome_mat_color,
 		door_path_color,
 		door_path_border_color,
-		door_path_width,
+		max(
+			ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE * float(max(door_path_width_tiles, 1))
+				- door_path_border_width * 2.0,
+			4.0
+		),
 		door_path_border_width,
-		door_path_connection_chance,
-		visual_seed,
+		room_center,
+		obstruction_rects,
 		room_id
 	)
 	_door_path_visuals.append(path_visual)
 	_add_child_safely(_get_door_mat_parent(), path_visual)
+
+
+func _get_path_obstruction_rects(level_definition) -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	for wall_rect in level_definition.wall_rects:
+		if wall_rect is Rect2:
+			rects.append(wall_rect)
+	for void_rect in level_definition.void_rects:
+		if void_rect is Rect2:
+			rects.append(void_rect)
+	if level_definition.has_meta("path_obstruction_rects"):
+		for obstruction_rect in level_definition.get_meta("path_obstruction_rects"):
+			if obstruction_rect is Rect2:
+				rects.append(obstruction_rect)
+	return rects
 
 
 func _get_welcome_mat_rect(opening_rect: Rect2, direction: String) -> Rect2:
