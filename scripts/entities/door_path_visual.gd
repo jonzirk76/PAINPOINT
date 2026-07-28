@@ -101,7 +101,12 @@ func _build_center_paths(
 		return clear_spokes
 	for mat_rect in mat_rects:
 		var start: Vector2 = mat_rect.get_center()
-		if _corridor_is_obstructed(start, room_center, total_width, obstruction_rects):
+		if _corridor_is_obstructed(
+			start,
+			room_center,
+			total_width,
+			obstruction_rects
+		):
 			continue
 		clear_spokes.append(PackedVector2Array([start, room_center]))
 	if clear_spokes.size() < 2:
@@ -115,17 +120,34 @@ func _corridor_is_obstructed(
 	total_width: float,
 	obstruction_rects: Array[Rect2]
 ) -> bool:
-	var corridor := Rect2(
-		Vector2(min(start.x, end.x), min(start.y, end.y)),
-		Vector2(abs(end.x - start.x), abs(end.y - start.y))
-	).grow(total_width * 0.5)
 	for obstruction_rect in obstruction_rects:
 		var blocker: Rect2 = obstruction_rect.grow(-1.0)
 		if blocker.size.x <= 0.0 or blocker.size.y <= 0.0:
 			continue
-		if corridor.intersects(blocker, false):
+		if _swept_segment_intersects_rect(start, end, total_width * 0.5, blocker):
 			return true
 	return false
+
+
+func _swept_segment_intersects_rect(
+	start: Vector2,
+	end: Vector2,
+	radius: float,
+	rect: Rect2
+) -> bool:
+	var expanded: Rect2 = rect.grow(max(radius, 0.0))
+	if expanded.has_point(start) or expanded.has_point(end):
+		return true
+	var top_left: Vector2 = expanded.position
+	var top_right := Vector2(expanded.end.x, expanded.position.y)
+	var bottom_right: Vector2 = expanded.end
+	var bottom_left := Vector2(expanded.position.x, expanded.end.y)
+	return (
+		Geometry2D.segment_intersects_segment(start, end, top_left, top_right) != null
+		or Geometry2D.segment_intersects_segment(start, end, top_right, bottom_right) != null
+		or Geometry2D.segment_intersects_segment(start, end, bottom_right, bottom_left) != null
+		or Geometry2D.segment_intersects_segment(start, end, bottom_left, top_left) != null
+	)
 
 
 func _get_world_mat_rect(opening_rect: Rect2, direction: String, depth_tiles: int) -> Rect2:

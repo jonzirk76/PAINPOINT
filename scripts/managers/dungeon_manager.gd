@@ -143,6 +143,10 @@ func get_current_level_definition():
 	if state.has("level_definition") and state["level_definition"] != null:
 		var cached_level = state["level_definition"]
 		cached_level.set_meta("active_room_id", current_room_id)
+		cached_level.set_meta(
+			"active_room_spawn_exclusion_rects",
+			_get_room_spawn_exclusion_rects(current_room_id)
+		)
 		return cached_level
 	var piece = state["piece"]
 	var level = piece.create_level_definition()
@@ -322,6 +326,11 @@ func _get_room_spawn_exclusion_rects(room_id: String) -> Array[Rect2]:
 			continue
 		var edge: Dictionary = Dictionary(connection_edges[direction])
 		var source_cell: Vector2i = edge.get("source_cell", Vector2i.ZERO)
+		rects.append(ROOM_GEOMETRY_BUILDER.get_gate_passage_rect(
+			piece.footprint_cells,
+			source_cell,
+			direction
+		))
 		rects.append(ROOM_GEOMETRY_BUILDER.get_door_clear_rect(piece.footprint_cells, source_cell, direction))
 	return rects
 

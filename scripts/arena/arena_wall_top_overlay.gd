@@ -37,13 +37,26 @@ func clear() -> void:
 
 func _draw() -> void:
 	if not _tile_rects.is_empty():
-		_draw_tile_mass(_tile_rects, _draw_rects, _fill_color, _outline_color, _outline_width)
+		_draw_tile_fills(_draw_rects, _fill_color)
 	_draw_dim()
+	if not _tile_rects.is_empty():
+		_draw_tile_outlines(
+			_tile_rects,
+			_outline_color,
+			_outline_width
+		)
 
 
-func _draw_tile_mass(tile_rects: Array[Rect2], fill_rects: Array[Rect2], fill_color: Color, outline_color: Color, outline_width: float) -> void:
+func _draw_tile_fills(fill_rects: Array[Rect2], fill_color: Color) -> void:
 	for rect in fill_rects:
 		draw_rect(rect, fill_color, true)
+
+
+func _draw_tile_outlines(
+	tile_rects: Array[Rect2],
+	outline_color: Color,
+	outline_width: float
+) -> void:
 	var lookup := _build_tile_lookup(tile_rects)
 	var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
 	var height_offset: float = tile_size * float(_wall_height_tiles)
