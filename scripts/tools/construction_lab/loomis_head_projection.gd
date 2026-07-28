@@ -56,6 +56,23 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 		screen_center,
 		true
 	)
+	var far_cut_distance := -cut_distance
+	var far_side_plane_local: Array[Vector3] = []
+	for index in range(segment_count):
+		var angle := TAU * float(index) / float(segment_count)
+		far_side_plane_local.append(Vector3(
+			far_cut_distance,
+			cos(angle) * cut_radius,
+			sin(angle) * cut_radius
+		))
+	var far_side_plane := _project_local_curve(
+		far_side_plane_local,
+		basis,
+		camera_distance,
+		focal_length,
+		screen_center,
+		true
+	)
 
 	var vertical_midline_local: Array[Vector3] = []
 	var brow_midline_local: Array[Vector3] = []
@@ -170,8 +187,16 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 	var front_center_local := Vector3(0.0, 0.0, radius)
 	var nose_center_local := Vector3(0.0, -radius * nose_drop_ratio, radius * nose_forward_ratio)
 	var chin_local := Vector3(0.0, -radius * chin_drop_ratio, radius * chin_forward_ratio)
+	var chin_half_width := radius * 0.24
+	var near_chin_local := Vector3(chin_half_width * side_sign, chin_local.y, chin_local.z)
+	var far_chin_local := Vector3(-chin_half_width * side_sign, chin_local.y, chin_local.z)
 	var jaw_hinge_local := Vector3(
 		cut_distance,
+		-radius * jaw_hinge_drop_ratio,
+		radius * jaw_hinge_forward_ratio
+	)
+	var far_jaw_hinge_local := Vector3(
+		far_cut_distance,
 		-radius * jaw_hinge_drop_ratio,
 		radius * jaw_hinge_forward_ratio
 	)
@@ -197,7 +222,50 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 		focal_length,
 		screen_center
 	)
-	var jawline := PackedVector2Array([jaw_hinge_point, chin_point])
+	var far_jaw_hinge_point := _project_local_point(
+		far_jaw_hinge_local, basis, camera_distance, focal_length, screen_center
+	)
+	var near_chin_point := _project_local_point(
+		near_chin_local, basis, camera_distance, focal_length, screen_center
+	)
+	var far_chin_point := _project_local_point(
+		far_chin_local, basis, camera_distance, focal_length, screen_center
+	)
+	var jawline := PackedVector2Array([jaw_hinge_point, near_chin_point])
+	var far_jawline := PackedVector2Array([far_jaw_hinge_point, far_chin_point])
+	var facial_plane := _project_local_curve(
+		[
+			Vector3(-radius, 0.0, radius),
+			Vector3(radius, 0.0, radius),
+			Vector3(chin_half_width, chin_local.y, chin_local.z),
+			Vector3(-chin_half_width, chin_local.y, chin_local.z),
+		],
+		basis, camera_distance, focal_length, screen_center, true
+	)
+	var eye_center_y := -radius * nose_drop_ratio * 0.5
+	var eye_center_z := lerpf(radius, radius * nose_forward_ratio, 0.5)
+	var eye_half_span := radius * 0.18
+	var eye_triangle_height := sqrt(3.0) * eye_half_span
+	var eye_cavities: Array[PackedVector2Array] = []
+	for eye_sign: float in [-1.0, 1.0]:
+		var eye_center_x := eye_sign * radius * 0.43
+		eye_cavities.append(_project_local_curve(
+			[
+				Vector3(eye_center_x - eye_half_span, eye_center_y, eye_center_z),
+				Vector3(eye_center_x + eye_half_span, eye_center_y, eye_center_z),
+				Vector3(eye_center_x, eye_center_y - eye_triangle_height, eye_center_z),
+			],
+			basis, camera_distance, focal_length, screen_center, true
+		))
+	var mouth_bottom_y := lerpf(nose_center_local.y, chin_local.y, 0.5)
+	var mouth_bottom_z := lerpf(nose_center_local.z, chin_local.z, 0.5)
+	var mouth_bottom_guide := _project_local_curve(
+		[
+			Vector3(-radius * 0.22, mouth_bottom_y, mouth_bottom_z),
+			Vector3(radius * 0.22, mouth_bottom_y, mouth_bottom_z),
+		],
+		basis, camera_distance, focal_length, screen_center, false
+	)
 
 	var cube_spec := {
 		"size": Vector3.ONE * radius * 2.0,
@@ -230,6 +298,7 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 		"side_cut_radius": cut_radius,
 		"sphere_silhouette": silhouette,
 		"side_plane": side_plane,
+		"far_side_plane": far_side_plane,
 		"side_vertical_axis": side_vertical,
 		"side_depth_axis": side_depth,
 		"vertical_midline": vertical_midline,
@@ -240,8 +309,15 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 		"face_guides": face_guides,
 		"face_center_descent": face_center_descent,
 		"chin_point": chin_point,
+		"near_chin_point": near_chin_point,
+		"far_chin_point": far_chin_point,
 		"jaw_hinge_point": jaw_hinge_point,
+		"far_jaw_hinge_point": far_jaw_hinge_point,
 		"jawline": jawline,
+		"far_jawline": far_jawline,
+		"facial_plane": facial_plane,
+		"eye_cavities": eye_cavities,
+		"mouth_bottom_guide": mouth_bottom_guide,
 		"jaw_profile": {
 			"nose_drop_ratio": nose_drop_ratio,
 			"nose_forward_ratio": nose_forward_ratio,

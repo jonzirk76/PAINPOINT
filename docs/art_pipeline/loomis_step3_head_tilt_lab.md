@@ -67,7 +67,7 @@ lines. These define the same two 3D construction planes as the curved spherical
 midlines. The straight side-plane diameter likewise shows the brow midline
 flattening across the sliced plane.
 
-### Step 4: descending guides and jaw anchors
+### Step 4: facial thirds, mirrored jaw, and feature block-in
 
 - The brow, nose, and chin guides are separate local-X lines projected at their
   own facial heights. Their image-space tilt is calculated rather than copied.
@@ -75,8 +75,17 @@ flattening across the sliced plane.
   through the nose center to the chin.
 - The default orange near-ear jaw hinge is placed at the bottom extent of the
   side-plane ellipse.
-- The yellow chin and orange hinge are the primary anchors; the jawline is the
-  direct connection between them.
+- Each jaw hinge connects to the matching side of the chin rather than the
+  center point. The far hinge and conceptual far-side ellipse are produced by
+  mirroring the same local-space construction used on the visible side.
+- The brow is the sphere midline. Brow-to-nose and nose-to-chin form the next
+  two approximate thirds; these remain character- and style-tunable.
+- The facial plane joins the two ends of the brow guide to the two chin-side
+  anchors.
+- Paired triangular eye-cavity guides are centered halfway between the brow
+  and nose guides. They are equilateral in facial-plane local space before
+  projection.
+- The mouth-bottom guide is halfway between the nose and chin guides.
 - The default jaw profile is neutral, not canonical anatomy. Per-character
   tuning fields are `chin_drop_ratio`, `chin_forward_ratio`,
   `jaw_hinge_drop_ratio`, and `jaw_hinge_forward_ratio`.
@@ -91,7 +100,7 @@ flattening across the sliced plane.
 
 ## Scope boundary
 
-This stage adds only the primary chin and near-ear jaw-hinge anchors. It does
-not add facial thirds, anatomical ear placement, features, or stylization.
-Those should wait until the tangent cube, descending guides, and jaw anchors
-survive visual review across the initial tilt batch.
+This stage establishes proportional construction rather than finished
+features. Eye shape, mouth volume, anatomical ear placement, and stylization
+should wait until the facial plane and mirrored jaw survive visual review
+across the initial tilt batch.

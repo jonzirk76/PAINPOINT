@@ -324,10 +324,51 @@ func _add_step4_face_guides_and_jaw(parent: Node2D, root: Node2D, construction: 
 	_add_line(
 		group,
 		root,
+		"ConceptualFarSideEllipse",
+		construction["far_side_plane"],
+		Color(0.95, 0.49, 0.39, 0.20),
+		1.0
+	)
+	_add_line(
+		group,
+		root,
+		"FacialPlane",
+		construction["facial_plane"],
+		Color(0.48, 0.85, 0.94, 0.48),
+		1.5
+	)
+	for eye_index in range(construction["eye_cavities"].size()):
+		_add_line(
+			group,
+			root,
+			"EyeCavity%d" % (eye_index + 1),
+			construction["eye_cavities"][eye_index],
+			Color(0.72, 0.55, 0.92, 0.72),
+			1.7
+		)
+	_add_line(
+		group,
+		root,
+		"MouthBottomGuide",
+		construction["mouth_bottom_guide"],
+		Color(0.93, 0.48, 0.56, 0.78),
+		1.7
+	)
+	_add_line(
+		group,
+		root,
 		"NearJawline",
 		construction["jawline"],
 		Color("#f5c878"),
 		2.5
+	)
+	_add_line(
+		group,
+		root,
+		"FarJawline",
+		construction["far_jawline"],
+		Color(0.95, 0.79, 0.47, 0.42),
+		1.8
 	)
 	_add_anchor(
 		group,
@@ -342,6 +383,14 @@ func _add_step4_face_guides_and_jaw(parent: Node2D, root: Node2D, construction: 
 		"ChinAnchor",
 		construction["chin_point"],
 		Color("#fff3a8")
+	)
+	_add_anchor(group, root, "NearChinSide", construction["near_chin_point"], Color("#fff3a8"))
+	_add_anchor(
+		group,
+		root,
+		"FarChinSide",
+		construction["far_chin_point"],
+		Color(1.0, 0.95, 0.66, 0.55)
 	)
 
 
