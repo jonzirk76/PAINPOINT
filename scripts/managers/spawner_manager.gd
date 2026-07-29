@@ -5,11 +5,11 @@ const WALL_OCCLUSION_LAYERS := preload("res://scripts/arena/wall_occlusion_layer
 
 signal spawn_requested(spawn_position: Vector2, profile)
 signal spawn_proposed(proposal: Dictionary)
+signal general_spawn_requested(profile, spawn_position: Vector2, spawn_flags: Dictionary)
 signal spawner_count_changed(count: int)
 signal spawner_destroyed(spawner, score_value: int)
 signal hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: Dictionary)
 
-@export var spawner_scene: PackedScene = preload("res://scenes/entities/enemy_spawner_entity.tscn")
 @export var default_enemy_profile: Resource = preload("res://resources/enemies/basic_enemy.tres")
 @export var default_spawner_profile: Resource = preload("res://resources/spawners/basic_spawner.tres")
 @export var max_active_enemies: int = 18
@@ -35,7 +35,6 @@ signal hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: 
 const SPAWNER_PLACEMENT_SCRIPT := preload("res://scripts/resources/spawner_placement.gd")
 
 var enabled: bool = false
-var _spawner_layer: Node = null
 var _spawners: Array = []
 var _current_enemy_count: int = 0
 var _level_definition = null
@@ -56,7 +55,6 @@ var _spawn_generation: int = 0
 
 
 func initialize(context: Dictionary) -> void:
-	_spawner_layer = context.get("spawner_layer", null)
 	_player_provider = context.get("player_position_provider", Callable())
 
 
@@ -80,9 +78,6 @@ func reset_run(level_definition = null) -> void:
 
 
 func clear_spawners() -> void:
-	for spawner in _spawners:
-		if is_instance_valid(spawner):
-			spawner.queue_free()
 	_spawners.clear()
 	_initial_spawns_pending = false
 	_initial_spawn_delay_remaining = 0.0
@@ -93,8 +88,8 @@ func clear_spawners() -> void:
 func set_enabled(value: bool) -> void:
 	enabled = value
 	for spawner in _spawners:
-		if is_instance_valid(spawner):
-			spawner.set_enabled(value)
+		if is_instance_valid(spawner) and spawner.has_method("set_spawn_enabled"):
+			spawner.set_spawn_enabled(value)
 	if enabled and _preloaded_initial_spawn_activation_pending:
 		_activate_preloaded_initial_spawn_sequence()
 	elif enabled and _initial_spawns_pending:
@@ -107,7 +102,7 @@ func set_enemy_count(count: int) -> void:
 
 func prepare_spawners_for_preload() -> void:
 	for spawner_node in _spawners:
-		var spawner: EnemySpawnerEntity = spawner_node as EnemySpawnerEntity
+		var spawner: EnemyEntity = spawner_node as EnemyEntity
 		if spawner == null or not is_instance_valid(spawner):
 			continue
 		var birth_duration: float = max(spawner_birth_animation_seconds, 0.08)
@@ -116,14 +111,14 @@ func prepare_spawners_for_preload() -> void:
 		spawner.velocity = Vector2.ZERO
 		spawner.set_meta("preloaded_hidden", true)
 		spawner.set_meta("preloaded_birth_duration", birth_duration)
-		spawner.set_enabled(false)
+		spawner.set_spawn_enabled(false)
 		spawner.set_process(false)
 		spawner.set_physics_process(false)
 
 
 func set_spawners_active(value: bool, materialize_preloaded: bool = false) -> void:
 	for spawner_node in _spawners:
-		var spawner: EnemySpawnerEntity = spawner_node as EnemySpawnerEntity
+		var spawner: EnemyEntity = spawner_node as EnemyEntity
 		if spawner == null or not is_instance_valid(spawner):
 			continue
 		if value:
@@ -151,10 +146,10 @@ func consume_initial_spawn_requests() -> Array[Dictionary]:
 		return requests
 	var projected_enemy_count: int = _current_enemy_count
 	for spawner_index in range(_spawners.size()):
-		var spawner: EnemySpawnerEntity = _spawners[spawner_index] as EnemySpawnerEntity
+		var spawner: EnemyEntity = _spawners[spawner_index] as EnemyEntity
 		if spawner == null or not is_instance_valid(spawner):
 			continue
-		var profile: Resource = spawner.enemy_profile if spawner.enemy_profile != null else default_enemy_profile
+		var profile: Resource = _get_spawned_enemy_profile(spawner)
 		var spawn_count: int = _get_initial_spawn_batch_count(spawner)
 		for spawn_index in range(spawn_count):
 			if projected_enemy_count >= max_active_enemies:
@@ -192,26 +187,14 @@ func set_arena_definition(level_definition) -> void:
 	_void_rects = _get_level_collision_rects(level_definition, "active_room_void_rects", level_definition.void_rects)
 	_playable_rects = _get_playable_rects(level_definition)
 	_spawn_exclusion_rects = _get_level_collision_rects(level_definition, "active_room_spawn_exclusion_rects", [])
-	for spawner in _spawners:
-		if is_instance_valid(spawner) and spawner.has_method("set_arena_definition"):
-			spawner.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
 
 
 func set_dynamic_wall_rects(extra_wall_rects: Array[Rect2]) -> void:
 	_wall_rects = _level_wall_rects.duplicate()
 	_wall_rects.append_array(extra_wall_rects)
-	for spawner in _spawners:
-		if is_instance_valid(spawner) and spawner.has_method("set_arena_definition"):
-			spawner.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
 
 
 func _process(delta: float) -> void:
-	var player_position := _get_player_position()
-	for spawner in _spawners:
-		if is_instance_valid(spawner):
-			spawner.set_target_position(player_position)
-	if enabled:
-		_apply_spawner_separation()
 	if not enabled or not _initial_spawns_pending:
 		return
 	_initial_spawn_delay_remaining = max(_initial_spawn_delay_remaining - delta, 0.0)
@@ -228,29 +211,37 @@ func _spawn_spawner(placement, index: int) -> void:
 		profile = placement.profile if placement.profile != null else default_spawner_profile
 		spawn_position = placement.position
 		warmup = placement.warmup_seconds
-	var spawner = spawner_scene.instantiate()
-	WALL_OCCLUSION_LAYERS.mark_entity_tree(spawner, _perspective_room_id)
-	spawner.warmup_seconds = warmup
-	if profile != null and spawner.has_method("initialize_from_profile"):
-		spawner.initialize_from_profile(profile)
-		spawner.spawn_interval = _scale_spawn_interval_for_floor(float(spawner.spawn_interval))
-	else:
-		spawner.initialize(_get_spawner_health(), _get_spawn_interval(), _get_spawner_radius())
-	spawner.global_position = _constrain_spawn_position(spawn_position, float(spawner.body_radius))
-	spawner.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
-	spawner.spawn_ready.connect(_on_spawner_spawn_ready)
-	spawner.health_depleted.connect(_on_spawner_health_depleted)
-	spawner.shot_ready.connect(_on_spawner_shot_ready)
-	if spawner_birth_animation_seconds > 0.0 and spawner.has_method("play_birth_animation"):
-		spawner.play_birth_animation(spawner_birth_animation_seconds)
-	_spawners.append(spawner)
-	_add_child_safely(_get_spawner_parent(), spawner)
+	var radius: float = float(profile.body_radius) if profile != null and profile.get("body_radius") != null else _get_spawner_radius()
+	var final_position: Vector2 = _constrain_spawn_position(spawn_position, radius)
+	general_spawn_requested.emit(profile, final_position, {
+		"allow_when_disabled": true,
+		"birth": spawner_birth_animation_seconds > 0.0,
+		"birth_duration": spawner_birth_animation_seconds,
+		"general": true,
+		"legion_id": index + 1,
+		"warmup_seconds": warmup,
+		"scaled_spawn_interval": _scale_spawn_interval_for_floor(_get_profile_spawn_interval(profile))
+	})
+
+
+func register_general(general: EnemyEntity) -> void:
+	if general == null or not is_instance_valid(general) or not general.is_general() or _spawners.has(general):
+		return
+	var warmup_seconds: float = float(general.get_meta("general_warmup_seconds", general.spawn_profile.warmup_seconds))
+	var scaled_interval: float = float(general.get_meta("general_scaled_spawn_interval", general.spawn_profile.spawn_interval))
+	general.spawn_profile = general.spawn_profile.duplicate() as EnemySpawnProfile
+	general.spawn_profile.warmup_seconds = warmup_seconds
+	general.spawn_profile.spawn_interval = scaled_interval
+	general.delay_next_spawn_until(warmup_seconds)
+	general.spawn_ready.connect(_on_spawner_spawn_ready)
+	general.health_depleted.connect(_on_spawner_health_depleted)
+	_spawners.append(general)
 
 
 func _on_spawner_spawn_ready(_spawner, _spawn_position: Vector2) -> void:
 	if not enabled or _current_enemy_count >= max_active_enemies:
 		return
-	var profile = _spawner.enemy_profile if _spawner != null and _spawner.enemy_profile != null else default_enemy_profile
+	var profile: Resource = _get_spawned_enemy_profile(_spawner as EnemyEntity)
 	var batch_count := _get_spawner_spawn_batch_count(_spawner)
 	var projected_enemy_count := _current_enemy_count
 	for spawn_index in range(batch_count):
@@ -272,19 +263,6 @@ func _on_spawner_spawn_ready(_spawner, _spawn_position: Vector2) -> void:
 		projected_enemy_count += 1
 
 
-func _get_spawner_parent() -> Node:
-	return _spawner_layer if _spawner_layer != null else self
-
-
-func _add_child_safely(parent: Node, child: Node) -> void:
-	if parent == null or child == null or child.get_parent() != null:
-		return
-	if parent.is_inside_tree() and Engine.is_in_physics_frame():
-		parent.call_deferred("add_child", child)
-		return
-	parent.add_child(child)
-
-
 func _begin_initial_spawn_sequence() -> void:
 	if _get_initial_spawn_batch_multiplier() <= 0:
 		_initial_spawns_pending = false
@@ -294,11 +272,11 @@ func _begin_initial_spawn_sequence() -> void:
 	for spawner in _spawners:
 		if not is_instance_valid(spawner):
 			continue
-		var shield_after_spawn: float = float(spawner.projectile_shield_after_spawn_seconds)
+		var shield_after_spawn: float = float(spawner.spawn_profile.projectile_shield_after_spawn_seconds)
 		if spawner.has_method("activate_projectile_shield"):
 			spawner.activate_projectile_shield(_initial_spawn_delay_remaining + shield_after_spawn)
 		if spawner.has_method("delay_next_spawn_until"):
-			spawner.delay_next_spawn_until(_initial_spawn_delay_remaining + float(spawner.spawn_interval))
+			spawner.delay_next_spawn_until(_initial_spawn_delay_remaining + float(spawner.spawn_profile.spawn_interval))
 	if _initial_spawn_delay_remaining <= 0.0:
 		_initial_spawns_pending = false
 		_emit_initial_spawn_requests()
@@ -307,14 +285,14 @@ func _begin_initial_spawn_sequence() -> void:
 func _activate_preloaded_initial_spawn_sequence() -> void:
 	_preloaded_initial_spawn_activation_pending = false
 	for spawner_node in _spawners:
-		var spawner: EnemySpawnerEntity = spawner_node as EnemySpawnerEntity
+		var spawner: EnemyEntity = spawner_node as EnemyEntity
 		if spawner == null or not is_instance_valid(spawner):
 			continue
-		var shield_after_spawn: float = float(spawner.projectile_shield_after_spawn_seconds)
+		var shield_after_spawn: float = float(spawner.spawn_profile.projectile_shield_after_spawn_seconds)
 		if spawner.has_method("activate_projectile_shield"):
 			spawner.activate_projectile_shield(shield_after_spawn)
 		if spawner.has_method("delay_next_spawn_until"):
-			spawner.delay_next_spawn_until(float(spawner.spawn_interval))
+			spawner.delay_next_spawn_until(float(spawner.spawn_profile.spawn_interval))
 
 
 func _emit_initial_spawn_requests() -> void:
@@ -325,7 +303,7 @@ func _emit_initial_spawn_requests() -> void:
 		var spawner = _spawners[spawner_index]
 		if not is_instance_valid(spawner):
 			continue
-		var profile = spawner.enemy_profile if spawner.enemy_profile != null else default_enemy_profile
+		var profile: Resource = _get_spawned_enemy_profile(spawner as EnemyEntity)
 		var spawn_count := _get_initial_spawn_batch_count(spawner)
 		for spawn_index in range(spawn_count):
 			if projected_enemy_count >= max_active_enemies:
@@ -391,6 +369,8 @@ func _build_spawn_proposal(
 	spawn_count: int,
 	initial_horde: bool
 ) -> Dictionary:
+	var legion_id: int = int(spawner.legion_id) if spawner != null and is_instance_valid(spawner) else 0
+	var general_id: int = int(spawner.general_id) if spawner != null and is_instance_valid(spawner) else 0
 	return {
 		"position": position,
 		"profile": profile,
@@ -401,7 +381,12 @@ func _build_spawn_proposal(
 		"initial_horde": initial_horde,
 		"room_id": _spawn_room_id,
 		"generation": _spawn_generation,
-		"retry_count": 0
+		"retry_count": 0,
+		"spawn_flags": {
+			"birth": true,
+			"legion_id": legion_id,
+			"general_id": general_id
+		}
 	}
 
 
@@ -476,9 +461,7 @@ func _on_spawner_health_depleted(spawner) -> void:
 	if not _spawners.has(spawner):
 		return
 	_spawners.erase(spawner)
-	spawner_destroyed.emit(spawner, spawner.score_value)
 	spawner_count_changed.emit(_spawners.size())
-	spawner.queue_free()
 
 
 func _on_spawner_shot_ready(_spawner, origin: Vector2, direction: Vector2, shot_config: Dictionary) -> void:
@@ -495,10 +478,20 @@ func _get_spawner_placements() -> Array:
 	for index in range(positions.size()):
 		var placement = SPAWNER_PLACEMENT_SCRIPT.new()
 		placement.position = positions[index]
-		placement.profile = default_spawner_profile
+		placement.profile = _build_legacy_default_general_profile()
 		placement.warmup_seconds = 1.0 + float(index) * 0.55
 		placements.append(placement)
 	return placements
+
+
+func _build_legacy_default_general_profile() -> Resource:
+	var profile: Resource = default_spawner_profile.duplicate(true)
+	profile.set("max_health", _get_spawner_health())
+	profile.set("body_radius", _get_spawner_radius())
+	var spawn_profile: EnemySpawnProfile = profile.get("spawn_profile") as EnemySpawnProfile
+	if spawn_profile != null:
+		spawn_profile.spawn_interval = float(_level_definition.spawn_interval) if _level_definition != null else default_spawn_interval
+	return profile
 
 
 func _get_spawner_positions() -> Array[Vector2]:
@@ -552,8 +545,8 @@ func _get_spawner_radius() -> float:
 
 
 func _get_spawner_spawn_batch_count(spawner) -> int:
-	if spawner != null and is_instance_valid(spawner):
-		return max(int(spawner.spawn_batch_count), 1)
+	if spawner != null and is_instance_valid(spawner) and spawner.spawn_profile != null:
+		return max(int(spawner.spawn_profile.spawn_batch_count), 1)
 	return 1
 
 
@@ -572,9 +565,21 @@ func _get_initial_spawn_batch_multiplier() -> int:
 func _get_initial_spawn_shield_delay() -> float:
 	var delay := 0.0
 	for spawner in _spawners:
-		if is_instance_valid(spawner):
-			delay = max(delay, float(spawner.projectile_shield_lead_seconds))
+		if is_instance_valid(spawner) and spawner.spawn_profile != null:
+			delay = max(delay, float(spawner.spawn_profile.projectile_shield_lead_seconds))
 	return delay
+
+
+func _get_spawned_enemy_profile(spawner: EnemyEntity) -> Resource:
+	if spawner != null and is_instance_valid(spawner) and spawner.spawn_profile != null and spawner.spawn_profile.enemy_profile != null:
+		return spawner.spawn_profile.enemy_profile
+	return default_enemy_profile
+
+
+func _get_profile_spawn_interval(profile) -> float:
+	if profile != null and profile.get("spawn_profile") != null and profile.spawn_profile != null:
+		return float(profile.spawn_profile.spawn_interval)
+	return _get_spawn_interval()
 
 
 func _get_initial_spawn_position(spawner, spawner_index: int, spawn_index: int, spawn_count: int) -> Vector2:

@@ -29,6 +29,8 @@ const BEHAVIOR_CYBER_SOLDIER := "cyber_soldier"
 @export var projectile_radius: float = 7.0
 @export var shot_projectile_count: int = 1
 @export var shot_spread_degrees: float = 0.0
+## Gives this enemy a general's reinforcement-spawning capability when assigned.
+@export var spawn_profile: EnemySpawnProfile = null
 ## Controls how far repair drones can restore allied enemies.
 @export var repair_radius: float = 220.0
 ## Controls how much health one repair pulse restores.

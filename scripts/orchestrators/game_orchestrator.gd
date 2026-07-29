@@ -491,15 +491,16 @@ func _connect_manager_signals() -> void:
 	_connect_once(combat_manager, &"explosion_requested", _on_explosion_requested)
 
 	_connect_once(enemy_manager, &"enemy_defeated", _on_enemy_defeated)
+	_connect_once(enemy_manager, &"general_defeated", _on_general_defeated)
 	_connect_once(enemy_manager, &"enemy_health_changed", _on_enemy_health_changed)
-	_connect_once(enemy_manager, &"enemy_count_changed", spawner_manager.set_enemy_count)
+	_connect_once(enemy_manager, &"horde_enemy_count_changed", spawner_manager.set_enemy_count)
 	_connect_once(enemy_manager, &"enemy_count_changed", _on_enemy_count_changed)
 	_connect_once(enemy_manager, &"player_contact_requested", _on_player_contact_requested)
 	_connect_once(enemy_manager, &"hostile_shot_requested", _on_hostile_shot_requested)
 	_connect_once(enemy_manager, &"repair_requested", _on_enemy_repair_requested)
 
 	_connect_once(spawner_manager, &"spawn_proposed", _on_spawn_proposed)
-	_connect_once(spawner_manager, &"spawner_destroyed", _on_spawner_destroyed)
+	_connect_once(spawner_manager, &"general_spawn_requested", _on_general_spawn_requested)
 	_connect_once(spawner_manager, &"spawner_count_changed", _on_spawner_count_changed)
 	_connect_once(spawner_manager, &"hostile_shot_requested", _on_hostile_shot_requested)
 	_connect_once(destructible_manager, &"prop_destroyed", _on_destructible_prop_destroyed)
@@ -546,11 +547,9 @@ func _initialize_managers() -> void:
 	enemy_manager.initialize({
 		"enemy_layer": depth_sort_layer,
 		"player_position_provider": Callable(player_manager, "get_player_position"),
-		"player_ref_provider": Callable(self, "_get_player_ref"),
-		"spawner_repair_targets_provider": Callable(spawner_manager, "get_repairable_spawners")
+		"player_ref_provider": Callable(self, "_get_player_ref")
 	})
 	spawner_manager.initialize({
-		"spawner_layer": depth_sort_layer,
 		"player_position_provider": Callable(player_manager, "get_player_position")
 	})
 	item_manager.initialize({
@@ -563,7 +562,7 @@ func _initialize_managers() -> void:
 		"fauna_layer": depth_sort_layer,
 		"player_position_provider": Callable(player_manager, "get_player_position"),
 		"enemy_positions_provider": Callable(enemy_manager, "get_enemy_positions"),
-		"spawner_positions_provider": Callable(spawner_manager, "get_spawner_positions"),
+		"spawner_positions_provider": Callable(enemy_manager, "get_general_positions"),
 		"player_projectile_positions_provider": Callable(projectile_manager, "get_player_projectile_positions")
 	})
 	upgrade_manager.initialize({})
@@ -2690,7 +2689,6 @@ func _detonate_hostile_rocket(origin: Vector2, projectile_radius: float, packet,
 	explosion_packet.knockback = max(float(packet.knockback) * 0.65, 120.0)
 	var excluded: Array[Node] = []
 	var candidates = enemy_manager.get_nearby_enemies(origin, explosion_radius, excluded)
-	candidates.append_array(spawner_manager.get_nearby_spawners(origin, explosion_radius, excluded))
 	candidates.append_array(destructible_manager.get_nearby_destructibles(origin, explosion_radius, excluded))
 	for target in candidates:
 		explosion_packet.knockback_direction = (target.global_position - origin).normalized()
@@ -2706,8 +2704,6 @@ func _apply_damage_to_target(target: Node, packet) -> bool:
 		return false
 	if target.is_in_group("enemies"):
 		return bool(enemy_manager.apply_damage(target, packet))
-	elif target.is_in_group("spawners"):
-		return bool(spawner_manager.apply_damage(target, packet))
 	elif target.is_in_group("destructible_props"):
 		return bool(destructible_manager.apply_damage(target, packet))
 	return false
@@ -2734,7 +2730,6 @@ func _on_chain_requested(origin_target: Node, packet) -> void:
 	var excluded: Array[Node] = [origin_target]
 	excluded.append_array(packet.hit_targets)
 	var candidates = enemy_manager.get_nearby_enemies(origin_target.global_position, packet.chain_radius, excluded)
-	candidates.append_array(spawner_manager.get_nearby_spawners(origin_target.global_position, packet.chain_radius, excluded))
 	if candidates.is_empty():
 		var overload_packet = packet.copy_for_chain()
 		overload_packet.chain_count = 0
@@ -2764,7 +2759,6 @@ func _on_explosion_requested(origin: Vector2, packet) -> void:
 	explosion_packet.source_position = origin
 	var excluded: Array[Node] = []
 	var candidates = enemy_manager.get_nearby_enemies(origin, packet.explosion_radius, excluded)
-	candidates.append_array(spawner_manager.get_nearby_spawners(origin, packet.explosion_radius, excluded))
 	candidates.append_array(destructible_manager.get_nearby_destructibles(origin, packet.explosion_radius, excluded))
 	for target in candidates:
 		explosion_packet.knockback_direction = (target.global_position - origin).normalized()
@@ -2788,6 +2782,16 @@ func _on_spawn_proposed(proposal: Dictionary) -> void:
 	var result: Dictionary = enemy_manager.try_spawn_enemy(profile, spawn_position, spawn_flags)
 	if not bool(result.get("ok", false)):
 		spawner_manager.request_spawn_reroll(proposal)
+
+
+func _on_general_spawn_requested(profile, spawn_position: Vector2, spawn_flags: Dictionary) -> void:
+	var result: Dictionary = enemy_manager.try_spawn_enemy(profile, spawn_position, spawn_flags)
+	if not bool(result.get("ok", false)):
+		return
+	var general: EnemyEntity = result.get("enemy", null) as EnemyEntity
+	if general == null or not general.is_general():
+		return
+	spawner_manager.register_general(general)
 
 
 func _spawn_proposal_matches_current_room(proposal: Dictionary) -> bool:
@@ -3056,11 +3060,11 @@ func _on_enemy_health_changed(enemy, _old_value: int, new_value: int) -> void:
 	_update_boss_health_panel()
 
 
-func _on_spawner_destroyed(_spawner, score_value: int) -> void:
-	if _spawner != null and is_instance_valid(_spawner):
-		var explosion_radius: float = max(float(_spawner.body_radius) * 4.8, 150.0)
-		effects_manager.play_spawner_explosion(_spawner.global_position, explosion_radius)
-		item_manager.drop_spawner_reward(_spawner.global_position)
+func _on_general_defeated(general, score_value: int) -> void:
+	if general != null and is_instance_valid(general):
+		var explosion_radius: float = max(float(general.body_radius) * 4.8, 150.0)
+		effects_manager.play_spawner_explosion(general.global_position, explosion_radius)
+		item_manager.drop_spawner_reward(general.global_position)
 	_run_spawner_kills += 1
 	_score += score_value
 	_update_hud()

@@ -4,8 +4,10 @@ class_name EnemyManager
 const WALL_OCCLUSION_LAYERS := preload("res://scripts/arena/wall_occlusion_layers.gd")
 
 signal enemy_defeated(enemy, score_value: int)
+signal general_defeated(general, score_value: int)
 signal enemy_health_changed(enemy, old_value: int, new_value: int)
 signal enemy_count_changed(count: int)
+signal horde_enemy_count_changed(count: int)
 signal player_contact_requested(enemy, player, damage: int)
 signal hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: Dictionary)
 signal repair_requested(enemy, repair_target, amount: int)
@@ -24,7 +26,6 @@ var enabled: bool = false
 var _enemy_layer: Node = null
 var _player_provider: Callable
 var _player_ref_provider: Callable
-var _spawner_repair_targets_provider: Callable
 var _enemies: Array = []
 var _contact_timers: Dictionary = {}
 var _arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
@@ -42,7 +43,6 @@ func initialize(context: Dictionary) -> void:
 	_enemy_layer = context.get("enemy_layer", null)
 	_player_provider = context.get("player_position_provider", Callable())
 	_player_ref_provider = context.get("player_ref_provider", Callable())
-	_spawner_repair_targets_provider = context.get("spawner_repair_targets_provider", Callable())
 
 
 func reset_run() -> void:
@@ -53,6 +53,7 @@ func reset_run() -> void:
 	_contact_timers.clear()
 	_boss_add_timer = 0.0
 	enemy_count_changed.emit(0)
+	horde_enemy_count_changed.emit(0)
 
 
 func offset_transient_enemies(offset: Vector2) -> void:
@@ -158,6 +159,13 @@ func try_spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary =
 	enemy.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
 	if bool(spawn_flags.get("boss_add", false)):
 		enemy.set_meta("boss_add", true)
+	var legion_id: int = max(int(spawn_flags.get("legion_id", 0)), 0)
+	var general_id: int = max(int(spawn_flags.get("general_id", 0)), 0)
+	if bool(spawn_flags.get("general", false)) and enemy.is_general():
+		general_id = int(enemy.get_instance_id())
+		enemy.set_meta("general_warmup_seconds", float(spawn_flags.get("warmup_seconds", enemy.spawn_profile.warmup_seconds)))
+		enemy.set_meta("general_scaled_spawn_interval", float(spawn_flags.get("scaled_spawn_interval", enemy.spawn_profile.spawn_interval)))
+	enemy.set_legion_identity(legion_id, general_id)
 	if bool(spawn_flags.get("birth", false)) and enemy.has_method("play_birth_animation"):
 		enemy.play_birth_animation(float(spawn_flags.get("birth_duration", 0.36)))
 	enemy.health_changed.connect(_on_enemy_health_changed)
@@ -173,6 +181,7 @@ func try_spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary =
 		enemy.set_meta("preloaded_birth_duration", float(spawn_flags.get("birth_duration", 0.42)))
 		enemy.set_physics_process(false)
 	enemy_count_changed.emit(_enemies.size())
+	horde_enemy_count_changed.emit(get_horde_enemy_count())
 	_add_child_safely(_get_enemy_parent(), enemy)
 	return {"ok": true, "reason": "", "enemy": enemy}
 
@@ -185,7 +194,10 @@ func apply_damage(target: Node, packet) -> bool:
 	var enemy = target
 	if not _enemies.has(enemy):
 		return false
-	return bool(enemy.take_damage(packet))
+	var damage_packet = packet
+	if enemy.is_general() and _should_apply_general_pressure_damage(enemy, packet):
+		damage_packet = packet.copy_with_damage_bonus(1)
+	return bool(enemy.take_damage(damage_packet))
 
 
 func apply_parry_pushback(origin: Vector2, radius: float, force: float) -> int:
@@ -209,6 +221,16 @@ func _get_parry_pushback_size_factor(enemy) -> float:
 		return 1.0
 	var body_size: float = max(float(enemy.body_radius), 1.0)
 	return clamp(22.0 / body_size, 0.28, 1.0)
+
+
+func _should_apply_general_pressure_damage(target: EnemyEntity, packet) -> bool:
+	if target == null or packet == null or not packet.has_method("copy_with_damage_bonus"):
+		return false
+	var source_position: Vector2 = packet.source_position
+	if source_position.distance_squared_to(target.global_position) <= 0.001:
+		return false
+	var pressure_distance: float = 165.0 + float(target.body_radius)
+	return source_position.distance_squared_to(target.global_position) <= pressure_distance * pressure_distance
 
 
 func _get_enemy_parent() -> Node:
@@ -242,6 +264,30 @@ func get_enemy_count() -> int:
 	return _enemies.size()
 
 
+func get_horde_enemy_count() -> int:
+	var count := 0
+	for enemy in _enemies:
+		if is_instance_valid(enemy) and not enemy.is_general():
+			count += 1
+	return count
+
+
+func get_general_count() -> int:
+	var count := 0
+	for enemy in _enemies:
+		if is_instance_valid(enemy) and enemy.is_general():
+			count += 1
+	return count
+
+
+func get_general_positions() -> Array[Vector2]:
+	var positions: Array[Vector2] = []
+	for enemy in _enemies:
+		if is_instance_valid(enemy) and enemy.is_general():
+			positions.append(enemy.global_position)
+	return positions
+
+
 func get_enemy_positions() -> Array[Vector2]:
 	var positions: Array[Vector2] = []
 	for enemy in _enemies:
@@ -255,8 +301,12 @@ func _on_enemy_health_depleted(enemy) -> void:
 		return
 	_enemies.erase(enemy)
 	_contact_timers.erase(enemy.get_instance_id())
-	enemy_defeated.emit(enemy, enemy.score_value)
+	if enemy.is_general():
+		general_defeated.emit(enemy, enemy.score_value)
+	else:
+		enemy_defeated.emit(enemy, enemy.score_value)
 	enemy_count_changed.emit(_enemies.size())
+	horde_enemy_count_changed.emit(get_horde_enemy_count())
 
 
 func _on_enemy_health_changed(enemy, old_value: int, new_value: int) -> void:
@@ -287,8 +337,6 @@ func _on_enemy_repair_ready(enemy, repair_target, amount: int) -> void:
 		if enemy_target == null or not _enemies.has(enemy_target):
 			return
 		enemy_target.apply_healing(amount)
-	elif target.is_in_group("spawners"):
-		repair_requested.emit(repair_drone, target, amount)
 
 
 func _assign_repair_targets() -> void:
@@ -307,27 +355,7 @@ func _get_repair_target_for(repair_drone: EnemyEntity) -> Node:
 	var repair_radius: float = max(float(repair_drone.repair_radius), 1.0)
 	var search_radius: float = max(repair_radius * 2.2, float(repair_drone.preferred_distance))
 	var health_ratio_threshold: float = clamp(float(repair_drone.repair_target_health_ratio), 0.0, 1.0)
-	var spawner_target := _get_spawner_repair_target_for(repair_drone, search_radius, health_ratio_threshold)
-	if spawner_target != null:
-		return spawner_target
 	return _get_large_enemy_repair_target_for(repair_drone, search_radius, health_ratio_threshold)
-
-
-func _get_spawner_repair_target_for(repair_drone: EnemyEntity, search_radius: float, health_ratio_threshold: float) -> Node:
-	if not _spawner_repair_targets_provider.is_valid():
-		return null
-	var candidates: Array = _spawner_repair_targets_provider.call(repair_drone.global_position, search_radius, health_ratio_threshold)
-	var best_target: Node = null
-	var best_score := INF
-	for candidate in candidates:
-		var target := candidate as Node2D
-		if target == null or not is_instance_valid(target) or not target.has_method("apply_healing"):
-			continue
-		var score: float = _get_repair_target_score(repair_drone, target)
-		if score < best_score:
-			best_score = score
-			best_target = target
-	return best_target
 
 
 func _get_large_enemy_repair_target_for(repair_drone: EnemyEntity, search_radius: float, health_ratio_threshold: float) -> EnemyEntity:

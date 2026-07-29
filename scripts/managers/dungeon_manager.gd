@@ -1430,15 +1430,15 @@ func _make_encounter_test_spawner_profile(passive_spawner: bool) -> Resource:
 	var profile: Resource = BASIC_SPAWNER.duplicate(true)
 	if passive_spawner:
 		profile.set("max_health", max(int(profile.get("max_health")), 28))
-		profile.set("spawn_interval", 999.0)
-		profile.set("spawn_batch_count", 1)
-		profile.set("shoots_projectiles", false)
+		var spawn_profile: EnemySpawnProfile = profile.get("spawn_profile") as EnemySpawnProfile
+		if spawn_profile != null:
+			spawn_profile.spawn_interval = 999.0
+			spawn_profile.spawn_batch_count = 1
 		profile.set("special_attack_kind", "")
-		profile.set("move_speed", 0.0)
+		profile.set("speed", 0.0)
 		profile.set("strafe_speed", 0.0)
 		profile.set("knockback_multiplier", min(float(profile.get("knockback_multiplier")), 0.06))
-		profile.set("base_color", Color(0.22, 0.34, 0.4, 1.0))
-		profile.set("core_color", Color(0.28, 0.78, 0.92, 1.0))
+		profile.set("body_color", Color(0.22, 0.34, 0.4, 1.0))
 		profile.set("accent_color", Color(0.62, 1.0, 0.72, 1.0))
 	return profile
 

@@ -1,28 +1,33 @@
-[gd_resource type="Resource" script_class="SpawnerProfile" load_steps=3 format=3 uid="uid://bxg8k5e3vk7fe"]
+[gd_resource type="Resource" script_class="EnemyProfile" load_steps=4 format=3 uid="uid://bxg8k5e3vk7fe"]
 
-[ext_resource type="Script" uid="uid://dnnga38sju8kn" path="res://scripts/resources/spawner_profile.gd" id="1"]
-[ext_resource type="Resource" uid="uid://14sndd8sll5x" path="res://resources/enemies/tank_enemy.tres" id="2"]
+[ext_resource type="Script" path="res://scripts/resources/enemy_profile.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/resources/enemy_spawn_profile.gd" id="2"]
+[ext_resource type="Resource" uid="uid://14sndd8sll5x" path="res://resources/enemies/tank_enemy.tres" id="3"]
+
+[sub_resource type="Resource" id="EnemySpawnProfile_tank"]
+script = ExtResource("2")
+enemy_profile = ExtResource("3")
+spawn_interval = 4.85
 
 [resource]
 script = ExtResource("1")
-enemy_profile = ExtResource("2")
+behavior_kind = "power_armor"
 max_health = 40
-spawn_interval = 4.85
-body_radius = 44.0
+speed = 14.0
+contact_damage = 0
+contact_radius = 0.0
 score_value = 130
-base_color = Color(0.38, 0.18, 0.16, 1)
-core_color = Color(0.9, 0.22, 0.12, 1)
+body_radius = 44.0
+knockback_multiplier = 0.18
+body_color = Color(0.38, 0.18, 0.16, 1)
 accent_color = Color(1, 0.58, 0.14, 1)
-shape_kind = "tank"
-shoots_projectiles = true
+preferred_distance = 280.0
+distance_band = 95.0
+strafe_speed = 4.0
 shot_cooldown = 2.8
 projectile_speed = 170.0
 projectile_radius = 13.0
 special_attack_kind = "rocket"
 special_cooldown = 6.8
 special_telegraph_seconds = 0.68
-special_rocket_recoil = 155.0
-move_speed = 14.0
-preferred_distance = 280.0
-distance_band = 95.0
-strafe_speed = 4.0
+spawn_profile = SubResource("EnemySpawnProfile_tank")

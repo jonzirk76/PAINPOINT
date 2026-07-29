@@ -6,6 +6,7 @@ signal health_depleted(enemy)
 signal death_animation_finished(enemy)
 signal shot_ready(enemy, origin: Vector2, direction: Vector2, shot_config: Dictionary)
 signal repair_ready(enemy, repair_target, amount: int)
+signal spawn_ready(enemy, spawn_position: Vector2)
 
 const BASIC_ENEMY_TEXTURE := preload("res://art/characters/basic_enemy_chaser.svg")
 const FAST_ENEMY_TEXTURE := preload("res://art/characters/fast_enemy_runner.svg")
@@ -212,6 +213,11 @@ var _agent_aim_direction: Vector2 = Vector2.RIGHT
 var _agent_last_move_facing_direction: Vector2 = Vector2.DOWN
 var _collision_shape: CollisionShape2D = null
 var _collision_add_deferred: bool = false
+var spawn_profile: EnemySpawnProfile = null
+var legion_id: int = 0
+var general_id: int = 0
+var _spawn_timer: float = 0.0
+var _spawn_active: bool = true
 
 
 func _init() -> void:
@@ -276,6 +282,11 @@ func initialize(profile) -> void:
 	special_autocannon_max_shots = profile.special_autocannon_max_shots
 	special_autocannon_shot_interval = profile.special_autocannon_shot_interval
 	agent_program = profile.agent_program as AgentBossProgram if profile.get("agent_program") != null else null
+	spawn_profile = profile.spawn_profile as EnemySpawnProfile if profile.get("spawn_profile") != null else null
+	_spawn_timer = max(float(spawn_profile.warmup_seconds), 0.0) if spawn_profile != null else 0.0
+	if is_general():
+		contact_damage = 0
+		contact_radius = 0.0
 	if _is_agent_boss():
 		contact_damage = 0
 		contact_radius = 0.0
@@ -349,6 +360,7 @@ func _physics_process(delta: float) -> void:
 			_configure_collision_identity()
 		queue_redraw()
 		return
+	_update_spawn_capability(delta)
 
 	var to_target := target_position - global_position
 	var intent_velocity := Vector2.ZERO
@@ -393,6 +405,38 @@ func set_target_position(new_target_position: Vector2) -> void:
 	target_position = new_target_position
 	if _is_ranged_behavior() and previous_position.distance_squared_to(target_position) > 1.0:
 		queue_redraw()
+
+
+func is_general() -> bool:
+	return spawn_profile != null
+
+
+func set_legion_identity(new_legion_id: int, new_general_id: int = 0) -> void:
+	legion_id = max(new_legion_id, 0)
+	general_id = max(new_general_id, 0)
+
+
+func set_spawn_enabled(value: bool) -> void:
+	_spawn_active = value
+
+
+func delay_next_spawn_until(delay_seconds: float) -> void:
+	if not is_general():
+		return
+	_spawn_timer = max(_spawn_timer, max(delay_seconds, 0.0))
+
+
+func _update_spawn_capability(delta: float) -> void:
+	if not _spawn_active or not is_general() or health <= 0 or _is_dying:
+		return
+	var effective_delta: float = delta * _get_status_speed_multiplier()
+	_spawn_timer -= effective_delta
+	if _spawn_timer <= float(spawn_profile.projectile_shield_lead_seconds):
+		activate_projectile_shield(max(_spawn_timer, 0.0) + float(spawn_profile.projectile_shield_after_spawn_seconds))
+	if _spawn_timer > 0.0:
+		return
+	_spawn_timer = max(float(spawn_profile.spawn_interval), 0.1)
+	spawn_ready.emit(self, global_position)
 
 
 func set_repair_target(target) -> void:
@@ -1447,6 +1491,8 @@ func _update_power_armor(delta: float, to_target: Vector2) -> Vector2:
 		_boss_special_telegraph_remaining = _boss_special_telegraph_duration
 		queue_redraw()
 		return _get_power_armor_special_velocity(to_target)
+	if is_general():
+		_try_emit_shot(to_target)
 	return _get_ranged_velocity(to_target) * 0.72
 
 
@@ -3242,7 +3288,7 @@ func _get_ranged_velocity(to_target: Vector2) -> Vector2:
 
 
 func _try_emit_shot(to_target: Vector2) -> void:
-	if behavior_kind != BEHAVIOR_SHOOTER and behavior_kind != BEHAVIOR_BOSS and behavior_kind != BEHAVIOR_REPAIR_DRONE:
+	if behavior_kind != BEHAVIOR_SHOOTER and behavior_kind != BEHAVIOR_BOSS and behavior_kind != BEHAVIOR_REPAIR_DRONE and not is_general():
 		return
 	if _shot_cooldown_remaining > 0.0 or to_target.length_squared() <= 4.0:
 		return
