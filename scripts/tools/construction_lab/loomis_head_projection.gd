@@ -40,14 +40,12 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 	)
 	var local_side_axis: Vector3 = basis * Vector3.RIGHT
 	var side_sign := 1.0 if local_side_axis.z >= 0.0 else -1.0
-	var cut_distance := cranium_radii.x * side_cut_ratio * side_sign
-	var cut_scale := sqrt(maxf(
-		1.0 - (cut_distance * cut_distance) / (cranium_radii.x * cranium_radii.x),
-		0.0
-	))
-	var cut_radius_y := cranium_radii.y * cut_scale
-	var cut_radius_z := cranium_radii.z * cut_scale
-	var cut_radius := (cut_radius_y + cut_radius_z) * 0.5
+	# Keep the original Loomis side-plane landmark stable even though the
+	# surrounding cranium is refined into an ellipsoid.
+	var cut_distance := radius * side_cut_ratio * side_sign
+	var cut_radius := sqrt(maxf(radius * radius - cut_distance * cut_distance, 0.0))
+	var cut_radius_y := cut_radius
+	var cut_radius_z := cut_radius
 	var jaw_hinge_drop_ratio: float = float(spec.get(
 		"jaw_hinge_drop_ratio",
 		cut_radius / maxf(radius, 0.0001)

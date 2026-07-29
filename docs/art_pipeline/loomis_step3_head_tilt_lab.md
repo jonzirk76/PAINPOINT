@@ -4,7 +4,8 @@ This lab projects the first three head-construction elements from one shared
 3D orientation:
 
 1. A Loomis sphere refined into an elongated cranial ellipsoid.
-2. An elliptical side-plane slice through that cranial volume.
+2. The original circular Loomis side-plane slice, retained as a stable
+   landmark inside the refined cranial volume.
 3. A vertical facial centerline and horizontal brow midline wrapped across the
    front half of the cranium.
 4. Mirrored facial and jaw anchors.
@@ -39,6 +40,26 @@ Open any generated scene and press F6. In the scene tree, independently toggle:
 - `Step4FaceGuidesAndJaw`
 - `Step5FeatureVolumes`
 
+## Recommended navigation
+
+Start with `00_standardized_feature_volume_review.tscn`. It is the overview
+and should be the normal entry point.
+
+1. Use the 3×3 sheet to compare front, three-quarter, and profile placement
+   across neutral, up, and down tilts.
+2. Expand one card in the scene tree, then expand its `SharedProjection`.
+3. Hide all five step groups.
+4. Enable the groups in numerical order:
+   `Step1CraniumVolume`, `Step2SidePlaneCut`, `Step3Midlines`,
+   `Step4FaceGuidesAndJaw`, then `Step5FeatureVolumes`.
+5. To edit or inspect a larger version, open the closest numbered single-pose
+   scene. The numbered scenes use the same generated projection data at a
+   larger scale.
+
+The compliance cube exists only in the numbered single-pose scenes. It audits
+rotation and perspective; it is not part of the head model and can normally
+remain hidden during proportion review.
+
 ## Visual judging criteria
 
 ### Step 1: cranial volume
@@ -51,7 +72,10 @@ Open any generated scene and press F6. In the scene tree, independently toggle:
 
 ### Step 2: side-plane cut
 
-- The orange ellipse remains entirely inside the cranial volume.
+- The orange ellipse retains the original pre-skull-study Loomis placement:
+  its local plane is 55% of the original sphere radius from center.
+- Its underlying circle retains the original spherical cut radius even though
+  the surrounding cranial silhouette is now elongated.
 - It represents the same proportional slice in every pose: the plane is
   positioned at 55% of the sphere radius on the camera-near side.
 - The ellipse becomes narrower or broader because of rotation, not because its
