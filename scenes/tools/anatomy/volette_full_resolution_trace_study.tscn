@@ -1,0 +1,59 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Texture2D" path="res://art/concept_art/experiment.png" id="1_reference"]
+[ext_resource type="PackedScene" path="res://scenes/tools/anatomy/volette_full_resolution_trace_art.tscn" id="2_trace"]
+
+[node name="VoletteFullResolutionTraceStudy" type="Node2D"]
+
+[node name="Background" type="Polygon2D" parent="."]
+color = Color(0.03529412, 0.050980393, 0.078431375, 1)
+polygon = PackedVector2Array(0, 0, 2864, 0, 2864, 1300, 0, 1300)
+
+[node name="Title" type="Label" parent="."]
+offset_left = 36.0
+offset_top = 20.0
+offset_right = 1500.0
+offset_bottom = 58.0
+theme_override_colors/font_color = Color(0.92941177, 0.9490196, 0.98039216, 1)
+theme_override_font_sizes/font_size = 26
+text = "VOLETTE — NATIVE 1372 × 1146 POLYGON TRACE"
+
+[node name="OverlayLabel" type="Label" parent="."]
+offset_left = 40.0
+offset_top = 67.0
+offset_right = 720.0
+offset_bottom = 94.0
+theme_override_colors/font_color = Color(0.52156866, 0.8627451, 0.9411765, 1)
+theme_override_font_sizes/font_size = 18
+text = "REGISTRATION OVERLAY — TRACE AT 48% OPACITY"
+
+[node name="CleanLabel" type="Label" parent="."]
+offset_left = 1452.0
+offset_top = 67.0
+offset_right = 2100.0
+offset_bottom = 94.0
+theme_override_colors/font_color = Color(0.52156866, 0.8627451, 0.9411765, 1)
+theme_override_font_sizes/font_size = 18
+text = "CLEAN TRACE — SAME NATIVE COORDINATES"
+
+[node name="Reference" type="Sprite2D" parent="."]
+position = Vector2(40, 100)
+texture = ExtResource("1_reference")
+centered = false
+
+[node name="OverlayTrace" parent="." instance=ExtResource("2_trace")]
+position = Vector2(40, 100)
+modulate = Color(1, 1, 1, 0.48)
+
+[node name="CleanTrace" parent="." instance=ExtResource("2_trace")]
+position = Vector2(1452, 100)
+
+[node name="OverlayBorder" type="Line2D" parent="."]
+points = PackedVector2Array(40, 100, 1412, 100, 1412, 1246, 40, 1246, 40, 100)
+width = 2.0
+default_color = Color(0.28627452, 0.36862746, 0.49019608, 1)
+
+[node name="CleanBorder" type="Line2D" parent="."]
+points = PackedVector2Array(1452, 100, 2824, 100, 2824, 1246, 1452, 1246, 1452, 100)
+width = 2.0
+default_color = Color(0.28627452, 0.36862746, 0.49019608, 1)
