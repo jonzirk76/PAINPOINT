@@ -1,0 +1,23 @@
+{
+  "source": "art/3d models/human-skeleton-obj/Human skeleton HD.obj",
+  "license": "Creative Commons Attribution 3.0 Unported",
+  "attribution": "Artec Group Inc. (www.artec3d.com)",
+  "minimum_source_z": 635.0,
+  "cluster_size": 1.5,
+  "source_vertex_count": 1369983,
+  "output_vertex_count": 65033,
+  "output_face_count": 130348,
+  "source_bounds": {
+    "minimum": [
+      -155.419296,
+      -301.245941,
+      -808.173035
+    ],
+    "maximum": [
+      203.482956,
+      294.59613,
+      858.577332
+    ]
+  },
+  "axis_conversion": "source (x,y,z) -> Godot (x,z,-y); front is -Z"
+}
