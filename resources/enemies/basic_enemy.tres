@@ -6,5 +6,6 @@
 script = ExtResource("1")
 max_health = 2
 speed = 82.0
+crowd_weight = 1.0
 contact_radius = 35.0
 contact_cooldown = 0.75

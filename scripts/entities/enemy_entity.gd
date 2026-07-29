@@ -44,6 +44,7 @@ const BEHAVIOR_CYBER_SOLDIER := "cyber_soldier"
 const BEHAVIOR_BOSS := "boss"
 const BEHAVIOR_SHOOTER := "shooter"
 const BEHAVIOR_CHASER := "chaser"
+const MIN_KNOCKBACK_WEIGHT := 0.5
 
 @export var max_health: int = 3
 @export var speed: float = 85.0
@@ -52,7 +53,6 @@ const BEHAVIOR_CHASER := "chaser"
 @export var contact_cooldown: float = 0.75
 @export var score_value: int = 10
 @export var body_radius: float = 18.0
-@export var knockback_multiplier: float = 1.0
 ## Controls this enemy's influence in soft crowd separation; zero-weight enemies yield without pushing others.
 @export_range(0.0, 100.0, 0.1) var crowd_weight: float = 1.0
 @export var arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
@@ -256,7 +256,6 @@ func initialize(profile) -> void:
 	contact_cooldown = profile.contact_cooldown
 	score_value = profile.score_value
 	body_radius = profile.body_radius
-	knockback_multiplier = profile.knockback_multiplier
 	crowd_weight = max(float(profile.crowd_weight), 0.0) if profile.get("crowd_weight") != null else 1.0
 	behavior_kind = profile.behavior_kind
 	body_color = profile.body_color
@@ -644,7 +643,7 @@ func blocks_projectile_damage(packet) -> bool:
 
 
 func is_super_shot_impact_target() -> bool:
-	return behavior_kind == "boss" or max_health >= 8 or body_radius >= 27.0 or knockback_multiplier <= 0.05
+	return behavior_kind == "boss" or max_health >= 8 or body_radius >= 27.0 or crowd_weight >= 4.0
 
 
 func apply_pushback(source_position: Vector2, force: float) -> void:
@@ -653,8 +652,9 @@ func apply_pushback(source_position: Vector2, force: float) -> void:
 	var push_direction := global_position - source_position
 	if push_direction.length_squared() <= 0.001:
 		push_direction = Vector2.RIGHT
-	_knockback_velocity += push_direction.normalized() * force
-	_knockback_velocity = _knockback_velocity.limit_length(max(force, 260.0))
+	var effective_force: float = force * _get_knockback_weight_response()
+	_knockback_velocity += push_direction.normalized() * effective_force
+	_knockback_velocity = _knockback_velocity.limit_length(max(effective_force, 260.0))
 	queue_redraw()
 
 
@@ -1265,7 +1265,7 @@ func _get_visual_kind(profile) -> String:
 		return "fast"
 	if String(profile.behavior_kind) == BEHAVIOR_POWER_ARMOR:
 		return "tank"
-	if float(profile.knockback_multiplier) <= 0.0 or int(profile.max_health) >= 8 or float(profile.body_radius) >= 26.0:
+	if float(profile.crowd_weight) >= 4.0 or int(profile.max_health) >= 8 or float(profile.body_radius) >= 26.0:
 		return "tank"
 	if float(profile.speed) >= 120.0 or float(profile.body_radius) <= 14.0:
 		return "fast"
@@ -1273,7 +1273,7 @@ func _get_visual_kind(profile) -> String:
 
 
 func _apply_knockback(packet) -> void:
-	var effective_knockback: float = packet.knockback * max(knockback_multiplier, 0.0)
+	var effective_knockback: float = packet.knockback * _get_knockback_weight_response()
 	if _should_reduce_shield_pierce_damage(packet):
 		effective_knockback *= clamp(float(packet.shield_knockback_multiplier), 0.0, 1.0)
 	if effective_knockback <= 0.0:
@@ -1285,6 +1285,10 @@ func _apply_knockback(packet) -> void:
 		return
 	_knockback_velocity += push_direction.normalized() * effective_knockback
 	_knockback_velocity = _knockback_velocity.limit_length(260.0)
+
+
+func _get_knockback_weight_response() -> float:
+	return 1.0 / max(crowd_weight, MIN_KNOCKBACK_WEIGHT)
 
 
 func _should_reduce_shield_pierce_damage(packet) -> bool:

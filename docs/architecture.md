@@ -43,7 +43,9 @@ The orchestrator receives those signals and decides which manager command runs n
 - `RoomManager`: owns generated door entities for the currently loaded dungeon room.
 - `FaunaManager`: owns non-combat background fauna such as cats, feeds them read-only combat danger points through injected providers, and keeps them off combat collision layers.
 
-Enemy-to-enemy overlap uses soft separation rather than hard body collision. Each `EnemyProfile.crowd_weight` controls how much influence that enemy has in the pair: equal weights separate normally, heavier enemies displace lighter enemies more, and a zero-weight enemy yields without pushing the other enemy.
+Enemy-to-enemy overlap uses soft separation rather than hard body collision. Each `EnemyProfile.crowd_weight` controls how much influence that enemy has in the pair: equal weights separate normally, heavier enemies displace lighter enemies more, and a zero-weight enemy yields without pushing the other enemy. Attack packets own raw knockback force; `EnemyEntity` divides that force by its weight to determine movement, with a minimum effective weight of `0.5` so zero-weight support enemies remain strongly movable rather than producing infinite response. Parry pushback follows the same rule.
+
+Weight progression is role-driven: repair drones are weightless, runners and drones are lighter than standard infantry, cyber soldiers are slightly heavier, tanks and power armor are substantially heavier, generals are anchors, and bosses are heaviest.
 
 ## Level Flow
 

@@ -20,7 +20,6 @@ contact_damage = 0
 contact_radius = 0.0
 score_value = 130
 body_radius = 44.0
-knockback_multiplier = 0.18
 crowd_weight = 12.0
 body_color = Color(0.38, 0.18, 0.16, 1)
 accent_color = Color(1, 0.58, 0.14, 1)

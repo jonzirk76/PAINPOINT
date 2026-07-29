@@ -1437,7 +1437,7 @@ func _make_encounter_test_spawner_profile(passive_spawner: bool) -> Resource:
 		profile.set("special_attack_kind", "")
 		profile.set("speed", 0.0)
 		profile.set("strafe_speed", 0.0)
-		profile.set("knockback_multiplier", min(float(profile.get("knockback_multiplier")), 0.06))
+		profile.set("crowd_weight", max(float(profile.get("crowd_weight")), 20.0))
 		profile.set("body_color", Color(0.22, 0.34, 0.4, 1.0))
 		profile.set("accent_color", Color(0.62, 1.0, 0.72, 1.0))
 	return profile

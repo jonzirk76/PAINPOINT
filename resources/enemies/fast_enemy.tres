@@ -12,5 +12,6 @@ contact_radius = 26.0
 contact_cooldown = 0.55
 score_value = 12
 body_radius = 12.0
+crowd_weight = 0.65
 body_color = Color(1, 0.62, 0.12, 1)
 accent_color = Color(1, 1, 0.3, 1)
