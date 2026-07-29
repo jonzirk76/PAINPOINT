@@ -139,6 +139,11 @@ flattening across the sliced plane.
   placed independently.
 - The foramen magnum is an underside anchor. The neck is represented by a
   cylinder whose centerline begins at the middle of that opening.
+- The foramen center is the first major joint. Head pitch rotates the skull
+  around this attachment while the neck cylinder keeps a roughly stable
+  orientation, tilted 15° backward in profile by default.
+- The default neck joint angle is intentionally inside a 10–20° useful range
+  and is controlled by `neck_joint_angle_degrees`.
 - Oblique views may look asymmetric after projection, but all paired feature
   anchors originate from mirrored local-space coordinates.
 

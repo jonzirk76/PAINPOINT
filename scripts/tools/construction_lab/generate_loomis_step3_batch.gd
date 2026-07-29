@@ -627,6 +627,13 @@ func _add_step5_feature_volumes(parent: Node2D, root: Node2D, construction: Dict
 		Color(0.54, 1.0, 0.77, 0.94),
 		1.8
 	)
+	_add_anchor(
+		group,
+		root,
+		"HeadNeckJointAtForamenCenter",
+		construction["neck_joint_anchor"],
+		Color(0.70, 1.0, 0.82, 1.0)
+	)
 	_add_polygon(
 		group,
 		root,

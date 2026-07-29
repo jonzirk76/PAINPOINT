@@ -18,6 +18,7 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 	var nose_forward_ratio: float = float(spec.get("nose_forward_ratio", 0.96))
 	var chin_drop_ratio: float = float(spec.get("chin_drop_ratio", 1.42))
 	var chin_forward_ratio: float = float(spec.get("chin_forward_ratio", 0.88))
+	var neck_joint_angle_degrees: float = float(spec.get("neck_joint_angle_degrees", 15.0))
 	var cranium_radii: Vector3 = spec.get(
 		"cranium_radii",
 		Vector3(radius * 0.94, radius, radius * 1.10)
@@ -411,21 +412,36 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 		basis, camera_distance, focal_length, screen_center, false
 	)
 	var foramen_center := Vector3(0.0, -radius * 0.91, -radius * 0.28)
-	var neck_end := foramen_center + Vector3(0.0, -radius * 0.94, radius * 0.10)
-	var neck_cylinder := _build_y_cylinder_silhouette(
-		foramen_center,
-		neck_end,
+	var yaw_roll_basis := Basis.from_euler(Vector3(
+		0.0,
+		deg_to_rad(rotation_degrees.y),
+		deg_to_rad(rotation_degrees.z)
+	))
+	var neck_angle := deg_to_rad(neck_joint_angle_degrees)
+	var neck_anchor_world := basis * foramen_center
+	var neck_axis_world := yaw_roll_basis * Vector3(
+		0.0,
+		-cos(neck_angle),
+		-sin(neck_angle)
+	)
+	var neck_end_world := neck_anchor_world + neck_axis_world * radius * 0.94
+	var neck_radial_x_world := (yaw_roll_basis * Vector3.RIGHT).normalized()
+	var neck_radial_z_world := neck_axis_world.cross(neck_radial_x_world).normalized()
+	var neck_cylinder := _build_oriented_cylinder_silhouette_world(
+		neck_anchor_world,
+		neck_end_world,
+		neck_radial_x_world,
+		neck_radial_z_world,
 		radius * 0.34,
 		radius * 0.30,
-		basis,
 		camera_distance,
 		focal_length,
 		screen_center,
 		maxi(16, segment_count / 2)
 	)
-	var neck_axis := _project_local_curve(
-		[foramen_center, neck_end],
-		basis, camera_distance, focal_length, screen_center, false
+	var neck_axis := _project_world_curve(
+		[neck_anchor_world, neck_end_world],
+		camera_distance, focal_length, screen_center, false
 	)
 	var foramen_ellipse := _project_local_curve(
 		_build_xz_ellipse(foramen_center, radius * 0.25, radius * 0.19, segment_count),
@@ -495,6 +511,13 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 		"mouth_surface_guide": mouth_surface_guide,
 		"neck_cylinder": neck_cylinder,
 		"neck_axis": neck_axis,
+		"neck_joint_anchor": _project_world_point(
+			neck_anchor_world,
+			camera_distance,
+			focal_length,
+			screen_center
+		),
+		"neck_joint_angle_degrees": neck_joint_angle_degrees,
 		"foramen_ellipse": foramen_ellipse,
 		"jaw_profile": {
 			"nose_drop_ratio": nose_drop_ratio,
@@ -562,6 +585,7 @@ static func build_default_tilt_batch() -> Array:
 		full_spec["eye_center_drop_ratio"] = 0.30
 		full_spec["lower_face_radius_x_ratio"] = 0.34
 		full_spec["lower_face_radius_z_ratio"] = 0.27
+		full_spec["neck_joint_angle_degrees"] = 15.0
 		batch.append({
 			"name": full_spec["name"],
 			"construction": build_step3(full_spec),
@@ -608,6 +632,7 @@ static func build_standardized_review_batch() -> Array:
 				"eye_center_drop_ratio": 0.30,
 				"lower_face_radius_x_ratio": 0.34,
 				"lower_face_radius_z_ratio": 0.27,
+				"neck_joint_angle_degrees": 15.0,
 			}
 			batch.append({
 				"name": spec["name"],
@@ -728,6 +753,36 @@ static func _build_y_cylinder_silhouette(
 	return Geometry2D.convex_hull(samples)
 
 
+static func _build_oriented_cylinder_silhouette_world(
+	start_center: Vector3,
+	end_center: Vector3,
+	radial_x: Vector3,
+	radial_z: Vector3,
+	radius_x: float,
+	radius_z: float,
+	camera_distance: float,
+	focal_length: float,
+	screen_center: Vector2,
+	segment_count: int
+) -> PackedVector2Array:
+	var samples := PackedVector2Array()
+	for center: Vector3 in [start_center, end_center]:
+		for index in range(segment_count):
+			var angle := TAU * float(index) / float(segment_count)
+			var world_point := (
+				center
+				+ radial_x * cos(angle) * radius_x
+				+ radial_z * sin(angle) * radius_z
+			)
+			samples.append(_project_world_point(
+				world_point,
+				camera_distance,
+				focal_length,
+				screen_center
+			))
+	return Geometry2D.convex_hull(samples)
+
+
 static func _build_xz_ellipse(
 	center: Vector3,
 	radius_x: float,
@@ -758,6 +813,26 @@ static func _project_local_curve(
 		projected.append(_project_local_point(
 			local_point,
 			basis,
+			camera_distance,
+			focal_length,
+			screen_center
+		))
+	if close_curve and not projected.is_empty():
+		projected.append(projected[0])
+	return projected
+
+
+static func _project_world_curve(
+	world_points: Array,
+	camera_distance: float,
+	focal_length: float,
+	screen_center: Vector2,
+	close_curve: bool
+) -> PackedVector2Array:
+	var projected := PackedVector2Array()
+	for world_point: Vector3 in world_points:
+		projected.append(_project_world_point(
+			world_point,
 			camera_distance,
 			focal_length,
 			screen_center
