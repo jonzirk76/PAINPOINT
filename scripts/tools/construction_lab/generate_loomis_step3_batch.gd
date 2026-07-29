@@ -4,6 +4,7 @@ const BoxProjectionUtil := preload("res://scripts/tools/construction_lab/box_pro
 const LoomisProjectionUtil := preload("res://scripts/tools/construction_lab/loomis_head_projection.gd")
 
 const GENERATED_DIR := "res://scenes/tools/anatomy/generated_loomis_step3"
+const STANDARDIZED_REVIEW_PATH := GENERATED_DIR + "/00_standardized_feature_volume_review.tscn"
 const VIEWPORT_SIZE := Vector2(1280.0, 720.0)
 const CUBE_FACE_COLORS := {
 	"x": Color(0.94, 0.43, 0.42, 0.10),
@@ -49,6 +50,23 @@ func _initialize() -> void:
 			return
 		manifest_lines.append("%02d  %s  ->  %s" % [index + 1, case_data["name"], scene_path])
 		print("Generated %s" % scene_path)
+
+	var standardized_batch := LoomisProjectionUtil.build_standardized_review_batch()
+	var standardized_scene := _build_standardized_review_scene(standardized_batch)
+	var standardized_save_error := ResourceSaver.save(
+		standardized_scene,
+		STANDARDIZED_REVIEW_PATH
+	)
+	if standardized_save_error != OK:
+		push_error("Could not save %s (error %d)." % [
+			STANDARDIZED_REVIEW_PATH,
+			standardized_save_error,
+		])
+		quit(1)
+		return
+	manifest_lines.append("")
+	manifest_lines.append("Standardized 3x3 review -> %s" % STANDARDIZED_REVIEW_PATH)
+	print("Generated %s" % STANDARDIZED_REVIEW_PATH)
 
 	var manifest_path := "%s/README.txt" % GENERATED_DIR
 	var manifest := FileAccess.open(manifest_path, FileAccess.WRITE)
@@ -125,6 +143,75 @@ func _build_scene(case_data: Dictionary, case_index: int) -> PackedScene:
 	var pack_error := packed.pack(root)
 	if pack_error != OK:
 		push_error("Could not pack Loomis step-3 scene (error %d)." % pack_error)
+	root.free()
+	return packed
+
+
+func _build_standardized_review_scene(batch: Array) -> PackedScene:
+	var root := Node2D.new()
+	root.name = "StandardizedFeatureVolumeReview"
+	_add_background(root)
+	_add_label(
+		root,
+		root,
+		"Title",
+		Vector2(24.0, 13.0),
+		"STANDARDIZED HEAD-VOLUME REVIEW",
+		24,
+		Color("#f0f4fa")
+	)
+	_add_label(
+		root,
+		root,
+		"Subtitle",
+		Vector2(25.0, 47.0),
+		"Rows: neutral / up / down   •   Columns: front / 3/4 / one profile   •   identical local-space proportions",
+		14,
+		Color("#aebbd0")
+	)
+	var card_size := Vector2(398.0, 198.0)
+	for case_index in range(batch.size()):
+		var case_data: Dictionary = batch[case_index]
+		var row := floori(float(case_index) / 3.0)
+		var column := case_index % 3
+		var panel := _add_panel(
+			root,
+			root,
+			"View%02d%s%s" % [
+				case_index + 1,
+				_pascal_case(String(case_data["row_name"])),
+				_pascal_case(String(case_data["column_name"])),
+			],
+			Rect2(
+				Vector2(24.0 + float(column) * 412.0, 82.0 + float(row) * 207.0),
+				card_size
+			),
+			Color("#182333")
+		)
+		_add_label(
+			panel,
+			root,
+			"ViewLabel",
+			Vector2(11.0, 7.0),
+			String(case_data["name"]).to_upper(),
+			13,
+			Color("#dce7f5")
+		)
+		var display := Node2D.new()
+		display.name = "SharedProjection"
+		display.position = Vector2(198.0, 115.0)
+		display.scale = Vector2(0.92, 0.92)
+		_add_owned(panel, display, root)
+		var construction: Dictionary = case_data["construction"]
+		_add_step1_sphere(display, root, construction)
+		_add_step2_side_plane(display, root, construction)
+		_add_step3_midlines(display, root, construction)
+		_add_step4_face_guides_and_jaw(display, root, construction)
+		_add_step5_feature_volumes(display, root, construction)
+	var packed := PackedScene.new()
+	var pack_error := packed.pack(root)
+	if pack_error != OK:
+		push_error("Could not pack standardized feature-volume review (error %d)." % pack_error)
 	root.free()
 	return packed
 
@@ -473,25 +560,49 @@ func _add_step5_feature_volumes(parent: Node2D, root: Node2D, construction: Dict
 	_add_polygon(
 		group,
 		root,
-		"TeethCylinderMass",
-		construction["teeth_cylinder"],
+		"LowerFaceCylinderMass",
+		construction["lower_face_cylinder"],
 		Color(0.98, 0.78, 0.31, 0.16)
 	)
 	_add_line(
 		group,
 		root,
-		"TeethCylinderContour",
-		_closed_points(construction["teeth_cylinder"]),
+		"LowerFaceCylinderContour",
+		_closed_points(construction["lower_face_cylinder"]),
 		Color(1.0, 0.84, 0.39, 0.88),
 		1.75
 	)
 	_add_line(
 		group,
 		root,
-		"TeethCylinderAxis",
-		construction["teeth_axis"],
+		"LowerFaceCylinderAxis",
+		construction["lower_face_axis"],
 		Color(1.0, 0.92, 0.58, 0.82),
 		1.25
+	)
+	_add_line(
+		group,
+		root,
+		"LowerFaceTopCapAtNoseLine",
+		construction["lower_face_top_cap"],
+		Color(1.0, 0.80, 0.30, 0.68),
+		1.25
+	)
+	_add_line(
+		group,
+		root,
+		"LowerFaceBottomCapAtChin",
+		construction["lower_face_bottom_cap"],
+		Color(1.0, 0.80, 0.30, 0.68),
+		1.25
+	)
+	_add_line(
+		group,
+		root,
+		"MouthProjectedOnCylinder",
+		construction["mouth_surface_guide"],
+		Color(0.96, 0.39, 0.53, 0.94),
+		1.65
 	)
 	_add_polygon(
 		group,
@@ -585,7 +696,7 @@ func _add_reference_panel(root: Node2D, construction: Dictionary, spec: Dictiona
 		402.0,
 		Color("#65dfaa"),
 		"STEP 5 — FEATURE VOLUMES",
-		"Eye spheres, dental cylinder, foramen, and neck share local anchors."
+		"Eye spheres, vertical lower-face cylinder, foramen, and neck share anchors."
 	)
 	_add_label(panel, root, "ChecksTitle", Vector2(18.0, 486.0), "VISUAL ACCEPTANCE", 18, Color("#fff3a8"))
 	_add_label(

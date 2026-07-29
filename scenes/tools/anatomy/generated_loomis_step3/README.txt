@@ -8,3 +8,5 @@ These generated visual review artifacts are intentionally untracked.
 02  Looking Up  ->  res://scenes/tools/anatomy/generated_loomis_step3/02_looking_up.tscn
 03  Looking Down Left  ->  res://scenes/tools/anatomy/generated_loomis_step3/03_looking_down_left.tscn
 04  Rolled Three Quarter  ->  res://scenes/tools/anatomy/generated_loomis_step3/04_rolled_three_quarter.tscn
+
+Standardized 3x3 review -> res://scenes/tools/anatomy/generated_loomis_step3/00_standardized_feature_volume_review.tscn

@@ -8,8 +8,8 @@ This lab projects the first three head-construction elements from one shared
 3. A vertical facial centerline and horizontal brow midline wrapped across the
    front half of the cranium.
 4. Mirrored facial and jaw anchors.
-5. Eye spheres, a nose wedge, a dental cylinder, and a neck cylinder expanded
-   from the shared scaffold.
+5. Eye spheres, a nose wedge, a vertical lower-face cylinder, and a neck
+   cylinder expanded from the shared scaffold.
 
 A translucent tangent cube surrounds the sphere as an orientation audit. Its
 side length is exactly the sphere diameter, so the sphere touches every cube
@@ -105,13 +105,31 @@ flattening across the sliced plane.
   touching the brow in side view. The orbital planes wrap around the spheres;
   they do not replace them.
 - The nose remains a symmetric wedge expanding from the facial plane.
-- The teeth are initially grouped as one short conceptual cylinder. Stylized
-  lips and individual teeth should be derived from this volume rather than
+- The lower maxilla, teeth, mouth region, and chin are grouped into one
+  vertical conceptual cylinder. Its top cap touches the nose line and its
+  bottom cap touches the chin.
+- The cylinder width comes from the skull-study facial mass. Its front tangent
+  sits near the nasal-cavity plane so the mass remains inset into the skull.
+- The mouth is a projected curve on the front of this cylinder. Stylized lips
+  and individual teeth should be derived from the shared volume rather than
   placed independently.
 - The foramen magnum is an underside anchor. The neck is represented by a
   cylinder whose centerline begins at the middle of that opening.
 - Oblique views may look asymmetric after projection, but all paired feature
   anchors originate from mirrored local-space coordinates.
+
+## Standardized review sheet
+
+The generator also writes:
+
+```text
+res://scenes/tools/anatomy/generated_loomis_step3/00_standardized_feature_volume_review.tscn
+```
+
+This scene uses a fixed 3×3 matrix. Rows are neutral, looking up, and looking
+down. Columns are front, three-quarter, and one profile. Scale, proportions,
+colors, and visible construction groups remain identical so feature depth can
+be compared without reframing noise.
 
 ### Compliance cube
 

@@ -354,23 +354,62 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 		],
 		basis, camera_distance, focal_length, screen_center, true
 	)
-	var teeth_center := Vector3(0.0, -radius * 0.93, radius * 0.78)
-	var teeth_cylinder := _build_x_cylinder_silhouette(
-		teeth_center,
-		radius * 0.43,
-		radius * 0.22,
-		radius * 0.25,
+	var lower_face_top_y := nose_center_local.y
+	var lower_face_bottom_y := chin_local.y
+	var lower_face_radius_x := radius * float(spec.get("lower_face_radius_x_ratio", 0.34))
+	var lower_face_radius_z := radius * float(spec.get("lower_face_radius_z_ratio", 0.27))
+	var lower_face_front_tangent_z := cavity_inner_z
+	var lower_face_center_z := lower_face_front_tangent_z - lower_face_radius_z
+	var lower_face_top := Vector3(0.0, lower_face_top_y, lower_face_center_z)
+	var lower_face_bottom := Vector3(0.0, lower_face_bottom_y, lower_face_center_z)
+	var lower_face_cylinder := _build_y_cylinder_silhouette(
+		lower_face_top,
+		lower_face_bottom,
+		lower_face_radius_x,
+		lower_face_radius_z,
 		basis,
 		camera_distance,
 		focal_length,
 		screen_center,
 		maxi(16, segment_count / 2)
 	)
-	var teeth_axis := _project_local_curve(
-		[
-			teeth_center - Vector3(radius * 0.43, 0.0, 0.0),
-			teeth_center + Vector3(radius * 0.43, 0.0, 0.0),
-		],
+	var lower_face_axis := _project_local_curve(
+		[lower_face_top, lower_face_bottom],
+		basis, camera_distance, focal_length, screen_center, false
+	)
+	var lower_face_top_cap := _project_local_curve(
+		_build_xz_ellipse(
+			lower_face_top,
+			lower_face_radius_x,
+			lower_face_radius_z,
+			segment_count
+		),
+		basis, camera_distance, focal_length, screen_center, true
+	)
+	var lower_face_bottom_cap := _project_local_curve(
+		_build_xz_ellipse(
+			lower_face_bottom,
+			lower_face_radius_x,
+			lower_face_radius_z,
+			segment_count
+		),
+		basis, camera_distance, focal_length, screen_center, true
+	)
+	var mouth_y := lerpf(lower_face_top_y, lower_face_bottom_y, 0.48)
+	var mouth_surface_local: Array[Vector3] = []
+	for index in range(segment_count + 1):
+		var normalized_x := -1.0 + 2.0 * float(index) / float(segment_count)
+		var surface_z := lower_face_center_z + lower_face_radius_z * sqrt(maxf(
+			1.0 - normalized_x * normalized_x,
+			0.0
+		))
+		mouth_surface_local.append(Vector3(
+			normalized_x * lower_face_radius_x,
+			mouth_y,
+			surface_z
+		))
+	var mouth_surface_guide := _project_local_curve(
+		mouth_surface_local,
 		basis, camera_distance, focal_length, screen_center, false
 	)
 	var foramen_center := Vector3(0.0, -radius * 0.91, -radius * 0.28)
@@ -451,8 +490,11 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 		"eye_spheres": eye_spheres,
 		"eye_centers": eye_centers,
 		"brow_tangent_plane": brow_tangent_plane,
-		"teeth_cylinder": teeth_cylinder,
-		"teeth_axis": teeth_axis,
+		"lower_face_cylinder": lower_face_cylinder,
+		"lower_face_axis": lower_face_axis,
+		"lower_face_top_cap": lower_face_top_cap,
+		"lower_face_bottom_cap": lower_face_bottom_cap,
+		"mouth_surface_guide": mouth_surface_guide,
 		"neck_cylinder": neck_cylinder,
 		"neck_axis": neck_axis,
 		"foramen_ellipse": foramen_ellipse,
@@ -520,10 +562,61 @@ static func build_default_tilt_batch() -> Array:
 		full_spec["eye_radius_ratio"] = 0.22
 		full_spec["eye_center_x_ratio"] = 0.37
 		full_spec["eye_center_drop_ratio"] = 0.30
+		full_spec["lower_face_radius_x_ratio"] = 0.34
+		full_spec["lower_face_radius_z_ratio"] = 0.27
 		batch.append({
 			"name": full_spec["name"],
 			"construction": build_step3(full_spec),
 		})
+	return batch
+
+
+static func build_standardized_review_batch() -> Array:
+	var batch: Array = []
+	var pitch_rows := [
+		{"name": "Neutral", "pitch": 0.0},
+		{"name": "Looking Up", "pitch": -22.0},
+		{"name": "Looking Down", "pitch": 22.0},
+	]
+	var yaw_columns := [
+		{"name": "Front", "yaw": 0.0},
+		{"name": "Three Quarter", "yaw": 35.0},
+		{"name": "Profile", "yaw": 82.0},
+	]
+	for pitch_data: Dictionary in pitch_rows:
+		for yaw_data: Dictionary in yaw_columns:
+			var spec := {
+				"name": "%s — %s" % [pitch_data["name"], yaw_data["name"]],
+				"radius": 1.0,
+				"side_cut_ratio": 0.55,
+				"rotation_degrees": Vector3(
+					float(pitch_data["pitch"]),
+					float(yaw_data["yaw"]),
+					0.0
+				),
+				"camera_distance": 7.2,
+				"focal_length": 450.0,
+				"screen_center": Vector2.ZERO,
+				"segments": DEFAULT_SEGMENTS,
+				"nose_drop_ratio": 0.68,
+				"nose_forward_ratio": 0.96,
+				"chin_drop_ratio": 1.42,
+				"chin_forward_ratio": 0.88,
+				"jaw_hinge_drop_ratio": sqrt(1.0 - 0.55 * 0.55),
+				"jaw_hinge_forward_ratio": 0.0,
+				"cranium_radii": Vector3(0.94, 1.0, 1.10),
+				"eye_radius_ratio": 0.22,
+				"eye_center_x_ratio": 0.37,
+				"eye_center_drop_ratio": 0.30,
+				"lower_face_radius_x_ratio": 0.34,
+				"lower_face_radius_z_ratio": 0.27,
+			}
+			batch.append({
+				"name": spec["name"],
+				"row_name": pitch_data["name"],
+				"column_name": yaw_data["name"],
+				"construction": build_step3(spec),
+			})
 	return batch
 
 
