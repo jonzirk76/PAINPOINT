@@ -3,10 +3,13 @@
 This lab projects the first three head-construction elements from one shared
 3D orientation:
 
-1. A spherical cranium silhouette.
-2. A circular side-plane slice, seen as a projected ellipse.
+1. A Loomis sphere refined into an elongated cranial ellipsoid.
+2. An elliptical side-plane slice through that cranial volume.
 3. A vertical facial centerline and horizontal brow midline wrapped across the
-   front half of the sphere.
+   front half of the cranium.
+4. Mirrored facial and jaw anchors.
+5. Eye spheres, a nose wedge, a dental cylinder, and a neck cylinder expanded
+   from the shared scaffold.
 
 A translucent tangent cube surrounds the sphere as an orientation audit. Its
 side length is exactly the sphere diameter, so the sphere touches every cube
@@ -30,22 +33,25 @@ res://scenes/tools/anatomy/generated_loomis_step3/
 Open any generated scene and press F6. In the scene tree, independently toggle:
 
 - `ComplianceCube`
-- `Step1Sphere`
+- `Step1CraniumVolume`
 - `Step2SidePlaneCut`
 - `Step3Midlines`
 - `Step4FaceGuidesAndJaw`
+- `Step5FeatureVolumes`
 
 ## Visual judging criteria
 
-### Step 1: sphere
+### Step 1: cranial volume
 
-- The cranium silhouette remains circular regardless of head rotation.
-- The sphere is centered inside the compliance cube.
-- Rotation changes the internal guides, not the spherical silhouette.
+- The original sphere remains the proportional starting idea, but the visible
+  volume is slightly narrower side-to-side and longer front-to-back.
+- The same ellipsoid rotates with every internal guide.
+- The posterior expansion changes the side silhouette without breaking the
+  face-local symmetry axes.
 
 ### Step 2: side-plane cut
 
-- The orange ellipse remains entirely inside the sphere.
+- The orange ellipse remains entirely inside the cranial volume.
 - It represents the same proportional slice in every pose: the plane is
   positioned at 55% of the sphere radius on the camera-near side.
 - The ellipse becomes narrower or broader because of rotation, not because its
@@ -91,6 +97,21 @@ flattening across the sliced plane.
 - The default jaw profile is neutral, not canonical anatomy. Per-character
   tuning fields are `chin_drop_ratio`, `chin_forward_ratio`,
   `jaw_hinge_drop_ratio`, and `jaw_hinge_forward_ratio`.
+
+### Step 5: feature volumes
+
+- Both eyes are equal spheres mirrored across the face-local Y midline.
+- The front of each eye sphere is approximately tangent to the vertical plane
+  touching the brow in side view. The orbital planes wrap around the spheres;
+  they do not replace them.
+- The nose remains a symmetric wedge expanding from the facial plane.
+- The teeth are initially grouped as one short conceptual cylinder. Stylized
+  lips and individual teeth should be derived from this volume rather than
+  placed independently.
+- The foramen magnum is an underside anchor. The neck is represented by a
+  cylinder whose centerline begins at the middle of that opening.
+- Oblique views may look asymmetric after projection, but all paired feature
+  anchors originate from mirrored local-space coordinates.
 
 ### Compliance cube
 

@@ -1,12 +1,12 @@
 [gd_scene format=3]
 
-[node name="LoomisStep303LookingDownLeft" type="Node2D" unique_id=2056878276]
+[node name="LoomisStep303LookingDownLeft" type="Node2D"]
 
-[node name="Background" type="Polygon2D" parent="." unique_id=546782847]
+[node name="Background" type="Polygon2D" parent="."]
 color = Color(0.0627451, 0.09019608, 0.13333334, 1)
 polygon = PackedVector2Array(0, 0, 1280, 0, 1280, 720, 0, 720)
 
-[node name="Title" type="Label" parent="." unique_id=1356619314]
+[node name="Title" type="Label" parent="."]
 offset_left = 30.0
 offset_top = 17.0
 offset_right = 30.0
@@ -15,7 +15,7 @@ theme_override_font_sizes/font_size = 28
 theme_override_colors/font_color = Color(0.9411765, 0.95686275, 0.98039216, 1)
 text = "03  LOOMIS CONSTRUCTION — Looking Down Left"
 
-[node name="PoseReadout" type="Label" parent="." unique_id=48103791]
+[node name="PoseReadout" type="Label" parent="."]
 offset_left = 31.0
 offset_top = 58.0
 offset_right = 31.0
@@ -24,382 +24,474 @@ theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.68235296, 0.73333335, 0.8156863, 1)
 text = "pitch 24.0°   yaw -34.0°   roll 8.0°   |   cube, side slice, and midlines share one 3D Basis"
 
-[node name="ConstructionPanel" type="Node2D" parent="." unique_id=832641121]
+[node name="ConstructionPanel" type="Node2D" parent="."]
 position = Vector2(28, 96)
 
-[node name="PanelFill" type="Polygon2D" parent="ConstructionPanel" unique_id=145325306]
+[node name="PanelFill" type="Polygon2D" parent="ConstructionPanel"]
 color = Color(0.09411765, 0.13725491, 0.2, 1)
 polygon = PackedVector2Array(0, 0, 790, 0, 790, 590, 0, 590)
 
-[node name="PanelBorder" type="Line2D" parent="ConstructionPanel" unique_id=158520966]
+[node name="PanelBorder" type="Line2D" parent="ConstructionPanel"]
 points = PackedVector2Array(0, 0, 790, 0, 790, 590, 0, 590, 0, 0)
 width = 1.2
 default_color = Color(0.20784314, 0.26666668, 0.3529412, 1)
 joint_mode = 2
 antialiased = true
 
-[node name="SharedProjection" type="Node2D" parent="ConstructionPanel" unique_id=1851978840]
+[node name="SharedProjection" type="Node2D" parent="ConstructionPanel"]
 position = Vector2(395, 310)
 scale = Vector2(2.25, 2.25)
 
-[node name="ComplianceCube" type="Node2D" parent="ConstructionPanel/SharedProjection" unique_id=18569837]
+[node name="ComplianceCube" type="Node2D" parent="ConstructionPanel/SharedProjection"]
 
-[node name="TranslucentPolygonFaces" type="Node2D" parent="ConstructionPanel/SharedProjection/ComplianceCube" unique_id=893531516]
+[node name="TranslucentPolygonFaces" type="Node2D" parent="ConstructionPanel/SharedProjection/ComplianceCube"]
 
-[node name="YNearFace" type="Polygon2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/TranslucentPolygonFaces" unique_id=393223701]
+[node name="YNearFace" type="Polygon2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/TranslucentPolygonFaces"]
 color = Color(0.4, 0.8, 0.56, 0.1)
 polygon = PackedVector2Array(-33.556572, -64.19128, -108.78504, -24.582924, -5.006294, -50.3551, 60.811684, -91.16702)
 
-[node name="XNearFace" type="Polygon2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/TranslucentPolygonFaces" unique_id=1607254458]
+[node name="XNearFace" type="Polygon2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/TranslucentPolygonFaces"]
 color = Color(0.94, 0.43, 0.42, 0.1)
 polygon = PackedVector2Array(96.98804, 21.91707, 60.811684, -91.16702, -5.006294, -50.3551, 45.684273, 87.390686)
 
-[node name="ZNearFace" type="Polygon2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/TranslucentPolygonFaces" unique_id=1593508611]
+[node name="ZNearFace" type="Polygon2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/TranslucentPolygonFaces"]
 color = Color(0.4, 0.66, 0.94, 0.1)
 polygon = PackedVector2Array(-59.155304, 88.68382, 45.684273, 87.390686, -5.006294, -50.3551, -108.78504, -24.582924)
 
-[node name="PerspectiveEdges" type="Node2D" parent="ConstructionPanel/SharedProjection/ComplianceCube" unique_id=407163335]
+[node name="PerspectiveEdges" type="Node2D" parent="ConstructionPanel/SharedProjection/ComplianceCube"]
 
-[node name="XEdge01" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges" unique_id=1317683166]
+[node name="XEdge01" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges"]
 points = PackedVector2Array(3.1726837, 31.91199, 96.98804, 21.91707)
 width = 1.15
 default_color = Color(0.9372549, 0.41568628, 0.4117647, 0.32)
 joint_mode = 2
 antialiased = true
 
-[node name="XEdge02" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges" unique_id=649720551]
+[node name="XEdge02" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges"]
 points = PackedVector2Array(-33.556572, -64.19128, 60.811684, -91.16702)
 width = 1.15
 default_color = Color(0.9372549, 0.41568628, 0.4117647, 0.32)
 joint_mode = 2
 antialiased = true
 
-[node name="XEdge03" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges" unique_id=673404821]
+[node name="XEdge03" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges"]
 points = PackedVector2Array(-59.155304, 88.68382, 45.684273, 87.390686)
 width = 1.15
 default_color = Color(0.9372549, 0.41568628, 0.4117647, 0.32)
 joint_mode = 2
 antialiased = true
 
-[node name="XEdge04" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges" unique_id=2088833240]
+[node name="XEdge04" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges"]
 points = PackedVector2Array(-108.78504, -24.582924, -5.006294, -50.3551)
 width = 1.15
 default_color = Color(0.9372549, 0.41568628, 0.4117647, 0.32)
 joint_mode = 2
 antialiased = true
 
-[node name="YEdge01" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges" unique_id=780088582]
+[node name="YEdge01" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges"]
 points = PackedVector2Array(3.1726837, 31.91199, -33.556572, -64.19128)
 width = 1.15
 default_color = Color(0.4, 0.78431374, 0.5411765, 0.32)
 joint_mode = 2
 antialiased = true
 
-[node name="YEdge02" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges" unique_id=1467291351]
+[node name="YEdge02" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges"]
 points = PackedVector2Array(96.98804, 21.91707, 60.811684, -91.16702)
 width = 1.15
 default_color = Color(0.4, 0.78431374, 0.5411765, 0.32)
 joint_mode = 2
 antialiased = true
 
-[node name="YEdge03" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges" unique_id=993540788]
+[node name="YEdge03" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges"]
 points = PackedVector2Array(-59.155304, 88.68382, -108.78504, -24.582924)
 width = 1.15
 default_color = Color(0.4, 0.78431374, 0.5411765, 0.32)
 joint_mode = 2
 antialiased = true
 
-[node name="YEdge04" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges" unique_id=667034639]
+[node name="YEdge04" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges"]
 points = PackedVector2Array(45.684273, 87.390686, -5.006294, -50.3551)
 width = 1.15
 default_color = Color(0.4, 0.78431374, 0.5411765, 0.32)
 joint_mode = 2
 antialiased = true
 
-[node name="ZEdge01" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges" unique_id=1194426838]
+[node name="ZEdge01" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges"]
 points = PackedVector2Array(3.1726837, 31.91199, -59.155304, 88.68382)
 width = 1.15
 default_color = Color(0.38431373, 0.65882355, 0.9372549, 0.32)
 joint_mode = 2
 antialiased = true
 
-[node name="ZEdge02" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges" unique_id=1712720621]
+[node name="ZEdge02" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges"]
 points = PackedVector2Array(96.98804, 21.91707, 45.684273, 87.390686)
 width = 1.15
 default_color = Color(0.38431373, 0.65882355, 0.9372549, 0.32)
 joint_mode = 2
 antialiased = true
 
-[node name="ZEdge03" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges" unique_id=1060276322]
+[node name="ZEdge03" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges"]
 points = PackedVector2Array(-33.556572, -64.19128, -108.78504, -24.582924)
 width = 1.15
 default_color = Color(0.38431373, 0.65882355, 0.9372549, 0.32)
 joint_mode = 2
 antialiased = true
 
-[node name="ZEdge04" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges" unique_id=106338078]
+[node name="ZEdge04" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/PerspectiveEdges"]
 points = PackedVector2Array(60.811684, -91.16702, -5.006294, -50.3551)
 width = 1.15
 default_color = Color(0.38431373, 0.65882355, 0.9372549, 0.32)
 joint_mode = 2
 antialiased = true
 
-[node name="FrontFaceSquareProof" type="Node2D" parent="ConstructionPanel/SharedProjection/ComplianceCube" unique_id=3029466]
+[node name="FrontFaceSquareProof" type="Node2D" parent="ConstructionPanel/SharedProjection/ComplianceCube"]
 
-[node name="TangentFace" type="Polygon2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/FrontFaceSquareProof" unique_id=833253001]
+[node name="TangentFace" type="Polygon2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/FrontFaceSquareProof"]
 color = Color(0.96, 0.83, 0.48, 0.055)
 polygon = PackedVector2Array(-59.155304, 88.68382, 45.684273, 87.390686, -5.006294, -50.3551, -108.78504, -24.582924)
 
-[node name="FaceSquareOutline" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/FrontFaceSquareProof" unique_id=1578793511]
+[node name="FaceSquareOutline" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/FrontFaceSquareProof"]
 points = PackedVector2Array(-59.155304, 88.68382, 45.684273, 87.390686, -5.006294, -50.3551, -108.78504, -24.582924, -59.155304, 88.68382)
 width = 1.15
 default_color = Color(1, 0.88, 0.55, 0.34)
 joint_mode = 2
 antialiased = true
 
-[node name="ProjectedVerticalMidline" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/FrontFaceSquareProof" unique_id=951502252]
+[node name="ProjectedVerticalMidline" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/FrontFaceSquareProof"]
 points = PackedVector2Array(-11.436036, 88.09523, -61.933846, -36.21784)
 width = 1.1
 default_color = Color(0.37, 0.88, 0.93, 0.38)
 joint_mode = 2
 antialiased = true
 
-[node name="ProjectedHorizontalMidline" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/FrontFaceSquareProof" unique_id=409619399]
+[node name="ProjectedHorizontalMidline" type="Line2D" parent="ConstructionPanel/SharedProjection/ComplianceCube/FrontFaceSquareProof"]
 points = PackedVector2Array(-83.06791, 34.10963, 21.45005, 21.536972)
 width = 1.1
 default_color = Color(0.94, 0.6, 0.75, 0.38)
 joint_mode = 2
 antialiased = true
 
-[node name="Step1Sphere" type="Node2D" parent="ConstructionPanel/SharedProjection" unique_id=268280753]
+[node name="Step1CraniumVolume" type="Node2D" parent="ConstructionPanel/SharedProjection"]
 
-[node name="CraniumSphere" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step1Sphere" unique_id=1316513716]
+[node name="CraniumEllipsoid" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step1CraniumVolume"]
 color = Color(0.42, 0.66, 0.88, 0.19)
-polygon = PackedVector2Array(63.111683, 0, 62.80778, -6.1860266, 61.89901, -12.312478, 60.39411, -18.320354, 58.30759, -24.151794, 55.659534, -29.75064, 52.475445, -35.06297, 48.785988, -40.037624, 44.626698, -44.626698, 40.037624, -48.785988, 35.06297, -52.475445, 29.75064, -55.659534, 24.151794, -58.30759, 18.320354, -60.39411, 12.312478, -61.89901, 6.1860266, -62.80778, 3.864348e-15, -63.111683, -6.1860266, -62.80778, -12.312478, -61.89901, -18.320354, -60.39411, -24.151794, -58.30759, -29.75064, -55.659534, -35.06297, -52.475445, -40.037624, -48.785988, -44.626698, -44.626698, -48.785988, -40.037624, -52.475445, -35.06297, -55.659534, -29.75064, -58.30759, -24.151794, -60.39411, -18.320354, -61.89901, -12.312478, -62.80778, -6.1860266, -63.111683, -7.728696e-15, -62.80778, 6.1860266, -61.89901, 12.312478, -60.39411, 18.320354, -58.30759, 24.151794, -55.659534, 29.75064, -52.475445, 35.06297, -48.785988, 40.037624, -44.626698, 44.626698, -40.037624, 48.785988, -35.06297, 52.475445, -29.75064, 55.659534, -24.151794, 58.30759, -18.320354, 60.39411, -12.312478, 61.89901, -6.1860266, 62.80778, -1.1593044e-14, 63.111683, 6.1860266, 62.80778, 12.312478, 61.89901, 18.320354, 60.39411, 24.151794, 58.30759, 29.75064, 55.659534, 35.06297, 52.475445, 40.037624, 48.785988, 44.626698, 44.626698, 48.785988, 40.037624, 52.475445, 35.06297, 55.659534, 29.75064, 58.30759, 24.151794, 60.39411, 18.320354, 61.89901, 12.312478, 62.80778, 6.1860266)
+polygon = PackedVector2Array(-61.105495, -1.7058982, -60.687943, -7.9793043, -59.637894, -14.228209, -59.376152, -15.374864, -57.737675, -21.38654, -55.496162, -27.239788, -52.672253, -32.871464, -52.168175, -33.723305, -48.87745, -38.92644, -45.06656, -43.795464, -44.474968, -44.455685, -40.314026, -48.79064, -39.647587, -49.375343, -35.220406, -53.125713, -34.57844, -53.606064, -29.969028, -56.723984, -29.448542, -57.07173, -28.833963, -57.448017, -28.131674, -57.84914, -27.348722, -58.27125, -26.49278, -58.710358, -23.260872, -60.33229, -22.796015, -60.560474, -22.301537, -60.793648, -21.7821, -61.029633, -21.24258, -61.266235, -20.688007, -61.501263, -20.123528, -61.73254, -19.554365, -61.957943, -18.985777, -62.17538, -18.423012, -62.382862, -17.871267, -62.57846, -17.335644, -62.76037, -16.82112, -62.926876, -16.33248, -63.076435, -12.860004, -64.11149, -11.953982, -64.37096, -11.114243, -64.59243, -10.348677, -64.77371, -9.664642, -64.91295, -9.068872, -65.008606, -3.6874733, -65.86428, -2.9280455, -65.942474, 2.6799798, -66.2032, 3.5125668, -66.21914, 9.253661, -65.86991, 10.069385, -65.77838, 15.852087, -64.806496, 21.442665, -63.24938, 22.29733, -62.958725, 27.788782, -60.788605, 32.985527, -58.080616, 37.84098, -54.867905, 38.687206, -54.205254, 43.2608, -50.443382, 47.404068, -46.252552, 51.081615, -41.678032, 54.263298, -36.767834, 54.936436, -35.528366, 57.641228, -30.248117, 59.792164, -24.742868, 61.37418, -19.0681, 62.378006, -13.279794, 62.611027, -11.519798, 63.032063, -5.6467366, 62.863335, 0.20673153, 62.113037, 5.9844694, 61.823647, 7.9681406, 60.50834, 13.557679, 58.642643, 18.937387, 57.92014, 20.941793, 55.57194, 25.930075, 54.490036, 27.93381, 51.74663, 32.410343, 50.40365, 34.33199, 47.370045, 38.18656, 45.880627, 39.94903, 44.10149, 41.75749, 41.16079, 44.62475, 39.42131, 46.179737, 37.470295, 47.73649, 35.326706, 49.27771, 33.184196, 50.735085, 31.32325, 51.94798, 29.348202, 53.11842, 27.28016, 54.233173, 25.14165, 55.279533, 22.95627, 56.24558, 20.748367, 57.120316, 18.542627, 57.893894, 16.363716, 58.557755, 14.235869, 59.104755, 11.684282, 59.71667, 9.12734, 60.245132, 6.695567, 60.614834, 4.415437, 60.82294, 0.32565293, 61.031273, -2.1629133, 61.084896, -4.4105196, 60.94675, -9.25786, 60.5045, -11.513462, 60.132477, -16.58858, 59.002018, -18.71315, 58.36063, -23.86243, 56.533703, -28.829996, 54.077385, -30.794462, 53.09553, -35.603535, 49.989147, -40.092655, 46.307037, -41.643448, 45.017124, -45.770443, 40.7882, -49.456345, 36.074142, -50.423164, 34.553337, -53.59698, 29.438461, -56.23755, 23.956272, -58.310207, 18.161875, -59.786533, 12.115334, -60.048576, 10.64531, -60.89004, 4.5243816, -61.105495, -1.7058982)
 
-[node name="SphereContour" type="Line2D" parent="ConstructionPanel/SharedProjection/Step1Sphere" unique_id=1723461277]
-points = PackedVector2Array(63.111683, 0, 62.80778, -6.1860266, 61.89901, -12.312478, 60.39411, -18.320354, 58.30759, -24.151794, 55.659534, -29.75064, 52.475445, -35.06297, 48.785988, -40.037624, 44.626698, -44.626698, 40.037624, -48.785988, 35.06297, -52.475445, 29.75064, -55.659534, 24.151794, -58.30759, 18.320354, -60.39411, 12.312478, -61.89901, 6.1860266, -62.80778, 3.864348e-15, -63.111683, -6.1860266, -62.80778, -12.312478, -61.89901, -18.320354, -60.39411, -24.151794, -58.30759, -29.75064, -55.659534, -35.06297, -52.475445, -40.037624, -48.785988, -44.626698, -44.626698, -48.785988, -40.037624, -52.475445, -35.06297, -55.659534, -29.75064, -58.30759, -24.151794, -60.39411, -18.320354, -61.89901, -12.312478, -62.80778, -6.1860266, -63.111683, -7.728696e-15, -62.80778, 6.1860266, -61.89901, 12.312478, -60.39411, 18.320354, -58.30759, 24.151794, -55.659534, 29.75064, -52.475445, 35.06297, -48.785988, 40.037624, -44.626698, 44.626698, -40.037624, 48.785988, -35.06297, 52.475445, -29.75064, 55.659534, -24.151794, 58.30759, -18.320354, 60.39411, -12.312478, 61.89901, -6.1860266, 62.80778, -1.1593044e-14, 63.111683, 6.1860266, 62.80778, 12.312478, 61.89901, 18.320354, 60.39411, 24.151794, 58.30759, 29.75064, 55.659534, 35.06297, 52.475445, 40.037624, 48.785988, 44.626698, 44.626698, 48.785988, 40.037624, 52.475445, 35.06297, 55.659534, 29.75064, 58.30759, 24.151794, 60.39411, 18.320354, 61.89901, 12.312478, 62.80778, 6.1860266, 63.111683, 0)
+[node name="CraniumContour" type="Line2D" parent="ConstructionPanel/SharedProjection/Step1CraniumVolume"]
+points = PackedVector2Array(-61.105495, -1.7058982, -60.687943, -7.9793043, -59.637894, -14.228209, -59.376152, -15.374864, -57.737675, -21.38654, -55.496162, -27.239788, -52.672253, -32.871464, -52.168175, -33.723305, -48.87745, -38.92644, -45.06656, -43.795464, -44.474968, -44.455685, -40.314026, -48.79064, -39.647587, -49.375343, -35.220406, -53.125713, -34.57844, -53.606064, -29.969028, -56.723984, -29.448542, -57.07173, -28.833963, -57.448017, -28.131674, -57.84914, -27.348722, -58.27125, -26.49278, -58.710358, -23.260872, -60.33229, -22.796015, -60.560474, -22.301537, -60.793648, -21.7821, -61.029633, -21.24258, -61.266235, -20.688007, -61.501263, -20.123528, -61.73254, -19.554365, -61.957943, -18.985777, -62.17538, -18.423012, -62.382862, -17.871267, -62.57846, -17.335644, -62.76037, -16.82112, -62.926876, -16.33248, -63.076435, -12.860004, -64.11149, -11.953982, -64.37096, -11.114243, -64.59243, -10.348677, -64.77371, -9.664642, -64.91295, -9.068872, -65.008606, -3.6874733, -65.86428, -2.9280455, -65.942474, 2.6799798, -66.2032, 3.5125668, -66.21914, 9.253661, -65.86991, 10.069385, -65.77838, 15.852087, -64.806496, 21.442665, -63.24938, 22.29733, -62.958725, 27.788782, -60.788605, 32.985527, -58.080616, 37.84098, -54.867905, 38.687206, -54.205254, 43.2608, -50.443382, 47.404068, -46.252552, 51.081615, -41.678032, 54.263298, -36.767834, 54.936436, -35.528366, 57.641228, -30.248117, 59.792164, -24.742868, 61.37418, -19.0681, 62.378006, -13.279794, 62.611027, -11.519798, 63.032063, -5.6467366, 62.863335, 0.20673153, 62.113037, 5.9844694, 61.823647, 7.9681406, 60.50834, 13.557679, 58.642643, 18.937387, 57.92014, 20.941793, 55.57194, 25.930075, 54.490036, 27.93381, 51.74663, 32.410343, 50.40365, 34.33199, 47.370045, 38.18656, 45.880627, 39.94903, 44.10149, 41.75749, 41.16079, 44.62475, 39.42131, 46.179737, 37.470295, 47.73649, 35.326706, 49.27771, 33.184196, 50.735085, 31.32325, 51.94798, 29.348202, 53.11842, 27.28016, 54.233173, 25.14165, 55.279533, 22.95627, 56.24558, 20.748367, 57.120316, 18.542627, 57.893894, 16.363716, 58.557755, 14.235869, 59.104755, 11.684282, 59.71667, 9.12734, 60.245132, 6.695567, 60.614834, 4.415437, 60.82294, 0.32565293, 61.031273, -2.1629133, 61.084896, -4.4105196, 60.94675, -9.25786, 60.5045, -11.513462, 60.132477, -16.58858, 59.002018, -18.71315, 58.36063, -23.86243, 56.533703, -28.829996, 54.077385, -30.794462, 53.09553, -35.603535, 49.989147, -40.092655, 46.307037, -41.643448, 45.017124, -45.770443, 40.7882, -49.456345, 36.074142, -50.423164, 34.553337, -53.59698, 29.438461, -56.23755, 23.956272, -58.310207, 18.161875, -59.786533, 12.115334, -60.048576, 10.64531, -60.89004, 4.5243816, -61.105495, -1.7058982, -61.105495, -1.7058982)
 width = 2.2
 default_color = Color(0.85882354, 0.91764706, 1, 1)
 joint_mode = 2
 antialiased = true
 
-[node name="Step2SidePlaneCut" type="Node2D" parent="ConstructionPanel/SharedProjection" unique_id=162586562]
+[node name="Step2SidePlaneCut" type="Node2D" parent="ConstructionPanel/SharedProjection"]
 
-[node name="SidePlaneEllipse" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step2SidePlaneCut" unique_id=2127261045]
+[node name="SidePlaneEllipse" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step2SidePlaneCut"]
 color = Color(0.94, 0.57, 0.38, 0.28)
-polygon = PackedVector2Array(10.118464, -55.8102, 7.4519734, -53.805954, 4.9492245, -51.266903, 2.6424303, -48.206863, 0.56284, -44.647278, -1.2599216, -40.617462, -2.798563, -36.154675, -4.028824, -31.303982, -4.9301615, -26.117796, -5.4863806, -20.655256, -5.686189, -14.981292, -5.523611, -9.165453, -4.9982815, -3.2805877, -4.115557, 2.5986807, -2.886477, 8.397522, -1.3275247, 14.04252, 0.5397572, 19.463211, 2.6893215, 24.59354, 5.0912547, 29.373125, 7.7125325, 33.7483, 10.5178175, 37.6729, 13.470277, 41.108837, 16.532364, 44.0263, 19.666567, 46.40382, 22.836082, 48.228054, 26.005405, 49.49336, 29.140806, 50.201256, 32.210697, 50.3598, 35.185944, 49.98278, 38.04, 49.089046, 40.749054, 47.701664, 43.292004, 45.847244, 45.65044, 43.555225, 47.808556, 40.857243, 49.753002, 37.786587, 51.472763, 34.37774, 52.958973, 30.665926, 54.20475, 26.686838, 55.205044, 22.476347, 55.956455, 18.070326, 56.457123, 13.5045, 56.70656, 8.814372, 56.70557, 4.0351896, 56.456165, -0.7981177, 55.9615, -5.6508527, 55.225803, -10.488585, 54.2544, -15.277072, 53.053677, -19.98224, 51.63115, -24.570137, 49.99545, -29.006907, 48.156437, -33.258812, 46.125233, -37.292233, 43.914326, -41.073742, 41.53766, -44.57021, 39.01072, -47.748947, 36.35064, -50.577953, 33.576267, -53.02613, 30.708239, -55.063667, 27.76902, -56.662422, 24.782911, -57.796436, 21.776003, -58.442425, 18.77611, -58.580418, 15.812585, -58.1944, 12.916128, -57.273006)
+polygon = PackedVector2Array(10.54067, -58.290417, 7.6331034, -56.15904, 4.8805256, -53.4924, 2.3182063, -50.304466, -0.019186264, -46.617, -2.0982924, -42.459866, -3.8878596, -37.871197, -5.359534, -32.89721, -6.4886765, -27.591871, -7.2551193, -22.016172, -7.6438375, -16.237196, -7.6455183, -10.326908, -7.256959, -4.3606906, -6.4812827, 1.5842407, -5.327977, 7.4305663, -3.812689, 13.102599, -1.9568592, 18.527962, 0.21286595, 23.639145, 2.665301, 28.374876, 5.3655972, 32.681213, 8.276098, 36.512386, 11.35729, 39.831333, 14.568691, 42.609898, 17.869713, 44.828823, 21.220446, 46.477425, 24.582315, 47.5531, 27.91866, 48.060684, 31.195162, 48.01164, 34.380142, 47.423256, 37.44483, 46.31779, 40.363388, 44.72159, 43.112984, 42.664307, 45.67373, 40.178165, 48.02854, 37.297283, 50.163044, 34.05707, 52.065346, 30.493773, 53.72585, 26.64404, 55.137096, 22.544632, 56.29352, 18.23215, 57.191296, 13.742864, 57.828163, 9.112636, 58.203266, 4.37681, 58.317055, -0.4297725, 58.17116, -5.272765, 57.76833, -10.118279, 57.112366, -14.932812, 56.20811, -19.683205, 55.06146, -24.336548, 53.67933, -28.860128, 52.06979, -33.22139, 50.242043, -37.387882, 48.20657, -41.327305, 45.975197, -45.007492, 43.561222, -48.396526, 40.979527, -51.46287, 38.246696, -54.17554, 35.381138, -56.50437, 32.403175, -58.420345, 29.335148, -59.895977, 26.201427, -60.90578, 23.028461, -61.426838, 19.844711, -61.43939, 16.680534, -60.927532, 13.568013, -59.879898)
 
-[node name="SidePlaneContour" type="Line2D" parent="ConstructionPanel/SharedProjection/Step2SidePlaneCut" unique_id=1692365147]
-points = PackedVector2Array(10.118464, -55.8102, 7.4519734, -53.805954, 4.9492245, -51.266903, 2.6424303, -48.206863, 0.56284, -44.647278, -1.2599216, -40.617462, -2.798563, -36.154675, -4.028824, -31.303982, -4.9301615, -26.117796, -5.4863806, -20.655256, -5.686189, -14.981292, -5.523611, -9.165453, -4.9982815, -3.2805877, -4.115557, 2.5986807, -2.886477, 8.397522, -1.3275247, 14.04252, 0.5397572, 19.463211, 2.6893215, 24.59354, 5.0912547, 29.373125, 7.7125325, 33.7483, 10.5178175, 37.6729, 13.470277, 41.108837, 16.532364, 44.0263, 19.666567, 46.40382, 22.836082, 48.228054, 26.005405, 49.49336, 29.140806, 50.201256, 32.210697, 50.3598, 35.185944, 49.98278, 38.04, 49.089046, 40.749054, 47.701664, 43.292004, 45.847244, 45.65044, 43.555225, 47.808556, 40.857243, 49.753002, 37.786587, 51.472763, 34.37774, 52.958973, 30.665926, 54.20475, 26.686838, 55.205044, 22.476347, 55.956455, 18.070326, 56.457123, 13.5045, 56.70656, 8.814372, 56.70557, 4.0351896, 56.456165, -0.7981177, 55.9615, -5.6508527, 55.225803, -10.488585, 54.2544, -15.277072, 53.053677, -19.98224, 51.63115, -24.570137, 49.99545, -29.006907, 48.156437, -33.258812, 46.125233, -37.292233, 43.914326, -41.073742, 41.53766, -44.57021, 39.01072, -47.748947, 36.35064, -50.577953, 33.576267, -53.02613, 30.708239, -55.063667, 27.76902, -56.662422, 24.782911, -57.796436, 21.776003, -58.442425, 18.77611, -58.580418, 15.812585, -58.1944, 12.916128, -57.273006, 10.118464, -55.8102)
+[node name="SidePlaneContour" type="Line2D" parent="ConstructionPanel/SharedProjection/Step2SidePlaneCut"]
+points = PackedVector2Array(10.54067, -58.290417, 7.6331034, -56.15904, 4.8805256, -53.4924, 2.3182063, -50.304466, -0.019186264, -46.617, -2.0982924, -42.459866, -3.8878596, -37.871197, -5.359534, -32.89721, -6.4886765, -27.591871, -7.2551193, -22.016172, -7.6438375, -16.237196, -7.6455183, -10.326908, -7.256959, -4.3606906, -6.4812827, 1.5842407, -5.327977, 7.4305663, -3.812689, 13.102599, -1.9568592, 18.527962, 0.21286595, 23.639145, 2.665301, 28.374876, 5.3655972, 32.681213, 8.276098, 36.512386, 11.35729, 39.831333, 14.568691, 42.609898, 17.869713, 44.828823, 21.220446, 46.477425, 24.582315, 47.5531, 27.91866, 48.060684, 31.195162, 48.01164, 34.380142, 47.423256, 37.44483, 46.31779, 40.363388, 44.72159, 43.112984, 42.664307, 45.67373, 40.178165, 48.02854, 37.297283, 50.163044, 34.05707, 52.065346, 30.493773, 53.72585, 26.64404, 55.137096, 22.544632, 56.29352, 18.23215, 57.191296, 13.742864, 57.828163, 9.112636, 58.203266, 4.37681, 58.317055, -0.4297725, 58.17116, -5.272765, 57.76833, -10.118279, 57.112366, -14.932812, 56.20811, -19.683205, 55.06146, -24.336548, 53.67933, -28.860128, 52.06979, -33.22139, 50.242043, -37.387882, 48.20657, -41.327305, 45.975197, -45.007492, 43.561222, -48.396526, 40.979527, -51.46287, 38.246696, -54.17554, 35.381138, -56.50437, 32.403175, -58.420345, 29.335148, -59.895977, 26.201427, -60.90578, 23.028461, -61.426838, 19.844711, -61.43939, 16.680534, -60.927532, 13.568013, -59.879898, 10.54067, -58.290417)
 width = 2.0
 default_color = Color(0.9490196, 0.627451, 0.43529412, 1)
 joint_mode = 2
 antialiased = true
 
-[node name="SidePlaneVerticalAxis" type="Line2D" parent="ConstructionPanel/SharedProjection/Step2SidePlaneCut" unique_id=402089364]
-points = PackedVector2Array(45.65044, 43.555225, 10.118464, -55.8102)
+[node name="SidePlaneVerticalAxis" type="Line2D" parent="ConstructionPanel/SharedProjection/Step2SidePlaneCut"]
+points = PackedVector2Array(45.67373, 40.17817, 10.54067, -58.290417)
 width = 1.2
 default_color = Color(1, 0.8, 0.61, 0.82)
 joint_mode = 2
 antialiased = true
 
-[node name="SidePlaneDepthAxis" type="Line2D" parent="ConstructionPanel/SharedProjection/Step2SidePlaneCut" unique_id=1781233790]
-points = PackedVector2Array(51.63115, -24.570137, 0.5397572, 19.463211)
+[node name="SidePlaneDepthAxis" type="Line2D" parent="ConstructionPanel/SharedProjection/Step2SidePlaneCut"]
+points = PackedVector2Array(53.67933, -28.860128, -1.9568592, 18.527962)
 width = 1.2
 default_color = Color(1, 0.72, 0.48, 0.7)
 joint_mode = 2
 antialiased = true
 
-[node name="Step3Midlines" type="Node2D" parent="ConstructionPanel/SharedProjection" unique_id=1708334109]
+[node name="Step3Midlines" type="Node2D" parent="ConstructionPanel/SharedProjection"]
 
-[node name="VerticalCenterLine" type="Line2D" parent="ConstructionPanel/SharedProjection/Step3Midlines" unique_id=987759856]
-points = PackedVector2Array(-22.07327, -58.62618, -23.797394, -57.567738, -25.47976, -56.352722, -27.115068, -54.982006, -28.698015, -53.456978, -30.22331, -51.779625, -31.68571, -49.95248, -33.080055, -47.978695, -34.40127, -45.862007, -35.64443, -43.6068, -36.804752, -41.21805, -37.87767, -38.70135, -38.858837, -36.062943, -39.744167, -33.309647, -40.52986, -30.448875, -41.212444, -27.488605, -41.788784, -24.437357, -42.256145, -21.30415, -42.612167, -18.098469, -42.85494, -14.830238, -42.982983, -11.509738, -42.995277, -8.147588, -42.89128, -4.7546587, -42.67094, -1.3420367, -42.334675, 2.079047, -41.88342, 5.4972906, -41.31856, 8.901374, -40.642, 12.280025, -39.856075, 15.622101, -38.963604, 18.916636, -37.96782, 22.152914, -36.872368, 25.32052, -35.6813, 28.409409, -34.399002, 31.409946, -33.0302, 34.312965, -31.579916, 37.109806, -30.053417, 39.792355, -28.456219, 42.353073, -26.794008, 44.785038, -25.072626, 47.08194, -23.298042, 49.23812, -21.476297, 51.248577, -19.613483, 53.10894, -17.715696, 54.81552, -15.789033, 56.36526, -13.839527, 57.75574, -11.873142, 58.98518, -9.895743, 60.052376, -7.9130645, 60.956726, -5.930706, 61.698174, -3.9540896, 62.277203, -1.9884769, 62.694805, -0.038920265, 62.95242, 1.8897254, 63.05193, 3.7928138, 62.99565, 5.665926, 62.78625, 7.504856, 62.426746, 9.305641, 61.920483, 11.064537, 61.271053, 12.778023, 60.482346, 14.442813, 59.558426, 16.055843, 58.503605, 17.614267, 57.322327, 19.115452, 56.019188, 20.556974, 54.598923)
+[node name="VerticalCenterLine" type="Line2D" parent="ConstructionPanel/SharedProjection/Step3Midlines"]
+points = PackedVector2Array(-19.708864, -61.416798, -21.580261, -60.284748, -23.41356, -58.99518, -25.20303, -57.54891, -26.942904, -55.947327, -28.627396, -54.192383, -30.250721, -52.28662, -31.807142, -50.233208, -33.29099, -48.035942, -34.696697, -45.699272, -36.01885, -43.22827, -37.252182, -40.628693, -38.39167, -37.906925, -39.432518, -35.069996, -40.370228, -32.12556, -41.200615, -29.081871, -41.91987, -25.94775, -42.524544, -22.732576, -43.011642, -19.446209, -43.378605, -16.09897, -43.623356, -12.701591, -43.744316, -9.265136, -43.74042, -5.800957, -43.61115, -2.3206296, -43.356518, 1.1641221, -42.97709, 4.641493, -42.473972, 8.0996685, -41.848827, 11.526905, -41.10385, 14.911591, -40.241737, 18.242321, -39.265705, 21.50797, -38.17945, 24.69776, -36.987106, 27.801308, -35.693226, 30.80871, -34.302757, 33.710556, -32.821, 36.498024, -31.253551, 39.162872, -29.606281, 41.697506, -27.885303, 44.095005, -26.096909, 46.34913, -24.247526, 48.454327, -22.343704, 50.40578, -20.392054, 52.19936, -18.399208, 53.83166, -16.371792, 55.29997, -14.316384, 56.602238, -12.23949, 57.737114, -10.147498, 58.703857, -8.0466795, 59.50235, -5.9431305, 60.133068, -3.842778, 60.597027, -1.7513454, 60.895756, 0.32565293, 61.031273, 2.38293, 61.006042, 4.415437, 60.82294, 6.418372, 60.485203, 8.387175, 59.996414, 10.317547, 59.360455, 12.205437, 58.581486, 14.0470495, 57.66388, 15.838838, 56.612236, 17.577507, 55.43131, 19.259995, 54.126007, 20.88348, 52.701366, 22.44537, 51.162502)
 width = 2.1
 default_color = Color(0.36862746, 0.8784314, 0.9254902, 1)
 joint_mode = 2
 antialiased = true
 
-[node name="BrowMidline" type="Line2D" parent="ConstructionPanel/SharedProjection/Step3Midlines" unique_id=534886571]
-points = PackedVector2Array(53.822502, -8.669595, 52.337425, -7.3387856, 50.69705, -5.973934, 48.904057, -4.578798, 46.96182, -3.1573694, 44.874435, -1.713863, 42.6467, -0.25269654, 40.28414, 1.22153, 37.793007, 2.7040486, 35.18023, 4.189953, 32.45342, 5.6742287, 29.62083, 7.151774, 26.691341, 8.617434, 23.674395, 10.066032, 20.579939, 11.492413, 17.418404, 12.891462, 14.200598, 14.258145, 10.937681, 15.587547, 7.641066, 16.874907, 4.3223505, 18.115639, 0.9932472, 19.305374, -2.3344946, 20.439991, -5.6491823, 21.515627, -8.939236, 22.52872, -12.193271, 23.476015, -15.400183, 24.354597, -18.549196, 25.161888, -21.629934, 25.895662, -24.63249, 26.554062, -27.547451, 27.13559, -30.36597, 27.639112, -33.079796, 28.063858, -35.6813, 28.409409, -38.163494, 28.675684, -40.520077, 28.862938, -42.745403, 28.97174, -44.834526, 29.002962, -46.783173, 28.957748, -48.58773, 28.837513, -50.245262, 28.6439, -51.753464, 28.37878, -53.110653, 28.044226, -54.315723, 27.642466, -55.36816, 27.175901, -56.267952, 26.647064, -57.01561, 26.058586, -57.612106, 25.413206, -58.058853, 24.713728, -58.35764, 23.963017, -58.510654, 23.163975, -58.520363, 22.319532, -58.389584, 21.43263, -58.12136, 20.506205, -57.71898, 19.543184, -57.185944, 18.546469, -56.525917, 17.518936, -55.74272, 16.463411, -54.840298, 15.382687, -53.8227, 14.279495, -52.69406, 13.156519, -51.458565, 12.016379, -50.120476, 10.861633, -48.68406, 9.694781, -47.153614, 8.518251, -45.533455, 7.3344154)
+[node name="BrowMidline" type="Line2D" parent="ConstructionPanel/SharedProjection/Step3Midlines"]
+points = PackedVector2Array(52.19166, -11.443283, 50.581, -10.017282, 48.82298, -8.556076, 46.920475, -7.0635962, 44.877033, -5.5440283, 42.696896, -4.0017953, 40.385002, -2.4415507, 37.94697, -0.86815053, 35.38915, 0.7133605, 32.71853, 2.2977753, 29.942785, 3.8797603, 27.070234, 5.4538646, 24.109772, 7.014578, 21.07087, 8.55635, 17.963512, 10.073624, 14.798133, 11.560885, 11.585575, 13.01269, 8.337001, 14.423705, 5.063832, 15.788752, 1.7776744, 17.10283, -1.5097497, 18.361174, -4.786702, 19.559256, -8.041496, 20.69285, -11.262576, 21.758038, -14.438593, 22.751244, -17.558485, 23.669247, -20.611542, 24.509205, -23.587484, 25.26868, -26.476507, 25.945618, -29.269339, 26.538382, -31.957308, 27.045734, -34.532364, 27.466854, -36.987106, 27.801308, -39.314823, 28.049055, -41.509506, 28.210423, -43.56587, 28.28611, -45.479332, 28.277142, -47.246025, 28.184866, -48.862804, 28.010935, -50.327198, 27.75727, -51.6374, 27.426039, -52.79227, 27.01963, -53.791267, 26.540644, -54.634438, 25.991838, -55.322384, 25.376135, -55.856224, 24.696562, -56.23755, 23.956272, -56.468384, 23.158476, -56.551167, 22.30646, -56.488697, 21.403534, -56.28409, 20.45305, -55.940754, 19.458351, -55.462357, 18.422775, -54.852783, 17.349638, -54.116108, 16.242226, -53.25655, 15.103764, -52.27849, 13.9374485, -51.186382, 12.746395, -49.984768, 11.533664, -48.678265, 10.302236, -47.27152, 9.05502, -45.769188, 7.7948465, -44.175953, 6.524464, -42.49648, 5.2465386, -40.735424, 3.963656)
 width = 2.1
 default_color = Color(0.9411765, 0.6039216, 0.7529412, 1)
 joint_mode = 2
 antialiased = true
 
-[node name="FrontCenterIntersection" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step3Midlines" unique_id=2111323593]
+[node name="FrontCenterIntersection" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step3Midlines"]
 position = Vector2(-35.6813, 28.409409)
 color = Color(1, 0.9529412, 0.65882355, 1)
 polygon = PackedVector2Array(0, -2.8, 2.8, 0, 0, 2.8, -2.8, 0)
 
-[node name="Step4FaceGuidesAndJaw" type="Node2D" parent="ConstructionPanel/SharedProjection" unique_id=1749142282]
+[node name="Step4FaceGuidesAndJaw" type="Node2D" parent="ConstructionPanel/SharedProjection"]
 
-[node name="FaceCenterDescent" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=457536236]
+[node name="FaceCenterDescent" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
 points = PackedVector2Array(-35.6813, 28.409409, -17.520422, 68.08026, 2.226166, 107.16596)
 width = 1.8
 default_color = Color(0.96862745, 0.83137256, 0.53333336, 1)
 joint_mode = 2
 antialiased = true
 
-[node name="BrowGuide" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=678627730]
+[node name="BrowGuide" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
 points = PackedVector2Array(-83.06791, 34.10963, 21.45005, 21.536972)
 width = 1.4
 default_color = Color(0.94, 0.6, 0.75, 0.68)
 joint_mode = 2
 antialiased = true
 
-[node name="NoseGuide" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=1208529106]
+[node name="NoseGuide" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
 points = PackedVector2Array(-52.57354, 69.73992, 22.411568, 66.189606)
 width = 1.4
 default_color = Color(0.91, 0.73, 0.48, 0.76)
 joint_mode = 2
 antialiased = true
 
-[node name="ChinGuide" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=183324543]
+[node name="ChinGuide" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
 points = PackedVector2Array(-9.925927, 106.92195, 14.897105, 107.42039)
 width = 1.4
 default_color = Color(0.96, 0.84, 0.54, 0.82)
 joint_mode = 2
 antialiased = true
 
-[node name="ConceptualFarSideEllipse" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=1576953648]
-points = PackedVector2Array(-44.196743, -42.168247, -47.076813, -40.23189, -49.791656, -37.81595, -52.307453, -34.93521, -54.591377, -31.611172, -56.612267, -27.87214, -58.34132, -23.75326, -59.752785, -19.296295, -60.824623, -14.549204, -61.53915, -9.565542, -61.883556, -4.4036574, -61.850357, 0.87437505, -61.437675, 6.2038236, -60.64939, 11.518643, -59.495113, 16.752764, -57.98999, 21.841463, -56.15439, 26.722647, -54.013363, 31.338062, -51.59609, 35.634377, -48.935146, 39.56405, -46.065758, 43.08601, -43.02501, 46.16615, -39.85108, 48.77755, -36.582493, 50.900555, -33.257423, 52.52259, -29.91311, 53.637905, -26.585318, 54.24709, -23.307922, 54.356606, -20.112576, 53.978115, -17.028482, 53.12792, -14.082233, 51.82626, -11.297745, 50.096733, -8.696243, 47.965687, -6.2963104, 45.461647, -4.1139703, 42.614864, -2.1628034, 39.45685, -0.45408165, 36.020023, 1.0030805, 32.3374, 2.2015867, 28.44233, 3.1362062, 24.368338, 3.8034399, 20.148928, 4.2013974, 15.81752, 4.329699, 11.407374, 4.18938, 6.9515333, 3.7828317, 2.4828355, 3.1137488, -1.9661103, 2.1871176, -6.362901, 1.0092051, -10.675344, -0.4124174, -14.871441, -2.0688508, -18.919407, -3.9497998, -22.787695, -6.043514, -26.445051, -8.336713, -29.860584, -10.814508, -33.003918, -13.460313, -35.84531, -16.255758, -38.35592, -19.180632, -40.508026, -22.212835, -42.27536, -25.328344, -43.633476, -28.501219, -44.560215, -31.703684, -45.036118, -34.9062, -45.04501, -38.07768, -44.574497, -41.185673, -43.616592, -44.196743, -42.168247)
+[node name="ConceptualFarSideEllipse" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
+points = PackedVector2Array(-40.30376, -45.319626, -43.432224, -43.25037, -46.403915, -40.697872, -49.181858, -37.677254, -51.729748, -34.210537, -54.012615, -30.32684, -55.99767, -26.062433, -57.655033, -21.460522, -58.95857, -16.570875, -59.88662, -11.449166, -60.422684, -6.1561193, -60.555935, -0.75644374, -60.281685, 4.6824174, -59.601597, 10.091657, -58.52372, 15.402571, -57.062374, 20.548006, -55.2378, 25.463802, -53.075634, 30.09008, -50.6063, 34.37241, -47.86417, 38.262753, -44.886765, 41.72016, -41.713844, 44.711273, -38.38652, 47.21052, -34.946407, 49.20012, -31.434837, 50.669853, -27.89216, 51.61668, -24.357136, 52.044216, -20.866459, 51.96207, -17.454397, 51.38518, -14.152494, 50.333076, -10.989449, 48.829147, -7.9910016, 46.899963, -5.1799583, 44.57461, -2.5762384, 41.88412, -0.19699155, 38.860912, 1.9432683, 35.538376, 3.832487, 31.950468, 5.460912, 28.131445, 6.820897, 24.115576, 7.9067426, 19.936983, 8.714534, 15.629535, 9.241983, 11.226732, 9.488331, 6.7616873, 9.454216, 2.2671082, 9.141613, -2.2246938, 8.553772, -6.681767, 7.6951866, -11.072507, 6.571602, -15.365594, 5.1900024, -19.529976, 3.5586967, -23.534857, 1.6873271, -27.349691, -0.41300726, -30.944216, -2.7296906, -34.28851, -5.248465, -37.353085, -7.9533386, -40.10905, -10.826461, -42.528297, -13.848037, -44.583736, -16.996222, -46.24963, -20.247065, -47.501953, -23.574478, -48.318798, -26.950245, -48.68091, -30.344093, -48.57217, -33.72382, -47.980232, -37.055492, -46.89707, -40.30376, -45.319626)
 width = 1.0
 default_color = Color(0.95, 0.49, 0.39, 0.2)
 joint_mode = 2
 antialiased = true
 
-[node name="FacialPlane" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=626312606]
-points = PackedVector2Array(-56.15439, 26.722647, 0.5397572, 19.463211, 14.897105, 107.42039, -9.925927, 106.92195, -56.15439, 26.722647)
+[node name="FacialPlane" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
+points = PackedVector2Array(-56.266445, 27.76405, -2.8840806, 21.031143, 14.897105, 107.42039, -9.925927, 106.92195, -56.266445, 27.76405)
 width = 1.5
 default_color = Color(0.48, 0.85, 0.94, 0.48)
 joint_mode = 2
 antialiased = true
 
-[node name="FacialPlaneMass" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=1500511753]
+[node name="FacialPlaneMass" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
 color = Color(0.48, 0.85, 0.94, 0.055)
-polygon = PackedVector2Array(-56.15439, 26.722647, 0.5397572, 19.463211, 14.897105, 107.42039, -9.925927, 106.92195)
+polygon = PackedVector2Array(-56.266445, 27.76405, -2.8840806, 21.031143, 14.897105, 107.42039, -9.925927, 106.92195)
 
-[node name="EyeCavity1UpperPlaneMass" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=1281306192]
+[node name="EyeCavity1UpperPlaneMass" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
 color = Color(0.31, 0.2, 0.48, 0.34)
-polygon = PackedVector2Array(-52.713585, 28.153286, -41.263466, 28.907166, -35.27326, 35.231316, -44.413242, 36.21784)
+polygon = PackedVector2Array(-52.235336, 28.271912, -40.52678, 28.86337, -34.48075, 35.145775, -43.64659, 36.135086)
 
-[node name="EyeCavity1UpperPlane" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=2044640924]
-points = PackedVector2Array(-52.713585, 28.153286, -41.263466, 28.907166, -35.27326, 35.231316, -44.413242, 36.21784, -52.713585, 28.153286)
+[node name="EyeCavity1UpperPlane" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
+points = PackedVector2Array(-52.235336, 28.271912, -40.52678, 28.86337, -34.48075, 35.145775, -43.64659, 36.135086, -52.235336, 28.271912)
 width = 1.7
 default_color = Color(0.72, 0.55, 0.92, 0.72)
 joint_mode = 2
 antialiased = true
 
-[node name="EyeCavity1LowerPlaneMass" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=1928653873]
+[node name="EyeCavity1LowerPlaneMass" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
 color = Color(0.5, 0.34, 0.68, 0.27)
-polygon = PackedVector2Array(-44.413242, 36.21784, -35.27326, 35.231316, -32.30784, 49.038113, -47.135986, 50.26386)
+polygon = PackedVector2Array(-43.64659, 36.135086, -34.48075, 35.145775, -31.502419, 48.97154, -46.372757, 50.200768)
 
-[node name="EyeCavity1LowerPlane" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=743761843]
-points = PackedVector2Array(-44.413242, 36.21784, -35.27326, 35.231316, -32.30784, 49.038113, -47.135986, 50.26386, -44.413242, 36.21784)
+[node name="EyeCavity1LowerPlane" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
+points = PackedVector2Array(-43.64659, 36.135086, -34.48075, 35.145775, -31.502419, 48.97154, -46.372757, 50.200768, -43.64659, 36.135086)
 width = 1.7
 default_color = Color(0.72, 0.55, 0.92, 0.72)
 joint_mode = 2
 antialiased = true
 
-[node name="EyeCavity2UpperPlaneMass" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=2094616856]
+[node name="EyeCavity2UpperPlaneMass" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
 color = Color(0.31, 0.2, 0.48, 0.34)
-polygon = PackedVector2Array(-29.45419, 27.482878, -9.9341135, 22.824188, -7.5800824, 32.242252, -17.644913, 33.3286)
+polygon = PackedVector2Array(-30.357882, 27.637754, -11.083607, 23.15919, -8.450952, 32.33625, -18.486036, 33.419388)
 
-[node name="EyeCavity2UpperPlane" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=1884379155]
-points = PackedVector2Array(-29.45419, 27.482878, -9.9341135, 22.824188, -7.5800824, 32.242252, -17.644913, 33.3286, -29.45419, 27.482878)
+[node name="EyeCavity2UpperPlane" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
+points = PackedVector2Array(-30.357882, 27.637754, -11.083607, 23.15919, -8.450952, 32.33625, -18.486036, 33.419388, -30.357882, 27.637754)
 width = 1.7
 default_color = Color(0.72, 0.55, 0.92, 0.72)
 joint_mode = 2
 antialiased = true
 
-[node name="EyeCavity2LowerPlaneMass" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=1293939840]
+[node name="EyeCavity2LowerPlaneMass" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
 color = Color(0.5, 0.34, 0.68, 0.27)
-polygon = PackedVector2Array(-17.644913, 33.3286, -7.5800824, 32.242252, -4.1487355, 46.710384, -20.486565, 48.060925)
+polygon = PackedVector2Array(-18.486036, 33.419388, -8.450952, 32.33625, -5.034724, 46.783623, -21.323967, 48.130146)
 
-[node name="EyeCavity2LowerPlane" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=1171790700]
-points = PackedVector2Array(-17.644913, 33.3286, -7.5800824, 32.242252, -4.1487355, 46.710384, -20.486565, 48.060925, -17.644913, 33.3286)
+[node name="EyeCavity2LowerPlane" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
+points = PackedVector2Array(-18.486036, 33.419388, -8.450952, 32.33625, -5.034724, 46.783623, -21.323967, 48.130146, -18.486036, 33.419388)
 width = 1.7
 default_color = Color(0.72, 0.55, 0.92, 0.72)
 joint_mode = 2
 antialiased = true
 
-[node name="NoseBlockMass" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=1282965754]
+[node name="NoseBlockMass" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
 color = Color(0.92, 0.58, 0.35, 0.2)
 polygon = PackedVector2Array(-31.033878, 38.5613, -8.032635, 67.63104, -26.704493, 68.51511)
 
-[node name="NoseBlock" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=1676884605]
+[node name="NoseBlock" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
 points = PackedVector2Array(-31.033878, 38.5613, -8.032635, 67.63104, -26.704493, 68.51511, -31.033878, 38.5613)
 width = 1.8
 default_color = Color(0.97, 0.67, 0.4, 0.82)
 joint_mode = 2
 antialiased = true
 
-[node name="MouthBottomGuide" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=836861479]
+[node name="MouthBottomGuide" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
 points = PackedVector2Array(-18.639885, 88.123, 4.1550727, 87.8394)
 width = 1.7
 default_color = Color(0.93, 0.48, 0.56, 0.78)
 joint_mode = 2
 antialiased = true
 
-[node name="NearJawline" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=1408664468]
-points = PackedVector2Array(45.65044, 43.555225, 14.897105, 107.42039)
+[node name="NearJawline" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
+points = PackedVector2Array(43.872932, 43.69948, 14.897105, 107.42039)
 width = 2.5
 default_color = Color(0.9607843, 0.78431374, 0.47058824, 1)
 joint_mode = 2
 antialiased = true
 
-[node name="FarJawline" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=1051416465]
-points = PackedVector2Array(-8.696243, 47.965687, -9.925927, 106.92195)
+[node name="FarJawline" type="Line2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
+points = PackedVector2Array(-7.2011237, 47.844353, -9.925927, 106.92195)
 width = 1.8
 default_color = Color(0.95, 0.79, 0.47, 0.42)
 joint_mode = 2
 antialiased = true
 
-[node name="NearEarJawHinge" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=227600479]
-position = Vector2(45.65044, 43.555225)
+[node name="NearEarJawHinge" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
+position = Vector2(43.872932, 43.69948)
 color = Color(0.9490196, 0.627451, 0.43529412, 1)
 polygon = PackedVector2Array(0, -3.1, 3.1, 0, 0, 3.1, -3.1, 0)
 
-[node name="ChinAnchor" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=911361730]
+[node name="ChinAnchor" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
 position = Vector2(2.226166, 107.16596)
 color = Color(1, 0.9529412, 0.65882355, 1)
 polygon = PackedVector2Array(0, -3.1, 3.1, 0, 0, 3.1, -3.1, 0)
 
-[node name="NearChinSide" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=1130841711]
+[node name="NearChinSide" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
 position = Vector2(14.897105, 107.42039)
 color = Color(1, 0.9529412, 0.65882355, 1)
 polygon = PackedVector2Array(0, -3.1, 3.1, 0, 0, 3.1, -3.1, 0)
 
-[node name="FarChinSide" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw" unique_id=681089820]
+[node name="FarChinSide" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step4FaceGuidesAndJaw"]
 position = Vector2(-9.925927, 106.92195)
 color = Color(1, 0.95, 0.66, 0.55)
 polygon = PackedVector2Array(0, -3.1, 3.1, 0, 0, 3.1, -3.1, 0)
 
-[node name="ConstructionCaption" type="Label" parent="ConstructionPanel" unique_id=968390704]
+[node name="Step5FeatureVolumes" type="Node2D" parent="ConstructionPanel/SharedProjection"]
+
+[node name="BrowTangentPlaneMass" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step5FeatureVolumes"]
+color = Color(0.96, 0.44, 0.48, 0.055)
+polygon = PackedVector2Array(-74.47533, 26.215834, 0.48051384, 16.20435, 15.500479, 55.722145, -59.66652, 60.61822)
+
+[node name="BrowTangentPlane" type="Line2D" parent="ConstructionPanel/SharedProjection/Step5FeatureVolumes"]
+points = PackedVector2Array(-74.47533, 26.215834, 0.48051384, 16.20435, 15.500479, 55.722145, -59.66652, 60.61822, -74.47533, 26.215834)
+width = 1.25
+default_color = Color(0.96, 0.44, 0.48, 0.58)
+joint_mode = 2
+antialiased = true
+
+[node name="EyeSphere1Mass" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step5FeatureVolumes"]
+color = Color(0.28, 0.88, 0.96, 0.18)
+polygon = PackedVector2Array(-53.486668, 42.337997, -53.463154, 41.49276, -53.148376, 38.86811, -52.28953, 36.35705, -51.913418, 35.60942, -50.625877, 33.476604, -50.061977, 32.821575, -48.50073, 31.215523, -47.941853, 30.732, -47.232018, 30.232052, -46.398514, 29.734467, -45.49264, 29.260914, -45.018356, 29.016666, -44.514164, 28.791973, -43.999115, 28.595299, -43.49264, 28.434067, -42.497997, 28.121803, -41.563297, 27.888094, -40.716553, 27.744019, -39.98975, 27.695293, -37.75264, 27.72717, -36.908703, 27.798025, -34.505993, 28.395805, -33.735634, 28.665445, -31.378836, 29.83106, -29.327124, 31.457422, -28.743261, 32.044666, -27.027573, 34.114014, -25.778994, 36.4795, -25.042723, 39.04972, -24.898846, 39.92755, -24.707916, 42.566906, -25.068346, 45.176945, -25.37679, 46.1022, -26.229185, 48.453735, -27.570261, 50.548164, -28.06319, 51.25796, -28.819567, 52.01933, -30.209793, 53.323685, -30.892145, 53.86272, -31.708683, 54.394295, -32.62758, 54.897316, -33.61263, 55.351738, -34.624756, 55.739403, -35.6237, 56.044903, -36.569798, 56.256195, -37.425694, 56.36514, -39.343575, 56.453125, -40.406605, 56.45682, -41.245792, 56.30627, -43.68613, 55.79691, -45.96353, 54.75099, -46.82018, 54.310604, -48.930496, 52.7222, -50.66837, 50.712757, -51.165485, 49.97624, -52.4632, 47.620434, -53.24791, 45.041153)
+
+[node name="EyeSphere1Contour" type="Line2D" parent="ConstructionPanel/SharedProjection/Step5FeatureVolumes"]
+points = PackedVector2Array(-53.486668, 42.337997, -53.463154, 41.49276, -53.148376, 38.86811, -52.28953, 36.35705, -51.913418, 35.60942, -50.625877, 33.476604, -50.061977, 32.821575, -48.50073, 31.215523, -47.941853, 30.732, -47.232018, 30.232052, -46.398514, 29.734467, -45.49264, 29.260914, -45.018356, 29.016666, -44.514164, 28.791973, -43.999115, 28.595299, -43.49264, 28.434067, -42.497997, 28.121803, -41.563297, 27.888094, -40.716553, 27.744019, -39.98975, 27.695293, -37.75264, 27.72717, -36.908703, 27.798025, -34.505993, 28.395805, -33.735634, 28.665445, -31.378836, 29.83106, -29.327124, 31.457422, -28.743261, 32.044666, -27.027573, 34.114014, -25.778994, 36.4795, -25.042723, 39.04972, -24.898846, 39.92755, -24.707916, 42.566906, -25.068346, 45.176945, -25.37679, 46.1022, -26.229185, 48.453735, -27.570261, 50.548164, -28.06319, 51.25796, -28.819567, 52.01933, -30.209793, 53.323685, -30.892145, 53.86272, -31.708683, 54.394295, -32.62758, 54.897316, -33.61263, 55.351738, -34.624756, 55.739403, -35.6237, 56.044903, -36.569798, 56.256195, -37.425694, 56.36514, -39.343575, 56.453125, -40.406605, 56.45682, -41.245792, 56.30627, -43.68613, 55.79691, -45.96353, 54.75099, -46.82018, 54.310604, -48.930496, 52.7222, -50.66837, 50.712757, -51.165485, 49.97624, -52.4632, 47.620434, -53.24791, 45.041153, -53.486668, 42.337997, -53.486668, 42.337997)
+width = 1.65
+default_color = Color(0.37, 0.94, 1, 0.86)
+joint_mode = 2
+antialiased = true
+
+[node name="EyeSphere1Center" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step5FeatureVolumes"]
+position = Vector2(-39.073917, 42.030266)
+color = Color(0.52, 0.97, 1, 0.94)
+polygon = PackedVector2Array(0, -3.1, 3.1, 0, 0, 3.1, -3.1, 0)
+
+[node name="EyeSphere2Mass" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step5FeatureVolumes"]
+color = Color(0.28, 0.88, 0.96, 0.18)
+polygon = PackedVector2Array(-16.35728, 37.784264, -15.955322, 34.971687, -15.6753845, 34.041576, -14.740865, 31.499487, -13.272832, 29.209208, -12.794759, 28.523315, -12.038579, 27.78429, -10.478846, 26.283953, -9.786674, 25.757496, -8.948477, 25.231998, -7.9960303, 24.726994, -6.9649677, 24.261143, -5.893567, 23.851624, -4.821482, 23.513588, -3.7884336, 23.259647, -2.8329074, 23.099468, -1.9908584, 23.039396, 0.22963513, 23.094305, 1.2436107, 23.156378, 3.6776538, 23.811386, 4.6610327, 24.080387, 7.081002, 25.33785, 7.835333, 25.87163, 10.028732, 27.688772, 11.790703, 29.908531, 13.056293, 32.443897, 13.46032, 33.359554, 14.18017, 36.110832, 14.314292, 38.938786, 14.179617, 40.00368, 13.737316, 42.705574, 12.730351, 45.227554, 12.22953, 46.17383, 10.804252, 48.222427, 10.113357, 49.027298, 9.153657, 49.85705, 7.797404, 51.005657, 6.979078, 51.56994, 6.0348387, 52.10498, 5.0018992, 52.589397, 3.921295, 53.003796, 2.8361027, 53.331654, 1.7895346, 53.560024, 0.8230418, 53.680115, -1.0248022, 53.759937, -2.2575605, 53.77065, -3.2675133, 53.61765, -5.742733, 53.063488, -6.6884604, 52.67119, -9.155025, 51.4788, -11.319086, 49.77329, -12.048515, 49.038445, -13.858569, 46.849445, -15.179522, 44.325054, -15.957441, 41.561615, -16.168505, 40.609043)
+
+[node name="EyeSphere2Contour" type="Line2D" parent="ConstructionPanel/SharedProjection/Step5FeatureVolumes"]
+points = PackedVector2Array(-16.35728, 37.784264, -15.955322, 34.971687, -15.6753845, 34.041576, -14.740865, 31.499487, -13.272832, 29.209208, -12.794759, 28.523315, -12.038579, 27.78429, -10.478846, 26.283953, -9.786674, 25.757496, -8.948477, 25.231998, -7.9960303, 24.726994, -6.9649677, 24.261143, -5.893567, 23.851624, -4.821482, 23.513588, -3.7884336, 23.259647, -2.8329074, 23.099468, -1.9908584, 23.039396, 0.22963513, 23.094305, 1.2436107, 23.156378, 3.6776538, 23.811386, 4.6610327, 24.080387, 7.081002, 25.33785, 7.835333, 25.87163, 10.028732, 27.688772, 11.790703, 29.908531, 13.056293, 32.443897, 13.46032, 33.359554, 14.18017, 36.110832, 14.314292, 38.938786, 14.179617, 40.00368, 13.737316, 42.705574, 12.730351, 45.227554, 12.22953, 46.17383, 10.804252, 48.222427, 10.113357, 49.027298, 9.153657, 49.85705, 7.797404, 51.005657, 6.979078, 51.56994, 6.0348387, 52.10498, 5.0018992, 52.589397, 3.921295, 53.003796, 2.8361027, 53.331654, 1.7895346, 53.560024, 0.8230418, 53.680115, -1.0248022, 53.759937, -2.2575605, 53.77065, -3.2675133, 53.61765, -5.742733, 53.063488, -6.6884604, 52.67119, -9.155025, 51.4788, -11.319086, 49.77329, -12.048515, 49.038445, -13.858569, 46.849445, -15.179522, 44.325054, -15.957441, 41.561615, -16.168505, 40.609043, -16.35728, 37.784264, -16.35728, 37.784264)
+width = 1.65
+default_color = Color(0.37, 0.94, 1, 0.86)
+joint_mode = 2
+antialiased = true
+
+[node name="EyeSphere2Center" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step5FeatureVolumes"]
+position = Vector2(-1.0082524, 38.362026)
+color = Color(0.52, 0.97, 1, 0.94)
+polygon = PackedVector2Array(0, -3.1, 3.1, 0, 0, 3.1, -3.1, 0)
+
+[node name="TeethCylinderMass" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step5FeatureVolumes"]
+color = Color(0.98, 0.78, 0.31, 0.16)
+polygon = PackedVector2Array(-37.01233, 77.23791, -36.63829, 74.291916, -35.874687, 71.46132, -34.75636, 68.86085, -33.33264, 66.59301, -31.664526, 64.74383, -29.821285, 63.37977, -27.877062, 62.545967, -25.907557, 62.26573, 18.03115, 59.70265, 19.865423, 60.012787, 21.595762, 60.899673, 23.160824, 62.32298, 24.506475, 64.22529, 25.586996, 66.53461, 26.36599, 69.166916, 26.817055, 72.02872, 26.92431, 75.01949, 26.682821, 78.03425, 26.098843, 80.96612, 25.19005, 83.70919, 23.985468, 86.1616, 22.52523, 88.228745, 20.859926, 89.827034, 19.04951, 90.88749, 17.161646, 91.359566, -27.44088, 91.64458, -29.420729, 91.51159, -31.312105, 90.80309, -33.03721, 89.5399, -34.523464, 87.76729, -35.707302, 85.55382, -36.537643, 82.988686, -36.978767, 80.17767)
+
+[node name="TeethCylinderContour" type="Line2D" parent="ConstructionPanel/SharedProjection/Step5FeatureVolumes"]
+points = PackedVector2Array(-37.01233, 77.23791, -36.63829, 74.291916, -35.874687, 71.46132, -34.75636, 68.86085, -33.33264, 66.59301, -31.664526, 64.74383, -29.821285, 63.37977, -27.877062, 62.545967, -25.907557, 62.26573, 18.03115, 59.70265, 19.865423, 60.012787, 21.595762, 60.899673, 23.160824, 62.32298, 24.506475, 64.22529, 25.586996, 66.53461, 26.36599, 69.166916, 26.817055, 72.02872, 26.92431, 75.01949, 26.682821, 78.03425, 26.098843, 80.96612, 25.19005, 83.70919, 23.985468, 86.1616, 22.52523, 88.228745, 20.859926, 89.827034, 19.04951, 90.88749, 17.161646, 91.359566, -27.44088, 91.64458, -29.420729, 91.51159, -31.312105, 90.80309, -33.03721, 89.5399, -34.523464, 87.76729, -35.707302, 85.55382, -36.537643, 82.988686, -36.978767, 80.17767, -37.01233, 77.23791, -37.01233, 77.23791)
+width = 1.75
+default_color = Color(1, 0.84, 0.39, 0.88)
+joint_mode = 2
+antialiased = true
+
+[node name="TeethCylinderAxis" type="Line2D" parent="ConstructionPanel/SharedProjection/Step5FeatureVolumes"]
+points = PackedVector2Array(-26.667925, 76.83453, 17.600245, 75.390945)
+width = 1.25
+default_color = Color(1, 0.92, 0.58, 0.82)
+joint_mode = 2
+antialiased = true
+
+[node name="NeckCylinderMass" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step5FeatureVolumes"]
+color = Color(0.32, 0.82, 0.61, 0.14)
+polygon = PackedVector2Array(8.469534, 47.587784, 8.504465, 46.23717, 9.222788, 44.737152, 10.5845375, 43.145027, 12.529739, 41.518963, 14.981665, 39.916245, 17.849915, 38.391865, 21.033258, 36.997337, 24.4222, 35.77974, 27.901419, 34.780746, 31.352116, 34.035786, 34.654522, 33.573082, 37.690643, 33.412674, 40.347443, 33.565384, 42.520535, 34.031803, 44.118317, 34.801346, 45.066494, 35.85163, 59.7004, 86.71831, 60.051796, 88.37087, 59.685, 90.198296, 58.599785, 92.12978, 56.827625, 94.08714, 54.43226, 95.98833, 51.508125, 97.75165, 48.17647, 99.300316, 44.579285, 100.5669, 40.871544, 101.49723, 37.212452, 102.05338, 33.756584, 102.215515, 30.645657, 101.98228, 28.001778, 101.369995, 25.922516, 100.410835, 24.477985, 99.15014, 23.709864, 97.643364)
+
+[node name="NeckCylinderContour" type="Line2D" parent="ConstructionPanel/SharedProjection/Step5FeatureVolumes"]
+points = PackedVector2Array(8.469534, 47.587784, 8.504465, 46.23717, 9.222788, 44.737152, 10.5845375, 43.145027, 12.529739, 41.518963, 14.981665, 39.916245, 17.849915, 38.391865, 21.033258, 36.997337, 24.4222, 35.77974, 27.901419, 34.780746, 31.352116, 34.035786, 34.654522, 33.573082, 37.690643, 33.412674, 40.347443, 33.565384, 42.520535, 34.031803, 44.118317, 34.801346, 45.066494, 35.85163, 59.7004, 86.71831, 60.051796, 88.37087, 59.685, 90.198296, 58.599785, 92.12978, 56.827625, 94.08714, 54.43226, 95.98833, 51.508125, 97.75165, 48.17647, 99.300316, 44.579285, 100.5669, 40.871544, 101.49723, 37.212452, 102.05338, 33.756584, 102.215515, 30.645657, 101.98228, 28.001778, 101.369995, 25.922516, 100.410835, 24.477985, 99.15014, 23.709864, 97.643364, 8.469534, 47.587784, 8.469534, 47.587784)
+width = 1.75
+default_color = Color(0.39, 0.91, 0.68, 0.82)
+joint_mode = 2
+antialiased = true
+
+[node name="NeckCylinderCenterline" type="Line2D" parent="ConstructionPanel/SharedProjection/Step5FeatureVolumes"]
+points = PackedVector2Array(26.663704, 41.75316, 41.604717, 92.21132)
+width = 1.8
+default_color = Color(0.54, 1, 0.77, 0.94)
+joint_mode = 2
+antialiased = true
+
+[node name="ForamenMagnumAnchor" type="Polygon2D" parent="ConstructionPanel/SharedProjection/Step5FeatureVolumes"]
+color = Color(0.94, 0.25, 0.61, 0.28)
+polygon = PackedVector2Array(39.04567, 40.681328, 38.486126, 41.218903, 37.80817, 41.763554, 37.018227, 42.309708, 36.12401, 42.85171, 35.134457, 43.38393, 34.05962, 43.900795, 32.910545, 44.396893, 31.699139, 44.86703, 30.438038, 45.306293, 29.140419, 45.71011, 27.819849, 46.074337, 26.490103, 46.395264, 25.164993, 46.6697, 23.858189, 46.894966, 22.58305, 47.068966, 21.352476, 47.190178, 20.178743, 47.257656, 19.07339, 47.27105, 18.047077, 47.23058, 17.109503, 47.13703, 16.269316, 46.99171, 15.534046, 46.796455, 14.910051, 46.553555, 14.402505, 46.26574, 14.015355, 45.93614, 13.751341, 45.568222, 13.612001, 45.16577, 13.597695, 44.73283, 13.707636, 44.273655, 13.939932, 43.79268, 14.291633, 43.294476, 14.758794, 42.78369, 15.336517, 42.26503, 16.01902, 41.743225, 16.799696, 41.22297, 17.671185, 40.70892, 18.62542, 40.205643, 19.653711, 39.717583, 20.746803, 39.249054, 21.89493, 38.804184, 23.087904, 38.38692, 24.315163, 38.00098, 25.565845, 37.649826, 26.828865, 37.336666, 28.09298, 37.064396, 29.346859, 36.835598, 30.57918, 36.652515, 31.778687, 36.51703, 32.934288, 36.430622, 34.03515, 36.394375, 35.07077, 36.408947, 36.031094, 36.47455, 36.906605, 36.590946, 37.688408, 36.757416, 38.368355, 36.972775, 38.939133, 37.235336, 39.39436, 37.542953, 39.728683, 37.892998, 39.93787, 38.282375, 40.01887, 38.70754, 39.969925, 39.16454, 39.79057, 39.649017, 39.481712, 40.15628)
+
+[node name="ForamenMagnumContour" type="Line2D" parent="ConstructionPanel/SharedProjection/Step5FeatureVolumes"]
+points = PackedVector2Array(39.04567, 40.681328, 38.486126, 41.218903, 37.80817, 41.763554, 37.018227, 42.309708, 36.12401, 42.85171, 35.134457, 43.38393, 34.05962, 43.900795, 32.910545, 44.396893, 31.699139, 44.86703, 30.438038, 45.306293, 29.140419, 45.71011, 27.819849, 46.074337, 26.490103, 46.395264, 25.164993, 46.6697, 23.858189, 46.894966, 22.58305, 47.068966, 21.352476, 47.190178, 20.178743, 47.257656, 19.07339, 47.27105, 18.047077, 47.23058, 17.109503, 47.13703, 16.269316, 46.99171, 15.534046, 46.796455, 14.910051, 46.553555, 14.402505, 46.26574, 14.015355, 45.93614, 13.751341, 45.568222, 13.612001, 45.16577, 13.597695, 44.73283, 13.707636, 44.273655, 13.939932, 43.79268, 14.291633, 43.294476, 14.758794, 42.78369, 15.336517, 42.26503, 16.01902, 41.743225, 16.799696, 41.22297, 17.671185, 40.70892, 18.62542, 40.205643, 19.653711, 39.717583, 20.746803, 39.249054, 21.89493, 38.804184, 23.087904, 38.38692, 24.315163, 38.00098, 25.565845, 37.649826, 26.828865, 37.336666, 28.09298, 37.064396, 29.346859, 36.835598, 30.57918, 36.652515, 31.778687, 36.51703, 32.934288, 36.430622, 34.03515, 36.394375, 35.07077, 36.408947, 36.031094, 36.47455, 36.906605, 36.590946, 37.688408, 36.757416, 38.368355, 36.972775, 38.939133, 37.235336, 39.39436, 37.542953, 39.728683, 37.892998, 39.93787, 38.282375, 40.01887, 38.70754, 39.969925, 39.16454, 39.79057, 39.649017, 39.481712, 40.15628, 39.04567, 40.681328)
+width = 1.4
+default_color = Color(1, 0.43, 0.72, 0.88)
+joint_mode = 2
+antialiased = true
+
+[node name="ConstructionCaption" type="Label" parent="ConstructionPanel"]
 offset_left = 18.0
 offset_top = 539.0
 offset_right = 18.0
 offset_bottom = 539.0
 theme_override_font_sizes/font_size = 15
 theme_override_colors/font_color = Color(0.7254902, 0.78039217, 0.8509804, 1)
-text = "Tangent cube contains the sphere exactly; the lower jaw remains a tunable character profile."
+text = "The Loomis sphere is refined into an elongated vault; feature volumes expand from the shared symmetric scaffold."
 
-[node name="JudgingPanel" type="Node2D" parent="." unique_id=168849319]
+[node name="JudgingPanel" type="Node2D" parent="."]
 position = Vector2(842, 96)
 
-[node name="PanelFill" type="Polygon2D" parent="JudgingPanel" unique_id=111760055]
+[node name="PanelFill" type="Polygon2D" parent="JudgingPanel"]
 color = Color(0.08235294, 0.12156863, 0.1764706, 1)
 polygon = PackedVector2Array(0, 0, 410, 0, 410, 590, 0, 590)
 
-[node name="PanelBorder" type="Line2D" parent="JudgingPanel" unique_id=1033735885]
+[node name="PanelBorder" type="Line2D" parent="JudgingPanel"]
 points = PackedVector2Array(0, 0, 410, 0, 410, 590, 0, 590, 0, 0)
 width = 1.2
 default_color = Color(0.20784314, 0.26666668, 0.3529412, 1)
 joint_mode = 2
 antialiased = true
 
-[node name="PanelTitle" type="Label" parent="JudgingPanel" unique_id=619846909]
+[node name="PanelTitle" type="Label" parent="JudgingPanel"]
 offset_left = 18.0
 offset_top = 15.0
 offset_right = 18.0
@@ -408,21 +500,21 @@ theme_override_font_sizes/font_size = 20
 theme_override_colors/font_color = Color(0.9137255, 0.93333334, 0.9647059, 1)
 text = "STEP GROUPS"
 
-[node name="Step1Swatch" type="Polygon2D" parent="JudgingPanel" unique_id=1817162350]
+[node name="Step1Swatch" type="Polygon2D" parent="JudgingPanel"]
 position = Vector2(20, 63)
 color = Color(0.85882354, 0.91764706, 1, 1)
 polygon = PackedVector2Array(0, 0, 20, 0, 20, 20, 0, 20)
 
-[node name="Step1Title" type="Label" parent="JudgingPanel" unique_id=480762747]
+[node name="Step1Title" type="Label" parent="JudgingPanel"]
 offset_left = 54.0
 offset_top = 55.0
 offset_right = 54.0
 offset_bottom = 55.0
 theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.85882354, 0.91764706, 1, 1)
-text = "STEP 1 — SPHERE"
+text = "STEP 1 — CRANIAL VOLUME"
 
-[node name="Step1Description" type="Label" parent="JudgingPanel" unique_id=1374414525]
+[node name="Step1Description" type="Label" parent="JudgingPanel"]
 custom_minimum_size = Vector2(322, 44)
 offset_left = 54.0
 offset_top = 86.0
@@ -430,15 +522,15 @@ offset_right = 54.0
 offset_bottom = 86.0
 theme_override_font_sizes/font_size = 14
 theme_override_colors/font_color = Color(0.7254902, 0.77254903, 0.8352941, 1)
-text = "Projected spherical silhouette remains circular."
+text = "Sphere refined into a narrower, front-to-back elongated vault."
 autowrap_mode = 3
 
-[node name="Step2Swatch" type="Polygon2D" parent="JudgingPanel" unique_id=627353675]
+[node name="Step2Swatch" type="Polygon2D" parent="JudgingPanel"]
 position = Vector2(20, 140)
 color = Color(0.9490196, 0.627451, 0.43529412, 1)
 polygon = PackedVector2Array(0, 0, 20, 0, 20, 20, 0, 20)
 
-[node name="Step2Title" type="Label" parent="JudgingPanel" unique_id=1536092081]
+[node name="Step2Title" type="Label" parent="JudgingPanel"]
 offset_left = 54.0
 offset_top = 132.0
 offset_right = 54.0
@@ -447,7 +539,7 @@ theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.9490196, 0.627451, 0.43529412, 1)
 text = "STEP 2 — SIDE-PLANE CUT"
 
-[node name="Step2Description" type="Label" parent="JudgingPanel" unique_id=1307301651]
+[node name="Step2Description" type="Label" parent="JudgingPanel"]
 custom_minimum_size = Vector2(322, 44)
 offset_left = 54.0
 offset_top = 163.0
@@ -455,24 +547,24 @@ offset_right = 54.0
 offset_bottom = 163.0
 theme_override_font_sizes/font_size = 14
 theme_override_colors/font_color = Color(0.7254902, 0.77254903, 0.8352941, 1)
-text = "Ellipse is a fixed 55% radius slice on the near side."
+text = "Elliptical slice is fixed at 55% of the near-side radius."
 autowrap_mode = 3
 
-[node name="Step3Swatch" type="Polygon2D" parent="JudgingPanel" unique_id=459210592]
+[node name="Step3Swatch" type="Polygon2D" parent="JudgingPanel"]
 position = Vector2(20, 230)
 color = Color(0.36862746, 0.8784314, 0.9254902, 1)
 polygon = PackedVector2Array(0, 0, 20, 0, 20, 20, 0, 20)
 
-[node name="Step3Title" type="Label" parent="JudgingPanel" unique_id=2143836409]
+[node name="Step3Title" type="Label" parent="JudgingPanel"]
 offset_left = 54.0
 offset_top = 222.0
 offset_right = 54.0
 offset_bottom = 222.0
 theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.36862746, 0.8784314, 0.9254902, 1)
-text = "STEP 3 — SPHERICAL MIDLINES"
+text = "STEP 3 — CRANIAL MIDLINES"
 
-[node name="Step3Description" type="Label" parent="JudgingPanel" unique_id=857356404]
+[node name="Step3Description" type="Label" parent="JudgingPanel"]
 custom_minimum_size = Vector2(322, 44)
 offset_left = 54.0
 offset_top = 253.0
@@ -480,15 +572,15 @@ offset_right = 54.0
 offset_bottom = 253.0
 theme_override_font_sizes/font_size = 14
 theme_override_colors/font_color = Color(0.7254902, 0.77254903, 0.8352941, 1)
-text = "Center and brow curves share the same rotated sphere."
+text = "Center and brow curves share the rotated ellipsoid."
 autowrap_mode = 3
 
-[node name="Step4Swatch" type="Polygon2D" parent="JudgingPanel" unique_id=285464956]
+[node name="Step4Swatch" type="Polygon2D" parent="JudgingPanel"]
 position = Vector2(20, 320)
 color = Color(0.9607843, 0.78431374, 0.47058824, 1)
 polygon = PackedVector2Array(0, 0, 20, 0, 20, 20, 0, 20)
 
-[node name="Step4Title" type="Label" parent="JudgingPanel" unique_id=1545964307]
+[node name="Step4Title" type="Label" parent="JudgingPanel"]
 offset_left = 54.0
 offset_top = 312.0
 offset_right = 54.0
@@ -497,7 +589,7 @@ theme_override_font_sizes/font_size = 16
 theme_override_colors/font_color = Color(0.9607843, 0.78431374, 0.47058824, 1)
 text = "STEP 4 — FACE GUIDES + JAW"
 
-[node name="Step4Description" type="Label" parent="JudgingPanel" unique_id=997891365]
+[node name="Step4Description" type="Label" parent="JudgingPanel"]
 custom_minimum_size = Vector2(322, 44)
 offset_left = 54.0
 offset_top = 343.0
@@ -508,33 +600,48 @@ theme_override_colors/font_color = Color(0.7254902, 0.77254903, 0.8352941, 1)
 text = "Projected square directions place the chin and near-ear hinge."
 autowrap_mode = 3
 
-[node name="ChecksTitle" type="Label" parent="JudgingPanel" unique_id=1773292383]
+[node name="Step5Swatch" type="Polygon2D" parent="JudgingPanel"]
+position = Vector2(20, 410)
+color = Color(0.39607844, 0.8745098, 0.6666667, 1)
+polygon = PackedVector2Array(0, 0, 20, 0, 20, 20, 0, 20)
+
+[node name="Step5Title" type="Label" parent="JudgingPanel"]
+offset_left = 54.0
+offset_top = 402.0
+offset_right = 54.0
+offset_bottom = 402.0
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.39607844, 0.8745098, 0.6666667, 1)
+text = "STEP 5 — FEATURE VOLUMES"
+
+[node name="Step5Description" type="Label" parent="JudgingPanel"]
+custom_minimum_size = Vector2(322, 44)
+offset_left = 54.0
+offset_top = 433.0
+offset_right = 54.0
+offset_bottom = 433.0
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7254902, 0.77254903, 0.8352941, 1)
+text = "Eye spheres, dental cylinder, foramen, and neck share local anchors."
+autowrap_mode = 3
+
+[node name="ChecksTitle" type="Label" parent="JudgingPanel"]
 offset_left = 18.0
-offset_top = 408.0
+offset_top = 486.0
 offset_right = 18.0
-offset_bottom = 408.0
+offset_bottom = 486.0
 theme_override_font_sizes/font_size = 18
 theme_override_colors/font_color = Color(1, 0.9529412, 0.65882355, 1)
 text = "VISUAL ACCEPTANCE"
 
-[node name="Checks" type="Label" parent="JudgingPanel" unique_id=1565493054]
+[node name="Checks" type="Label" parent="JudgingPanel"]
 offset_left = 18.0
-offset_top = 442.0
+offset_top = 516.0
 offset_right = 18.0
-offset_bottom = 442.0
-theme_override_font_sizes/font_size = 14
-theme_override_colors/font_color = Color(0.7647059, 0.80784315, 0.8666667, 1)
-text = "• sphere is tangent to all six cube planes
-• flat face midlines match spherical guide planes
-• lower guides preserve projected convergence
-• orange hinge connects directly to yellow chin
-• jaw ratios may change per character"
-
-[node name="SideReadout" type="Label" parent="JudgingPanel" unique_id=192757842]
-offset_left = 18.0
-offset_top = 557.0
-offset_right = 18.0
-offset_bottom = 557.0
+offset_bottom = 516.0
 theme_override_font_sizes/font_size = 13
-theme_override_colors/font_color = Color(0.68235296, 0.73333335, 0.8156863, 1)
-text = "Near side: RIGHT (+X)   chin drop: 1.42r"
+theme_override_colors/font_color = Color(0.7647059, 0.80784315, 0.8666667, 1)
+text = "• elongated vault preserves the shared orientation
+• paired eyes remain mirrored in local space
+• eye fronts meet the brow tangent plane
+• neck axis begins at the foramen center"

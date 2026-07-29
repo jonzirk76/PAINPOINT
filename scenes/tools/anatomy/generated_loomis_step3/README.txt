@@ -1,7 +1,7 @@
 Generated Loomis step-3 plus primary jaw-anchor batch
 
 Open any .tscn in this folder and press F6.
-Toggle ComplianceCube, Step1Sphere, Step2SidePlaneCut, Step3Midlines, or Step4FaceGuidesAndJaw in the scene tree.
+Toggle ComplianceCube, Step1CraniumVolume, Step2SidePlaneCut, Step3Midlines, Step4FaceGuidesAndJaw, or Step5FeatureVolumes in the scene tree.
 These generated visual review artifacts are intentionally untracked.
 
 01  Three Quarter Neutral  ->  res://scenes/tools/anatomy/generated_loomis_step3/01_three_quarter_neutral.tscn

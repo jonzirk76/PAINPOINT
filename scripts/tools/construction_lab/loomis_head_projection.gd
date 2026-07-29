@@ -18,14 +18,21 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 	var nose_forward_ratio: float = float(spec.get("nose_forward_ratio", 0.96))
 	var chin_drop_ratio: float = float(spec.get("chin_drop_ratio", 1.42))
 	var chin_forward_ratio: float = float(spec.get("chin_forward_ratio", 0.88))
+	var cranium_radii: Vector3 = spec.get(
+		"cranium_radii",
+		Vector3(radius * 0.94, radius, radius * 1.10)
+	)
+	var cranium_center := Vector3(0.0, radius * 0.02, -radius * 0.08)
 	var basis := Basis.from_euler(Vector3(
 		deg_to_rad(rotation_degrees.x),
 		deg_to_rad(rotation_degrees.y),
 		deg_to_rad(rotation_degrees.z)
 	))
 
-	var silhouette := _build_sphere_silhouette(
-		radius,
+	var silhouette := _build_ellipsoid_silhouette(
+		cranium_center,
+		cranium_radii,
+		basis,
 		camera_distance,
 		focal_length,
 		screen_center,
@@ -33,8 +40,14 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 	)
 	var local_side_axis: Vector3 = basis * Vector3.RIGHT
 	var side_sign := 1.0 if local_side_axis.z >= 0.0 else -1.0
-	var cut_distance := radius * side_cut_ratio * side_sign
-	var cut_radius := sqrt(maxf(radius * radius - cut_distance * cut_distance, 0.0))
+	var cut_distance := cranium_radii.x * side_cut_ratio * side_sign
+	var cut_scale := sqrt(maxf(
+		1.0 - (cut_distance * cut_distance) / (cranium_radii.x * cranium_radii.x),
+		0.0
+	))
+	var cut_radius_y := cranium_radii.y * cut_scale
+	var cut_radius_z := cranium_radii.z * cut_scale
+	var cut_radius := (cut_radius_y + cut_radius_z) * 0.5
 	var jaw_hinge_drop_ratio: float = float(spec.get(
 		"jaw_hinge_drop_ratio",
 		cut_radius / maxf(radius, 0.0001)
@@ -45,8 +58,8 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 		var angle := TAU * float(index) / float(segment_count)
 		side_plane_local.append(Vector3(
 			cut_distance,
-			cos(angle) * cut_radius,
-			sin(angle) * cut_radius
+			cranium_center.y + cos(angle) * cut_radius_y,
+			cranium_center.z + sin(angle) * cut_radius_z
 		))
 	var side_plane := _project_local_curve(
 		side_plane_local,
@@ -62,8 +75,8 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 		var angle := TAU * float(index) / float(segment_count)
 		far_side_plane_local.append(Vector3(
 			far_cut_distance,
-			cos(angle) * cut_radius,
-			sin(angle) * cut_radius
+			cranium_center.y + cos(angle) * cut_radius_y,
+			cranium_center.z + sin(angle) * cut_radius_z
 		))
 	var far_side_plane := _project_local_curve(
 		far_side_plane_local,
@@ -78,8 +91,16 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 	var brow_midline_local: Array[Vector3] = []
 	for index in range(segment_count + 1):
 		var angle := PI * float(index) / float(segment_count)
-		vertical_midline_local.append(Vector3(0.0, cos(angle) * radius, sin(angle) * radius))
-		brow_midline_local.append(Vector3(cos(angle) * radius, 0.0, sin(angle) * radius))
+		vertical_midline_local.append(cranium_center + Vector3(
+			0.0,
+			cos(angle) * cranium_radii.y,
+			sin(angle) * cranium_radii.z
+		))
+		brow_midline_local.append(cranium_center + Vector3(
+			cos(angle) * cranium_radii.x,
+			0.0,
+			sin(angle) * cranium_radii.z
+		))
 	var vertical_midline := _project_local_curve(
 		vertical_midline_local,
 		basis,
@@ -97,11 +118,11 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 		false
 	)
 
-	var side_center_local := Vector3(cut_distance, 0.0, 0.0)
+	var side_center_local := cranium_center + Vector3(cut_distance, 0.0, 0.0)
 	var side_vertical := _project_local_curve(
 		[
-			side_center_local + Vector3(0.0, -cut_radius, 0.0),
-			side_center_local + Vector3(0.0, cut_radius, 0.0),
+			side_center_local + Vector3(0.0, -cut_radius_y, 0.0),
+			side_center_local + Vector3(0.0, cut_radius_y, 0.0),
 		],
 		basis,
 		camera_distance,
@@ -111,8 +132,8 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 	)
 	var side_depth := _project_local_curve(
 		[
-			side_center_local + Vector3(0.0, 0.0, -cut_radius),
-			side_center_local + Vector3(0.0, 0.0, cut_radius),
+			side_center_local + Vector3(0.0, 0.0, -cut_radius_z),
+			side_center_local + Vector3(0.0, 0.0, cut_radius_z),
 		],
 		basis,
 		camera_distance,
@@ -295,6 +316,84 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 		],
 		basis, camera_distance, focal_length, screen_center, false
 	)
+	var eye_radius := radius * float(spec.get("eye_radius_ratio", 0.22))
+	var primitive_eye_center_x := radius * float(spec.get("eye_center_x_ratio", 0.37))
+	var brow_tangent_z := cranium_center.z + cranium_radii.z
+	var primitive_eye_center_z := brow_tangent_z - eye_radius
+	var primitive_eye_center_y := -radius * float(spec.get("eye_center_drop_ratio", 0.30))
+	var eye_spheres: Array[PackedVector2Array] = []
+	var eye_centers: Array[Vector2] = []
+	for eye_sign: float in [-1.0, 1.0]:
+		var eye_center := Vector3(
+			eye_sign * primitive_eye_center_x,
+			primitive_eye_center_y,
+			primitive_eye_center_z
+		)
+		eye_spheres.append(_build_ellipsoid_silhouette(
+			eye_center,
+			Vector3.ONE * eye_radius,
+			basis,
+			camera_distance,
+			focal_length,
+			screen_center,
+			maxi(16, segment_count / 2)
+		))
+		eye_centers.append(_project_local_point(
+			eye_center,
+			basis,
+			camera_distance,
+			focal_length,
+			screen_center
+		))
+	var brow_tangent_plane := _project_local_curve(
+		[
+			Vector3(-radius * 0.72, radius * 0.12, brow_tangent_z),
+			Vector3(radius * 0.72, radius * 0.12, brow_tangent_z),
+			Vector3(radius * 0.72, -radius * 0.48, brow_tangent_z),
+			Vector3(-radius * 0.72, -radius * 0.48, brow_tangent_z),
+		],
+		basis, camera_distance, focal_length, screen_center, true
+	)
+	var teeth_center := Vector3(0.0, -radius * 0.93, radius * 0.78)
+	var teeth_cylinder := _build_x_cylinder_silhouette(
+		teeth_center,
+		radius * 0.43,
+		radius * 0.22,
+		radius * 0.25,
+		basis,
+		camera_distance,
+		focal_length,
+		screen_center,
+		maxi(16, segment_count / 2)
+	)
+	var teeth_axis := _project_local_curve(
+		[
+			teeth_center - Vector3(radius * 0.43, 0.0, 0.0),
+			teeth_center + Vector3(radius * 0.43, 0.0, 0.0),
+		],
+		basis, camera_distance, focal_length, screen_center, false
+	)
+	var foramen_center := Vector3(0.0, -radius * 0.91, -radius * 0.28)
+	var neck_end := foramen_center + Vector3(0.0, -radius * 0.94, radius * 0.10)
+	var neck_cylinder := _build_y_cylinder_silhouette(
+		foramen_center,
+		neck_end,
+		radius * 0.34,
+		radius * 0.30,
+		basis,
+		camera_distance,
+		focal_length,
+		screen_center,
+		maxi(16, segment_count / 2)
+	)
+	var neck_axis := _project_local_curve(
+		[foramen_center, neck_end],
+		basis, camera_distance, focal_length, screen_center, false
+	)
+	var foramen_ellipse := _project_local_curve(
+		_build_xz_ellipse(foramen_center, radius * 0.25, radius * 0.19, segment_count),
+		basis, camera_distance, focal_length, screen_center, true
+	)
 
 	var cube_spec := {
 		"size": Vector3.ONE * radius * 2.0,
@@ -325,6 +424,7 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 		"side_sign": side_sign,
 		"side_cut_distance": cut_distance,
 		"side_cut_radius": cut_radius,
+		"cranium_radii": cranium_radii,
 		"sphere_silhouette": silhouette,
 		"side_plane": side_plane,
 		"far_side_plane": far_side_plane,
@@ -342,12 +442,20 @@ static func build_step3(spec: Dictionary) -> Dictionary:
 		"far_chin_point": far_chin_point,
 		"jaw_hinge_point": jaw_hinge_point,
 		"far_jaw_hinge_point": far_jaw_hinge_point,
-			"jawline": jawline,
-			"far_jawline": far_jawline,
-			"facial_plane": facial_plane,
-			"eye_cavity_planes": eye_cavity_planes,
-			"nose_block": nose_block,
-			"mouth_bottom_guide": mouth_bottom_guide,
+		"jawline": jawline,
+		"far_jawline": far_jawline,
+		"facial_plane": facial_plane,
+		"eye_cavity_planes": eye_cavity_planes,
+		"nose_block": nose_block,
+		"mouth_bottom_guide": mouth_bottom_guide,
+		"eye_spheres": eye_spheres,
+		"eye_centers": eye_centers,
+		"brow_tangent_plane": brow_tangent_plane,
+		"teeth_cylinder": teeth_cylinder,
+		"teeth_axis": teeth_axis,
+		"neck_cylinder": neck_cylinder,
+		"neck_axis": neck_axis,
+		"foramen_ellipse": foramen_ellipse,
 		"jaw_profile": {
 			"nose_drop_ratio": nose_drop_ratio,
 			"nose_forward_ratio": nose_forward_ratio,
@@ -408,6 +516,10 @@ static func build_default_tilt_batch() -> Array:
 		full_spec["chin_forward_ratio"] = 0.88
 		full_spec["jaw_hinge_drop_ratio"] = sqrt(1.0 - 0.55 * 0.55)
 		full_spec["jaw_hinge_forward_ratio"] = 0.0
+		full_spec["cranium_radii"] = Vector3(0.94, 1.0, 1.10)
+		full_spec["eye_radius_ratio"] = 0.22
+		full_spec["eye_center_x_ratio"] = 0.37
+		full_spec["eye_center_drop_ratio"] = 0.30
 		batch.append({
 			"name": full_spec["name"],
 			"construction": build_step3(full_spec),
@@ -434,6 +546,112 @@ static func _build_sphere_silhouette(
 			screen_center
 		))
 	return projected
+
+
+static func _build_ellipsoid_silhouette(
+	center: Vector3,
+	radii: Vector3,
+	basis: Basis,
+	camera_distance: float,
+	focal_length: float,
+	screen_center: Vector2,
+	segment_count: int
+) -> PackedVector2Array:
+	var samples := PackedVector2Array()
+	var latitude_count := maxi(8, segment_count / 2)
+	for latitude_index in range(latitude_count + 1):
+		var latitude := -PI * 0.5 + PI * float(latitude_index) / float(latitude_count)
+		var latitude_radius := cos(latitude)
+		for longitude_index in range(segment_count):
+			var longitude := TAU * float(longitude_index) / float(segment_count)
+			var local_point := center + Vector3(
+				cos(longitude) * latitude_radius * radii.x,
+				sin(latitude) * radii.y,
+				sin(longitude) * latitude_radius * radii.z
+			)
+			samples.append(_project_local_point(
+				local_point,
+				basis,
+				camera_distance,
+				focal_length,
+				screen_center
+			))
+	return Geometry2D.convex_hull(samples)
+
+
+static func _build_x_cylinder_silhouette(
+	center: Vector3,
+	half_length: float,
+	radius_y: float,
+	radius_z: float,
+	basis: Basis,
+	camera_distance: float,
+	focal_length: float,
+	screen_center: Vector2,
+	segment_count: int
+) -> PackedVector2Array:
+	var samples := PackedVector2Array()
+	for x_sign: float in [-1.0, 1.0]:
+		for index in range(segment_count):
+			var angle := TAU * float(index) / float(segment_count)
+			samples.append(_project_local_point(
+				center + Vector3(
+					x_sign * half_length,
+					cos(angle) * radius_y,
+					sin(angle) * radius_z
+				),
+				basis,
+				camera_distance,
+				focal_length,
+				screen_center
+			))
+	return Geometry2D.convex_hull(samples)
+
+
+static func _build_y_cylinder_silhouette(
+	start_center: Vector3,
+	end_center: Vector3,
+	radius_x: float,
+	radius_z: float,
+	basis: Basis,
+	camera_distance: float,
+	focal_length: float,
+	screen_center: Vector2,
+	segment_count: int
+) -> PackedVector2Array:
+	var samples := PackedVector2Array()
+	for center: Vector3 in [start_center, end_center]:
+		for index in range(segment_count):
+			var angle := TAU * float(index) / float(segment_count)
+			samples.append(_project_local_point(
+				center + Vector3(
+					cos(angle) * radius_x,
+					0.0,
+					sin(angle) * radius_z
+				),
+				basis,
+				camera_distance,
+				focal_length,
+				screen_center
+			))
+	return Geometry2D.convex_hull(samples)
+
+
+static func _build_xz_ellipse(
+	center: Vector3,
+	radius_x: float,
+	radius_z: float,
+	segment_count: int
+) -> Array[Vector3]:
+	var points: Array[Vector3] = []
+	for index in range(segment_count):
+		var angle := TAU * float(index) / float(segment_count)
+		points.append(center + Vector3(
+			cos(angle) * radius_x,
+			0.0,
+			sin(angle) * radius_z
+		))
+	return points
 
 
 static func _project_local_curve(
