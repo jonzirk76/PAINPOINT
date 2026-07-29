@@ -11,7 +11,7 @@ Entities emit upward:
 - `PlayerEntity`: `health_changed`, `health_depleted`
 - `EnemyEntity`: `health_changed`, `health_depleted`
 - `ProjectileEntity`: `hit_detected`, `expired`
-- `EnemySpawnerEntity`: `spawn_ready`
+- General-role `EnemyEntity`: `spawn_ready`
 - `PickupEntity`: `collected`, `expired`
 - `DoorEntity`: `entered`
 
@@ -20,7 +20,7 @@ Managers translate entity signals into manager-level events:
 - `ProjectileManager.projectile_hit`
 - `EnemyManager.enemy_defeated`
 - `EnemyManager.player_contact_requested`
-- `SpawnerManager.spawn_requested`
+- `SpawnerManager.spawn_proposed`
 - `ItemManager.pickup_collected`
 - `UpgradeManager.upgrade_changed`
 - `PlayerManager.shoot_requested`
@@ -33,8 +33,8 @@ The orchestrator receives those signals and decides which manager command runs n
 - `InputManager`: polls controller, keyboard, and mouse fallback; emits movement, aim-state, overdrive-held, and menu events.
 - `PlayerManager`: owns the player, movement commands, aim direction, weapon cooldown, parry cooldown, player health, and player-side hit invulnerability.
 - `ProjectileManager`: owns projectiles, applies upgrade-derived projectile spawning, handles hostile projectile absorption, and stamps damage packets with knockback source/direction, projectile size, growth, explosion, and chain fields.
-- `EnemyManager`: owns enemies, target updates, contact checks, enemy damage application, and non-damaging parry pushback.
-- `SpawnerManager`: owns respawner entities and gates spawn requests by current enemy count.
+- `EnemyManager`: owns all enemies, including generals; owns per-general `LegionTacticsController` instances; applies tactical movement intents, target updates, contact checks, enemy damage, and non-damaging parry pushback.
+- `SpawnerManager`: coordinates general reinforcement timing, opening waves, and validated spawn proposals. It keeps non-owning general references during the migration away from the historical spawner subsystem; all gameplay bodies are owned by `EnemyManager`.
 - `ItemManager`: owns pickups and pickup spawn timing.
 - `UpgradeManager`: owns shared overdrive ammo, stackable run-long overdrive effects, permanent attribute stacks, and combines active modifiers.
 - `CombatManager`: resolves hit/contact events into damage events and chain-lightning requests.
@@ -49,7 +49,7 @@ The game starts in `LEVEL_SELECT`. `GameOrchestrator` owns the selected level in
 
 Level definitions configure arena bounds, arena shape, floor number, spawner positions, opening non-spawner encounter tables, spawner health, spawn interval, and max active enemies. `ArenaView`, `PlayerManager`, `EnemyManager`, and `SpawnerManager` consume those values through orchestrator commands.
 
-A level is won only when `SpawnerManager.get_spawner_count()` and `EnemyManager.get_enemy_count()` both reach zero. The win state disables gameplay managers and shows a return-to-level-select prompt.
+A level is won only when `EnemyManager.get_enemy_count()` reaches zero. The temporary `SpawnerManager` general count remains part of the clear check during the migration so queued reinforcement state cannot clear a room early.
 
 ## Dungeon Prototype Flow
 
@@ -109,12 +109,12 @@ Projectile hit:
 6. When a chain target is selected, `GameOrchestrator` commands `EffectsManager.play_chain_lightning(...)` before resolving the chained hit.
 7. `EnemyEntity` applies local knockback, hit flash, and death animation without calling upward dependencies.
 
-Spawner hit:
+General hit:
 
-1. `ProjectileEntity` can hit bodies in the `spawners` group.
-2. `GameOrchestrator` routes resolved damage to `SpawnerManager.apply_damage(...)`.
-3. `EnemySpawnerEntity` emits `health_depleted` when destroyed.
-4. `SpawnerManager` removes it from active spawners and emits `spawner_destroyed`.
+1. `ProjectileEntity` hits the general through the ordinary `enemies` group.
+2. `GameOrchestrator` routes resolved damage to `EnemyManager.apply_damage(...)`.
+3. The general-role `EnemyEntity` emits `health_depleted` when destroyed.
+4. `EnemyManager` removes it from active enemies, frees its legion controller, and emits `general_defeated`.
 5. `GameOrchestrator` updates score and rechecks level clear conditions.
 
 Pickup:
@@ -151,14 +151,24 @@ Combat reward drops:
 3. `ItemManager.pickup_collected` flows to `GameOrchestrator`, which routes heal pickups to `PlayerManager.apply_healing(...)` and upgrade pickups to `UpgradeManager.activate_pickup(...)`.
 4. Challenge room and floor-end rewards spawn three optional overdrive effect choices. Non-spread overdrive effects can also raise the shared overdrive capacity. Treasure rooms spawn three optional rolled permanent stat choices, including overdrive capacity.
 5. `UpgradeManager` stacks run-long attributes for fire-rate cooldown reduction, movement speed, bullet damage, projectile size, and overdrive capacity. Permanent upgrade state sums rolled `total_amount` values by stack key so small chest variants can contribute to the same run-long stat as treasure-room variants.
-6. `SpawnerManager.spawner_destroyed` is routed by `GameOrchestrator` to `ItemManager.drop_spawner_reward(...)`, which always drops one reward: usually an overdrive ammo cache, with a chance for a full heal instead.
+6. `EnemyManager.general_defeated` is routed by `GameOrchestrator` to `ItemManager.drop_spawner_reward(...)`, which always drops one reward: usually an overdrive ammo cache, with a chance for a full heal instead.
 
 Opening suppression:
 
-1. `SpawnerManager.reset_run(...)` creates room spawners and marks an opening wave as pending.
+1. `SpawnerManager.reset_run(...)` requests room generals through `GameOrchestrator`; `EnemyManager` creates and owns them as ordinary `EnemyEntity` instances with an `EnemySpawnProfile`.
 2. When `GameOrchestrator` enables the room, `SpawnerManager` emits initial `spawn_requested` events for each spawner, respecting `max_active_enemies`.
 3. `GameOrchestrator` routes those requests to `EnemyManager.spawn_enemy(...)`, so spawners never directly create enemies.
 4. Generated combat and challenge rooms can also carry an `EncounterEntry` table. `GameOrchestrator` rolls that table from the run seed, floor number, and room id, then spawns one-time non-spawner enemies through `EnemyManager`.
+
+Legion tactics:
+
+1. A general's `EnemySpawnProfile` selects a tactics kind and the general receives a stable legion identity from `EnemyManager`.
+2. `EnemyManager` creates one `LegionTacticsController` for the general and connects the general's upward `spawn_ready` signal.
+3. Spawn proposals stamp the legion and general identities onto every reinforcement.
+4. `EnemyManager` gives each controller a shared battlefield snapshot containing its members, player position, arena center, and the legion's position in the active-legion ordering.
+5. Controllers return advisory movement positions. `EnemyManager` applies them to owned enemies while their normal player target remains unchanged for aiming and attacks.
+6. Controllers coordinate fan-out sectors through the shared active-legion ordering; they never call one another.
+7. When a general dies, `EnemyManager` removes its controller and clears tactical orders from surviving orphaned minions, which return to independent behavior.
 
 Player down/restart:
 

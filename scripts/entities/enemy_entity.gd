@@ -218,6 +218,7 @@ var legion_id: int = 0
 var general_id: int = 0
 var _spawn_timer: float = 0.0
 var _spawn_active: bool = true
+var _tactical_target_position: Vector2 = Vector2.INF
 
 
 func _init() -> void:
@@ -418,6 +419,14 @@ func set_legion_identity(new_legion_id: int, new_general_id: int = 0) -> void:
 
 func set_spawn_enabled(value: bool) -> void:
 	_spawn_active = value
+
+
+func set_tactical_target_position(new_target_position: Vector2) -> void:
+	_tactical_target_position = new_target_position
+
+
+func clear_tactical_target_position() -> void:
+	_tactical_target_position = Vector2.INF
 
 
 func delay_next_spawn_until(delay_seconds: float) -> void:
@@ -3261,7 +3270,10 @@ func _get_boss_special_shot_config(special_kind: String) -> Dictionary:
 func _get_chaser_velocity(to_target: Vector2) -> Vector2:
 	if to_target.length_squared() <= 4.0:
 		return Vector2.ZERO
-	var steering_target := _get_path_steering_target(target_position)
+	var movement_target: Vector2 = target_position
+	if _tactical_target_position != Vector2.INF and global_position.distance_squared_to(_tactical_target_position) > 52.0 * 52.0:
+		movement_target = _tactical_target_position
+	var steering_target := _get_path_steering_target(movement_target)
 	var to_steering := steering_target - global_position
 	if to_steering.length_squared() <= 4.0:
 		return Vector2.ZERO
@@ -3271,6 +3283,11 @@ func _get_chaser_velocity(to_target: Vector2) -> Vector2:
 func _get_ranged_velocity(to_target: Vector2) -> Vector2:
 	if to_target.length_squared() <= 4.0:
 		return Vector2.ZERO
+	if _tactical_target_position != Vector2.INF and global_position.distance_squared_to(_tactical_target_position) > 42.0 * 42.0:
+		var tactical_steering_target := _get_path_steering_target(_tactical_target_position)
+		var to_tactical_steering := tactical_steering_target - global_position
+		if to_tactical_steering.length_squared() > 4.0:
+			return to_tactical_steering.normalized() * speed
 	var steering_target := _get_path_steering_target(target_position)
 	if steering_target.distance_squared_to(target_position) > 1.0:
 		var to_steering := steering_target - global_position

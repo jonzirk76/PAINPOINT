@@ -8,6 +8,7 @@
 script = ExtResource("2")
 enemy_profile = ExtResource("3")
 spawn_interval = 3.75
+tactics_kind = "concentrate"
 
 [resource]
 script = ExtResource("1")

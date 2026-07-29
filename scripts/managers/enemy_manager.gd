@@ -2,6 +2,7 @@ extends Node
 class_name EnemyManager
 
 const WALL_OCCLUSION_LAYERS := preload("res://scripts/arena/wall_occlusion_layers.gd")
+const LEGION_TACTICS_CONTROLLER := preload("res://scripts/ai/legion_tactics_controller.gd")
 
 signal enemy_defeated(enemy, score_value: int)
 signal general_defeated(general, score_value: int)
@@ -37,6 +38,9 @@ var _playable_rects: Array[Rect2] = []
 var _spawn_exclusion_rects: Array[Rect2] = []
 var _boss_add_timer: float = 0.0
 var _perspective_room_id: String = ""
+var _legion_controllers: Dictionary = {}
+var _generals_by_id: Dictionary = {}
+var _tactical_orders: Dictionary = {}
 
 
 func initialize(context: Dictionary) -> void:
@@ -51,6 +55,9 @@ func reset_run() -> void:
 			enemy.queue_free()
 	_enemies.clear()
 	_contact_timers.clear()
+	_legion_controllers.clear()
+	_generals_by_id.clear()
+	_tactical_orders.clear()
 	_boss_add_timer = 0.0
 	enemy_count_changed.emit(0)
 	horde_enemy_count_changed.emit(0)
@@ -118,11 +125,17 @@ func _physics_process(delta: float) -> void:
 	var player_position := _get_player_position()
 	var player = _get_player_ref()
 	_assign_repair_targets()
+	_refresh_legion_tactics(player_position)
 	for enemy in _enemies.duplicate():
 		if not is_instance_valid(enemy):
 			_enemies.erase(enemy)
 			continue
 		enemy.set_target_position(player_position)
+		var enemy_id: int = int(enemy.get_instance_id())
+		if _tactical_orders.has(enemy_id):
+			enemy.set_tactical_target_position(_tactical_orders[enemy_id])
+		else:
+			enemy.clear_tactical_target_position()
 		var id: int = enemy.get_instance_id()
 		_contact_timers[id] = max(float(_contact_timers.get(id, 0.0)) - delta, 0.0)
 		if enemy.has_method("is_birth_animation_active") and bool(enemy.is_birth_animation_active()):
@@ -166,6 +179,8 @@ func try_spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary =
 		enemy.set_meta("general_warmup_seconds", float(spawn_flags.get("warmup_seconds", enemy.spawn_profile.warmup_seconds)))
 		enemy.set_meta("general_scaled_spawn_interval", float(spawn_flags.get("scaled_spawn_interval", enemy.spawn_profile.spawn_interval)))
 	enemy.set_legion_identity(legion_id, general_id)
+	if enemy.is_general():
+		_register_legion_controller(enemy)
 	if bool(spawn_flags.get("birth", false)) and enemy.has_method("play_birth_animation"):
 		enemy.play_birth_animation(float(spawn_flags.get("birth_duration", 0.36)))
 	enemy.health_changed.connect(_on_enemy_health_changed)
@@ -288,6 +303,10 @@ func get_general_positions() -> Array[Vector2]:
 	return positions
 
 
+func get_legion_controller_count() -> int:
+	return _legion_controllers.size()
+
+
 func get_enemy_positions() -> Array[Vector2]:
 	var positions: Array[Vector2] = []
 	for enemy in _enemies:
@@ -302,6 +321,7 @@ func _on_enemy_health_depleted(enemy) -> void:
 	_enemies.erase(enemy)
 	_contact_timers.erase(enemy.get_instance_id())
 	if enemy.is_general():
+		_release_legion(enemy)
 		general_defeated.emit(enemy, enemy.score_value)
 	else:
 		enemy_defeated.emit(enemy, enemy.score_value)
@@ -337,6 +357,68 @@ func _on_enemy_repair_ready(enemy, repair_target, amount: int) -> void:
 		if enemy_target == null or not _enemies.has(enemy_target):
 			return
 		enemy_target.apply_healing(amount)
+
+
+func _register_legion_controller(general: EnemyEntity) -> void:
+	if general == null or not general.is_general():
+		return
+	var controller = LEGION_TACTICS_CONTROLLER.new()
+	controller.initialize(general, String(general.spawn_profile.tactics_kind))
+	_legion_controllers[general.general_id] = controller
+	_generals_by_id[general.general_id] = general
+	if not general.spawn_ready.is_connected(_on_general_spawn_ready_for_tactics):
+		general.spawn_ready.connect(_on_general_spawn_ready_for_tactics)
+
+
+func _on_general_spawn_ready_for_tactics(general, _spawn_position: Vector2) -> void:
+	if general == null or not is_instance_valid(general):
+		return
+	var controller = _legion_controllers.get(int(general.general_id), null)
+	if controller != null:
+		controller.notify_spawn_ready()
+
+
+func _release_legion(general: EnemyEntity) -> void:
+	if general == null:
+		return
+	var released_general_id: int = general.general_id
+	_legion_controllers.erase(released_general_id)
+	_generals_by_id.erase(released_general_id)
+	for member in _enemies:
+		if not is_instance_valid(member) or member.general_id != released_general_id:
+			continue
+		member.set_legion_identity(0, 0)
+		member.clear_tactical_target_position()
+
+
+func _refresh_legion_tactics(player_position: Vector2) -> void:
+	_tactical_orders.clear()
+	var active_general_ids: Array = _legion_controllers.keys()
+	active_general_ids.sort()
+	var legion_count: int = max(active_general_ids.size(), 1)
+	for legion_index in range(active_general_ids.size()):
+		var active_general_id: int = int(active_general_ids[legion_index])
+		var general: EnemyEntity = _generals_by_id.get(active_general_id, null) as EnemyEntity
+		if general == null or not is_instance_valid(general):
+			_legion_controllers.erase(active_general_id)
+			_generals_by_id.erase(active_general_id)
+			continue
+		var members: Array = []
+		for enemy in _enemies:
+			if is_instance_valid(enemy) and not enemy.is_general() and enemy.general_id == active_general_id:
+				members.append(enemy)
+		var controller = _legion_controllers.get(active_general_id, null)
+		if controller == null:
+			continue
+		var orders: Dictionary = controller.build_orders({
+			"members": members,
+			"player_position": player_position,
+			"arena_center": _arena_bounds.get_center(),
+			"legion_index": legion_index,
+			"legion_count": legion_count
+		})
+		for enemy_id in orders:
+			_tactical_orders[enemy_id] = orders[enemy_id]
 
 
 func _assign_repair_targets() -> void:
