@@ -29,4 +29,7 @@ strafe_speed = 22.0
 shot_cooldown = 1.05
 projectile_speed = 390.0
 projectile_radius = 4.5
+special_attack_kind = "rapid"
+special_cooldown = 4.4
+special_telegraph_seconds = 0.42
 spawn_profile = SubResource("EnemySpawnProfile_fast")

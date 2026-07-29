@@ -379,7 +379,7 @@ func _physics_process(delta: float) -> void:
 				intent_velocity = _update_cyber_soldier(delta, to_target)
 			_:
 				intent_velocity = _get_ranged_velocity(to_target) if _is_ranged_behavior() else _get_chaser_velocity(to_target)
-				var special_active := _update_boss_special(delta, to_target)
+				var special_active := _update_general_special(delta, to_target) if is_general() else _update_boss_special(delta, to_target)
 				if not special_active:
 					_try_emit_shot(to_target)
 				elif _boss_minigun_remaining > 0.0:
@@ -1503,6 +1503,42 @@ func _update_power_armor(delta: float, to_target: Vector2) -> Vector2:
 	if is_general():
 		_try_emit_shot(to_target)
 	return _get_ranged_velocity(to_target) * 0.72
+
+
+func _update_general_special(delta: float, to_target: Vector2) -> bool:
+	if not is_general() or special_attack_kind.is_empty() or health <= 0 or _is_dying:
+		return false
+	if _update_behavior_burst(delta):
+		return true
+	_behavior_special_timer = max(_behavior_special_timer - delta, 0.0)
+	if _behavior_special_timer > 0.0 or to_target.length_squared() <= 4.0 or not _has_clear_player_shot(to_target):
+		return false
+	match special_attack_kind:
+		"spread":
+			_emit_enemy_projectile(
+				to_target.normalized(),
+				projectile_speed,
+				projectile_damage,
+				projectile_radius,
+				3,
+				max(shot_spread_degrees, 30.0),
+				1.2,
+				"hostile"
+			)
+		"rapid":
+			_start_behavior_burst(to_target, {
+				"count": 4,
+				"interval": 0.08,
+				"speed": projectile_speed,
+				"damage": projectile_damage,
+				"radius": projectile_radius,
+				"kind": "hostile_burst",
+				"lifetime": 1.15
+			})
+		_:
+			return false
+	_behavior_special_timer = max(special_cooldown, 0.2)
+	return true
 
 
 func _pick_power_armor_attack_kind() -> String:
