@@ -15,3 +15,5 @@ class_name EnemySpawnProfile
 @export var projectile_shield_after_spawn_seconds: float = 0.34
 ## Identifies the initial tactics policy used for this general's legion.
 @export_enum("independent", "fan_out", "concentrate", "intercept") var tactics_kind: String = "independent"
+## Selects the legacy-inspired procedural chassis used to distinguish this general from ordinary enemies.
+@export_enum("basic", "fast", "shooter", "tank") var visual_kind: String = "basic"

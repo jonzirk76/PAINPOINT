@@ -10,6 +10,7 @@ enemy_profile = ExtResource("3")
 spawn_interval = 3.85
 spawn_batch_count = 2
 tactics_kind = "fan_out"
+visual_kind = "basic"
 
 [resource]
 script = ExtResource("1")

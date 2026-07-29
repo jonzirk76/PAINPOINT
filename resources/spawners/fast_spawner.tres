@@ -10,6 +10,7 @@ enemy_profile = ExtResource("3")
 spawn_interval = 2.65
 spawn_batch_count = 3
 tactics_kind = "intercept"
+visual_kind = "fast"
 
 [resource]
 script = ExtResource("1")

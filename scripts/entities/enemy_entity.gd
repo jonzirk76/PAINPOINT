@@ -718,6 +718,8 @@ func _draw() -> void:
 		draw_color = Color(1.0, 0.92, 0.86, birth_alpha)
 	if _uses_agent_character_art():
 		_draw_agent_character_art(draw_color)
+	elif is_general():
+		_draw_general_character_art(draw_color)
 	else:
 		_draw_enemy_character_art(draw_color)
 	if _repair_beam_remaining > 0.0:
@@ -739,7 +741,7 @@ func _draw() -> void:
 	elif _boss_minigun_remaining > 0.0:
 		_draw_boss_minigun_sweep()
 	draw_line(Vector2(-body_radius, -body_radius - 8.0), Vector2(-body_radius + body_radius * 2.0 * health_ratio, -body_radius - 8.0), Color(0.4, 1.0, 0.35, birth_alpha), 3.0)
-	if _is_ranged_behavior() and not _uses_agent_character_art():
+	if _is_ranged_behavior() and not _uses_agent_character_art() and not is_general():
 		var aim := (target_position - global_position).normalized()
 		if aim.length_squared() <= 0.001:
 			aim = Vector2.RIGHT
@@ -753,6 +755,75 @@ func _draw() -> void:
 		draw_arc(Vector2.ZERO, body_radius + 4.0, 0.0, TAU, 28, Color(1.0, 1.0, 1.0, 0.8), 3.0)
 	if is_birth_animation_active():
 		_draw_birth_animation_overlay()
+
+
+func _draw_general_character_art(tint: Color) -> void:
+	var base_color := Color(body_color.r, body_color.g, body_color.b, tint.a)
+	var core_color := Color(
+		lerp(body_color.r, accent_color.r, 0.62),
+		lerp(body_color.g, accent_color.g, 0.62),
+		lerp(body_color.b, accent_color.b, 0.62),
+		tint.a
+	)
+	if _hit_flash_remaining > 0.0:
+		base_color = Color(0.96, 0.9, 0.82, tint.a)
+		core_color = Color(1.0, 0.58, 1.0, tint.a)
+	var base_points := PackedVector2Array([
+		Vector2(-body_radius, body_radius * 0.55),
+		Vector2(-body_radius * 0.7, -body_radius * 0.6),
+		Vector2(0.0, -body_radius),
+		Vector2(body_radius * 0.7, -body_radius * 0.6),
+		Vector2(body_radius, body_radius * 0.55),
+		Vector2(0.0, body_radius)
+	])
+	draw_colored_polygon(base_points, base_color)
+	draw_polyline(_get_closed_points(base_points), Color(0.08, 0.06, 0.1, tint.a), 3.0, true)
+	_draw_general_type_details(core_color, tint.a)
+	var health_ratio: float = float(health) / float(max(max_health, 1))
+	draw_arc(Vector2.ZERO, body_radius * 0.38, 0.0, TAU * health_ratio, 28, Color(accent_color.r, accent_color.g, accent_color.b, tint.a), 4.0)
+	var damage_level: float = 1.0 - health_ratio
+	var crack_color := Color(0.04, 0.03, 0.05, tint.a)
+	if damage_level > 0.22:
+		draw_line(Vector2(-body_radius * 0.55, -body_radius * 0.2), Vector2(-body_radius * 0.1, body_radius * 0.18), crack_color, 2.0)
+	if damage_level > 0.48:
+		draw_line(Vector2(body_radius * 0.52, -body_radius * 0.32), Vector2(body_radius * 0.12, body_radius * 0.4), crack_color, 2.0)
+	if damage_level > 0.72:
+		draw_line(Vector2(-body_radius * 0.18, -body_radius * 0.72), Vector2(body_radius * 0.42, -body_radius * 0.18), crack_color, 2.0)
+
+
+func _draw_general_type_details(core_color: Color, alpha: float) -> void:
+	var visual_kind: String = String(spawn_profile.visual_kind) if spawn_profile != null else "basic"
+	match visual_kind:
+		"tank":
+			draw_rect(Rect2(Vector2(-body_radius * 0.48, -body_radius * 0.42), Vector2(body_radius * 0.96, body_radius * 0.84)), Color(0.12, 0.08, 0.08, alpha), true)
+			draw_rect(Rect2(Vector2(-body_radius * 0.32, -body_radius * 0.3), Vector2(body_radius * 0.64, body_radius * 0.6)), core_color, true)
+			draw_line(Vector2(-body_radius * 0.75, body_radius * 0.7), Vector2(body_radius * 0.75, body_radius * 0.7), Color(accent_color.r, accent_color.g, accent_color.b, alpha), 4.0)
+		"fast":
+			var points := PackedVector2Array([
+				Vector2(0.0, -body_radius * 0.52),
+				Vector2(body_radius * 0.5, 0.0),
+				Vector2(0.0, body_radius * 0.52),
+				Vector2(-body_radius * 0.5, 0.0)
+			])
+			draw_colored_polygon(points, core_color)
+			draw_polyline(_get_closed_points(points), Color(accent_color.r, accent_color.g, accent_color.b, alpha), 2.0, true)
+		"shooter":
+			var aim := (target_position - global_position).normalized()
+			if aim.length_squared() <= 0.001:
+				aim = Vector2.RIGHT
+			draw_circle(Vector2.ZERO, body_radius * 0.31, core_color)
+			draw_line(Vector2.ZERO, aim * (body_radius * 0.82), Color(accent_color.r, accent_color.g, accent_color.b, alpha), 7.0)
+			draw_circle(aim * (body_radius * 0.82), body_radius * 0.1, Color(0.04, 0.04, 0.07, alpha))
+		_:
+			draw_rect(Rect2(Vector2(-body_radius * 0.42, -body_radius * 0.38), Vector2(body_radius * 0.84, body_radius * 0.78)), Color(0.16, 0.12, 0.18, alpha), true)
+			draw_circle(Vector2.ZERO, body_radius * 0.28, core_color)
+
+
+func _get_closed_points(points: PackedVector2Array) -> PackedVector2Array:
+	var closed := points.duplicate()
+	if not closed.is_empty():
+		closed.append(closed[0])
+	return closed
 
 
 func _draw_enemy_character_art(tint: Color) -> void:
