@@ -110,6 +110,14 @@ points = PackedVector2Array(16, -177, 11, -158, -2, -143, -21, -137, -40, -142, 
 width = 2.4
 default_color = Color(0.39, 0.95, 1, 0.92)
 
+[node name="NearIrisDisc" type="Polygon2D" parent="ConstructionPanel/Construction"]
+color = Color(0.4, 0.78, 0.92, 0.52)
+polygon = PackedVector2Array(-52, -185, -43, -182, -37, -174, -37, -164, -43, -155, -52, -152, -61, -156, -66, -165, -65, -175, -60, -182)
+
+[node name="NearPupilOnIrisNormal" type="Polygon2D" parent="ConstructionPanel/Construction"]
+color = Color(0.06, 0.08, 0.1, 0.96)
+polygon = PackedVector2Array(-52, -179, -47, -177, -44, -171, -45, -165, -50, -161, -55, -163, -58, -168, -57, -174)
+
 [node name="FarEyeSphere" type="Polygon2D" parent="ConstructionPanel/Construction"]
 color = Color(0.27, 0.9, 0.96, 0.2)
 polygon = PackedVector2Array(-151, -171, -155, -154, -166, -143, -181, -140, -196, -147, -205, -160, -206, -176, -200, -190, -187, -199, -172, -199, -159, -188)
@@ -118,6 +126,28 @@ polygon = PackedVector2Array(-151, -171, -155, -154, -166, -143, -181, -140, -19
 points = PackedVector2Array(-151, -171, -155, -154, -166, -143, -181, -140, -196, -147, -205, -160, -206, -176, -200, -190, -187, -199, -172, -199, -159, -188, -151, -171)
 width = 2.1
 default_color = Color(0.39, 0.95, 1, 0.76)
+
+[node name="FarIrisDisc" type="Polygon2D" parent="ConstructionPanel/Construction"]
+color = Color(0.4, 0.78, 0.92, 0.48)
+polygon = PackedVector2Array(-184, -184, -178, -181, -175, -173, -176, -164, -181, -158, -188, -159, -193, -165, -194, -174, -191, -181)
+
+[node name="FarPupilOnIrisNormal" type="Polygon2D" parent="ConstructionPanel/Construction"]
+color = Color(0.06, 0.08, 0.1, 0.92)
+polygon = PackedVector2Array(-184, -179, -180, -177, -179, -172, -181, -167, -185, -166, -188, -170, -188, -175)
+
+[node name="FarIrisGazeNormal" type="Line2D" parent="ConstructionPanel/Construction"]
+points = PackedVector2Array(-184, -173, -310, -170)
+width = 1.5
+default_color = Color(0.45, 1, 0.75, 0.72)
+
+[node name="NearIrisGazeNormal" type="Line2D" parent="ConstructionPanel/Construction"]
+points = PackedVector2Array(-52, -169, -310, -170)
+width = 1.5
+default_color = Color(0.45, 1, 0.75, 0.72)
+
+[node name="ApproximateGazeConvergence" type="Polygon2D" parent="ConstructionPanel/Construction"]
+color = Color(0.68, 1, 0.82, 0.94)
+polygon = PackedVector2Array(-310, -175, -305, -170, -310, -165, -315, -170)
 
 [node name="BrowTangentPlane" type="Line2D" parent="ConstructionPanel/Construction"]
 points = PackedVector2Array(-211, -211, 31, -190, 22, -127, -209, -148, -211, -211)
@@ -249,8 +279,22 @@ color = Color(0.89, 0.83, 0.72, 1)
 polygon = PackedVector2Array(-199, -177, -183, -185, -162, -177, -154, -166, -170, -158, -191, -161)
 
 [node name="FarIris" type="Polygon2D" parent="DrawingPanel/Drawing"]
-color = Color(0.12, 0.1, 0.08, 1)
-polygon = PackedVector2Array(-184, -182, -176, -178, -173, -168, -178, -160, -187, -163, -191, -173)
+color = Color(0.29, 0.21, 0.15, 1)
+polygon = PackedVector2Array(-184, -182, -178, -180, -175, -174, -176, -166, -181, -161, -187, -162, -191, -168, -191, -175, -188, -180)
+
+[node name="FarPupil" type="Polygon2D" parent="DrawingPanel/Drawing"]
+color = Color(0.025, 0.025, 0.025, 1)
+polygon = PackedVector2Array(-184, -178, -181, -176, -180, -172, -182, -168, -185, -168, -188, -171, -187, -175)
+
+[node name="FarUpperEyelid" type="Line2D" parent="DrawingPanel/Drawing"]
+points = PackedVector2Array(-199, -177, -184, -185, -162, -177, -154, -166)
+width = 3.0
+default_color = Color(0.16, 0.095, 0.075, 1)
+
+[node name="FarLowerEyelid" type="Line2D" parent="DrawingPanel/Drawing"]
+points = PackedVector2Array(-154, -166, -170, -158, -191, -161, -199, -177)
+width = 1.8
+default_color = Color(0.35, 0.21, 0.16, 1)
 
 [node name="NearEyeSocket" type="Polygon2D" parent="DrawingPanel/Drawing"]
 color = Color(0.09, 0.07, 0.06, 1)
@@ -261,8 +305,22 @@ color = Color(0.91, 0.85, 0.75, 1)
 polygon = PackedVector2Array(-80, -169, -62, -184, -32, -188, -9, -174, -14, -157, -41, -146, -68, -151)
 
 [node name="NearIris" type="Polygon2D" parent="DrawingPanel/Drawing"]
-color = Color(0.13, 0.11, 0.09, 1)
-polygon = PackedVector2Array(-54, -184, -43, -180, -37, -168, -39, -154, -51, -148, -62, -154, -66, -167, -63, -178)
+color = Color(0.31, 0.22, 0.15, 1)
+polygon = PackedVector2Array(-54, -184, -46, -181, -41, -174, -41, -164, -46, -155, -54, -152, -61, -156, -65, -165, -64, -175, -60, -182)
+
+[node name="NearPupil" type="Polygon2D" parent="DrawingPanel/Drawing"]
+color = Color(0.025, 0.025, 0.025, 1)
+polygon = PackedVector2Array(-54, -179, -49, -177, -46, -171, -47, -165, -51, -161, -56, -163, -59, -168, -58, -174)
+
+[node name="NearUpperEyelid" type="Line2D" parent="DrawingPanel/Drawing"]
+points = PackedVector2Array(-80, -169, -62, -184, -32, -188, -9, -174)
+width = 3.2
+default_color = Color(0.16, 0.095, 0.075, 1)
+
+[node name="NearLowerEyelid" type="Line2D" parent="DrawingPanel/Drawing"]
+points = PackedVector2Array(-9, -174, -14, -157, -41, -146, -68, -151, -80, -169)
+width = 1.9
+default_color = Color(0.35, 0.21, 0.16, 1)
 
 [node name="FarBrow" type="Polygon2D" parent="DrawingPanel/Drawing"]
 color = Color(0.07, 0.055, 0.05, 1)
