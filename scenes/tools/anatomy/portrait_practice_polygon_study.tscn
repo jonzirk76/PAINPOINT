@@ -100,10 +100,12 @@ width = 2.4
 default_color = Color(0.96, 0.58, 0.76, 0.88)
 
 [node name="NearEyeSphere" type="Polygon2D" parent="ConstructionPanel/Construction"]
+position = Vector2(-29.761902, 10.714286)
 color = Color(0.27, 0.9, 0.96, 0.25)
 polygon = PackedVector2Array(16, -177, 11, -158, -2, -143, -21, -137, -40, -142, -55, -155, -61, -174, -56, -193, -43, -208, -24, -214, -5, -209, 10, -196)
 
 [node name="NearEyeSphereContour" type="Line2D" parent="ConstructionPanel/Construction"]
+position = Vector2(-29.761902, 10.714286)
 points = PackedVector2Array(16, -177, 11, -158, -2, -143, -21, -137, -40, -142, -55, -155, -61, -174, -56, -193, -43, -208, -24, -214, -5, -209, 10, -196, 16, -177)
 width = 2.4
 default_color = Color(0.39, 0.95, 1, 0.92)
@@ -124,34 +126,35 @@ default_color = Color(1, 0.46, 0.52, 0.72)
 
 [node name="NoseWedge" type="Polygon2D" parent="ConstructionPanel/Construction"]
 color = Color(0.96, 0.58, 0.31, 0.24)
-polygon = PackedVector2Array(-164, -183, -184, -87, -161, -64, -112, -74, -130, -174)
+polygon = PackedVector2Array(-150.00006, -177.38098, -159.52386, -164.2857, -186.90479, -77.38098, -180.95245, -63.095215, -169.04767, -58.333313, -117.85718, -59.523804, -104.76196, -76.19049, -129.76196, -169.0476)
 
 [node name="NoseContour" type="Line2D" parent="ConstructionPanel/Construction"]
-points = PackedVector2Array(-164, -183, -184, -87, -161, -64, -112, -74, -130, -174, -164, -183)
+points = PackedVector2Array(-150.00006, -177.38098, -159.52386, -164.2857, -186.90479, -77.38098, -180.95245, -63.095215, -169.04767, -58.333313, -117.85718, -59.523804, -104.76196, -76.19049, -129.76196, -169.0476, -150.00006, -177.38098)
 width = 2.7
 default_color = Color(1, 0.67, 0.39, 0.94)
 
 [node name="LowerFaceCylinder" type="Polygon2D" parent="ConstructionPanel/Construction"]
 color = Color(0.98, 0.77, 0.26, 0.18)
-polygon = PackedVector2Array(-163, -66, -131, -76, -81, -68, -48, -45, -40, 56, -58, 133, -101, 163, -151, 148, -177, 104, -181, 4)
+polygon = PackedVector2Array(-205.95245, -20.238098, -176.19049, -61.904785, -136.90479, -60.714294, -92.85718, -61.904785, -71.42859, -30.952393, -57.142944, 51.19049, -67.85718, 110.714294, -108.333374, 122.61902, -151.19049, 121.42859, -178.57147, 103.57141, -195.23816, 45.2381, -203.57147, 10.714294)
 
 [node name="LowerFaceCylinderContour" type="Line2D" parent="ConstructionPanel/Construction"]
-points = PackedVector2Array(-163, -66, -131, -76, -81, -68, -48, -45, -40, 56, -58, 133, -101, 163, -151, 148, -177, 104, -181, 4, -163, -66)
+points = PackedVector2Array(-205.95245, -20.238098, -176.19049, -61.904785, -136.90479, -60.714294, -92.85718, -61.904785, -71.42859, -30.952393, -57.142944, 51.19049, -67.85718, 110.714294, -108.333374, 122.61902, -151.19049, 121.42859, -178.57147, 103.57141, -195.23816, 45.2381, -203.57147, 10.714294, -205.95245, -20.238098)
 width = 2.8
 default_color = Color(1, 0.84, 0.37, 0.94)
 
 [node name="LowerFaceTopCap" type="Line2D" parent="ConstructionPanel/Construction"]
-points = PackedVector2Array(-163, -66, -131, -76, -81, -68, -48, -45)
+points = PackedVector2Array(-176.19049, -61.904785, -136.90479, -60.714294, -92.85718, -61.904785, -71.42859, -30.952393)
 width = 2.0
 default_color = Color(1, 0.9, 0.58, 0.82)
 
 [node name="LowerFaceBottomCap" type="Line2D" parent="ConstructionPanel/Construction"]
-points = PackedVector2Array(-58, 133, -101, 163, -151, 148)
+points = PackedVector2Array(-67.85718, 110.714294, -108.333374, 122.61902, -151.19049, 121.42859, -178.57147, 103.57141)
 width = 2.0
 default_color = Color(1, 0.9, 0.58, 0.82)
 
 [node name="MouthProjectedOnCylinder" type="Line2D" parent="ConstructionPanel/Construction"]
-points = PackedVector2Array(-174, 8, -147, -3, -112, -1, -78, 10, -52, 25)
+position = Vector2(0, 25)
+points = PackedVector2Array(-195.23816, 9.523804, -164.28577, 7.1428833, -127.38098, 7.1428833, -78, 10, -45.23816, 8.333313)
 width = 3.0
 default_color = Color(0.96, 0.36, 0.5, 0.94)
 
@@ -161,10 +164,10 @@ polygon = PackedVector2Array(72, 101, 83, 94, 95, 101, 94, 113, 82, 120, 71, 113
 
 [node name="NeckCylinder" type="Polygon2D" parent="ConstructionPanel/Construction"]
 color = Color(0.29, 0.82, 0.58, 0.16)
-polygon = PackedVector2Array(57, 106, 107, 109, 123, 329, 51, 357, 19, 331, 29, 128)
+polygon = PackedVector2Array(42.857056, 73.80951, 151.19043, -9.523804, 186.90466, 142.85712, 269.0476, 291.6667, 45.238037, 355.95233, -94.04761, 341.6667, -83.333374, 121.42859)
 
 [node name="NeckCylinderContour" type="Line2D" parent="ConstructionPanel/Construction"]
-points = PackedVector2Array(57, 106, 107, 109, 123, 329, 51, 357, 19, 331, 29, 128, 57, 106)
+points = PackedVector2Array(42.857056, 73.80951, 151.19043, -9.523804, 186.90466, 142.85712, 269.0476, 291.6667, 45.238037, 355.95233, -94.04761, 341.6667, -83.333374, 121.42859, 42.857056, 73.80951)
 width = 2.7
 default_color = Color(0.42, 0.93, 0.68, 0.9)
 
@@ -195,11 +198,11 @@ scale = Vector2(0.84, 0.84)
 
 [node name="BackNeck" type="Polygon2D" parent="DrawingPanel/Drawing"]
 color = Color(0.25, 0.16, 0.12, 1)
-polygon = PackedVector2Array(73, 102, 161, 102, 143, 358, 50, 375, 17, 331, 26, 138)
+polygon = PackedVector2Array(51, 74, 151, -10, 187, 143, 220, 306, 122, 344, 35, 360, -65, 342, -70, 148)
 
 [node name="NeckLight" type="Polygon2D" parent="DrawingPanel/Drawing"]
 color = Color(0.42, 0.27, 0.2, 1)
-polygon = PackedVector2Array(31, 110, 105, 103, 109, 330, 66, 369, 26, 330, 10, 190)
+polygon = PackedVector2Array(24, 94, 92, 46, 130, 151, 139, 316, 52, 352, -36, 331, -43, 154)
 
 [node name="EarBack" type="Polygon2D" parent="DrawingPanel/Drawing"]
 color = Color(0.37, 0.23, 0.18, 1)
@@ -251,15 +254,15 @@ polygon = PackedVector2Array(-184, -182, -176, -178, -173, -168, -178, -160, -18
 
 [node name="NearEyeSocket" type="Polygon2D" parent="DrawingPanel/Drawing"]
 color = Color(0.09, 0.07, 0.06, 1)
-polygon = PackedVector2Array(-67, -185, -40, -207, -4, -210, 24, -191, 16, -163, -16, -145, -52, -151)
+polygon = PackedVector2Array(-92, -175, -65, -197, -29, -200, -1, -181, -9, -153, -41, -135, -77, -141)
 
 [node name="NearEyeWhite" type="Polygon2D" parent="DrawingPanel/Drawing"]
 color = Color(0.91, 0.85, 0.75, 1)
-polygon = PackedVector2Array(-55, -179, -37, -194, -7, -198, 16, -184, 11, -167, -16, -156, -43, -161)
+polygon = PackedVector2Array(-80, -169, -62, -184, -32, -188, -9, -174, -14, -157, -41, -146, -68, -151)
 
 [node name="NearIris" type="Polygon2D" parent="DrawingPanel/Drawing"]
 color = Color(0.13, 0.11, 0.09, 1)
-polygon = PackedVector2Array(-29, -194, -18, -190, -12, -178, -14, -164, -26, -158, -37, -164, -41, -177, -38, -188)
+polygon = PackedVector2Array(-54, -184, -43, -180, -37, -168, -39, -154, -51, -148, -62, -154, -66, -167, -63, -178)
 
 [node name="FarBrow" type="Polygon2D" parent="DrawingPanel/Drawing"]
 color = Color(0.07, 0.055, 0.05, 1)
@@ -267,27 +270,27 @@ polygon = PackedVector2Array(-210, -205, -182, -215, -151, -202, -153, -190, -18
 
 [node name="NearBrow" type="Polygon2D" parent="DrawingPanel/Drawing"]
 color = Color(0.07, 0.055, 0.05, 1)
-polygon = PackedVector2Array(-72, -219, -38, -235, 3, -233, 35, -213, 26, -200, -5, -214, -40, -216, -67, -201)
+polygon = PackedVector2Array(-97, -209, -63, -225, -22, -223, 10, -203, 1, -190, -30, -204, -65, -206, -92, -191)
 
 [node name="MuzzlePlane" type="Polygon2D" parent="DrawingPanel/Drawing"]
 color = Color(0.5, 0.3, 0.23, 1)
-polygon = PackedVector2Array(-177, -49, -120, -45, -65, -24, -43, 21, -63, 67, -115, 76, -166, 51, -185, 2)
+polygon = PackedVector2Array(-196, -27, -160, -52, -112, -49, -72, -28, -58, 22, -70, 73, -111, 104, -158, 91, -190, 52, -205, 11)
 
 [node name="UpperLip" type="Polygon2D" parent="DrawingPanel/Drawing"]
 color = Color(0.22, 0.13, 0.12, 1)
-polygon = PackedVector2Array(-179, -4, -146, -18, -111, -14, -75, 2, -55, 17, -98, 15, -137, 12, -171, 17)
+polygon = PackedVector2Array(-195, 23, -165, 14, -128, 14, -87, 20, -58, 31, -92, 39, -132, 38, -168, 40)
 
 [node name="LowerLip" type="Polygon2D" parent="DrawingPanel/Drawing"]
 color = Color(0.57, 0.34, 0.3, 1)
-polygon = PackedVector2Array(-171, 18, -136, 14, -98, 17, -57, 20, -76, 43, -118, 48, -158, 39)
+polygon = PackedVector2Array(-188, 41, -157, 38, -122, 40, -83, 41, -66, 50, -87, 65, -127, 70, -168, 62)
 
 [node name="BeardMass" type="Polygon2D" parent="DrawingPanel/Drawing"]
 color = Color(0.095, 0.075, 0.065, 0.94)
-polygon = PackedVector2Array(-187, -46, -154, -50, -119, -37, -80, -18, -45, 9, 45, 29, 72, 74, 45, 126, -4, 154, -66, 162, -127, 147, -166, 115, -180, 67)
+polygon = PackedVector2Array(-204, -22, -176, -43, -137, -47, -94, -36, -63, -15, -55, 30, -65, 79, -83, 113, -111, 126, -151, 123, -180, 105, -197, 67)
 
 [node name="BeardCheekBreak" type="Polygon2D" parent="DrawingPanel/Drawing"]
 color = Color(0.16, 0.11, 0.09, 0.9)
-polygon = PackedVector2Array(-77, -76, -17, -86, 52, -64, 84, -24, 60, 13, -8, -2, -57, -22, -104, -45)
+polygon = PackedVector2Array(-104, -73, -58, -82, -6, -68, 34, -39, 21, -3, -31, -10, -72, -27, -115, -48)
 
 [node name="EarInner" type="Polygon2D" parent="DrawingPanel/Drawing"]
 color = Color(0.66, 0.4, 0.31, 1)
