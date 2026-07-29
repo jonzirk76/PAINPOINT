@@ -1,0 +1,66 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Texture2D" path="res://art/concept_art/jules_sheet.png" id="1_sheet"]
+[ext_resource type="PackedScene" path="res://scenes/tools/anatomy/jules_enlarged_trace_art.tscn" id="2_trace"]
+
+[sub_resource type="AtlasTexture" id="JulesFaceCrop"]
+atlas = ExtResource("1_sheet")
+region = Rect2(251, 637, 149, 165)
+
+[node name="JulesEnlargedTraceStudy" type="Node2D"]
+
+[node name="Background" type="Polygon2D" parent="."]
+color = Color(0.03529412, 0.050980393, 0.078431375, 1)
+polygon = PackedVector2Array(0, 0, 1888, 0, 1888, 1105, 0, 1105)
+
+[node name="Title" type="Label" parent="."]
+offset_left = 28.0
+offset_top = 16.0
+offset_right = 1200.0
+offset_bottom = 48.0
+theme_override_colors/font_color = Color(0.92941177, 0.9490196, 0.98039216, 1)
+theme_override_font_sizes/font_size = 24
+text = "JULES — ENLARGED 149 × 165 CROP TRACE"
+
+[node name="OverlayLabel" type="Label" parent="."]
+offset_left = 28.0
+offset_top = 54.0
+offset_right = 800.0
+offset_bottom = 80.0
+theme_override_colors/font_color = Color(0.52156866, 0.8627451, 0.9411765, 1)
+theme_override_font_sizes/font_size = 16
+text = "REGISTRATION OVERLAY — REFERENCE AND TRACE ENLARGED 6×"
+
+[node name="CleanLabel" type="Label" parent="."]
+offset_left = 966.0
+offset_top = 54.0
+offset_right = 1750.0
+offset_bottom = 80.0
+theme_override_colors/font_color = Color(0.52156866, 0.8627451, 0.9411765, 1)
+theme_override_font_sizes/font_size = 16
+text = "CLEAN TRACE — ORIGINAL CROP COORDINATES"
+
+[node name="Reference" type="Sprite2D" parent="."]
+position = Vector2(28, 88)
+scale = Vector2(6, 6)
+texture = SubResource("JulesFaceCrop")
+centered = false
+
+[node name="OverlayTrace" parent="." instance=ExtResource("2_trace")]
+position = Vector2(28, 88)
+scale = Vector2(6, 6)
+modulate = Color(1, 1, 1, 0.5)
+
+[node name="CleanTrace" parent="." instance=ExtResource("2_trace")]
+position = Vector2(966, 88)
+scale = Vector2(6, 6)
+
+[node name="OverlayBorder" type="Line2D" parent="."]
+points = PackedVector2Array(28, 88, 922, 88, 922, 1078, 28, 1078, 28, 88)
+width = 2.0
+default_color = Color(0.28627452, 0.36862746, 0.49019608, 1)
+
+[node name="CleanBorder" type="Line2D" parent="."]
+points = PackedVector2Array(966, 88, 1860, 88, 1860, 1078, 966, 1078, 966, 88)
+width = 2.0
+default_color = Color(0.28627452, 0.36862746, 0.49019608, 1)
