@@ -18,6 +18,8 @@ const BEHAVIOR_CYBER_SOLDIER := "cyber_soldier"
 @export var score_value: int = 10
 @export var body_radius: float = 18.0
 @export var knockback_multiplier: float = 1.0
+## Controls this enemy's influence in soft crowd separation; heavier enemies displace lighter enemies, while zero-weight enemies cannot push others.
+@export_range(0.0, 100.0, 0.1) var crowd_weight: float = 1.0
 @export var body_color: Color = Color(1.0, 0.27, 0.22)
 @export var accent_color: Color = Color(1.0, 0.72, 0.18)
 @export var preferred_distance: float = 280.0

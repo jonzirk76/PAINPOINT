@@ -22,10 +22,6 @@ signal repair_requested(enemy, repair_target, amount: int)
 @export var boss_projectile_shield_after_spawn_seconds: float = 1.15
 @export var crowd_separation_force: float = 115.0
 @export var crowd_separation_padding: float = 10.0
-## Controls how much ordinary minion overlap can displace a general through soft crowd separation.
-@export_range(0.0, 1.0, 0.01) var general_crowd_separation_response: float = 0.08
-## Controls how strongly a minion is redirected away from an overlapping general.
-@export var minion_separation_from_general_multiplier: float = 1.15
 
 var enabled: bool = false
 var _enemy_layer: Node = null
@@ -555,20 +551,18 @@ func _apply_crowd_separation_pair(first_index: int, second_index: int, valid_ene
 		distance = sqrt(distance_squared)
 		direction = separation / distance
 	var strength: float = (1.0 - clamp(distance / desired_distance, 0.0, 1.0)) * crowd_separation_force
-	var first_is_general: bool = bool(first.is_general())
-	var second_is_general: bool = bool(second.is_general())
-	if first_is_general and second_is_general:
-		pushes[first_index] += direction * strength * 0.35
-		pushes[second_index] -= direction * strength * 0.35
-	elif first_is_general:
-		pushes[first_index] += direction * strength * general_crowd_separation_response
-		pushes[second_index] -= direction * strength * minion_separation_from_general_multiplier
-	elif second_is_general:
-		pushes[first_index] += direction * strength * minion_separation_from_general_multiplier
-		pushes[second_index] -= direction * strength * general_crowd_separation_response
-	else:
-		pushes[first_index] += direction * strength
-		pushes[second_index] -= direction * strength
+	var first_weight: float = max(float(first.crowd_weight), 0.0)
+	var second_weight: float = max(float(second.crowd_weight), 0.0)
+	pushes[first_index] += direction * strength * _get_crowd_weight_response(first_weight, second_weight)
+	pushes[second_index] -= direction * strength * _get_crowd_weight_response(second_weight, first_weight)
+
+
+func _get_crowd_weight_response(receiver_weight: float, source_weight: float) -> float:
+	if source_weight <= 0.0:
+		return 0.0
+	if receiver_weight <= 0.0:
+		return 1.15
+	return clamp(source_weight / receiver_weight, 0.0, 1.15)
 
 
 func _get_crowd_separation_bucket_size(valid_enemies: Array) -> float:

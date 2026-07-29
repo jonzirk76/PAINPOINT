@@ -43,6 +43,8 @@ The orchestrator receives those signals and decides which manager command runs n
 - `RoomManager`: owns generated door entities for the currently loaded dungeon room.
 - `FaunaManager`: owns non-combat background fauna such as cats, feeds them read-only combat danger points through injected providers, and keeps them off combat collision layers.
 
+Enemy-to-enemy overlap uses soft separation rather than hard body collision. Each `EnemyProfile.crowd_weight` controls how much influence that enemy has in the pair: equal weights separate normally, heavier enemies displace lighter enemies more, and a zero-weight enemy yields without pushing the other enemy.
+
 ## Level Flow
 
 The game starts in `LEVEL_SELECT`. `GameOrchestrator` owns the selected level index, displays levels in increasing difficulty, and starts the selected `LevelDefinition` only after player confirmation.

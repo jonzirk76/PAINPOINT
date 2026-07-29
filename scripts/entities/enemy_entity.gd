@@ -53,6 +53,8 @@ const BEHAVIOR_CHASER := "chaser"
 @export var score_value: int = 10
 @export var body_radius: float = 18.0
 @export var knockback_multiplier: float = 1.0
+## Controls this enemy's influence in soft crowd separation; zero-weight enemies yield without pushing others.
+@export_range(0.0, 100.0, 0.1) var crowd_weight: float = 1.0
 @export var arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 @export var arena_shape: int = 0
 @export var wall_rects: Array[Rect2] = []
@@ -255,6 +257,7 @@ func initialize(profile) -> void:
 	score_value = profile.score_value
 	body_radius = profile.body_radius
 	knockback_multiplier = profile.knockback_multiplier
+	crowd_weight = max(float(profile.crowd_weight), 0.0) if profile.get("crowd_weight") != null else 1.0
 	behavior_kind = profile.behavior_kind
 	body_color = profile.body_color
 	accent_color = profile.accent_color
