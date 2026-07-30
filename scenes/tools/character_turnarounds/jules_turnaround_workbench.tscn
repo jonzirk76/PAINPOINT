@@ -1,6 +1,6 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://dy4ryccajcdkl"]
 
-[ext_resource type="Texture2D" path="res://art/concept_art/jules_sheet.png" id="1_ssyo4"]
+[ext_resource type="Texture2D" uid="uid://dtto1ddkut7ut" path="res://art/concept_art/jules_sheet.png" id="1_ssyo4"]
 
 [node name="JulesTurnaroundWorkbench" type="Node2D" unique_id=1170234076]
 
@@ -539,6 +539,7 @@ color = Color(0.8235294, 0.54901963, 0.07058824, 1)
 polygon = PackedVector2Array(991.9, 248.6, 1014, 228.2, 1036.1, 248.6, 1014, 304.7)
 
 [node name="TracingOverlay" type="Sprite2D" parent="." unique_id=948619454]
+visible = false
 modulate = Color(1, 1, 1, 0.62)
 z_index = 20
 texture = ExtResource("1_ssyo4")
