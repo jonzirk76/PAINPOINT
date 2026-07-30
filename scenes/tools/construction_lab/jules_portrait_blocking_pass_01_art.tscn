@@ -1,58 +1,85 @@
-[gd_scene format=3]
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Texture2D" path="res://art/concept_art/jules_sheet.png" id="1_sheet"]
+
+[sub_resource type="AtlasTexture" id="JulesFaceCrop"]
+atlas = ExtResource("1_sheet")
+region = Rect2(251, 637, 149, 165)
 
 [node name="JulesPortraitBlockingPass01Art" type="Node2D"]
 
-[node name="LargeForms" type="Node2D" parent="."]
+[node name="Artwork" type="Node2D" parent="."]
+position = Vector2(28, 112)
+scale = Vector2(6, 6)
+modulate = Color(1, 1, 1, 0.58)
 
-[node name="HairMass" type="Node2D" parent="LargeForms"]
+[node name="LargeForms" type="Node2D" parent="Artwork"]
 
-[node name="Form01BackHairEnvelope" type="Polygon2D" parent="LargeForms/HairMass"]
+[node name="HairMass" type="Node2D" parent="Artwork/LargeForms"]
+
+[node name="Form01BackHairEnvelope" type="Polygon2D" parent="Artwork/LargeForms/HairMass"]
 z_index = -30
 color = Color(0.03529412, 0.02745098, 0.019607844, 1)
 antialiased = true
 polygon = PackedVector2Array(9, 73, 12, 57, 17, 42, 24, 31, 35, 22, 49, 18, 65, 16, 82, 18, 98, 23, 112, 30, 123, 40, 130, 53, 133, 68, 131, 84, 125, 98, 117, 111, 108, 121, 98, 130, 87, 137, 73, 140, 57, 137, 43, 130, 31, 120, 22, 107, 16, 91)
 
-[node name="Form06HairCapEnvelope" type="Polygon2D" parent="LargeForms/HairMass"]
+[node name="Form06HairCapEnvelope" type="Polygon2D" parent="Artwork/LargeForms/HairMass"]
 z_index = 20
 color = Color(0.0627451, 0.047058824, 0.03137255, 1)
 antialiased = true
 polygon = PackedVector2Array(5, 46, 14, 40, 9, 33, 20, 27, 31, 22, 42, 18, 57, 16, 72, 17, 89, 20, 104, 25, 117, 32, 128, 40, 123, 48, 137, 56, 126, 54, 132, 67, 122, 61, 124, 77, 115, 68, 111, 84, 106, 75, 101, 63, 96, 76, 89, 63, 84, 76, 78, 66, 69, 77, 60, 67, 55, 74, 49, 63, 43, 80, 38, 69, 31, 77, 27, 63, 20, 70, 14, 57)
 
-[node name="BodyMass" type="Node2D" parent="LargeForms"]
+[node name="BodyMass" type="Node2D" parent="Artwork/LargeForms"]
 
-[node name="Form02CoatShoulderEnvelope" type="Polygon2D" parent="LargeForms/BodyMass"]
+[node name="Form02CoatShoulderEnvelope" type="Polygon2D" parent="Artwork/LargeForms/BodyMass"]
 z_index = -20
 color = Color(0.07058824, 0.0627451, 0.047058824, 1)
 antialiased = true
 polygon = PackedVector2Array(1, 165, 6, 137, 18, 122, 34, 113, 49, 116, 63, 125, 78, 131, 94, 123, 111, 114, 129, 118, 143, 132, 149, 150, 149, 165)
 
-[node name="Form03NeckEnvelope" type="Polygon2D" parent="LargeForms/BodyMass"]
+[node name="Form03NeckEnvelope" type="Polygon2D" parent="Artwork/LargeForms/BodyMass"]
 z_index = -10
 color = Color(0.35686275, 0.20784314, 0.11372549, 1)
 antialiased = true
 polygon = PackedVector2Array(57, 109, 64, 117, 74, 123, 82, 126, 92, 117, 97, 129, 93, 139, 84, 145, 72, 143, 62, 136, 58, 125)
 
-[node name="Form07LeftCollarEnvelope" type="Polygon2D" parent="LargeForms/BodyMass"]
+[node name="Form07LeftCollarEnvelope" type="Polygon2D" parent="Artwork/LargeForms/BodyMass"]
 z_index = 30
 color = Color(0.105882354, 0.09803922, 0.08627451, 1)
 antialiased = true
 polygon = PackedVector2Array(28, 121, 48, 112, 61, 124, 70, 139, 70, 165, 48, 154, 35, 140)
 
-[node name="Form08RightCollarEnvelope" type="Polygon2D" parent="LargeForms/BodyMass"]
+[node name="Form08RightCollarEnvelope" type="Polygon2D" parent="Artwork/LargeForms/BodyMass"]
 z_index = 30
 color = Color(0.11372549, 0.105882354, 0.09411765, 1)
 antialiased = true
 polygon = PackedVector2Array(91, 124, 108, 111, 127, 119, 137, 137, 127, 151, 112, 165, 89, 165, 83, 139)
 
-[node name="HeadMass" type="Node2D" parent="LargeForms"]
+[node name="HeadMass" type="Node2D" parent="Artwork/LargeForms"]
 
-[node name="Form04FaceEnvelope" type="Polygon2D" parent="LargeForms/HeadMass"]
+[node name="Form04FaceEnvelope" type="Polygon2D" parent="Artwork/LargeForms/HeadMass"]
 color = Color(0.39215687, 0.24705882, 0.13725491, 1)
 antialiased = true
 polygon = PackedVector2Array(38, 58, 42, 45, 51, 35, 63, 30, 77, 29, 91, 32, 103, 40, 112, 52, 117, 66, 117, 81, 112, 94, 104, 106, 94, 117, 83, 126, 74, 132, 64, 128, 55, 121, 48, 112, 43, 101, 40, 88, 38, 73)
 
-[node name="Form05EarEnvelope" type="Polygon2D" parent="LargeForms/HeadMass"]
+[node name="Form05EarEnvelope" type="Polygon2D" parent="Artwork/LargeForms/HeadMass"]
 z_index = 1
 color = Color(0.40392157, 0.23921569, 0.12941177, 1)
 antialiased = true
 polygon = PackedVector2Array(111, 62, 119, 57, 125, 63, 127, 75, 123, 88, 116, 95, 111, 88)
+
+[node name="OverlayReference" type="Sprite2D" parent="."]
+z_index = -100
+position = Vector2(28, 112)
+scale = Vector2(6, 6)
+texture = SubResource("JulesFaceCrop")
+centered = false
+metadata/_edit_lock_ = true
+
+[node name="ColorReference" type="Sprite2D" parent="."]
+z_index = -100
+position = Vector2(966, 112)
+scale = Vector2(6, 6)
+texture = SubResource("JulesFaceCrop")
+centered = false
+metadata/_edit_lock_ = true
