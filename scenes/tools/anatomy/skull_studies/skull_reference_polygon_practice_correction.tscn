@@ -1,0 +1,457 @@
+[gd_scene format=3 uid="uid://c3ihrkrrjonb3"]
+
+[ext_resource type="Texture2D" uid="uid://dphjov1b721uc" path="res://art/concept_art/Screenshot from 2026-07-28 19-30-46.png" id="1_efsvv"]
+[ext_resource type="Texture2D" uid="uid://ck2kk14k7itv" path="res://art/concept_art/Screenshot from 2026-07-28 19-30-55.png" id="2_kg1y2"]
+[ext_resource type="Texture2D" uid="uid://cf8156l07rpq6" path="res://art/concept_art/Screenshot from 2026-07-28 19-31-00.png" id="3_867t6"]
+[ext_resource type="Texture2D" uid="uid://p14cfy06bwt6" path="res://art/concept_art/Screenshot from 2026-07-28 19-31-08.png" id="4_t3v5a"]
+[ext_resource type="Texture2D" uid="uid://bn0j6fgrgnvbm" path="res://art/concept_art/Screenshot from 2026-07-28 19-31-19.png" id="5_gc12s"]
+[ext_resource type="Texture2D" uid="uid://dj6plac5wsrs7" path="res://art/concept_art/Screenshot from 2026-07-28 19-31-34.png" id="6_bapq1"]
+
+[node name="SkullReferencePolygonPractice" type="Node2D" unique_id=141039231]
+
+[node name="Background" type="Polygon2D" parent="." unique_id=487860580]
+color = Color(0.035, 0.047, 0.065, 1)
+polygon = PackedVector2Array(0, 0, 1920, 0, 1920, 1080, 0, 1080)
+
+[node name="Title" type="Label" parent="." unique_id=1749429155]
+offset_left = 34.0
+offset_top = 18.0
+offset_right = 1500.0
+offset_bottom = 52.0
+theme_override_colors/font_color = Color(0.94, 0.91, 0.82, 1)
+theme_override_font_sizes/font_size = 26
+text = "SKULL POLYGON PRACTICE — six editable constructions"
+metadata/_edit_use_anchors_ = true
+
+[node name="Notes" type="Label" parent="." unique_id=646012866]
+offset_left = 35.0
+offset_top = 53.0
+offset_right = 1880.0
+offset_bottom = 78.0
+theme_override_colors/font_color = Color(0.59, 0.67, 0.77, 1)
+theme_override_font_sizes/font_size = 14
+text = "Duplicate any View group. ReferenceImage can be hidden. Solid magenta = visible foramen; translucent magenta = conceptual/X-ray placement; cyan = neck axis."
+metadata/_edit_use_anchors_ = true
+
+[node name="View01_UndersideThreeQuarter" type="Node2D" parent="." unique_id=232811923]
+position = Vector2(28, 90)
+
+[node name="Panel" type="Polygon2D" parent="View01_UndersideThreeQuarter" unique_id=282639656]
+color = Color(0.07, 0.095, 0.13, 1)
+polygon = PackedVector2Array(0, 0, 604, 0, 604, 450, 0, 450)
+
+[node name="Label" type="Label" parent="View01_UndersideThreeQuarter" unique_id=618319544]
+offset_left = 14.0
+offset_top = 10.0
+offset_right = 500.0
+offset_bottom = 35.0
+theme_override_colors/font_color = Color(0.83, 0.87, 0.91, 1)
+theme_override_font_sizes/font_size = 16
+text = "01  UNDERSIDE 3/4 — open jaw"
+metadata/_edit_use_anchors_ = true
+
+[node name="Construction" type="Node2D" parent="View01_UndersideThreeQuarter" unique_id=1415991162]
+position = Vector2(302, 242)
+
+[node name="CranialVault" type="Polygon2D" parent="View01_UndersideThreeQuarter/Construction" unique_id=986012770]
+color = Color(0.66, 0.74, 0.76, 0.9)
+polygon = PackedVector2Array(-146, -30, -130, -78, -92.40599, -119.091095, -39, -150, -10, -145, 81, -100, 123, -61, 151, -17, 151, 27, 137, 76, 72, 97, -15, 99, -76, 83, -135, 16)
+
+[node name="TemporalSidePlane" type="Polygon2D" parent="View01_UndersideThreeQuarter/Construction" unique_id=1594322547]
+color = Color(0.47, 0.38, 0.53, 0.88)
+polygon = PackedVector2Array(-11, -145, 74, -102, 106, -76, 131, -35, 129, 30, 92, 43, 67, -30, 8, -72, -3, -102, -31, -124)
+
+[node name="FacialBlock" type="Polygon2D" parent="View01_UndersideThreeQuarter/Construction" unique_id=767446142]
+color = Color(0.35, 0.72, 0.57, 0.9)
+polygon = PackedVector2Array(-126, -81, -92, -120, -39, -147, -8, -145, -22, -137, -32, -126, -3, -96, 6, -75, -5, -61, -2, -46, -7, -43, -33, -67, -59, -81, -85, -67, -112, -71, -130, -68, -141, -32, -140, -7, -146, -29, -140, -56)
+
+[node name="FarOrbit" type="Polygon2D" parent="View01_UndersideThreeQuarter/Construction" unique_id=1672904488]
+position = Vector2(28, -38)
+color = Color(0.055, 0.06, 0.065, 1)
+polygon = PackedVector2Array(-169, 10, -162, -23, -167, 30)
+
+[node name="NearOrbit" type="Polygon2D" parent="View01_UndersideThreeQuarter/Construction" unique_id=1471209467]
+position = Vector2(28, -38)
+color = Color(0.055, 0.06, 0.065, 1)
+polygon = PackedVector2Array(-113, -66, -83, -77, -59, -68, -51, -53, -117, -31)
+
+[node name="NasalAperture" type="Polygon2D" parent="View01_UndersideThreeQuarter/Construction" unique_id=384846280]
+position = Vector2(27, -24)
+color = Color(0.055, 0.06, 0.065, 1)
+polygon = PackedVector2Array(-158, -30, -156, -42, -133, -30, -131, -21, -142, -10, -150, -6, -157, 3)
+
+[node name="MaxillaAndTeeth" type="Polygon2D" parent="View01_UndersideThreeQuarter/Construction" unique_id=1589018725]
+color = Color(0.9, 0.84, 0.7, 0.96)
+polygon = PackedVector2Array(-129, -69, -102, -74, -88, -67, -55, -80, -23, -61, -4, -43, -11, -26, -2, 10, -85, 2, -103, 3, -121, 10, -140, 39, -146, 21)
+
+[node name="Mandible" type="Polygon2D" parent="View01_UndersideThreeQuarter/Construction" unique_id=1590908933]
+color = Color(0.72, 0.64, 0.49, 0.95)
+polygon = PackedVector2Array(-124, 11, -106, 4, -85, 1, -3, 12, 16, -5, 8, -35, 60, -18, 71.431625, 47.581528, -78, 53, -94, 58, -101, 71, -62, 130, -62, 154, -91, 143, -139, 78, -141.1749, 39.767944)
+
+[node name="CranialBase" type="Polygon2D" parent="View01_UndersideThreeQuarter/Construction" unique_id=1966948166]
+color = Color(0.51, 0.35, 0.29, 0.9)
+polygon = PackedVector2Array(-21, 97, -21, 50, 67, 47, 80, 41, 91, 47, 104, 47, 134, 33, 145, 41, 128, 85, 111, 112, 88, 128, 60, 141, 32, 146, -20, 133, -26, 106)
+
+[node name="ForamenMagnum_NeckAnchor" type="Polygon2D" parent="View01_UndersideThreeQuarter/Construction" unique_id=753217698]
+position = Vector2(0, -3.6153831)
+scale = Vector2(1, 1.0769231)
+color = Color(0.92, 0.22, 0.58, 1)
+polygon = PackedVector2Array(1, 67.42859, 16, 63.714294, 29, 65.57144, 35, 70.214294, 42, 87.85715, 27, 90.64285, 9, 91, -1, 80.42859, -1, 75)
+
+[node name="NeckAxis" type="Line2D" parent="View01_UndersideThreeQuarter/Construction" unique_id=1658934808]
+points = PackedVector2Array(32, 74, 56, 151)
+width = 3.0
+default_color = Color(0.2, 0.9, 0.95, 0.9)
+
+[node name="ReferenceImage" type="Sprite2D" parent="View01_UndersideThreeQuarter" unique_id=413919460]
+modulate = Color(1, 1, 1, 0.43529412)
+position = Vector2(302, 239)
+scale = Vector2(0.43, 0.43)
+texture = ExtResource("1_efsvv")
+
+[node name="View02_LateralUnderside" type="Node2D" parent="." unique_id=935965168]
+position = Vector2(658, 90)
+
+[node name="Panel" type="Polygon2D" parent="View02_LateralUnderside" unique_id=325803059]
+color = Color(0.07, 0.095, 0.13, 1)
+polygon = PackedVector2Array(0, 0, 604, 0, 604, 450, 0, 450)
+
+[node name="Label" type="Label" parent="View02_LateralUnderside" unique_id=361391633]
+offset_left = 14.0
+offset_top = 10.0
+offset_right = 500.0
+offset_bottom = 35.0
+theme_override_colors/font_color = Color(0.83, 0.87, 0.91, 1)
+theme_override_font_sizes/font_size = 16
+text = "02  LATERAL UNDERSIDE — hinge and base"
+metadata/_edit_use_anchors_ = true
+
+[node name="Construction" type="Node2D" parent="View02_LateralUnderside" unique_id=683029016]
+position = Vector2(302, 242)
+
+[node name="CranialVault" type="Polygon2D" parent="View02_LateralUnderside/Construction" unique_id=614606435]
+color = Color(0.64, 0.72, 0.68, 0.92)
+polygon = PackedVector2Array(-137, -60, -114, -93, -74, -132, -27, -137, 43, -135, 92, -121, 140, -83, 154, -63, 161, -29, 161, 28, 154, 57, 133, 85, 103, 112, 83, 123, 49, 125, 27, 133, 11, 145, -8, 140, -92, 76, -147, -18)
+
+[node name="TemporalSidePlane" type="Polygon2D" parent="View02_LateralUnderside/Construction" unique_id=349840164]
+color = Color(0.55, 0.38, 0.31, 0.92)
+polygon = PackedVector2Array(-57, -132, 13, -132, 64, -114, 89, -68, 86, -32, 40, 4, -29, 4, -87, -87, -78, -116)
+
+[node name="FacialBlock" type="Polygon2D" parent="View02_LateralUnderside/Construction" unique_id=2013791615]
+color = Color(0.35, 0.72, 0.57, 0.92)
+polygon = PackedVector2Array(-142, -52, -116, -93, -75, -132, -93, -83, -112, -77, -130, -55, -126, -28, -147, -15)
+
+[node name="Orbit" type="Polygon2D" parent="View02_LateralUnderside/Construction" unique_id=1136453541]
+color = Color(0.055, 0.06, 0.065, 1)
+polygon = PackedVector2Array(-114, -75, -92, -82, -82, -73, -87, -63, -126, -26, -130, -56)
+
+[node name="MaxillaAndTeeth" type="Polygon2D" parent="View02_LateralUnderside/Construction" unique_id=996479394]
+color = Color(0.9, 0.84, 0.7, 0.96)
+polygon = PackedVector2Array(-157, -8, -125, -28, -111, -42, -60, -26, -46, 9, -44, 26, -64, 35, -109, 42, -149, 62, -154, 76, -160, 67, -159, 43, -152, 28)
+
+[node name="Mandible" type="Polygon2D" parent="View02_LateralUnderside/Construction" unique_id=950420190]
+position = Vector2(10, 59)
+color = Color(0.72, 0.64, 0.49, 0.95)
+polygon = PackedVector2Array(-171, 35, -160, 5, -125, -16, -66, -26, -49, -43, -43, -61, -51, -83, -47, -89, -36, -90, -28, -81, -4, -82, 6, -91, 16, -71, 10, -54, 17, -23, -117, 36, -137, 53, -53, 74, -33, 79, -25, 104, -29, 112, -62, 114, -122, 94, -164, 69)
+
+[node name="CranialBase" type="Polygon2D" parent="View02_LateralUnderside/Construction" unique_id=829510385]
+color = Color(0.45, 0.34, 0.29, 0.95)
+polygon = PackedVector2Array(-30, 35, 45, 25, 119, 58, 78, 107, -2, 103, -63, 70)
+
+[node name="ForamenMagnum_NeckAnchor" type="Polygon2D" parent="View02_LateralUnderside/Construction" unique_id=849355134]
+color = Color(0.92, 0.22, 0.58, 1)
+polygon = PackedVector2Array(18, 60, 32, 58, 40, 60, 55, 72, 56, 79, 49, 84, 28, 84, 15, 77, 8, 68, 12, 63)
+
+[node name="NeckAxis" type="Line2D" parent="View02_LateralUnderside/Construction" unique_id=1368482097]
+points = PackedVector2Array(48, 73, 69, 150)
+width = 3.0
+default_color = Color(0.2, 0.9, 0.95, 0.9)
+
+[node name="ReferenceImage" type="Sprite2D" parent="View02_LateralUnderside" unique_id=1804884925]
+modulate = Color(1, 1, 1, 0.4392157)
+position = Vector2(302, 239)
+scale = Vector2(0.43, 0.43)
+texture = ExtResource("2_kg1y2")
+
+[node name="View03_DirectUnderside" type="Node2D" parent="." unique_id=1215278947]
+position = Vector2(1288, 90)
+
+[node name="Panel" type="Polygon2D" parent="View03_DirectUnderside" unique_id=1214338483]
+color = Color(0.07, 0.095, 0.13, 1)
+polygon = PackedVector2Array(0, 0, 604, 0, 604, 450, 0, 450)
+
+[node name="Label" type="Label" parent="View03_DirectUnderside" unique_id=110261312]
+offset_left = 14.0
+offset_top = 10.0
+offset_right = 500.0
+offset_bottom = 35.0
+theme_override_colors/font_color = Color(0.83, 0.87, 0.91, 1)
+theme_override_font_sizes/font_size = 16
+text = "03  DIRECT UNDERSIDE — foramen centered"
+metadata/_edit_use_anchors_ = true
+
+[node name="Construction" type="Node2D" parent="View03_DirectUnderside" unique_id=146551853]
+position = Vector2(302, 242)
+
+[node name="CranialVaultLeft" type="Polygon2D" parent="View03_DirectUnderside/Construction" unique_id=976602111]
+color = Color(0.52, 0.44, 0.61, 0.9)
+polygon = PackedVector2Array(94, -31, 105, 13, 105, 50, 97, 93, 93, 43, 81, 5, 76, -8)
+
+[node name="CranialVaultRight" type="Polygon2D" parent="View03_DirectUnderside/Construction" unique_id=2141203174]
+color = Color(0.52, 0.44, 0.61, 0.9)
+polygon = PackedVector2Array(-123, -8, -116, -24, -107, -21, -90, -18, -74, -9, -78, 33, -83, 40, -93, 26, -95, 1, -103, 9, -114, 43, -113, 83, -125, 41)
+
+[node name="FacialBlock" type="Polygon2D" parent="View03_DirectUnderside/Construction" unique_id=1372366104]
+color = Color(0.35, 0.72, 0.57, 0.92)
+polygon = PackedVector2Array(-93, -111, -90, -129, -69, -144, -27, -156, 6, -156, 49, -145, 71, -123, 70, -111, 81, -98, 85, -62, 74, -65, 71, -88, 60, -105, 40, -114, 20, -112, 10, -97, -15, -115, -35, -99, -40, -112, -61, -116, -80, -106, -95, -88, -97, -65, -109, -61, -105, -95)
+
+[node name="LeftOrbit" type="Polygon2D" parent="View03_DirectUnderside/Construction" unique_id=1702931750]
+color = Color(0.055, 0.06, 0.065, 1)
+polygon = PackedVector2Array(-95, -89, -80, -107, -60.532936, -114.943344, -33, -98, -51, -78, -98, -62)
+
+[node name="RightOrbit" type="Polygon2D" parent="View03_DirectUnderside/Construction" unique_id=2018611190]
+color = Color(0.055, 0.06, 0.065, 1)
+polygon = PackedVector2Array(9, -98, 19, -113, 40, -114, 60, -105, 71, -91, 72, -65, 24, -80)
+
+[node name="NasalAperture" type="Polygon2D" parent="View03_DirectUnderside/Construction" unique_id=315504104]
+color = Color(0.055, 0.06, 0.065, 1)
+polygon = PackedVector2Array(-27, -86, -14, -110, 0, -88, 11, -70, 0, -66, -13, -69, -28, -65, -36, -69)
+
+[node name="MaxillaAndTeeth" type="Polygon2D" parent="View03_DirectUnderside/Construction" unique_id=127895898]
+color = Color(0.9, 0.84, 0.7, 0.96)
+polygon = PackedVector2Array(-110, -60, -50, -80, -14, -115, 27, -78, 85, -60, 91, -27, 80, -12, 59, -7, 54, 6, 55, 36, 42, 8, 25, -8, -2, -18, -20, -20, -39, -14, -65, 7, -77, 34, -74, -9, -89, -19, -109, -22, -118, -27)
+
+[node name="Mandible" type="Polygon2D" parent="View03_DirectUnderside/Construction" unique_id=376007084]
+color = Color(0.72, 0.64, 0.49, 0.95)
+polygon = PackedVector2Array(-105, 25, -115, 44, -111, 102, -103, 110, -69, 78, -32, 44, -11, 40, 11, 45, 65, 89, 80, 107, 88, 105, 94, 81, 91, 42, 80, 7, 72, -1, 71, 33, 59, 39, 50, 27, 41, 9, 26, -8, -11, -19, -39, -14, -67, 11, -74, 29, -83, 40, -92, 27, -94, 0, -102, 7)
+
+[node name="CranialBase" type="Polygon2D" parent="View03_DirectUnderside/Construction" unique_id=702171466]
+color = Color(0.47, 0.35, 0.3, 0.95)
+polygon = PackedVector2Array(-46, 52, -31, 41, -13, 39, 12, 45, 34, 63, 54, 78, 77, 106, 59, 130, 27, 143, -6, 149, -34, 146, -61, 136, -82, 126, -97, 107, -68, 76)
+
+[node name="ForamenMagnum_NeckAnchor" type="Polygon2D" parent="View03_DirectUnderside/Construction" unique_id=1202760495]
+color = Color(0.92, 0.22, 0.58, 1)
+polygon = PackedVector2Array(-27, 80, -10, 72, 4, 79, 10, 85, 5, 100, 0, 109, -17, 109, -25, 100, -31, 86)
+
+[node name="NeckAxis" type="Line2D" parent="View03_DirectUnderside/Construction" unique_id=1729687395]
+points = PackedVector2Array(0, 70, 0, 154)
+width = 3.0
+default_color = Color(0.2, 0.9, 0.95, 0.9)
+
+[node name="ReferenceImage" type="Sprite2D" parent="View03_DirectUnderside" unique_id=1219904105]
+modulate = Color(1, 1, 1, 0.46666667)
+position = Vector2(302, 239)
+scale = Vector2(0.43, 0.43)
+texture = ExtResource("3_867t6")
+
+[node name="View04_Profile" type="Node2D" parent="." unique_id=899574785]
+position = Vector2(28, 558)
+
+[node name="Panel" type="Polygon2D" parent="View04_Profile" unique_id=172787581]
+color = Color(0.07, 0.095, 0.13, 1)
+polygon = PackedVector2Array(0, 0, 604, 0, 604, 488, 0, 488)
+
+[node name="Label" type="Label" parent="View04_Profile" unique_id=1725842120]
+offset_left = 14.0
+offset_top = 10.0
+offset_right = 500.0
+offset_bottom = 35.0
+theme_override_colors/font_color = Color(0.83, 0.87, 0.91, 1)
+theme_override_font_sizes/font_size = 16
+text = "04  PROFILE — jaw hinge to cranial base"
+metadata/_edit_use_anchors_ = true
+
+[node name="Construction" type="Node2D" parent="View04_Profile" unique_id=958210267]
+position = Vector2(302, 259)
+
+[node name="CranialVault" type="Polygon2D" parent="View04_Profile/Construction" unique_id=1828615786]
+color = Color(0.64, 0.72, 0.68, 0.92)
+polygon = PackedVector2Array(-108, -134, -56, -170, -12, -178, 28, -178, 83, -164, 111, -146, 141, -112, 163, -64, 162, -29, 161, 0, 134, 49, 51, 84, 37, 82, 22, 53, 1, 42, -131, -6, -140, -36)
+
+[node name="TemporalSidePlane" type="Polygon2D" parent="View04_Profile/Construction" unique_id=2037509846]
+color = Color(0.55, 0.38, 0.31, 0.92)
+polygon = PackedVector2Array(-50, -126, -8, -140, 38, -129, 75, -104, 95, -37, 80, 10, 6, 29, -40, 27, -53, 7, -61, -21, -85, -44, -87, -66, -71, -105)
+
+[node name="FacialBlock" type="Polygon2D" parent="View04_Profile/Construction" unique_id=964592691]
+color = Color(0.35, 0.72, 0.57, 0.92)
+polygon = PackedVector2Array(-130, -105, -85, -125, -38, -98, -27, -47, -53, 8, -117, 21, -147, -13)
+
+[node name="Orbit" type="Polygon2D" parent="View04_Profile/Construction" unique_id=969954136]
+color = Color(0.055, 0.06, 0.065, 1)
+polygon = PackedVector2Array(-114, -33, -85, -13, -79, 1, -90, 21, -105, 24, -127, -3, -126, -25)
+
+[node name="MaxillaAndTeeth" type="Polygon2D" parent="View04_Profile/Construction" unique_id=1133510192]
+color = Color(0.9, 0.84, 0.7, 0.96)
+polygon = PackedVector2Array(-143, 3, -43, 8, -38, 42, -136, 44)
+
+[node name="Mandible" type="Polygon2D" parent="View04_Profile/Construction" unique_id=2077350980]
+color = Color(0.72, 0.64, 0.49, 0.95)
+polygon = PackedVector2Array(-137, 35, -111, 61, -47, 88, 38, 77, 58, 3, 83, 13, 72, 105, -38, 127, -122, 83)
+
+[node name="CranialBaseLandmark" type="Polygon2D" parent="View04_Profile/Construction" unique_id=201114309]
+color = Color(0.47, 0.35, 0.3, 0.95)
+polygon = PackedVector2Array(-7, 65, 50, 53, 92, 79, 68, 108, 9, 104, -34, 83)
+
+[node name="ConceptualForamenMagnum_XRay" type="Polygon2D" parent="View04_Profile/Construction" unique_id=691300222]
+color = Color(0.92, 0.22, 0.58, 0.58)
+polygon = PackedVector2Array(25, 75, 45, 68, 63, 78, 62, 94, 43, 104, 24, 96, 18, 84)
+
+[node name="ConceptualForamenOutline" type="Line2D" parent="View04_Profile/Construction" unique_id=1372704282]
+points = PackedVector2Array(25, 75, 45, 68, 63, 78, 62, 94, 43, 104, 24, 96, 18, 84, 25, 75)
+width = 2.0
+default_color = Color(1, 0.48, 0.74, 0.92)
+
+[node name="NeckAxis" type="Line2D" parent="View04_Profile/Construction" unique_id=1021414030]
+points = PackedVector2Array(42, 85, 55, 153)
+width = 3.0
+default_color = Color(0.2, 0.9, 0.95, 0.9)
+
+[node name="ReferenceImage" type="Sprite2D" parent="View04_Profile" unique_id=865723591]
+modulate = Color(1, 1, 1, 0.46666667)
+position = Vector2(302, 258)
+scale = Vector2(0.41, 0.41)
+texture = ExtResource("4_t3v5a")
+
+[node name="View05_RearThreeQuarter" type="Node2D" parent="." unique_id=1677763156]
+position = Vector2(658, 558)
+
+[node name="Panel" type="Polygon2D" parent="View05_RearThreeQuarter" unique_id=1278636767]
+color = Color(0.07, 0.095, 0.13, 1)
+polygon = PackedVector2Array(0, 0, 604, 0, 604, 488, 0, 488)
+
+[node name="Label" type="Label" parent="View05_RearThreeQuarter" unique_id=120733401]
+offset_left = 14.0
+offset_top = 10.0
+offset_right = 500.0
+offset_bottom = 35.0
+theme_override_colors/font_color = Color(0.83, 0.87, 0.91, 1)
+theme_override_font_sizes/font_size = 16
+text = "05  REAR 3/4 — occiput and base"
+metadata/_edit_use_anchors_ = true
+
+[node name="Construction" type="Node2D" parent="View05_RearThreeQuarter" unique_id=408539546]
+position = Vector2(302, 259)
+
+[node name="CranialVault" type="Polygon2D" parent="View05_RearThreeQuarter/Construction" unique_id=294213733]
+color = Color(0.6, 0.69, 0.57, 0.94)
+polygon = PackedVector2Array(-107, -119, -68, -157, -38, -172, -5, -177, 21, -180, 73, -173, 103, -159, 130, -134, 148, -110, 171, -64, 167, -25, 133, 54, 61, 83, 19, 83, -1, 84, -18, 71, -44, 83, -65, 54, -100.6749, 39.197998, -124, -45)
+
+[node name="OccipitalPlane" type="Polygon2D" parent="View05_RearThreeQuarter/Construction" unique_id=426293410]
+color = Color(0.46, 0.38, 0.54, 0.94)
+polygon = PackedVector2Array(91, -103, 158, -63, 166, 47, 108, 112, 18, 132, 5, 64, 45, -34)
+
+[node name="TemporalSidePlane" type="Polygon2D" parent="View05_RearThreeQuarter/Construction" unique_id=233684637]
+color = Color(0.55, 0.38, 0.31, 0.92)
+polygon = PackedVector2Array(-108, -115, -70, -83, -35, -25, -27, 37, -48, 80, -108, 28, -125, -31)
+
+[node name="FacialSliver" type="Polygon2D" parent="View05_RearThreeQuarter/Construction" unique_id=1509629134]
+color = Color(0.35, 0.72, 0.57, 0.92)
+polygon = PackedVector2Array(-141, -74, -112, -95, -86, -63, -94, 17, -127, 37, -153, 4)
+
+[node name="Mandible" type="Polygon2D" parent="View05_RearThreeQuarter/Construction" unique_id=822871411]
+color = Color(0.72, 0.64, 0.49, 0.95)
+polygon = PackedVector2Array(-130, 24, -96, 48, -28, 74, 55, 72, 74, 21, 89, 28, 72, 101, -28, 115, -111, 78)
+
+[node name="CranialBase" type="Polygon2D" parent="View05_RearThreeQuarter/Construction" unique_id=1838617282]
+color = Color(0.47, 0.35, 0.3, 0.95)
+polygon = PackedVector2Array(-30, 55, 31, 42, 94, 67, 68, 109, 0, 119, -52, 91)
+
+[node name="ConceptualForamenMagnum_XRay" type="Polygon2D" parent="View05_RearThreeQuarter/Construction" unique_id=1294414930]
+color = Color(0.92, 0.22, 0.58, 0.58)
+polygon = PackedVector2Array(14, 68, 39, 58, 64, 69, 67, 91, 47, 106, 21, 101, 8, 84)
+
+[node name="ConceptualForamenOutline" type="Line2D" parent="View05_RearThreeQuarter/Construction" unique_id=1266193105]
+points = PackedVector2Array(14, 68, 39, 58, 64, 69, 67, 91, 47, 106, 21, 101, 8, 84, 14, 68)
+width = 2.0
+default_color = Color(1, 0.48, 0.74, 0.92)
+
+[node name="NeckAxis" type="Line2D" parent="View05_RearThreeQuarter/Construction" unique_id=2144949998]
+points = PackedVector2Array(38, 82, 49, 154)
+width = 3.0
+default_color = Color(0.2, 0.9, 0.95, 0.9)
+
+[node name="ReferenceImage" type="Sprite2D" parent="View05_RearThreeQuarter" unique_id=72284727]
+modulate = Color(1, 1, 1, 0.50980395)
+position = Vector2(302, 258)
+scale = Vector2(0.41, 0.41)
+texture = ExtResource("5_gc12s")
+
+[node name="View06_Front" type="Node2D" parent="." unique_id=1979130123]
+position = Vector2(1288, 558)
+
+[node name="Panel" type="Polygon2D" parent="View06_Front" unique_id=1149442977]
+color = Color(0.07, 0.095, 0.13, 1)
+polygon = PackedVector2Array(0, 0, 604, 0, 604, 488, 0, 488)
+
+[node name="Label" type="Label" parent="View06_Front" unique_id=311291893]
+offset_left = 14.0
+offset_top = 10.0
+offset_right = 500.0
+offset_bottom = 35.0
+theme_override_colors/font_color = Color(0.83, 0.87, 0.91, 1)
+theme_override_font_sizes/font_size = 16
+text = "06  FRONT — symmetry and jaw suspension"
+metadata/_edit_use_anchors_ = true
+
+[node name="Construction" type="Node2D" parent="View06_Front" unique_id=1919151569]
+position = Vector2(302, 259)
+
+[node name="CranialVault" type="Polygon2D" parent="View06_Front/Construction" unique_id=998028474]
+color = Color(0.67, 0.75, 0.78, 0.94)
+polygon = PackedVector2Array(-100, -119, -70, -164, -31, -177, 0, -177, 26, -175, 51, -165, 74, -150, 89, -124, 103, -59, 97, -5, 75, 31, 0, 18, -75, 31, -104, -5, -109, -52)
+
+[node name="LeftFacialBlock" type="Polygon2D" parent="View06_Front/Construction" unique_id=1648975503]
+color = Color(0.35, 0.72, 0.57, 0.92)
+polygon = PackedVector2Array(-135, -38, -77, -64, -9, -50, -6, 26, -69, 53, -132, 27)
+
+[node name="RightFacialBlock" type="Polygon2D" parent="View06_Front/Construction" unique_id=1695989398]
+color = Color(0.31, 0.66, 0.51, 0.92)
+polygon = PackedVector2Array(135, -38, 77, -64, 9, -50, 6, 26, 69, 53, 132, 27)
+
+[node name="LeftOrbit" type="Polygon2D" parent="View06_Front/Construction" unique_id=608102642]
+color = Color(0.055, 0.06, 0.065, 1)
+polygon = PackedVector2Array(-84, -26, -59, -38, -45.74128, -39.32587, -25, -23, -29, 11, -57, 18, -71, 17, -83.26342, 2.9481583)
+
+[node name="RightOrbit" type="Polygon2D" parent="View06_Front/Construction" unique_id=1202218251]
+color = Color(0.055, 0.06, 0.065, 1)
+polygon = PackedVector2Array(77, -23, 65, -35, 42.182007, -38.472305, 26, -25, 18.999992, -11.178898, 19, 4, 30, 14, 62, 17, 76, 3)
+
+[node name="NasalAperture" type="Polygon2D" parent="View06_Front/Construction" unique_id=555255482]
+color = Color(0.055, 0.06, 0.065, 1)
+polygon = PackedVector2Array(-13, 19, -3, 11, 5, 18, 17, 42, 15, 52, 6, 59, -3, 55, -13, 59, -22, 53, -25, 43)
+
+[node name="LeftCheek" type="Polygon2D" parent="View06_Front/Construction" unique_id=1495088220]
+color = Color(0.78, 0.63, 0.38, 0.93)
+polygon = PackedVector2Array(-134, 9, -88, 2, -61, 48, -89, 73, -133, 49)
+
+[node name="RightCheek" type="Polygon2D" parent="View06_Front/Construction" unique_id=2122303832]
+color = Color(0.72, 0.56, 0.32, 0.93)
+polygon = PackedVector2Array(134, 9, 88, 2, 61, 48, 89, 73, 133, 49)
+
+[node name="MaxillaAndTeeth" type="Polygon2D" parent="View06_Front/Construction" unique_id=689186297]
+color = Color(0.9, 0.84, 0.7, 0.96)
+polygon = PackedVector2Array(-91, 44, -50, 29, 0, 39, 50, 29, 91, 44, 78, 85, 0, 96, -78, 85)
+
+[node name="Mandible" type="Polygon2D" parent="View06_Front/Construction" unique_id=1317930553]
+color = Color(0.72, 0.64, 0.49, 0.95)
+polygon = PackedVector2Array(-121, 45, -102, 88, -69, 129, 0, 153, 69, 129, 102, 88, 121, 45, 91, 66, 72, 111, 0, 132, -72, 111, -91, 66)
+
+[node name="ConceptualForamenMagnum_XRay" type="Polygon2D" parent="View06_Front/Construction" unique_id=6509314]
+color = Color(0.92, 0.22, 0.58, 0.58)
+polygon = PackedVector2Array(-21, 101, 0, 91, 21, 101, 18, 121, 0, 130, -18, 121)
+
+[node name="ConceptualForamenOutline" type="Line2D" parent="View06_Front/Construction" unique_id=308501839]
+points = PackedVector2Array(-21, 101, 0, 91, 21, 101, 18, 121, 0, 130, -18, 121, -21, 101)
+width = 2.0
+default_color = Color(1, 0.48, 0.74, 0.92)
+
+[node name="NeckAxis" type="Line2D" parent="View06_Front/Construction" unique_id=189189120]
+points = PackedVector2Array(0, 109, 0, 169)
+width = 3.0
+default_color = Color(0.2, 0.9, 0.95, 0.9)
+
+[node name="ReferenceImage" type="Sprite2D" parent="View06_Front" unique_id=1384774252]
+modulate = Color(1, 1, 1, 0.16)
+position = Vector2(302, 258)
+scale = Vector2(0.39, 0.39)
+texture = ExtResource("6_bapq1")
