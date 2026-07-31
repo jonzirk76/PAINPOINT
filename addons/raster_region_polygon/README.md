@@ -14,7 +14,7 @@ texture into an editable `Polygon2D`.
 1. Select one `Sprite2D` whose texture contains the region to trace.
 2. Click **Use Selected Sprite2D**.
 3. Click inside a region in the dock preview.
-4. Adjust **Tolerance** and **Vertex error**.
+4. Adjust **Tolerance**, **Vertex error**, and **Node name**.
 5. Click **Create Polygon2D Child**.
 
 Use the mouse wheel over the preview to zoom around the cursor and drag with
@@ -30,11 +30,11 @@ To revise a generated polygon:
 
 1. Select the traced `Polygon2D`.
 2. Click **Edit Selected Traced Polygon**.
-3. Adjust tolerance or vertex error and inspect the live preview.
+3. Adjust tolerance, vertex error, or node name and inspect the live preview.
 4. Click **Update Selected Polygon2D**.
 
-Updating replaces the existing geometry through editor undo/redo rather than
-creating a duplicate node.
+Updating replaces the existing geometry and applies the edited node name
+through editor undo/redo rather than creating a duplicate node.
 
 ## Headless/agent use
 

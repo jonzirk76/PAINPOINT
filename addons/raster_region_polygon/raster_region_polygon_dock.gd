@@ -296,6 +296,10 @@ func _ready() -> void:
 	settings.add_child(_make_label("Node name"))
 	_polygon_name_edit = LineEdit.new()
 	_polygon_name_edit.text = "TracedRegion"
+	_polygon_name_edit.placeholder_text = "TracedRegion"
+	_polygon_name_edit.tooltip_text = (
+		"Names a newly created polygon or renames the traced polygon being updated."
+	)
 	settings.add_child(_polygon_name_edit)
 
 	_status_label = Label.new()
@@ -506,6 +510,11 @@ func _update_polygon() -> void:
 	var old_polygon := _editing_polygon.polygon
 	var old_polygons := _editing_polygon.polygons
 	var old_color := _editing_polygon.color
+	var old_name: StringName = _editing_polygon.name
+	var requested_name := _polygon_name_edit.text.strip_edges()
+	var new_name := (
+		old_name if requested_name.is_empty() else StringName(requested_name)
+	)
 	var old_metadata: Variant = _editing_polygon.get_meta(
 		TRACE_METADATA,
 		{}
@@ -516,6 +525,7 @@ func _update_polygon() -> void:
 	_undo_redo.add_do_property(_editing_polygon, "polygon", new_polygon)
 	_undo_redo.add_do_property(_editing_polygon, "polygons", new_polygons)
 	_undo_redo.add_do_property(_editing_polygon, "color", _sample_swatch.color)
+	_undo_redo.add_do_property(_editing_polygon, "name", new_name)
 	_undo_redo.add_do_method(
 		_editing_polygon,
 		"set_meta",
@@ -525,6 +535,7 @@ func _update_polygon() -> void:
 	_undo_redo.add_undo_property(_editing_polygon, "polygon", old_polygon)
 	_undo_redo.add_undo_property(_editing_polygon, "polygons", old_polygons)
 	_undo_redo.add_undo_property(_editing_polygon, "color", old_color)
+	_undo_redo.add_undo_property(_editing_polygon, "name", old_name)
 	_undo_redo.add_undo_method(
 		_editing_polygon,
 		"set_meta",
