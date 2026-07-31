@@ -4,6 +4,12 @@ extends VBoxContainer
 const Tracer := preload("res://addons/raster_region_polygon/raster_region_tracer.gd")
 const TRACE_METADATA := &"raster_region_trace"
 
+enum DestinationState {
+	NEW_ONLY,
+	UPDATE_SELECTED,
+	REGENERATE_SELECTED,
+}
+
 
 class RegionPreview:
 	extends Control
@@ -255,6 +261,7 @@ var _limit_polygon: PackedVector2Array = PackedVector2Array()
 var _baseline_polygon := PackedVector2Array()
 var _baseline_polygons: Array[PackedInt32Array] = []
 var _baseline_color := Color.TRANSPARENT
+var _destination_state := DestinationState.NEW_ONLY
 
 var _preview
 var _zoom_label: Label
@@ -268,6 +275,7 @@ var _polygon_name_edit: LineEdit
 var _sample_swatch: ColorRect
 var _status_label: Label
 var _create_button: Button
+var _update_button: Button
 var _regeneration_warning: ConfirmationDialog
 var _name_conflict_warning: AcceptDialog
 
@@ -404,12 +412,12 @@ func _ready() -> void:
 	_sample_swatch.color = Color.TRANSPARENT
 	settings.add_child(_sample_swatch)
 
-	settings.add_child(_make_label("Node name"))
+	settings.add_child(_make_label("New node name"))
 	_polygon_name_edit = LineEdit.new()
 	_polygon_name_edit.text = "TracedRegion"
 	_polygon_name_edit.placeholder_text = "TracedRegion"
 	_polygon_name_edit.tooltip_text = (
-		"Creates a new named trace or targets an existing generated trace for update."
+		"Names only a newly created trace. Updating always targets the selected trace."
 	)
 	settings.add_child(_polygon_name_edit)
 
@@ -419,10 +427,17 @@ func _ready() -> void:
 	add_child(_status_label)
 
 	_create_button = Button.new()
-	_create_button.text = "Create Polygon2D Child"
+	_create_button.text = "Create New Polygon2D"
 	_create_button.disabled = true
-	_create_button.pressed.connect(_create_polygon)
+	_create_button.pressed.connect(_create_new_polygon)
 	add_child(_create_button)
+
+	_update_button = Button.new()
+	_update_button.text = "Update Selected Polygon2D"
+	_update_button.disabled = true
+	_update_button.tooltip_text = "Load a generated polygon with Edit Selected Traced Polygon."
+	_update_button.pressed.connect(_on_update_selected_pressed)
+	add_child(_update_button)
 
 	_regeneration_warning = ConfirmationDialog.new()
 	_regeneration_warning.title = "Replace Manual Polygon Edits?"
@@ -431,7 +446,7 @@ func _ready() -> void:
 		+ "replace manual geometry or color edits with regenerated values."
 	)
 	_regeneration_warning.ok_button_text = "Regenerate Anyway"
-	_regeneration_warning.confirmed.connect(_update_polygon)
+	_regeneration_warning.confirmed.connect(_update_selected_polygon)
 	add_child(_regeneration_warning)
 
 	_name_conflict_warning = AcceptDialog.new()
@@ -460,7 +475,7 @@ func _use_selected_sprite() -> void:
 		return
 
 	_editing_polygon = null
-	_create_button.text = "Create Polygon2D Child"
+	_refresh_update_action()
 	_set_source_sprite(sprite)
 
 
@@ -498,12 +513,13 @@ func _edit_selected_trace() -> void:
 	_epsilon_spin.value = float(metadata.get("vertex_error", 1.5))
 	_cleanup_radius_spin.value = int(metadata.get("cleanup_radius", 0))
 	_include_alpha_check.button_pressed = bool(metadata.get("include_alpha", true))
-	_polygon_name_edit.text = polygon.name
-	_create_button.text = "Create or Update Named Polygon2D"
+	_polygon_name_edit.text = "%sCopy" % polygon.name
 	_rebuild_trace()
-	_capture_regenerated_baseline_for(polygon)
+	if not _capture_regenerated_baseline_for(polygon):
+		return
+	_refresh_update_action()
 	if _editing_polygon_differs_from_baseline():
-		_status_label.text += " Manual edits detected; updating will ask for confirmation."
+		_status_label.text += " Manual edits detected; use Regenerate Selected to replace them."
 
 
 func _set_source_sprite(sprite: Sprite2D) -> bool:
@@ -530,6 +546,7 @@ func _set_source_sprite(sprite: Sprite2D) -> bool:
 	_sample_swatch.color = Color.TRANSPARENT
 	_preview.set_source(sprite.texture, image)
 	_create_button.disabled = true
+	_refresh_update_action()
 	_status_label.text = "Click inside a color region to trace it."
 	return true
 
@@ -601,6 +618,7 @@ func _rebuild_trace() -> void:
 	_sample_swatch.color = result["sample"]
 	_preview.set_trace(_trace_pieces, _seed)
 	_create_button.disabled = _trace_pieces.is_empty()
+	_refresh_update_action()
 	_status_label.text = "%d vertices in %d piece(s) from %d selected pixels.%s%s" % [
 		int(result["vertex_count"]),
 		int(result["piece_count"]),
@@ -615,7 +633,7 @@ func _rebuild_trace() -> void:
 	]
 
 
-func _create_polygon() -> void:
+func _create_new_polygon() -> void:
 	if not is_instance_valid(_source_sprite) or _trace_pieces.is_empty():
 		_set_error("Choose a source and trace a region first.")
 		return
@@ -630,26 +648,12 @@ func _create_polygon() -> void:
 
 	var requested_name := _polygon_name_edit.text.strip_edges()
 	if requested_name.is_empty():
-		requested_name = (
-			str(_editing_polygon.name)
-			if is_instance_valid(_editing_polygon)
-			else "TracedRegion"
-		)
+		requested_name = "TracedRegion"
 	var named_node := _find_source_child_named(StringName(requested_name))
 	if named_node != null:
-		if not named_node is Polygon2D or not named_node.has_meta(TRACE_METADATA):
-			_show_name_conflict_warning(requested_name)
-			return
-		_editing_polygon = named_node as Polygon2D
-		if not _capture_regenerated_baseline_for(_editing_polygon):
-			return
-		if _editing_polygon_differs_from_baseline():
-			_regeneration_warning.popup_centered()
-			return
-		_update_polygon()
+		_show_name_conflict_warning(requested_name, named_node.has_meta(TRACE_METADATA))
 		return
 
-	_editing_polygon = null
 	var polygon_node := Polygon2D.new()
 	polygon_node.name = requested_name
 	var polygon_data: Dictionary = Tracer.build_polygon_data(
@@ -673,14 +677,45 @@ func _create_polygon() -> void:
 	_undo_redo.add_undo_method(_source_sprite, "remove_child", polygon_node)
 	_undo_redo.add_do_reference(polygon_node)
 	_undo_redo.commit_action()
+	_editing_polygon = polygon_node
+	_capture_regenerated_baseline_for(polygon_node)
+	_polygon_name_edit.text = "%sCopy" % polygon_node.name
+	_refresh_update_action()
 	_status_label.text = "Created %s with %d vertices." % [
 		polygon_node.name,
 		polygon_node.polygon.size()
 	]
 
 
-func _update_polygon() -> void:
-	if not is_instance_valid(_editing_polygon):
+func _on_update_selected_pressed() -> void:
+	if (
+		not is_instance_valid(_editing_polygon)
+		or not _editing_polygon.is_inside_tree()
+	):
+		_set_error("Load a generated polygon before updating it.")
+		return
+	var previous_state := _destination_state
+	_refresh_update_action()
+	if (
+		_destination_state == DestinationState.REGENERATE_SELECTED
+		and previous_state != DestinationState.REGENERATE_SELECTED
+	):
+		_status_label.text = (
+			"Manual edits were detected. Review and press Regenerate Selected to replace them."
+		)
+		return
+	if _destination_state == DestinationState.REGENERATE_SELECTED:
+		_regeneration_warning.popup_centered()
+		return
+	_update_selected_polygon()
+
+
+func _update_selected_polygon() -> void:
+	if (
+		not is_instance_valid(_editing_polygon)
+		or not _editing_polygon.is_inside_tree()
+	):
+		_destination_state = DestinationState.NEW_ONLY
 		_set_error("The polygon being edited no longer exists.")
 		return
 
@@ -697,11 +732,6 @@ func _update_polygon() -> void:
 	var old_polygon := _editing_polygon.polygon
 	var old_polygons := _editing_polygon.polygons
 	var old_color := _editing_polygon.color
-	var old_name: StringName = _editing_polygon.name
-	var requested_name := _polygon_name_edit.text.strip_edges()
-	var new_name := (
-		old_name if requested_name.is_empty() else StringName(requested_name)
-	)
 	var old_metadata: Variant = _editing_polygon.get_meta(
 		TRACE_METADATA,
 		{}
@@ -712,7 +742,6 @@ func _update_polygon() -> void:
 	_undo_redo.add_do_property(_editing_polygon, "polygon", new_polygon)
 	_undo_redo.add_do_property(_editing_polygon, "polygons", new_polygons)
 	_undo_redo.add_do_property(_editing_polygon, "color", _sample_swatch.color)
-	_undo_redo.add_do_property(_editing_polygon, "name", new_name)
 	_undo_redo.add_do_method(
 		_editing_polygon,
 		"set_meta",
@@ -722,7 +751,6 @@ func _update_polygon() -> void:
 	_undo_redo.add_undo_property(_editing_polygon, "polygon", old_polygon)
 	_undo_redo.add_undo_property(_editing_polygon, "polygons", old_polygons)
 	_undo_redo.add_undo_property(_editing_polygon, "color", old_color)
-	_undo_redo.add_undo_property(_editing_polygon, "name", old_name)
 	_undo_redo.add_undo_method(
 		_editing_polygon,
 		"set_meta",
@@ -731,6 +759,7 @@ func _update_polygon() -> void:
 	)
 	_undo_redo.commit_action()
 	_capture_regenerated_baseline_for(_editing_polygon)
+	_refresh_update_action()
 	_status_label.text = "Updated %s with %d vertices." % [
 		_editing_polygon.name,
 		new_polygon.size()
@@ -786,13 +815,55 @@ func _find_source_child_named(requested_name: StringName) -> Node:
 	return null
 
 
-func _show_name_conflict_warning(requested_name: String) -> void:
-	_name_conflict_warning.dialog_text = (
-		"A node named '%s' already exists under %s, but it was not generated "
-		+ "by Raster Region Polygon. Choose another name; the existing node "
-		+ "will not be changed."
-	) % [requested_name, _source_sprite.name]
+func _show_name_conflict_warning(
+	requested_name: String,
+	is_generated: bool
+) -> void:
+	if is_generated:
+		_name_conflict_warning.dialog_text = (
+			"A generated polygon named '%s' already exists under %s. Create New "
+			+ "never overwrites nodes. Load that polygon explicitly and use Update "
+			+ "Selected, or choose another name."
+		) % [requested_name, _source_sprite.name]
+	else:
+		_name_conflict_warning.dialog_text = (
+			"A node named '%s' already exists under %s, but it was not generated "
+			+ "by Raster Region Polygon. Choose another name; the existing node "
+			+ "will not be changed."
+		) % [requested_name, _source_sprite.name]
 	_name_conflict_warning.popup_centered()
+
+
+func _refresh_update_action() -> void:
+	if not is_instance_valid(_update_button):
+		return
+	if (
+		not is_instance_valid(_editing_polygon)
+		or not _editing_polygon.is_inside_tree()
+	):
+		_update_button.text = "Update Selected Polygon2D"
+		_update_button.tooltip_text = (
+			"Load a generated polygon with Edit Selected Traced Polygon."
+		)
+		_update_button.disabled = true
+		return
+	var manually_edited := _editing_polygon_differs_from_baseline()
+	_destination_state = (
+		DestinationState.REGENERATE_SELECTED
+		if manually_edited
+		else DestinationState.UPDATE_SELECTED
+	)
+	_update_button.text = (
+		"Regenerate Selected Polygon2D"
+		if manually_edited
+		else "Update Selected Polygon2D"
+	)
+	_update_button.tooltip_text = (
+		"Destructive: replaces manual geometry or color edits after confirmation."
+		if manually_edited
+		else "Updates only %s; the new-node name is ignored." % _editing_polygon.name
+	)
+	_update_button.disabled = _trace_pieces.is_empty()
 
 
 func _clear_regenerated_baseline() -> void:
@@ -852,3 +923,4 @@ func _make_trace_metadata() -> Dictionary:
 func _set_error(message: String) -> void:
 	_status_label.text = message
 	_create_button.disabled = true
+	_update_button.disabled = true
