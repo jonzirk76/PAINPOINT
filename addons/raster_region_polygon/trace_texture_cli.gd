@@ -39,6 +39,7 @@ func _run() -> void:
 	)
 	var tolerance := float(options.get("tolerance", 0.08))
 	var vertex_error := float(options.get("vertex-error", 1.5))
+	var cleanup_radius: int = int(options.get("cleanup-radius", 0))
 	var include_alpha := _parse_bool(
 		str(options.get("include-alpha", "true"))
 	)
@@ -47,7 +48,8 @@ func _run() -> void:
 		seed,
 		tolerance,
 		vertex_error,
-		include_alpha
+		include_alpha,
+		cleanup_radius
 	)
 	if not result.get("ok", false):
 		_fail(str(result.get("error", "Trace failed.")), result)
@@ -78,7 +80,8 @@ func _run() -> void:
 			seed,
 			tolerance,
 			vertex_error,
-			include_alpha
+			include_alpha,
+			cleanup_radius
 		)
 		if updated_scene.is_empty():
 			return
@@ -89,12 +92,15 @@ func _run() -> void:
 		"image_size": [image_size.x, image_size.y],
 		"sample_rgba": [sample.r, sample.g, sample.b, sample.a],
 		"selected_pixel_count": result["selected_pixel_count"],
+		"original_pixel_count": result["original_pixel_count"],
+		"cleanup_pixel_delta": result["cleanup_pixel_delta"],
 		"vertex_count": result["vertex_count"],
 		"piece_count": result["piece_count"],
 		"used_contour_repair": result["used_contour_repair"],
 		"tolerance": tolerance,
 		"vertex_error": vertex_error,
 		"include_alpha": include_alpha,
+		"cleanup_radius": cleanup_radius,
 	}
 	if not _parse_bool(str(options.get("summary-only", "false"))):
 		output["points"] = points
@@ -121,7 +127,8 @@ func _update_scene_polygon(
 	seed: Vector2i,
 	tolerance: float,
 	vertex_error: float,
-	include_alpha: bool
+	include_alpha: bool,
+	cleanup_radius: int
 ) -> String:
 	var packed_scene: Resource = load(scene_path)
 	if packed_scene == null or not packed_scene is PackedScene:
@@ -152,11 +159,12 @@ func _update_scene_polygon(
 	polygon_node.polygons = polygon_data["polygons"]
 	polygon_node.color = sample
 	polygon_node.set_meta(&"raster_region_trace", {
-		"version": 1,
+		"version": 2,
 		"seed": seed,
 		"tolerance": tolerance,
 		"vertex_error": vertex_error,
 		"include_alpha": include_alpha,
+		"cleanup_radius": cleanup_radius,
 	})
 
 	var updated_scene := PackedScene.new()

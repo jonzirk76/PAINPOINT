@@ -14,7 +14,8 @@ static func trace_region(
 	seed: Vector2i,
 	tolerance: float = 0.08,
 	vertex_error: float = 1.5,
-	include_alpha: bool = true
+	include_alpha: bool = true,
+	cleanup_radius: int = 0
 ) -> Dictionary:
 	if image == null or image.is_empty():
 		return {"ok": false, "error": "Image is empty."}
@@ -33,6 +34,8 @@ static func trace_region(
 		return {"ok": false, "error": "Tolerance must be between 0 and 1."}
 	if vertex_error < 0.0:
 		return {"ok": false, "error": "Vertex error cannot be negative."}
+	if cleanup_radius < 0 or cleanup_radius > 8:
+		return {"ok": false, "error": "Cleanup radius must be between 0 and 8."}
 
 	var sample: Color = image.get_pixelv(seed)
 	var mask := _flood_fill_mask(
@@ -42,6 +45,10 @@ static func trace_region(
 		tolerance,
 		include_alpha
 	)
+	var original_pixel_count: int = mask.get_true_bit_count()
+	if cleanup_radius > 0:
+		mask = _close_mask(mask, cleanup_radius)
+	var cleaned_pixel_count := mask.get_true_bit_count()
 	var polygons: Array[PackedVector2Array] = mask.opaque_to_polygons(
 		Rect2i(Vector2i.ZERO, mask.get_size()),
 		vertex_error
@@ -55,7 +62,7 @@ static func trace_region(
 			"ok": false,
 			"error": "The selected region did not produce a usable polygon.",
 			"sample": sample,
-			"selected_pixel_count": mask.get_true_bit_count(),
+			"selected_pixel_count": cleaned_pixel_count,
 		}
 	var triangle_indices := Geometry2D.triangulate_polygon(polygon)
 	var pieces: Array[PackedVector2Array] = [polygon]
@@ -66,7 +73,7 @@ static func trace_region(
 			"ok": false,
 			"error": "The selected region could not be converted into renderable pieces.",
 			"sample": sample,
-			"selected_pixel_count": mask.get_true_bit_count(),
+			"selected_pixel_count": cleaned_pixel_count,
 		}
 	var vertex_count := 0
 	for piece in pieces:
@@ -77,7 +84,9 @@ static func trace_region(
 		"polygon": polygon,
 		"pieces": pieces,
 		"sample": sample,
-		"selected_pixel_count": mask.get_true_bit_count(),
+		"selected_pixel_count": cleaned_pixel_count,
+		"original_pixel_count": original_pixel_count,
+		"cleanup_pixel_delta": cleaned_pixel_count - original_pixel_count,
 		"vertex_count": vertex_count,
 		"piece_count": pieces.size(),
 		"used_contour_repair": triangle_indices.is_empty(),
@@ -86,6 +95,7 @@ static func trace_region(
 		"tolerance": tolerance,
 		"vertex_error": vertex_error,
 		"include_alpha": include_alpha,
+		"cleanup_radius": cleanup_radius,
 	}
 
 
@@ -214,6 +224,49 @@ static func _flood_fill_mask(
 			pending.append(neighbor)
 
 	return mask
+
+
+static func _close_mask(mask: BitMap, radius: int) -> BitMap:
+	# A square morphological close fills channels and interruptions narrower
+	# than the chosen radius while largely preserving the exterior silhouette.
+	var dilated_h := _morphology_pass(mask, radius, true, true)
+	var dilated := _morphology_pass(dilated_h, radius, false, true)
+	var eroded_h := _morphology_pass(dilated, radius, true, false)
+	return _morphology_pass(eroded_h, radius, false, false)
+
+
+static func _morphology_pass(
+	mask: BitMap,
+	radius: int,
+	horizontal: bool,
+	dilate: bool
+) -> BitMap:
+	var mask_size := mask.get_size()
+	var result := BitMap.new()
+	result.create(mask_size)
+	for y in mask_size.y:
+		for x in mask_size.x:
+			var output_value := not dilate
+			for offset in range(-radius, radius + 1):
+				var neighbor := Vector2i(
+					x + offset if horizontal else x,
+					y if horizontal else y + offset
+				)
+				var sample := (
+					neighbor.x >= 0
+					and neighbor.y >= 0
+					and neighbor.x < mask_size.x
+					and neighbor.y < mask_size.y
+					and mask.get_bitv(neighbor)
+				)
+				if dilate and sample:
+					output_value = true
+					break
+				if not dilate and not sample:
+					output_value = false
+					break
+			result.set_bit(x, y, output_value)
+	return result
 
 
 static func _colors_match(

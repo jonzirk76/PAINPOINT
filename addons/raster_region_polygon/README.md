@@ -14,13 +14,19 @@ texture into an editable `Polygon2D`.
 1. Select one `Sprite2D` whose texture contains the region to trace.
 2. Click **Use Selected Sprite2D**.
 3. Click inside a region in the dock preview.
-4. Adjust **Tolerance**, **Vertex error**, and **Node name**.
+4. Adjust **Tolerance**, **Vertex error**, **Cleanup radius**, and **Node name**.
 5. Click **Create Polygon2D Child**.
 
 Use the mouse wheel over the preview to zoom around the cursor and drag with
 the middle mouse button to pan. The **−**, **+**, and **Fit** buttons provide
 the same zoom controls without a wheel. Left-click selection continues to use
 source-image pixel coordinates at every zoom level.
+
+**Cleanup radius** performs a morphological close on the selected pixel mask
+before its contour is generated. Small values bridge narrow interruptions such
+as a hair strand crossing a face, preventing the outline from following that
+channel into detailed features like an eye. `0 px` preserves the original mask;
+start at `1 px` and increase only until the unwanted channel closes.
 
 The generated node is a child of the source sprite, uses the sampled color, and
 is added through the editor undo/redo history. It also stores its trace seed and
@@ -54,6 +60,7 @@ godot4 --headless --path /path/to/project \
   --x 320 --y 180 \
   --tolerance 0.12 \
   --vertex-error 3.0 \
+  --cleanup-radius 1 \
   --include-alpha true
 ```
 

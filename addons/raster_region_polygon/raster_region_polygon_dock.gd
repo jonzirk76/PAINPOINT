@@ -188,6 +188,7 @@ var _zoom_label: Label
 var _source_label: Label
 var _tolerance_spin: SpinBox
 var _epsilon_spin: SpinBox
+var _cleanup_radius_spin: SpinBox
 var _include_alpha_check: CheckBox
 var _polygon_name_edit: LineEdit
 var _sample_swatch: ColorRect
@@ -284,6 +285,20 @@ func _ready() -> void:
 	_epsilon_spin.tooltip_text = "Maximum contour simplification error. Lower values keep more vertices."
 	_epsilon_spin.value_changed.connect(_on_trace_setting_changed)
 	settings.add_child(_epsilon_spin)
+
+	settings.add_child(_make_label("Cleanup radius"))
+	_cleanup_radius_spin = SpinBox.new()
+	_cleanup_radius_spin.min_value = 0.0
+	_cleanup_radius_spin.max_value = 8.0
+	_cleanup_radius_spin.step = 1.0
+	_cleanup_radius_spin.value = 0.0
+	_cleanup_radius_spin.suffix = " px"
+	_cleanup_radius_spin.tooltip_text = (
+		"Closes narrow interruptions before tracing. Use small values to bridge "
+		+ "hair strands or slivers without erasing intentional detail."
+	)
+	_cleanup_radius_spin.value_changed.connect(_on_trace_setting_changed)
+	settings.add_child(_cleanup_radius_spin)
 
 	settings.add_child(_make_label("Compare alpha"))
 	_include_alpha_check = CheckBox.new()
@@ -388,6 +403,7 @@ func _edit_selected_trace() -> void:
 		return
 	_tolerance_spin.value = float(metadata.get("tolerance", 0.08))
 	_epsilon_spin.value = float(metadata.get("vertex_error", 1.5))
+	_cleanup_radius_spin.value = int(metadata.get("cleanup_radius", 0))
 	_include_alpha_check.button_pressed = bool(metadata.get("include_alpha", true))
 	_polygon_name_edit.text = polygon.name
 	_create_button.text = "Create or Update Named Polygon2D"
@@ -447,7 +463,8 @@ func _rebuild_trace() -> void:
 		_seed,
 		float(_tolerance_spin.value),
 		float(_epsilon_spin.value),
-		_include_alpha_check.button_pressed
+		_include_alpha_check.button_pressed,
+		int(_cleanup_radius_spin.value)
 	)
 
 	if not result.get("ok", false):
@@ -460,11 +477,17 @@ func _rebuild_trace() -> void:
 	_sample_swatch.color = result["sample"]
 	_preview.set_trace(_trace_pieces, _seed)
 	_create_button.disabled = _trace_pieces.is_empty()
-	_status_label.text = "%d vertices in %d piece(s) from %d selected pixels.%s" % [
+	_status_label.text = "%d vertices in %d piece(s) from %d selected pixels.%s%s" % [
 		int(result["vertex_count"]),
 		int(result["piece_count"]),
 		int(result["selected_pixel_count"]),
-		" Contour repair used." if result["used_contour_repair"] else ""
+		" Contour repair used." if result["used_contour_repair"] else "",
+		(
+			" Cleanup changed the mask by %+d pixels."
+			% int(result["cleanup_pixel_delta"])
+			if int(result["cleanup_radius"]) > 0
+			else ""
+		),
 	]
 
 
@@ -605,7 +628,8 @@ func _capture_regenerated_baseline_for(polygon: Polygon2D) -> bool:
 		baseline_seed,
 		float(metadata.get("tolerance", 0.08)),
 		float(metadata.get("vertex_error", 1.5)),
-		bool(metadata.get("include_alpha", true))
+		bool(metadata.get("include_alpha", true)),
+		int(metadata.get("cleanup_radius", 0))
 	)
 	if not baseline_result.get("ok", false):
 		_clear_regenerated_baseline()
@@ -679,11 +703,12 @@ func _packed_vector_arrays_match(
 
 func _make_trace_metadata() -> Dictionary:
 	return {
-		"version": 1,
+		"version": 2,
 		"seed": _seed,
 		"tolerance": float(_tolerance_spin.value),
 		"vertex_error": float(_epsilon_spin.value),
 		"include_alpha": _include_alpha_check.button_pressed,
+		"cleanup_radius": int(_cleanup_radius_spin.value),
 	}
 
 
