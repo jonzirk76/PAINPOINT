@@ -17,6 +17,11 @@ texture into an editable `Polygon2D`.
 4. Adjust **Tolerance** and **Vertex error**.
 5. Click **Create Polygon2D Child**.
 
+Use the mouse wheel over the preview to zoom around the cursor and drag with
+the middle mouse button to pan. The **−**, **+**, and **Fit** buttons provide
+the same zoom controls without a wheel. Left-click selection continues to use
+source-image pixel coordinates at every zoom level.
+
 The generated node is a child of the source sprite, uses the sampled color, and
 is added through the editor undo/redo history. It also stores its trace seed and
 settings as node metadata.

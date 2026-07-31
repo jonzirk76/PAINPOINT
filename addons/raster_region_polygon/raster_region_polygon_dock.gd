@@ -9,15 +9,24 @@ class RegionPreview:
 	extends Control
 
 	signal image_point_selected(point: Vector2i)
+	signal zoom_changed(percent: int)
+
+	const MIN_ZOOM := 1.0
+	const MAX_ZOOM := 32.0
+	const ZOOM_STEP := 1.25
 
 	var image: Image
 	var texture: Texture2D
 	var polygons: Array[PackedVector2Array] = []
 	var selected_point := Vector2i(-1, -1)
 	var image_rect := Rect2()
+	var zoom := 1.0
+	var view_center := Vector2.ZERO
+	var is_panning := false
 
 	func _ready() -> void:
 		custom_minimum_size = Vector2(260.0, 260.0)
+		clip_contents = true
 		mouse_default_cursor_shape = Control.CURSOR_CROSS
 		resized.connect(queue_redraw)
 
@@ -26,6 +35,7 @@ class RegionPreview:
 		image = source_image
 		polygons.clear()
 		selected_point = Vector2i(-1, -1)
+		fit_view()
 		queue_redraw()
 
 	func set_trace(points: Array[PackedVector2Array], seed: Vector2i) -> void:
@@ -34,22 +44,96 @@ class RegionPreview:
 		queue_redraw()
 
 	func _gui_input(event: InputEvent) -> void:
+		if event is InputEventMouseMotion and is_panning:
+			var scale_factor := _image_scale()
+			if scale_factor > 0.0:
+				view_center -= event.relative / scale_factor
+				_clamp_view_center()
+				queue_redraw()
+			accept_event()
+			return
 		if not event is InputEventMouseButton:
+			return
+
+		if event.button_index == MOUSE_BUTTON_MIDDLE:
+			is_panning = event.pressed
+			mouse_default_cursor_shape = (
+				Control.CURSOR_DRAG if is_panning else Control.CURSOR_CROSS
+			)
+			accept_event()
+			return
+		if event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			_zoom_at(ZOOM_STEP, event.position)
+			accept_event()
+			return
+		if event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			_zoom_at(1.0 / ZOOM_STEP, event.position)
+			accept_event()
 			return
 		if event.button_index != MOUSE_BUTTON_LEFT or not event.pressed:
 			return
 		if image == null or not image_rect.has_point(event.position):
 			return
 
-		var image_size := Vector2(image.get_size())
-		var normalized: Vector2 = (
-			(event.position - image_rect.position) / image_rect.size
+		var image_position := (
+			(event.position - image_rect.position) / _image_scale()
 		)
 		var point := Vector2i(
-			clampi(int(normalized.x * image_size.x), 0, image.get_width() - 1),
-			clampi(int(normalized.y * image_size.y), 0, image.get_height() - 1)
+			clampi(int(image_position.x), 0, image.get_width() - 1),
+			clampi(int(image_position.y), 0, image.get_height() - 1)
 		)
 		image_point_selected.emit(point)
+
+	func zoom_in() -> void:
+		_zoom_at(ZOOM_STEP, size * 0.5)
+
+	func zoom_out() -> void:
+		_zoom_at(1.0 / ZOOM_STEP, size * 0.5)
+
+	func fit_view() -> void:
+		zoom = MIN_ZOOM
+		view_center = (
+			Vector2(image.get_size()) * 0.5 if image != null else Vector2.ZERO
+		)
+		zoom_changed.emit(roundi(zoom * 100.0))
+		queue_redraw()
+
+	func _zoom_at(multiplier: float, focus: Vector2) -> void:
+		if image == null:
+			return
+		var old_scale := _image_scale()
+		var image_under_cursor := view_center + (focus - size * 0.5) / old_scale
+		zoom = clampf(zoom * multiplier, MIN_ZOOM, MAX_ZOOM)
+		var new_scale := _image_scale()
+		view_center = image_under_cursor - (focus - size * 0.5) / new_scale
+		_clamp_view_center()
+		zoom_changed.emit(roundi(zoom * 100.0))
+		queue_redraw()
+
+	func _fit_scale() -> float:
+		if image == null or image.is_empty():
+			return 1.0
+		var image_size := Vector2(image.get_size())
+		var available := Vector2(maxf(size.x - 12.0, 1.0), maxf(size.y - 12.0, 1.0))
+		return minf(available.x / image_size.x, available.y / image_size.y)
+
+	func _image_scale() -> float:
+		return _fit_scale() * zoom
+
+	func _clamp_view_center() -> void:
+		if image == null:
+			return
+		var image_size := Vector2(image.get_size())
+		var half_visible := size * 0.5 / _image_scale()
+		for axis in 2:
+			if half_visible[axis] * 2.0 >= image_size[axis]:
+				view_center[axis] = image_size[axis] * 0.5
+			else:
+				view_center[axis] = clampf(
+					view_center[axis],
+					half_visible[axis],
+					image_size[axis] - half_visible[axis]
+				)
 
 	func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.08, 0.09, 0.11), true)
@@ -58,13 +142,9 @@ class RegionPreview:
 			return
 
 		var image_size := Vector2(image.get_size())
-		var available := size - Vector2(12.0, 12.0)
-		var scale_factor: float = minf(
-			available.x / image_size.x,
-			available.y / image_size.y
-		)
+		var scale_factor := _image_scale()
 		var draw_size := image_size * scale_factor
-		image_rect = Rect2((size - draw_size) * 0.5, draw_size)
+		image_rect = Rect2(size * 0.5 - view_center * scale_factor, draw_size)
 		draw_texture_rect(texture, image_rect, false)
 
 		for polygon in polygons:
@@ -99,6 +179,7 @@ var _seed := Vector2i(-1, -1)
 var _trace_pieces: Array[PackedVector2Array] = []
 
 var _preview
+var _zoom_label: Label
 var _source_label: Label
 var _tolerance_spin: SpinBox
 var _epsilon_spin: SpinBox
@@ -147,6 +228,30 @@ func _ready() -> void:
 	_preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_preview.image_point_selected.connect(_on_image_point_selected)
 	add_child(_preview)
+
+	var zoom_controls := HBoxContainer.new()
+	var zoom_out_button := Button.new()
+	zoom_out_button.text = "−"
+	zoom_out_button.tooltip_text = "Zoom out (mouse wheel down)."
+	zoom_out_button.pressed.connect(_preview.zoom_out)
+	zoom_controls.add_child(zoom_out_button)
+	var zoom_in_button := Button.new()
+	zoom_in_button.text = "+"
+	zoom_in_button.tooltip_text = "Zoom in (mouse wheel up)."
+	zoom_in_button.pressed.connect(_preview.zoom_in)
+	zoom_controls.add_child(zoom_in_button)
+	var fit_button := Button.new()
+	fit_button.text = "Fit"
+	fit_button.tooltip_text = "Fit the complete source image in the preview."
+	fit_button.pressed.connect(_preview.fit_view)
+	zoom_controls.add_child(fit_button)
+	_zoom_label = Label.new()
+	_zoom_label.text = "100%"
+	_zoom_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_zoom_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	zoom_controls.add_child(_zoom_label)
+	_preview.zoom_changed.connect(_on_preview_zoom_changed)
+	add_child(zoom_controls)
 
 	var settings := GridContainer.new()
 	settings.columns = 2
@@ -293,6 +398,10 @@ func _set_source_sprite(sprite: Sprite2D) -> bool:
 func _on_image_point_selected(point: Vector2i) -> void:
 	_seed = point
 	_rebuild_trace()
+
+
+func _on_preview_zoom_changed(percent: int) -> void:
+	_zoom_label.text = "%d%%" % percent
 
 
 func _on_trace_setting_changed(_value: Variant) -> void:
