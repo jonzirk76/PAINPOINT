@@ -57,6 +57,12 @@ func _run() -> void:
 	var points: Array[Array] = []
 	for point in polygon:
 		points.append([point.x, point.y])
+	var pieces: Array[Array] = []
+	for piece: PackedVector2Array in result["pieces"]:
+		var piece_points: Array[Array] = []
+		for point in piece:
+			piece_points.append([point.x, point.y])
+		pieces.append(piece_points)
 	var sample: Color = result["sample"]
 	var image_size: Vector2i = result["image_size"]
 	var output := {
@@ -67,10 +73,13 @@ func _run() -> void:
 		"sample_rgba": [sample.r, sample.g, sample.b, sample.a],
 		"selected_pixel_count": result["selected_pixel_count"],
 		"vertex_count": result["vertex_count"],
+		"piece_count": result["piece_count"],
+		"used_piece_fallback": result["used_piece_fallback"],
 		"tolerance": tolerance,
 		"vertex_error": vertex_error,
 		"include_alpha": include_alpha,
 		"points": points,
+		"pieces": pieces,
 	}
 	if region.size != Vector2i.ZERO:
 		output["source_region"] = [

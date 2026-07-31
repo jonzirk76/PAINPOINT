@@ -12,7 +12,7 @@ class RegionPreview:
 
 	var image: Image
 	var texture: Texture2D
-	var polygon := PackedVector2Array()
+	var polygons: Array[PackedVector2Array] = []
 	var selected_point := Vector2i(-1, -1)
 	var image_rect := Rect2()
 
@@ -24,12 +24,12 @@ class RegionPreview:
 	func set_source(source_texture: Texture2D, source_image: Image) -> void:
 		texture = source_texture
 		image = source_image
-		polygon.clear()
+		polygons.clear()
 		selected_point = Vector2i(-1, -1)
 		queue_redraw()
 
-	func set_trace(points: PackedVector2Array, seed: Vector2i) -> void:
-		polygon = points
+	func set_trace(points: Array[PackedVector2Array], seed: Vector2i) -> void:
+		polygons = points
 		selected_point = seed
 		queue_redraw()
 
@@ -67,7 +67,9 @@ class RegionPreview:
 		image_rect = Rect2((size - draw_size) * 0.5, draw_size)
 		draw_texture_rect(texture, image_rect, false)
 
-		if polygon.size() >= 3:
+		for polygon in polygons:
+			if polygon.size() < 3:
+				continue
 			var preview_points := PackedVector2Array()
 			for point in polygon:
 				preview_points.append(image_rect.position + point * scale_factor)
@@ -94,7 +96,7 @@ var _source_sprite: Sprite2D
 var _source_image: Image
 var _editing_polygon: Polygon2D
 var _seed := Vector2i(-1, -1)
-var _trace := PackedVector2Array()
+var _trace_pieces: Array[PackedVector2Array] = []
 
 var _preview
 var _source_label: Label
@@ -278,7 +280,7 @@ func _set_source_sprite(sprite: Sprite2D) -> bool:
 	_source_sprite = sprite
 	_source_image = image
 	_seed = Vector2i(-1, -1)
-	_trace.clear()
+	_trace_pieces.clear()
 	_source_label.text = "Source: %s" % sprite.name
 	_source_label.tooltip_text = str(sprite.get_path())
 	_sample_swatch.color = Color.TRANSPARENT
@@ -311,23 +313,25 @@ func _rebuild_trace() -> void:
 	)
 
 	if not result.get("ok", false):
-		_trace.clear()
-		_preview.set_trace(_trace, _seed)
+		_trace_pieces.clear()
+		_preview.set_trace(_trace_pieces, _seed)
 		_set_error(str(result.get("error", "Trace failed.")))
 		return
 
-	_trace = result["polygon"]
+	_trace_pieces = result["pieces"]
 	_sample_swatch.color = result["sample"]
-	_preview.set_trace(_trace, _seed)
-	_create_button.disabled = _trace.size() < 3
-	_status_label.text = "%d vertices from %d selected pixels." % [
-		_trace.size(),
-		int(result["selected_pixel_count"])
+	_preview.set_trace(_trace_pieces, _seed)
+	_create_button.disabled = _trace_pieces.is_empty()
+	_status_label.text = "%d vertices in %d piece(s) from %d selected pixels.%s" % [
+		int(result["vertex_count"]),
+		int(result["piece_count"]),
+		int(result["selected_pixel_count"]),
+		" Complex region fallback used." if result["used_piece_fallback"] else ""
 	]
 
 
 func _create_polygon() -> void:
-	if not is_instance_valid(_source_sprite) or _trace.size() < 3:
+	if not is_instance_valid(_source_sprite) or _trace_pieces.is_empty():
 		_set_error("Choose a source and trace a region first.")
 		return
 	if not _source_sprite.is_inside_tree():
@@ -346,14 +350,16 @@ func _create_polygon() -> void:
 	var polygon_node := Polygon2D.new()
 	var requested_name := _polygon_name_edit.text.strip_edges()
 	polygon_node.name = requested_name if not requested_name.is_empty() else "TracedRegion"
-	polygon_node.polygon = Tracer.image_points_to_sprite_local(
-		_trace,
+	var polygon_data: Dictionary = Tracer.build_polygon_data(
+		_trace_pieces,
 		_source_image.get_size(),
 		_source_sprite.offset,
 		_source_sprite.centered,
 		_source_sprite.flip_h,
 		_source_sprite.flip_v
 	)
+	polygon_node.polygon = polygon_data["vertices"]
+	polygon_node.polygons = polygon_data["polygons"]
 	polygon_node.color = _sample_swatch.color
 	polygon_node.set_meta(TRACE_METADATA, _make_trace_metadata())
 
@@ -376,15 +382,18 @@ func _update_polygon() -> void:
 		_set_error("The polygon being edited no longer exists.")
 		return
 
-	var new_polygon := Tracer.image_points_to_sprite_local(
-		_trace,
+	var polygon_data: Dictionary = Tracer.build_polygon_data(
+		_trace_pieces,
 		_source_image.get_size(),
 		_source_sprite.offset,
 		_source_sprite.centered,
 		_source_sprite.flip_h,
 		_source_sprite.flip_v
 	)
+	var new_polygon: PackedVector2Array = polygon_data["vertices"]
+	var new_polygons: Array[PackedInt32Array] = polygon_data["polygons"]
 	var old_polygon := _editing_polygon.polygon
+	var old_polygons := _editing_polygon.polygons
 	var old_color := _editing_polygon.color
 	var old_metadata: Variant = _editing_polygon.get_meta(
 		TRACE_METADATA,
@@ -394,6 +403,7 @@ func _update_polygon() -> void:
 
 	_undo_redo.create_action("Update raster region Polygon2D")
 	_undo_redo.add_do_property(_editing_polygon, "polygon", new_polygon)
+	_undo_redo.add_do_property(_editing_polygon, "polygons", new_polygons)
 	_undo_redo.add_do_property(_editing_polygon, "color", _sample_swatch.color)
 	_undo_redo.add_do_method(
 		_editing_polygon,
@@ -402,6 +412,7 @@ func _update_polygon() -> void:
 		new_metadata
 	)
 	_undo_redo.add_undo_property(_editing_polygon, "polygon", old_polygon)
+	_undo_redo.add_undo_property(_editing_polygon, "polygons", old_polygons)
 	_undo_redo.add_undo_property(_editing_polygon, "color", old_color)
 	_undo_redo.add_undo_method(
 		_editing_polygon,

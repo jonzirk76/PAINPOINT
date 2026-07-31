@@ -57,18 +57,65 @@ static func trace_region(
 			"sample": sample,
 			"selected_pixel_count": mask.get_true_bit_count(),
 		}
+	var triangle_indices := Geometry2D.triangulate_polygon(polygon)
+	var pieces: Array[PackedVector2Array] = [polygon]
+	if triangle_indices.is_empty():
+		pieces = _mask_to_rectangles(mask)
+	if pieces.is_empty():
+		return {
+			"ok": false,
+			"error": "The selected region could not be converted into renderable pieces.",
+			"sample": sample,
+			"selected_pixel_count": mask.get_true_bit_count(),
+		}
+	var vertex_count := 0
+	for piece in pieces:
+		vertex_count += piece.size()
 
 	return {
 		"ok": true,
 		"polygon": polygon,
+		"pieces": pieces,
 		"sample": sample,
 		"selected_pixel_count": mask.get_true_bit_count(),
-		"vertex_count": polygon.size(),
+		"vertex_count": vertex_count,
+		"piece_count": pieces.size(),
+		"used_piece_fallback": triangle_indices.is_empty(),
 		"image_size": image.get_size(),
 		"seed": seed,
 		"tolerance": tolerance,
 		"vertex_error": vertex_error,
 		"include_alpha": include_alpha,
+	}
+
+
+static func build_polygon_data(
+	image_pieces: Array[PackedVector2Array],
+	image_size: Vector2i,
+	offset: Vector2,
+	centered: bool,
+	flip_h: bool,
+	flip_v: bool
+) -> Dictionary:
+	var vertices := PackedVector2Array()
+	var polygon_indices: Array[PackedInt32Array] = []
+	for image_piece in image_pieces:
+		var local_piece := image_points_to_sprite_local(
+			image_piece,
+			image_size,
+			offset,
+			centered,
+			flip_h,
+			flip_v
+		)
+		var indices := PackedInt32Array()
+		for point in local_piece:
+			indices.append(vertices.size())
+			vertices.append(point)
+		polygon_indices.append(indices)
+	return {
+		"vertices": vertices,
+		"polygons": polygon_indices,
 	}
 
 
@@ -94,6 +141,58 @@ static func image_points_to_sprite_local(
 			point.y = size.y - point.y
 		result.append(origin + point)
 	return result
+
+
+static func _mask_to_rectangles(mask: BitMap) -> Array[PackedVector2Array]:
+	# Polygon2D cannot fill contours that encode holes by doubling back along a
+	# bridge. Exact scanline rectangles preserve those masks as valid subpolygons.
+	var rectangles: Array[Rect2i] = []
+	var active := {}
+	var mask_size := mask.get_size()
+
+	for y in mask_size.y:
+		var runs: Array[Vector2i] = []
+		var x := 0
+		while x < mask_size.x:
+			while x < mask_size.x and not mask.get_bit(x, y):
+				x += 1
+			if x >= mask_size.x:
+				break
+			var start_x := x
+			while x < mask_size.x and mask.get_bit(x, y):
+				x += 1
+			runs.append(Vector2i(start_x, x))
+
+		var next_active := {}
+		for run in runs:
+			var key := "%d:%d" % [run.x, run.y]
+			if active.has(key):
+				var rectangle: Rect2i = active[key]
+				rectangle.size.y += 1
+				next_active[key] = rectangle
+			else:
+				next_active[key] = Rect2i(run.x, y, run.y - run.x, 1)
+		for key in active:
+			if not next_active.has(key):
+				rectangles.append(active[key])
+		active = next_active
+
+	for rectangle in active.values():
+		rectangles.append(rectangle)
+
+	var pieces: Array[PackedVector2Array] = []
+	for rectangle in rectangles:
+		var left := float(rectangle.position.x)
+		var top := float(rectangle.position.y)
+		var right := float(rectangle.end.x)
+		var bottom := float(rectangle.end.y)
+		pieces.append(PackedVector2Array([
+			Vector2(left, top),
+			Vector2(right, top),
+			Vector2(right, bottom),
+			Vector2(left, bottom),
+		]))
+	return pieces
 
 
 static func _flood_fill_mask(
