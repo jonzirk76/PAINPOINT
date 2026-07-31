@@ -91,7 +91,7 @@ func _run() -> void:
 		"selected_pixel_count": result["selected_pixel_count"],
 		"vertex_count": result["vertex_count"],
 		"piece_count": result["piece_count"],
-		"used_piece_fallback": result["used_piece_fallback"],
+		"used_contour_repair": result["used_contour_repair"],
 		"tolerance": tolerance,
 		"vertex_error": vertex_error,
 		"include_alpha": include_alpha,

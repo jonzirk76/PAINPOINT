@@ -56,9 +56,9 @@ coordinates and returned vertices are relative to the cropped region:
 ```
 
 The command prints image dimensions, sampled RGBA color, selected-pixel count,
-and image-space polygon pieces. Simple regions contain one piece. Regions with
-holes or contours that Godot cannot triangulate are emitted as multiple valid
-sub-polygons, preserving the selected pixels instead of creating an invisible
+and image-space polygon pieces. Simple regions contain one piece. Contours that
+Godot cannot triangulate are passed through a small geometry repair offset and
+emitted as ordinary valid sub-polygons instead of creating an invisible
 `Polygon2D`. Automation clients can turn the pieces into `Polygon2D.polygon`
 and `Polygon2D.polygons` data with
 `RasterRegionTracer.build_polygon_data()`.
@@ -82,6 +82,5 @@ JSON response.
 - Four-connected color regions only.
 - The tolerance is a maximum difference per RGBA channel.
 - Region-enabled `Sprite2D` nodes are not supported yet.
-- Complex regions use exact scanline pieces and can have substantially more
-  vertices than a simple outline.
+- Contour repair can expand a complex boundary by up to a few pixels.
 - Output is `Polygon2D` only.

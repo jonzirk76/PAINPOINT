@@ -60,7 +60,7 @@ static func trace_region(
 	var triangle_indices := Geometry2D.triangulate_polygon(polygon)
 	var pieces: Array[PackedVector2Array] = [polygon]
 	if triangle_indices.is_empty():
-		pieces = _mask_to_rectangles(mask)
+		pieces = _repair_polygon(polygon)
 	if pieces.is_empty():
 		return {
 			"ok": false,
@@ -80,7 +80,7 @@ static func trace_region(
 		"selected_pixel_count": mask.get_true_bit_count(),
 		"vertex_count": vertex_count,
 		"piece_count": pieces.size(),
-		"used_piece_fallback": triangle_indices.is_empty(),
+		"used_contour_repair": triangle_indices.is_empty(),
 		"image_size": image.get_size(),
 		"seed": seed,
 		"tolerance": tolerance,
@@ -143,56 +143,28 @@ static func image_points_to_sprite_local(
 	return result
 
 
-static func _mask_to_rectangles(mask: BitMap) -> Array[PackedVector2Array]:
-	# Polygon2D cannot fill contours that encode holes by doubling back along a
-	# bridge. Exact scanline rectangles preserve those masks as valid subpolygons.
-	var rectangles: Array[Rect2i] = []
-	var active := {}
-	var mask_size := mask.get_size()
-
-	for y in mask_size.y:
-		var runs: Array[Vector2i] = []
-		var x := 0
-		while x < mask_size.x:
-			while x < mask_size.x and not mask.get_bit(x, y):
-				x += 1
-			if x >= mask_size.x:
+static func _repair_polygon(polygon: PackedVector2Array) -> Array[PackedVector2Array]:
+	# Clipper's offset pass resolves doubled-back edges and one-pixel pinches
+	# produced by bitmap contours. Prefer the smallest change that yields only
+	# polygons Godot can triangulate.
+	for repair_distance in [0.25, 0.5, 1.0, 2.0]:
+		var candidates: Array[PackedVector2Array] = Geometry2D.offset_polygon(
+			polygon,
+			repair_distance,
+			Geometry2D.JOIN_SQUARE
+		)
+		var valid: Array[PackedVector2Array] = []
+		var all_renderable := not candidates.is_empty()
+		for candidate in candidates:
+			if candidate.size() < 3:
+				continue
+			if Geometry2D.triangulate_polygon(candidate).is_empty():
+				all_renderable = false
 				break
-			var start_x := x
-			while x < mask_size.x and mask.get_bit(x, y):
-				x += 1
-			runs.append(Vector2i(start_x, x))
-
-		var next_active := {}
-		for run in runs:
-			var key := "%d:%d" % [run.x, run.y]
-			if active.has(key):
-				var rectangle: Rect2i = active[key]
-				rectangle.size.y += 1
-				next_active[key] = rectangle
-			else:
-				next_active[key] = Rect2i(run.x, y, run.y - run.x, 1)
-		for key in active:
-			if not next_active.has(key):
-				rectangles.append(active[key])
-		active = next_active
-
-	for rectangle in active.values():
-		rectangles.append(rectangle)
-
-	var pieces: Array[PackedVector2Array] = []
-	for rectangle in rectangles:
-		var left := float(rectangle.position.x)
-		var top := float(rectangle.position.y)
-		var right := float(rectangle.end.x)
-		var bottom := float(rectangle.end.y)
-		pieces.append(PackedVector2Array([
-			Vector2(left, top),
-			Vector2(right, top),
-			Vector2(right, bottom),
-			Vector2(left, bottom),
-		]))
-	return pieces
+			valid.append(candidate)
+		if all_renderable and not valid.is_empty():
+			return valid
+	return []
 
 
 static func _flood_fill_mask(

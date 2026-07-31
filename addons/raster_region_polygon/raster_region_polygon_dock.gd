@@ -326,7 +326,7 @@ func _rebuild_trace() -> void:
 		int(result["vertex_count"]),
 		int(result["piece_count"]),
 		int(result["selected_pixel_count"]),
-		" Complex region fallback used." if result["used_piece_fallback"] else ""
+		" Contour repair used." if result["used_contour_repair"] else ""
 	]
 
 
