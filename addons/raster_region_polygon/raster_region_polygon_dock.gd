@@ -1,6 +1,8 @@
 @tool
 extends VBoxContainer
 
+const Tracer := preload("res://addons/raster_region_polygon/raster_region_tracer.gd")
+
 
 class RegionPreview:
 	extends Control
@@ -243,119 +245,28 @@ func _rebuild_trace() -> void:
 	if _source_image == null or _seed.x < 0:
 		return
 
-	var sample := _source_image.get_pixelv(_seed)
-	_sample_swatch.color = sample
-	var mask := _flood_fill_mask(
+	var result: Dictionary = Tracer.trace_region(
 		_source_image,
 		_seed,
-		sample,
 		float(_tolerance_spin.value),
+		float(_epsilon_spin.value),
 		_include_alpha_check.button_pressed
 	)
-	var polygons := mask.opaque_to_polygons(
-		Rect2i(Vector2i.ZERO, mask.get_size()),
-		float(_epsilon_spin.value)
-	)
 
-	_trace = _find_seed_polygon(polygons, Vector2(_seed) + Vector2(0.5, 0.5))
+	if not result.get("ok", false):
+		_trace.clear()
+		_preview.set_trace(_trace, _seed)
+		_set_error(str(result.get("error", "Trace failed.")))
+		return
+
+	_trace = result["polygon"]
+	_sample_swatch.color = result["sample"]
 	_preview.set_trace(_trace, _seed)
 	_create_button.disabled = _trace.size() < 3
-	if _trace.size() < 3:
-		_set_error("The selected region did not produce a usable polygon.")
-	else:
-		_status_label.text = "%d vertices from %d selected pixels." % [
-			_trace.size(),
-			mask.get_true_bit_count()
-		]
-
-
-func _flood_fill_mask(
-	image: Image,
-	seed: Vector2i,
-	sample: Color,
-	tolerance: float,
-	include_alpha: bool
-) -> BitMap:
-	var image_size := image.get_size()
-	var mask := BitMap.new()
-	mask.create(image_size)
-	var visited := PackedByteArray()
-	visited.resize(image_size.x * image_size.y)
-	var pending: Array[Vector2i] = [seed]
-	visited[seed.y * image_size.x + seed.x] = 1
-
-	while not pending.is_empty():
-		var point: Vector2i = pending.pop_back()
-		var color := image.get_pixelv(point)
-		if not _colors_match(color, sample, tolerance, include_alpha):
-			continue
-		mask.set_bitv(point, true)
-
-		for offset in [
-			Vector2i.LEFT,
-			Vector2i.RIGHT,
-			Vector2i.UP,
-			Vector2i.DOWN
-		]:
-			var neighbor: Vector2i = point + offset
-			if (
-				neighbor.x < 0
-				or neighbor.y < 0
-				or neighbor.x >= image_size.x
-				or neighbor.y >= image_size.y
-			):
-				continue
-			var index := neighbor.y * image_size.x + neighbor.x
-			if visited[index] != 0:
-				continue
-			visited[index] = 1
-			pending.append(neighbor)
-
-	return mask
-
-
-func _colors_match(
-	color: Color,
-	sample: Color,
-	tolerance: float,
-	include_alpha: bool
-) -> bool:
-	if (
-		absf(color.r - sample.r) > tolerance
-		or absf(color.g - sample.g) > tolerance
-		or absf(color.b - sample.b) > tolerance
-	):
-		return false
-	return not include_alpha or absf(color.a - sample.a) <= tolerance
-
-
-func _find_seed_polygon(
-	polygons: Array[PackedVector2Array],
-	seed_point: Vector2
-) -> PackedVector2Array:
-	for polygon in polygons:
-		if Geometry2D.is_point_in_polygon(seed_point, polygon):
-			return polygon
-
-	var largest := PackedVector2Array()
-	var largest_area := 0.0
-	for polygon in polygons:
-		var area := absf(_signed_area(polygon))
-		if area > largest_area:
-			largest_area = area
-			largest = polygon
-	return largest
-
-
-func _signed_area(polygon: PackedVector2Array) -> float:
-	var area := 0.0
-	for index in polygon.size():
-		var next_index := (index + 1) % polygon.size()
-		area += (
-			polygon[index].x * polygon[next_index].y
-			- polygon[next_index].x * polygon[index].y
-		)
-	return area * 0.5
+	_status_label.text = "%d vertices from %d selected pixels." % [
+		_trace.size(),
+		int(result["selected_pixel_count"])
+	]
 
 
 func _create_polygon() -> void:
@@ -374,7 +285,14 @@ func _create_polygon() -> void:
 	var polygon_node := Polygon2D.new()
 	var requested_name := _polygon_name_edit.text.strip_edges()
 	polygon_node.name = requested_name if not requested_name.is_empty() else "TracedRegion"
-	polygon_node.polygon = _trace_to_sprite_local(_trace, _source_sprite)
+	polygon_node.polygon = Tracer.image_points_to_sprite_local(
+		_trace,
+		_source_image.get_size(),
+		_source_sprite.offset,
+		_source_sprite.centered,
+		_source_sprite.flip_h,
+		_source_sprite.flip_v
+	)
 	polygon_node.color = _sample_swatch.color
 
 	_undo_redo.create_action("Create raster region Polygon2D")
@@ -389,26 +307,6 @@ func _create_polygon() -> void:
 		polygon_node.name,
 		polygon_node.polygon.size()
 	]
-
-
-func _trace_to_sprite_local(
-	image_points: PackedVector2Array,
-	sprite: Sprite2D
-) -> PackedVector2Array:
-	var image_size := Vector2(_source_image.get_size())
-	var origin := sprite.offset
-	if sprite.centered:
-		origin -= image_size * 0.5
-
-	var result := PackedVector2Array()
-	for image_point in image_points:
-		var point := image_point
-		if sprite.flip_h:
-			point.x = image_size.x - point.x
-		if sprite.flip_v:
-			point.y = image_size.y - point.y
-		result.append(origin + point)
-	return result
 
 
 func _set_error(message: String) -> void:

@@ -20,6 +20,26 @@ texture into an editable `Polygon2D`.
 The generated node is a child of the source sprite, uses the sampled color, and
 is added through the editor undo/redo history.
 
+## Headless/agent use
+
+The tracing algorithm lives in `raster_region_tracer.gd` and does not depend on
+the editor dock. `trace_texture_cli.gd` exposes it as a read-only JSON command:
+
+```bash
+godot4 --headless --path /path/to/project \
+  --script res://addons/raster_region_polygon/trace_texture_cli.gd -- \
+  --texture res://art/source.png \
+  --x 320 --y 180 \
+  --tolerance 0.12 \
+  --vertex-error 3.0 \
+  --include-alpha true
+```
+
+The command prints image dimensions, sampled RGBA color, selected-pixel count,
+and image-space polygon vertices. An automation client can convert the returned
+vertices with `RasterRegionTracer.image_points_to_sprite_local()` or apply the
+same centering/offset/flip transform before creating a `Polygon2D`.
+
 ## MVP limitations
 
 - Four-connected color regions only.
