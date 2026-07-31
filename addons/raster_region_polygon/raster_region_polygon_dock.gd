@@ -45,38 +45,40 @@ class RegionPreview:
 
 	func _gui_input(event: InputEvent) -> void:
 		if event is InputEventMouseMotion and is_panning:
+			var motion_event := event as InputEventMouseMotion
 			var scale_factor := _image_scale()
 			if scale_factor > 0.0:
-				view_center -= event.relative / scale_factor
+				view_center -= motion_event.relative / scale_factor
 				_clamp_view_center()
 				queue_redraw()
 			accept_event()
 			return
 		if not event is InputEventMouseButton:
 			return
+		var mouse_event: InputEventMouseButton = event as InputEventMouseButton
 
-		if event.button_index == MOUSE_BUTTON_MIDDLE:
-			is_panning = event.pressed
+		if mouse_event.button_index == MOUSE_BUTTON_MIDDLE:
+			is_panning = mouse_event.pressed
 			mouse_default_cursor_shape = (
 				Control.CURSOR_DRAG if is_panning else Control.CURSOR_CROSS
 			)
 			accept_event()
 			return
-		if event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			_zoom_at(ZOOM_STEP, event.position)
+		if mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			_zoom_at(ZOOM_STEP, mouse_event.position)
 			accept_event()
 			return
-		if event.pressed and event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			_zoom_at(1.0 / ZOOM_STEP, event.position)
+		if mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			_zoom_at(1.0 / ZOOM_STEP, mouse_event.position)
 			accept_event()
 			return
-		if event.button_index != MOUSE_BUTTON_LEFT or not event.pressed:
+		if mouse_event.button_index != MOUSE_BUTTON_LEFT or not mouse_event.pressed:
 			return
-		if image == null or not image_rect.has_point(event.position):
+		if image == null or not image_rect.has_point(mouse_event.position):
 			return
 
-		var image_position := (
-			(event.position - image_rect.position) / _image_scale()
+		var image_position: Vector2 = (
+			(mouse_event.position - image_rect.position) / _image_scale()
 		)
 		var point := Vector2i(
 			clampi(int(image_position.x), 0, image.get_width() - 1),
