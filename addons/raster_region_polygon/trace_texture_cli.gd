@@ -25,6 +25,13 @@ func _run() -> void:
 	if image == null or image.is_empty():
 		_fail("Godot could not read image data from: %s" % texture_path)
 		return
+	var region := _read_region(options)
+	if region.size != Vector2i.ZERO:
+		var image_bounds := Rect2i(Vector2i.ZERO, image.get_size())
+		if not image_bounds.encloses(region):
+			_fail("Requested region is outside the source texture.")
+			return
+		image = image.get_region(region)
 
 	var seed := Vector2i(
 		int(options["x"]),
@@ -65,6 +72,13 @@ func _run() -> void:
 		"include_alpha": include_alpha,
 		"points": points,
 	}
+	if region.size != Vector2i.ZERO:
+		output["source_region"] = [
+			region.position.x,
+			region.position.y,
+			region.size.x,
+			region.size.y,
+		]
 	print(JSON.stringify(output))
 	quit(0)
 
@@ -94,6 +108,29 @@ func _parse_options(arguments: PackedStringArray) -> Dictionary:
 
 func _parse_bool(value: String) -> bool:
 	return value.to_lower() not in ["0", "false", "no", "off"]
+
+
+func _read_region(options: Dictionary) -> Rect2i:
+	var region_keys := [
+		"region-x",
+		"region-y",
+		"region-width",
+		"region-height",
+	]
+	var has_any := false
+	for key in region_keys:
+		has_any = has_any or options.has(key)
+	if not has_any:
+		return Rect2i()
+	for key in region_keys:
+		if not options.has(key):
+			return Rect2i()
+	return Rect2i(
+		int(options["region-x"]),
+		int(options["region-y"]),
+		int(options["region-width"]),
+		int(options["region-height"])
+	)
 
 
 func _fail(message: String, details: Dictionary = {}) -> void:

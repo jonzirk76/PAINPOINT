@@ -35,6 +35,15 @@ godot4 --headless --path /path/to/project \
   --include-alpha true
 ```
 
+For an `AtlasTexture`, pass its source texture and crop rectangle. Seed
+coordinates and returned vertices are relative to the cropped region:
+
+```bash
+  --texture res://art/source_sheet.png \
+  --region-x 289 --region-y 70 \
+  --region-width 303 --region-height 697
+```
+
 The command prints image dimensions, sampled RGBA color, selected-pixel count,
 and image-space polygon vertices. An automation client can convert the returned
 vertices with `RasterRegionTracer.image_points_to_sprite_local()` or apply the
