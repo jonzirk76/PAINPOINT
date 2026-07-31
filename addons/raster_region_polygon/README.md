@@ -35,6 +35,9 @@ To revise a generated polygon:
 
 Updating replaces the existing geometry and applies the edited node name
 through editor undo/redo rather than creating a duplicate node.
+When the existing polygon geometry or color no longer matches its regenerated
+baseline, the dock marks it as manually edited and asks for confirmation before
+overwriting those changes.
 
 ## Headless/agent use
 

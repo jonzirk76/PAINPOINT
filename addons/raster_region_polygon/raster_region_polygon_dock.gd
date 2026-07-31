@@ -179,6 +179,9 @@ var _source_image: Image
 var _editing_polygon: Polygon2D
 var _seed := Vector2i(-1, -1)
 var _trace_pieces: Array[PackedVector2Array] = []
+var _baseline_polygon := PackedVector2Array()
+var _baseline_polygons: Array[PackedInt32Array] = []
+var _baseline_color := Color.TRANSPARENT
 
 var _preview
 var _zoom_label: Label
@@ -190,6 +193,7 @@ var _polygon_name_edit: LineEdit
 var _sample_swatch: ColorRect
 var _status_label: Label
 var _create_button: Button
+var _regeneration_warning: ConfirmationDialog
 
 
 func initialize(
@@ -313,6 +317,16 @@ func _ready() -> void:
 	_create_button.pressed.connect(_create_polygon)
 	add_child(_create_button)
 
+	_regeneration_warning = ConfirmationDialog.new()
+	_regeneration_warning.title = "Replace Manual Polygon Edits?"
+	_regeneration_warning.dialog_text = (
+		"This Polygon2D no longer matches its generated trace. Updating it will "
+		+ "replace manual geometry or color edits with regenerated values."
+	)
+	_regeneration_warning.ok_button_text = "Regenerate Anyway"
+	_regeneration_warning.confirmed.connect(_update_polygon)
+	add_child(_regeneration_warning)
+
 
 func _make_label(text: String) -> Label:
 	var label := Label.new()
@@ -373,6 +387,9 @@ func _edit_selected_trace() -> void:
 	_polygon_name_edit.text = polygon.name
 	_create_button.text = "Update Selected Polygon2D"
 	_rebuild_trace()
+	_capture_regenerated_baseline()
+	if _editing_polygon_differs_from_baseline():
+		_status_label.text += " Manual edits detected; updating will ask for confirmation."
 
 
 func _set_source_sprite(sprite: Sprite2D) -> bool:
@@ -392,6 +409,7 @@ func _set_source_sprite(sprite: Sprite2D) -> bool:
 	_source_image = image
 	_seed = Vector2i(-1, -1)
 	_trace_pieces.clear()
+	_clear_regenerated_baseline()
 	_source_label.text = "Source: %s" % sprite.name
 	_source_label.tooltip_text = str(sprite.get_path())
 	_sample_swatch.color = Color.TRANSPARENT
@@ -459,6 +477,9 @@ func _create_polygon() -> void:
 		return
 
 	if is_instance_valid(_editing_polygon):
+		if _editing_polygon_differs_from_baseline():
+			_regeneration_warning.popup_centered()
+			return
 		_update_polygon()
 		return
 
@@ -543,10 +564,59 @@ func _update_polygon() -> void:
 		old_metadata
 	)
 	_undo_redo.commit_action()
+	_capture_regenerated_baseline()
 	_status_label.text = "Updated %s with %d vertices." % [
 		_editing_polygon.name,
 		new_polygon.size()
 	]
+
+
+func _capture_regenerated_baseline() -> void:
+	if not is_instance_valid(_source_sprite) or _trace_pieces.is_empty():
+		_clear_regenerated_baseline()
+		return
+	var polygon_data: Dictionary = Tracer.build_polygon_data(
+		_trace_pieces,
+		_source_image.get_size(),
+		_source_sprite.offset,
+		_source_sprite.centered,
+		_source_sprite.flip_h,
+		_source_sprite.flip_v
+	)
+	_baseline_polygon = polygon_data["vertices"]
+	_baseline_polygons = polygon_data["polygons"]
+	_baseline_color = _sample_swatch.color
+
+
+func _clear_regenerated_baseline() -> void:
+	_baseline_polygon.clear()
+	_baseline_polygons.clear()
+	_baseline_color = Color.TRANSPARENT
+
+
+func _editing_polygon_differs_from_baseline() -> bool:
+	if not is_instance_valid(_editing_polygon) or _baseline_polygon.is_empty():
+		return false
+	if not _packed_vector_arrays_match(
+		_editing_polygon.polygon,
+		_baseline_polygon
+	):
+		return true
+	if _editing_polygon.polygons != _baseline_polygons:
+		return true
+	return not _editing_polygon.color.is_equal_approx(_baseline_color)
+
+
+func _packed_vector_arrays_match(
+	left: PackedVector2Array,
+	right: PackedVector2Array
+) -> bool:
+	if left.size() != right.size():
+		return false
+	for index in left.size():
+		if not left[index].is_equal_approx(right[index]):
+			return false
+	return true
 
 
 func _make_trace_metadata() -> Dictionary:
