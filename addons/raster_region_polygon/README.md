@@ -37,6 +37,27 @@ The generated node is a child of the source sprite, uses the sampled color, and
 is added through the editor undo/redo history. It also stores its trace seed and
 settings as node metadata.
 
+## Editing architecture
+
+The dock is a view over a canonical editing model rather than the owner of
+trace state:
+
+- `TraceRecipe` owns seed, tolerance, simplification, cleanup, alpha, and fill
+  limit settings and serializes versioned node metadata.
+- `TraceDraft` combines a source with a recipe and owns the current generated
+  preview result.
+- `TraceSessionModel` owns the current draft, selected generated target, scene
+  snapshot, and destination state.
+- `TraceSceneChecker` reads the live Godot scene and classifies targets as
+  clean, manually edited, stale, missing, or unmanaged.
+- `TraceOperationController` turns UI requests into create, update, regenerate,
+  or reject plans. It rechecks scene preconditions immediately before applying
+  an accepted plan through editor undo/redo.
+
+After every accepted mutation, the model is synchronized from the scene again.
+Generated nodes receive stable trace IDs; node names remain user-facing labels
+rather than hidden identity or command routing.
+
 To revise a generated polygon:
 
 1. Select the traced `Polygon2D`.

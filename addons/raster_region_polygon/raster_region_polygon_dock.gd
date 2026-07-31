@@ -1,14 +1,10 @@
 @tool
 extends VBoxContainer
 
-const Tracer := preload("res://addons/raster_region_polygon/raster_region_tracer.gd")
+const SessionModel := preload("res://addons/raster_region_polygon/trace_session_model.gd")
+const OperationController := preload("res://addons/raster_region_polygon/trace_operation_controller.gd")
+const OperationPlan := preload("res://addons/raster_region_polygon/trace_operation_plan.gd")
 const TRACE_METADATA := &"raster_region_trace"
-
-enum DestinationState {
-	NEW_ONLY,
-	UPDATE_SELECTED,
-	REGENERATE_SELECTED,
-}
 
 
 class RegionPreview:
@@ -252,16 +248,11 @@ class RegionPreview:
 
 var _editor_interface: EditorInterface
 var _undo_redo: EditorUndoRedoManager
-var _source_sprite: Sprite2D
-var _source_image: Image
-var _editing_polygon: Polygon2D
-var _seed := Vector2i(-1, -1)
+var _model: RefCounted = SessionModel.new()
+var _controller: RefCounted = OperationController.new()
+var _pending_plan: RefCounted
 var _trace_pieces: Array[PackedVector2Array] = []
-var _limit_polygon: PackedVector2Array = PackedVector2Array()
-var _baseline_polygon := PackedVector2Array()
-var _baseline_polygons: Array[PackedInt32Array] = []
-var _baseline_color := Color.TRANSPARENT
-var _destination_state := DestinationState.NEW_ONLY
+var _syncing_controls := false
 
 var _preview
 var _zoom_label: Label
@@ -286,6 +277,7 @@ func initialize(
 ) -> void:
 	_editor_interface = editor_interface
 	_undo_redo = undo_redo
+	_controller.initialize(editor_interface, undo_redo)
 
 
 func _ready() -> void:
@@ -446,7 +438,7 @@ func _ready() -> void:
 		+ "replace manual geometry or color edits with regenerated values."
 	)
 	_regeneration_warning.ok_button_text = "Regenerate Anyway"
-	_regeneration_warning.confirmed.connect(_update_selected_polygon)
+	_regeneration_warning.confirmed.connect(_apply_pending_regeneration)
 	add_child(_regeneration_warning)
 
 	_name_conflict_warning = AcceptDialog.new()
@@ -474,8 +466,6 @@ func _use_selected_sprite() -> void:
 		_set_error("Region-enabled Sprite2D textures are not supported in this first version.")
 		return
 
-	_editing_polygon = null
-	_refresh_update_action()
 	_set_source_sprite(sprite)
 
 
@@ -493,32 +483,21 @@ func _edit_selected_trace() -> void:
 		_set_error("The traced Polygon2D must remain a child of its source Sprite2D.")
 		return
 
-	var metadata: Dictionary = polygon.get_meta(TRACE_METADATA)
 	var sprite := polygon.get_parent() as Sprite2D
 	if not _set_source_sprite(sprite):
 		return
-
-	_editing_polygon = polygon
-	var stored_seed: Variant = metadata.get("seed", Vector2i(-1, -1))
-	if stored_seed is Vector2i:
-		_seed = stored_seed
-	elif stored_seed is Vector2:
-		_seed = Vector2i(stored_seed)
-	else:
+	var snapshot: Dictionary = _model.load_target(polygon)
+	if _model.destination_state == SessionModel.DestinationState.STALE_SELECTED:
+		_set_error(str(snapshot.get("reason", "The selected trace is stale.")))
+		return
+	if not _model.recipe.is_ready():
 		_set_error("The selected polygon has invalid trace seed metadata.")
 		return
-	_limit_polygon = _read_limit_polygon(metadata.get("limit_polygon", PackedVector2Array()))
-	_preview.set_limit_polygon(_limit_polygon)
-	_tolerance_spin.value = float(metadata.get("tolerance", 0.08))
-	_epsilon_spin.value = float(metadata.get("vertex_error", 1.5))
-	_cleanup_radius_spin.value = int(metadata.get("cleanup_radius", 0))
-	_include_alpha_check.button_pressed = bool(metadata.get("include_alpha", true))
+	_render_recipe_controls()
 	_polygon_name_edit.text = "%sCopy" % polygon.name
 	_rebuild_trace()
-	if not _capture_regenerated_baseline_for(polygon):
-		return
 	_refresh_update_action()
-	if _editing_polygon_differs_from_baseline():
+	if _model.destination_state == SessionModel.DestinationState.REGENERATE_SELECTED:
 		_status_label.text += " Manual edits detected; use Regenerate Selected to replace them."
 
 
@@ -535,12 +514,8 @@ func _set_source_sprite(sprite: Sprite2D) -> bool:
 		_set_error("Godot could not read image data from this texture.")
 		return false
 
-	_source_sprite = sprite
-	_source_image = image
-	_seed = Vector2i(-1, -1)
+	_model.use_source(sprite, image)
 	_trace_pieces.clear()
-	_limit_polygon.clear()
-	_clear_regenerated_baseline()
 	_source_label.text = "Source: %s" % sprite.name
 	_source_label.tooltip_text = str(sprite.get_path())
 	_sample_swatch.color = Color.TRANSPARENT
@@ -552,7 +527,7 @@ func _set_source_sprite(sprite: Sprite2D) -> bool:
 
 
 func _on_image_point_selected(point: Vector2i) -> void:
-	_seed = point
+	_model.recipe.seed = point
 	_rebuild_trace()
 
 
@@ -567,10 +542,10 @@ func _on_draw_limit_toggled(enabled: bool) -> void:
 
 
 func _on_limit_polygon_changed(points: PackedVector2Array) -> void:
-	_limit_polygon = points
-	if _seed.x >= 0:
+	_model.recipe.limit_polygon = points
+	if _model.recipe.is_ready():
 		_rebuild_trace()
-	elif not _limit_polygon.is_empty():
+	elif not _model.recipe.limit_polygon.is_empty():
 		_status_label.text = "Fill limit set. Click inside it to select a color region."
 
 
@@ -579,44 +554,39 @@ func _on_limit_drawing_finished() -> void:
 
 
 func _clear_fill_limit() -> void:
-	_limit_polygon.clear()
-	_preview.set_limit_polygon(_limit_polygon)
+	_model.recipe.limit_polygon.clear()
+	_preview.set_limit_polygon(_model.recipe.limit_polygon)
 	_draw_limit_button.set_pressed_no_signal(false)
 	_preview.set_limit_drawing_enabled(false)
-	if _seed.x >= 0:
+	if _model.recipe.is_ready():
 		_rebuild_trace()
 	else:
 		_status_label.text = "Fill limit cleared. Click inside a color region to trace it."
 
 
 func _on_trace_setting_changed(_value: Variant) -> void:
-	if _seed.x >= 0:
+	if _syncing_controls:
+		return
+	_write_controls_to_recipe()
+	if _model.recipe.is_ready():
 		_rebuild_trace()
 
 
 func _rebuild_trace() -> void:
-	if _source_image == null or _seed.x < 0:
+	if _model.draft.source_image == null or not _model.recipe.is_ready():
 		return
-
-	var result: Dictionary = Tracer.trace_region(
-		_source_image,
-		_seed,
-		float(_tolerance_spin.value),
-		float(_epsilon_spin.value),
-		_include_alpha_check.button_pressed,
-		int(_cleanup_radius_spin.value),
-		_limit_polygon
-	)
+	_write_controls_to_recipe()
+	var result: Dictionary = _model.rebuild()
 
 	if not result.get("ok", false):
 		_trace_pieces.clear()
-		_preview.set_trace(_trace_pieces, _seed)
+		_preview.set_trace(_trace_pieces, _model.recipe.seed)
 		_set_error(str(result.get("error", "Trace failed.")))
 		return
 
 	_trace_pieces = result["pieces"]
 	_sample_swatch.color = result["sample"]
-	_preview.set_trace(_trace_pieces, _seed)
+	_preview.set_trace(_trace_pieces, _model.recipe.seed)
 	_create_button.disabled = _trace_pieces.is_empty()
 	_refresh_update_action()
 	_status_label.text = "%d vertices in %d piece(s) from %d selected pixels.%s%s" % [
@@ -634,51 +604,18 @@ func _rebuild_trace() -> void:
 
 
 func _create_new_polygon() -> void:
-	if not is_instance_valid(_source_sprite) or _trace_pieces.is_empty():
-		_set_error("Choose a source and trace a region first.")
-		return
-	if not _source_sprite.is_inside_tree():
-		_set_error("The source Sprite2D is no longer in the edited scene.")
-		return
-
-	var edited_root := _editor_interface.get_edited_scene_root()
-	if edited_root == null:
-		_set_error("Open an editable scene before creating a polygon.")
-		return
-
-	var requested_name := _polygon_name_edit.text.strip_edges()
-	if requested_name.is_empty():
-		requested_name = "TracedRegion"
-	var named_node := _find_source_child_named(StringName(requested_name))
-	if named_node != null:
-		_show_name_conflict_warning(requested_name, named_node.has_meta(TRACE_METADATA))
-		return
-
-	var polygon_node := Polygon2D.new()
-	polygon_node.name = requested_name
-	var polygon_data: Dictionary = Tracer.build_polygon_data(
-		_trace_pieces,
-		_source_image.get_size(),
-		_source_sprite.offset,
-		_source_sprite.centered,
-		_source_sprite.flip_h,
-		_source_sprite.flip_v
+	_write_controls_to_recipe()
+	var plan: RefCounted = _controller.propose_create(
+		_model,
+		_polygon_name_edit.text
 	)
-	polygon_node.polygon = polygon_data["vertices"]
-	polygon_node.polygons = polygon_data["polygons"]
-	polygon_node.color = _sample_swatch.color
-	polygon_node.set_meta(TRACE_METADATA, _make_trace_metadata())
-
-	_undo_redo.create_action("Create raster region Polygon2D")
-	_undo_redo.add_do_method(_source_sprite, "add_child", polygon_node, true)
-	_undo_redo.add_do_method(polygon_node, "set_owner", edited_root)
-	_undo_redo.add_do_method(_editor_interface.get_selection(), "clear")
-	_undo_redo.add_do_method(_editor_interface.get_selection(), "add_node", polygon_node)
-	_undo_redo.add_undo_method(_source_sprite, "remove_child", polygon_node)
-	_undo_redo.add_do_reference(polygon_node)
-	_undo_redo.commit_action()
-	_editing_polygon = polygon_node
-	_capture_regenerated_baseline_for(polygon_node)
+	if not plan.allowed:
+		_show_plan_rejection(plan)
+		return
+	var polygon_node: Polygon2D = _controller.apply_create(_model, plan)
+	if polygon_node == null:
+		_set_error("The create plan could not be applied to the current scene.")
+		return
 	_polygon_name_edit.text = "%sCopy" % polygon_node.name
 	_refresh_update_action()
 	_status_label.text = "Created %s with %d vertices." % [
@@ -688,170 +625,74 @@ func _create_new_polygon() -> void:
 
 
 func _on_update_selected_pressed() -> void:
-	if (
-		not is_instance_valid(_editing_polygon)
-		or not _editing_polygon.is_inside_tree()
-	):
-		_set_error("Load a generated polygon before updating it.")
-		return
-	var previous_state := _destination_state
+	_write_controls_to_recipe()
+	var previous_state: int = _model.destination_state
+	var plan: RefCounted = _controller.propose_update(_model)
 	_refresh_update_action()
+	if not plan.allowed:
+		_show_plan_rejection(plan)
+		return
 	if (
-		_destination_state == DestinationState.REGENERATE_SELECTED
-		and previous_state != DestinationState.REGENERATE_SELECTED
+		plan.kind == OperationPlan.Kind.REGENERATE
+		and previous_state != SessionModel.DestinationState.REGENERATE_SELECTED
 	):
 		_status_label.text = (
 			"Manual edits were detected. Review and press Regenerate Selected to replace them."
 		)
 		return
-	if _destination_state == DestinationState.REGENERATE_SELECTED:
+	if plan.requires_confirmation:
+		_pending_plan = plan
 		_regeneration_warning.popup_centered()
 		return
-	_update_selected_polygon()
+	_apply_update_plan(plan)
 
 
-func _update_selected_polygon() -> void:
-	if (
-		not is_instance_valid(_editing_polygon)
-		or not _editing_polygon.is_inside_tree()
-	):
-		_destination_state = DestinationState.NEW_ONLY
-		_set_error("The polygon being edited no longer exists.")
+func _apply_pending_regeneration() -> void:
+	if _pending_plan == null:
 		return
+	var plan := _pending_plan
+	_pending_plan = null
+	_apply_update_plan(plan)
 
-	var polygon_data: Dictionary = Tracer.build_polygon_data(
-		_trace_pieces,
-		_source_image.get_size(),
-		_source_sprite.offset,
-		_source_sprite.centered,
-		_source_sprite.flip_h,
-		_source_sprite.flip_v
-	)
-	var new_polygon: PackedVector2Array = polygon_data["vertices"]
-	var new_polygons: Array[PackedInt32Array] = polygon_data["polygons"]
-	var old_polygon := _editing_polygon.polygon
-	var old_polygons := _editing_polygon.polygons
-	var old_color := _editing_polygon.color
-	var old_metadata: Variant = _editing_polygon.get_meta(
-		TRACE_METADATA,
-		{}
-	)
-	var new_metadata := _make_trace_metadata()
 
-	_undo_redo.create_action("Update raster region Polygon2D")
-	_undo_redo.add_do_property(_editing_polygon, "polygon", new_polygon)
-	_undo_redo.add_do_property(_editing_polygon, "polygons", new_polygons)
-	_undo_redo.add_do_property(_editing_polygon, "color", _sample_swatch.color)
-	_undo_redo.add_do_method(
-		_editing_polygon,
-		"set_meta",
-		TRACE_METADATA,
-		new_metadata
-	)
-	_undo_redo.add_undo_property(_editing_polygon, "polygon", old_polygon)
-	_undo_redo.add_undo_property(_editing_polygon, "polygons", old_polygons)
-	_undo_redo.add_undo_property(_editing_polygon, "color", old_color)
-	_undo_redo.add_undo_method(
-		_editing_polygon,
-		"set_meta",
-		TRACE_METADATA,
-		old_metadata
-	)
-	_undo_redo.commit_action()
-	_capture_regenerated_baseline_for(_editing_polygon)
+func _apply_update_plan(plan: RefCounted) -> void:
+	if not _controller.apply_update(_model, plan):
+		_set_error("The scene changed before the operation could be applied. Synchronize and try again.")
+		_refresh_update_action()
+		return
 	_refresh_update_action()
-	_status_label.text = "Updated %s with %d vertices." % [
-		_editing_polygon.name,
-		new_polygon.size()
+	_status_label.text = "%s %s with %d vertices." % [
+		"Regenerated" if plan.kind == OperationPlan.Kind.REGENERATE else "Updated",
+		_model.target.name,
+		int(_model.draft.result.get("vertex_count", 0)),
 	]
 
 
-func _capture_regenerated_baseline_for(polygon: Polygon2D) -> bool:
-	if (
-		not is_instance_valid(polygon)
-		or not is_instance_valid(_source_sprite)
-		or not polygon.has_meta(TRACE_METADATA)
-	):
-		_clear_regenerated_baseline()
-		return false
-	var metadata: Dictionary = polygon.get_meta(TRACE_METADATA)
-	var baseline_seed: Vector2i = metadata.get("seed", Vector2i(-1, -1))
-	var baseline_result: Dictionary = Tracer.trace_region(
-		_source_image,
-		baseline_seed,
-		float(metadata.get("tolerance", 0.08)),
-		float(metadata.get("vertex_error", 1.5)),
-		bool(metadata.get("include_alpha", true)),
-		int(metadata.get("cleanup_radius", 0)),
-		_read_limit_polygon(metadata.get("limit_polygon", PackedVector2Array()))
-	)
-	if not baseline_result.get("ok", false):
-		_clear_regenerated_baseline()
-		_set_error(
-			"Could not reconstruct %s for edit detection: %s" % [
-				polygon.name,
-				str(baseline_result.get("error", "trace failed")),
-			]
-		)
-		return false
-	var polygon_data: Dictionary = Tracer.build_polygon_data(
-		baseline_result["pieces"],
-		_source_image.get_size(),
-		_source_sprite.offset,
-		_source_sprite.centered,
-		_source_sprite.flip_h,
-		_source_sprite.flip_v
-	)
-	_baseline_polygon = polygon_data["vertices"]
-	_baseline_polygons = polygon_data["polygons"]
-	_baseline_color = baseline_result["sample"]
-	return true
-
-
-func _find_source_child_named(requested_name: StringName) -> Node:
-	for child in _source_sprite.get_children():
-		if child.name == requested_name:
-			return child
-	return null
-
-
-func _show_name_conflict_warning(
-	requested_name: String,
-	is_generated: bool
-) -> void:
-	if is_generated:
-		_name_conflict_warning.dialog_text = (
-			"A generated polygon named '%s' already exists under %s. Create New "
-			+ "never overwrites nodes. Load that polygon explicitly and use Update "
-			+ "Selected, or choose another name."
-		) % [requested_name, _source_sprite.name]
-	else:
-		_name_conflict_warning.dialog_text = (
-			"A node named '%s' already exists under %s, but it was not generated "
-			+ "by Raster Region Polygon. Choose another name; the existing node "
-			+ "will not be changed."
-		) % [requested_name, _source_sprite.name]
+func _show_plan_rejection(plan: RefCounted) -> void:
+	_name_conflict_warning.title = "Operation Rejected"
+	_name_conflict_warning.dialog_text = plan.reason
 	_name_conflict_warning.popup_centered()
 
 
 func _refresh_update_action() -> void:
 	if not is_instance_valid(_update_button):
 		return
-	if (
-		not is_instance_valid(_editing_polygon)
-		or not _editing_polygon.is_inside_tree()
-	):
+	_model.synchronize()
+	if _model.destination_state in [
+		SessionModel.DestinationState.NEW_ONLY,
+		SessionModel.DestinationState.STALE_SELECTED,
+	]:
 		_update_button.text = "Update Selected Polygon2D"
 		_update_button.tooltip_text = (
-			"Load a generated polygon with Edit Selected Traced Polygon."
+			str(_model.target_snapshot.get(
+				"reason",
+				"Load a generated polygon with Edit Selected Traced Polygon."
+			))
 		)
 		_update_button.disabled = true
 		return
-	var manually_edited := _editing_polygon_differs_from_baseline()
-	_destination_state = (
-		DestinationState.REGENERATE_SELECTED
-		if manually_edited
-		else DestinationState.UPDATE_SELECTED
+	var manually_edited: bool = (
+		_model.destination_state == SessionModel.DestinationState.REGENERATE_SELECTED
 	)
 	_update_button.text = (
 		"Regenerate Selected Polygon2D"
@@ -861,63 +702,26 @@ func _refresh_update_action() -> void:
 	_update_button.tooltip_text = (
 		"Destructive: replaces manual geometry or color edits after confirmation."
 		if manually_edited
-		else "Updates only %s; the new-node name is ignored." % _editing_polygon.name
+		else "Updates only %s; the new-node name is ignored." % _model.target.name
 	)
 	_update_button.disabled = _trace_pieces.is_empty()
 
 
-func _clear_regenerated_baseline() -> void:
-	_baseline_polygon.clear()
-	_baseline_polygons.clear()
-	_baseline_color = Color.TRANSPARENT
+func _render_recipe_controls() -> void:
+	_syncing_controls = true
+	_tolerance_spin.value = _model.recipe.tolerance
+	_epsilon_spin.value = _model.recipe.vertex_error
+	_cleanup_radius_spin.value = _model.recipe.cleanup_radius
+	_include_alpha_check.button_pressed = _model.recipe.include_alpha
+	_preview.set_limit_polygon(_model.recipe.limit_polygon)
+	_syncing_controls = false
 
 
-func _read_limit_polygon(value: Variant) -> PackedVector2Array:
-	if value is PackedVector2Array:
-		return value
-	var points := PackedVector2Array()
-	if value is Array:
-		for point in value:
-			if point is Vector2:
-				points.append(point)
-	return points
-
-
-func _editing_polygon_differs_from_baseline() -> bool:
-	if not is_instance_valid(_editing_polygon) or _baseline_polygon.is_empty():
-		return false
-	if not _packed_vector_arrays_match(
-		_editing_polygon.polygon,
-		_baseline_polygon
-	):
-		return true
-	if _editing_polygon.polygons != _baseline_polygons:
-		return true
-	return not _editing_polygon.color.is_equal_approx(_baseline_color)
-
-
-func _packed_vector_arrays_match(
-	left: PackedVector2Array,
-	right: PackedVector2Array
-) -> bool:
-	if left.size() != right.size():
-		return false
-	for index in left.size():
-		if not left[index].is_equal_approx(right[index]):
-			return false
-	return true
-
-
-func _make_trace_metadata() -> Dictionary:
-	return {
-		"version": 3,
-		"seed": _seed,
-		"tolerance": float(_tolerance_spin.value),
-		"vertex_error": float(_epsilon_spin.value),
-		"include_alpha": _include_alpha_check.button_pressed,
-		"cleanup_radius": int(_cleanup_radius_spin.value),
-		"limit_polygon": _limit_polygon,
-	}
+func _write_controls_to_recipe() -> void:
+	_model.recipe.tolerance = float(_tolerance_spin.value)
+	_model.recipe.vertex_error = float(_epsilon_spin.value)
+	_model.recipe.cleanup_radius = int(_cleanup_radius_spin.value)
+	_model.recipe.include_alpha = _include_alpha_check.button_pressed
 
 
 func _set_error(message: String) -> void:

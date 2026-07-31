@@ -1,6 +1,7 @@
 extends SceneTree
 
 const Tracer := preload("res://addons/raster_region_polygon/raster_region_tracer.gd")
+const Recipe := preload("res://addons/raster_region_polygon/trace_recipe.gd")
 
 
 func _init() -> void:
@@ -47,14 +48,21 @@ func _run() -> void:
 	var include_alpha := _parse_bool(
 		str(options.get("include-alpha", "true"))
 	)
+	var recipe: RefCounted = Recipe.new()
+	recipe.seed = seed
+	recipe.tolerance = tolerance
+	recipe.vertex_error = vertex_error
+	recipe.cleanup_radius = cleanup_radius
+	recipe.include_alpha = include_alpha
+	recipe.limit_polygon = limit_polygon
 	var result: Dictionary = Tracer.trace_region(
 		image,
-		seed,
-		tolerance,
-		vertex_error,
-		include_alpha,
-		cleanup_radius,
-		limit_polygon
+		recipe.seed,
+		recipe.tolerance,
+		recipe.vertex_error,
+		recipe.include_alpha,
+		recipe.cleanup_radius,
+		recipe.limit_polygon
 	)
 	if not result.get("ok", false):
 		_fail(str(result.get("error", "Trace failed.")), result)
@@ -82,12 +90,7 @@ func _run() -> void:
 			str(options["node"]),
 			result,
 			sample,
-			seed,
-			tolerance,
-			vertex_error,
-			include_alpha,
-			cleanup_radius,
-			limit_polygon
+			recipe
 		)
 		if updated_scene.is_empty():
 			return
@@ -131,12 +134,7 @@ func _update_scene_polygon(
 	node_path: String,
 	result: Dictionary,
 	sample: Color,
-	seed: Vector2i,
-	tolerance: float,
-	vertex_error: float,
-	include_alpha: bool,
-	cleanup_radius: int,
-	limit_polygon: PackedVector2Array
+	recipe: RefCounted
 ) -> String:
 	var packed_scene: Resource = load(scene_path)
 	if packed_scene == null or not packed_scene is PackedScene:
@@ -166,15 +164,17 @@ func _update_scene_polygon(
 	polygon_node.polygon = polygon_data["vertices"]
 	polygon_node.polygons = polygon_data["polygons"]
 	polygon_node.color = sample
-	polygon_node.set_meta(&"raster_region_trace", {
-		"version": 3,
-		"seed": seed,
-		"tolerance": tolerance,
-		"vertex_error": vertex_error,
-		"include_alpha": include_alpha,
-		"cleanup_radius": cleanup_radius,
-		"limit_polygon": limit_polygon,
-	})
+	var existing_metadata: Dictionary = polygon_node.get_meta(
+		&"raster_region_trace",
+		{}
+	)
+	var trace_id := str(existing_metadata.get("trace_id", ""))
+	if trace_id.is_empty():
+		trace_id = "%x" % ResourceUID.create_id()
+	polygon_node.set_meta(
+		&"raster_region_trace",
+		recipe.to_metadata(trace_id)
+	)
 
 	var updated_scene := PackedScene.new()
 	var pack_error := updated_scene.pack(scene_root)
