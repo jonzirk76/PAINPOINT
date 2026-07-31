@@ -63,6 +63,20 @@ sub-polygons, preserving the selected pixels instead of creating an invisible
 and `Polygon2D.polygons` data with
 `RasterRegionTracer.build_polygon_data()`.
 
+To update an existing traced node directly without driving the editor dock,
+also pass its scene and root-relative node path:
+
+```bash
+  --scene res://scenes/tools/tracing_study.tscn \
+  --node Sprite2D/HairMass \
+  --summary-only true
+```
+
+Both options are required together. The command replaces the target
+`Polygon2D` geometry, color, and recapture metadata, then saves the scene.
+`--summary-only true` omits the potentially large coordinate arrays from the
+JSON response.
+
 ## MVP limitations
 
 - Four-connected color regions only.

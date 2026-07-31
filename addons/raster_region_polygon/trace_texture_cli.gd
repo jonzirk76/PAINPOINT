@@ -65,6 +65,23 @@ func _run() -> void:
 		pieces.append(piece_points)
 	var sample: Color = result["sample"]
 	var image_size: Vector2i = result["image_size"]
+	var updated_scene := ""
+	if options.has("scene") or options.has("node"):
+		if not options.has("scene") or not options.has("node"):
+			_fail("--scene and --node must be supplied together.")
+			return
+		updated_scene = _update_scene_polygon(
+			str(options["scene"]),
+			str(options["node"]),
+			result,
+			sample,
+			seed,
+			tolerance,
+			vertex_error,
+			include_alpha
+		)
+		if updated_scene.is_empty():
+			return
 	var output := {
 		"ok": true,
 		"texture": texture_path,
@@ -78,9 +95,13 @@ func _run() -> void:
 		"tolerance": tolerance,
 		"vertex_error": vertex_error,
 		"include_alpha": include_alpha,
-		"points": points,
-		"pieces": pieces,
 	}
+	if not _parse_bool(str(options.get("summary-only", "false"))):
+		output["points"] = points
+		output["pieces"] = pieces
+	if not updated_scene.is_empty():
+		output["updated_scene"] = updated_scene
+		output["updated_node"] = str(options["node"])
 	if region.size != Vector2i.ZERO:
 		output["source_region"] = [
 			region.position.x,
@@ -90,6 +111,66 @@ func _run() -> void:
 		]
 	print(JSON.stringify(output))
 	quit(0)
+
+
+func _update_scene_polygon(
+	scene_path: String,
+	node_path: String,
+	result: Dictionary,
+	sample: Color,
+	seed: Vector2i,
+	tolerance: float,
+	vertex_error: float,
+	include_alpha: bool
+) -> String:
+	var packed_scene: Resource = load(scene_path)
+	if packed_scene == null or not packed_scene is PackedScene:
+		_fail("Scene could not be loaded as PackedScene: %s" % scene_path)
+		return ""
+	var scene_root: Node = (packed_scene as PackedScene).instantiate()
+	var node := scene_root.get_node_or_null(NodePath(node_path))
+	if node == null or not node is Polygon2D:
+		scene_root.free()
+		_fail("Node is not a Polygon2D: %s" % node_path)
+		return ""
+	if not node.get_parent() is Sprite2D:
+		scene_root.free()
+		_fail("The target Polygon2D must be a child of its source Sprite2D.")
+		return ""
+
+	var polygon_node := node as Polygon2D
+	var source_sprite := polygon_node.get_parent() as Sprite2D
+	var polygon_data: Dictionary = Tracer.build_polygon_data(
+		result["pieces"],
+		result["image_size"],
+		source_sprite.offset,
+		source_sprite.centered,
+		source_sprite.flip_h,
+		source_sprite.flip_v
+	)
+	polygon_node.polygon = polygon_data["vertices"]
+	polygon_node.polygons = polygon_data["polygons"]
+	polygon_node.color = sample
+	polygon_node.set_meta(&"raster_region_trace", {
+		"version": 1,
+		"seed": seed,
+		"tolerance": tolerance,
+		"vertex_error": vertex_error,
+		"include_alpha": include_alpha,
+	})
+
+	var updated_scene := PackedScene.new()
+	var pack_error := updated_scene.pack(scene_root)
+	if pack_error != OK:
+		scene_root.free()
+		_fail("Could not pack updated scene (error %d)." % pack_error)
+		return ""
+	var save_error := ResourceSaver.save(updated_scene, scene_path)
+	scene_root.free()
+	if save_error != OK:
+		_fail("Could not save updated scene (error %d)." % save_error)
+		return ""
+	return scene_path
 
 
 func _parse_options(arguments: PackedStringArray) -> Dictionary:
