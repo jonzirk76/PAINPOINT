@@ -1,14 +1,14 @@
 @tool
 extends EditorPlugin
 
-const DockScript := preload("res://addons/raster_region_polygon/raster_region_polygon_dock.gd")
+const DockScene := preload("res://addons/raster_region_polygon/raster_region_polygon_dock.tscn")
 
 var _dock: EditorDock
 var _dock_content
 
 
 func _enter_tree() -> void:
-	_dock_content = DockScript.new()
+	_dock_content = DockScene.instantiate()
 	_dock_content.initialize(get_editor_interface(), get_undo_redo())
 
 	_dock = EditorDock.new()
