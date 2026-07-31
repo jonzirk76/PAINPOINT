@@ -113,6 +113,8 @@ static func build_polygon_data(
 			indices.append(vertices.size())
 			vertices.append(point)
 		polygon_indices.append(indices)
+	if polygon_indices.size() == 1:
+		polygon_indices.clear()
 	return {
 		"vertices": vertices,
 		"polygons": polygon_indices,
@@ -153,7 +155,8 @@ static func _repair_polygon(polygon: PackedVector2Array) -> Array[PackedVector2A
 			repair_distance,
 			Geometry2D.JOIN_SQUARE
 		)
-		var valid: Array[PackedVector2Array] = []
+		var dominant := PackedVector2Array()
+		var dominant_area := 0.0
 		var all_renderable := not candidates.is_empty()
 		for candidate in candidates:
 			if candidate.size() < 3:
@@ -161,9 +164,15 @@ static func _repair_polygon(polygon: PackedVector2Array) -> Array[PackedVector2A
 			if Geometry2D.triangulate_polygon(candidate).is_empty():
 				all_renderable = false
 				break
-			valid.append(candidate)
-		if all_renderable and not valid.is_empty():
-			return valid
+			var candidate_area := absf(_signed_area(candidate))
+			if candidate_area > dominant_area:
+				dominant = candidate
+				dominant_area = candidate_area
+		if all_renderable and not dominant.is_empty():
+			# A four-connected flood region has one intended outline. Offset repair
+			# can also emit tiny closed slivers at former self-touch points; those
+			# are cleanup artifacts rather than separate traced forms.
+			return [dominant]
 	return []
 
 

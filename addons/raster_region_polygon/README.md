@@ -63,6 +63,11 @@ emitted as ordinary valid sub-polygons instead of creating an invisible
 and `Polygon2D.polygons` data with
 `RasterRegionTracer.build_polygon_data()`.
 
+For a contiguous trace, contour repair keeps the dominant repaired outline and
+discards small closed slivers produced around former self-touching points. A
+single-piece result uses a normal empty `Polygon2D.polygons` array so its editor
+handles do not contain cross-piece connector lines.
+
 To update an existing traced node directly without driving the editor dock,
 also pass its scene and root-relative node path:
 
