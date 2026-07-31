@@ -10,6 +10,8 @@ class RegionPreview:
 
 	signal image_point_selected(point: Vector2i)
 	signal zoom_changed(percent: int)
+	signal limit_polygon_changed(points: PackedVector2Array)
+	signal limit_drawing_finished
 
 	const MIN_ZOOM := 1.0
 	const MAX_ZOOM := 32.0
@@ -23,6 +25,9 @@ class RegionPreview:
 	var zoom := 1.0
 	var view_center := Vector2.ZERO
 	var is_panning := false
+	var limit_polygon := PackedVector2Array()
+	var limit_drawing_enabled := false
+	var is_drawing_limit := false
 
 	func _ready() -> void:
 		custom_minimum_size = Vector2(260.0, 260.0)
@@ -34,6 +39,9 @@ class RegionPreview:
 		texture = source_texture
 		image = source_image
 		polygons.clear()
+		limit_polygon.clear()
+		limit_drawing_enabled = false
+		is_drawing_limit = false
 		selected_point = Vector2i(-1, -1)
 		fit_view()
 		queue_redraw()
@@ -43,7 +51,25 @@ class RegionPreview:
 		selected_point = seed
 		queue_redraw()
 
+	func set_limit_polygon(points: PackedVector2Array) -> void:
+		limit_polygon = points.duplicate()
+		queue_redraw()
+
+	func set_limit_drawing_enabled(enabled: bool) -> void:
+		limit_drawing_enabled = enabled
+		is_drawing_limit = false
+		if enabled:
+			limit_polygon.clear()
+			selected_point = Vector2i(-1, -1)
+		queue_redraw()
+
 	func _gui_input(event: InputEvent) -> void:
+		if event is InputEventMouseMotion and is_drawing_limit:
+			var draw_motion := event as InputEventMouseMotion
+			if image_rect.has_point(draw_motion.position):
+				_append_limit_point(_view_to_image(draw_motion.position))
+			accept_event()
+			return
 		if event is InputEventMouseMotion and is_panning:
 			var motion_event := event as InputEventMouseMotion
 			var scale_factor := _image_scale()
@@ -72,19 +98,49 @@ class RegionPreview:
 			_zoom_at(1.0 / ZOOM_STEP, mouse_event.position)
 			accept_event()
 			return
-		if mouse_event.button_index != MOUSE_BUTTON_LEFT or not mouse_event.pressed:
+		if mouse_event.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if limit_drawing_enabled:
+			if mouse_event.pressed and image_rect.has_point(mouse_event.position):
+				is_drawing_limit = true
+				limit_polygon.clear()
+				_append_limit_point(_view_to_image(mouse_event.position))
+			elif not mouse_event.pressed and is_drawing_limit:
+				is_drawing_limit = false
+				limit_drawing_enabled = false
+				if limit_polygon.size() < 3:
+					limit_polygon.clear()
+				limit_polygon_changed.emit(limit_polygon.duplicate())
+				limit_drawing_finished.emit()
+				queue_redraw()
+			accept_event()
+			return
+		if not mouse_event.pressed:
 			return
 		if image == null or not image_rect.has_point(mouse_event.position):
 			return
 
-		var image_position: Vector2 = (
-			(mouse_event.position - image_rect.position) / _image_scale()
-		)
+		var image_position := _view_to_image(mouse_event.position)
 		var point := Vector2i(
 			clampi(int(image_position.x), 0, image.get_width() - 1),
 			clampi(int(image_position.y), 0, image.get_height() - 1)
 		)
 		image_point_selected.emit(point)
+
+	func _view_to_image(view_position: Vector2) -> Vector2:
+		return (view_position - image_rect.position) / _image_scale()
+
+	func _append_limit_point(image_position: Vector2) -> void:
+		var clamped := Vector2(
+			clampf(image_position.x, 0.0, float(image.get_width())),
+			clampf(image_position.y, 0.0, float(image.get_height()))
+		)
+		if (
+			limit_polygon.is_empty()
+			or limit_polygon[limit_polygon.size() - 1].distance_to(clamped) >= 1.5
+		):
+			limit_polygon.append(clamped)
+			queue_redraw()
 
 	func zoom_in() -> void:
 		_zoom_at(ZOOM_STEP, size * 0.5)
@@ -149,6 +205,22 @@ class RegionPreview:
 		image_rect = Rect2(size * 0.5 - view_center * scale_factor, draw_size)
 		draw_texture_rect(texture, image_rect, false)
 
+		if limit_polygon.size() >= 2:
+			var limit_preview := PackedVector2Array()
+			for point in limit_polygon:
+				limit_preview.append(image_rect.position + point * scale_factor)
+			if limit_preview.size() >= 3 and not is_drawing_limit:
+				draw_colored_polygon(limit_preview, Color(0.15, 0.55, 1.0, 0.16))
+			draw_polyline(limit_preview, Color(0.2, 0.7, 1.0), 2.0, true)
+			if not is_drawing_limit:
+				draw_line(
+					limit_preview[limit_preview.size() - 1],
+					limit_preview[0],
+					Color(0.2, 0.7, 1.0),
+					2.0,
+					true
+				)
+
 		for polygon in polygons:
 			if polygon.size() < 3:
 				continue
@@ -179,12 +251,14 @@ var _source_image: Image
 var _editing_polygon: Polygon2D
 var _seed := Vector2i(-1, -1)
 var _trace_pieces: Array[PackedVector2Array] = []
+var _limit_polygon: PackedVector2Array = PackedVector2Array()
 var _baseline_polygon := PackedVector2Array()
 var _baseline_polygons: Array[PackedInt32Array] = []
 var _baseline_color := Color.TRANSPARENT
 
 var _preview
 var _zoom_label: Label
+var _draw_limit_button: Button
 var _source_label: Label
 var _tolerance_spin: SpinBox
 var _epsilon_spin: SpinBox
@@ -260,6 +334,23 @@ func _ready() -> void:
 	zoom_controls.add_child(_zoom_label)
 	_preview.zoom_changed.connect(_on_preview_zoom_changed)
 	add_child(zoom_controls)
+
+	var limit_controls := HBoxContainer.new()
+	_draw_limit_button = Button.new()
+	_draw_limit_button.text = "Draw Fill Limit"
+	_draw_limit_button.toggle_mode = true
+	_draw_limit_button.tooltip_text = (
+		"Left-drag a lasso that constrains where flood fill may travel."
+	)
+	_draw_limit_button.toggled.connect(_on_draw_limit_toggled)
+	limit_controls.add_child(_draw_limit_button)
+	var clear_limit_button := Button.new()
+	clear_limit_button.text = "Clear Limit"
+	clear_limit_button.pressed.connect(_clear_fill_limit)
+	limit_controls.add_child(clear_limit_button)
+	_preview.limit_polygon_changed.connect(_on_limit_polygon_changed)
+	_preview.limit_drawing_finished.connect(_on_limit_drawing_finished)
+	add_child(limit_controls)
 
 	var settings := GridContainer.new()
 	settings.columns = 2
@@ -401,6 +492,8 @@ func _edit_selected_trace() -> void:
 	else:
 		_set_error("The selected polygon has invalid trace seed metadata.")
 		return
+	_limit_polygon = _read_limit_polygon(metadata.get("limit_polygon", PackedVector2Array()))
+	_preview.set_limit_polygon(_limit_polygon)
 	_tolerance_spin.value = float(metadata.get("tolerance", 0.08))
 	_epsilon_spin.value = float(metadata.get("vertex_error", 1.5))
 	_cleanup_radius_spin.value = int(metadata.get("cleanup_radius", 0))
@@ -430,6 +523,7 @@ func _set_source_sprite(sprite: Sprite2D) -> bool:
 	_source_image = image
 	_seed = Vector2i(-1, -1)
 	_trace_pieces.clear()
+	_limit_polygon.clear()
 	_clear_regenerated_baseline()
 	_source_label.text = "Source: %s" % sprite.name
 	_source_label.tooltip_text = str(sprite.get_path())
@@ -449,6 +543,35 @@ func _on_preview_zoom_changed(percent: int) -> void:
 	_zoom_label.text = "%d%%" % percent
 
 
+func _on_draw_limit_toggled(enabled: bool) -> void:
+	_preview.set_limit_drawing_enabled(enabled)
+	if enabled:
+		_status_label.text = "Left-drag around the area where flood fill may operate."
+
+
+func _on_limit_polygon_changed(points: PackedVector2Array) -> void:
+	_limit_polygon = points
+	if _seed.x >= 0:
+		_rebuild_trace()
+	elif not _limit_polygon.is_empty():
+		_status_label.text = "Fill limit set. Click inside it to select a color region."
+
+
+func _on_limit_drawing_finished() -> void:
+	_draw_limit_button.set_pressed_no_signal(false)
+
+
+func _clear_fill_limit() -> void:
+	_limit_polygon.clear()
+	_preview.set_limit_polygon(_limit_polygon)
+	_draw_limit_button.set_pressed_no_signal(false)
+	_preview.set_limit_drawing_enabled(false)
+	if _seed.x >= 0:
+		_rebuild_trace()
+	else:
+		_status_label.text = "Fill limit cleared. Click inside a color region to trace it."
+
+
 func _on_trace_setting_changed(_value: Variant) -> void:
 	if _seed.x >= 0:
 		_rebuild_trace()
@@ -464,7 +587,8 @@ func _rebuild_trace() -> void:
 		float(_tolerance_spin.value),
 		float(_epsilon_spin.value),
 		_include_alpha_check.button_pressed,
-		int(_cleanup_radius_spin.value)
+		int(_cleanup_radius_spin.value),
+		_limit_polygon
 	)
 
 	if not result.get("ok", false):
@@ -629,7 +753,8 @@ func _capture_regenerated_baseline_for(polygon: Polygon2D) -> bool:
 		float(metadata.get("tolerance", 0.08)),
 		float(metadata.get("vertex_error", 1.5)),
 		bool(metadata.get("include_alpha", true)),
-		int(metadata.get("cleanup_radius", 0))
+		int(metadata.get("cleanup_radius", 0)),
+		_read_limit_polygon(metadata.get("limit_polygon", PackedVector2Array()))
 	)
 	if not baseline_result.get("ok", false):
 		_clear_regenerated_baseline()
@@ -676,6 +801,17 @@ func _clear_regenerated_baseline() -> void:
 	_baseline_color = Color.TRANSPARENT
 
 
+func _read_limit_polygon(value: Variant) -> PackedVector2Array:
+	if value is PackedVector2Array:
+		return value
+	var points := PackedVector2Array()
+	if value is Array:
+		for point in value:
+			if point is Vector2:
+				points.append(point)
+	return points
+
+
 func _editing_polygon_differs_from_baseline() -> bool:
 	if not is_instance_valid(_editing_polygon) or _baseline_polygon.is_empty():
 		return false
@@ -703,12 +839,13 @@ func _packed_vector_arrays_match(
 
 func _make_trace_metadata() -> Dictionary:
 	return {
-		"version": 2,
+		"version": 3,
 		"seed": _seed,
 		"tolerance": float(_tolerance_spin.value),
 		"vertex_error": float(_epsilon_spin.value),
 		"include_alpha": _include_alpha_check.button_pressed,
 		"cleanup_radius": int(_cleanup_radius_spin.value),
+		"limit_polygon": _limit_polygon,
 	}
 
 

@@ -28,6 +28,11 @@ as a hair strand crossing a face, preventing the outline from following that
 channel into detailed features like an eye. `0 px` preserves the original mask;
 start at `1 px` and increase only until the unwanted channel closes.
 
+Use **Draw Fill Limit** to left-drag a lasso in the preview. Flood fill cannot
+travel outside the blue boundary, even when pixels beyond it match the sampled
+color. The lasso is stored with the generated node for recapture. **Clear
+Limit** restores unrestricted fill.
+
 The generated node is a child of the source sprite, uses the sampled color, and
 is added through the editor undo/redo history. It also stores its trace seed and
 settings as node metadata.
@@ -61,6 +66,7 @@ godot4 --headless --path /path/to/project \
   --tolerance 0.12 \
   --vertex-error 3.0 \
   --cleanup-radius 1 \
+  --limit-points "90,70;210,70;210,240;90,240" \
   --include-alpha true
 ```
 

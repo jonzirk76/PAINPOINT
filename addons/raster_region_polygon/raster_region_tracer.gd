@@ -15,7 +15,8 @@ static func trace_region(
 	tolerance: float = 0.08,
 	vertex_error: float = 1.5,
 	include_alpha: bool = true,
-	cleanup_radius: int = 0
+	cleanup_radius: int = 0,
+	limit_polygon: PackedVector2Array = PackedVector2Array()
 ) -> Dictionary:
 	if image == null or image.is_empty():
 		return {"ok": false, "error": "Image is empty."}
@@ -36,6 +37,14 @@ static func trace_region(
 		return {"ok": false, "error": "Vertex error cannot be negative."}
 	if cleanup_radius < 0 or cleanup_radius > 8:
 		return {"ok": false, "error": "Cleanup radius must be between 0 and 8."}
+	if (
+		limit_polygon.size() >= 3
+		and not Geometry2D.is_point_in_polygon(
+			Vector2(seed) + Vector2(0.5, 0.5),
+			limit_polygon
+		)
+	):
+		return {"ok": false, "error": "Seed pixel is outside the drawn fill limit."}
 
 	var sample: Color = image.get_pixelv(seed)
 	var mask := _flood_fill_mask(
@@ -43,7 +52,8 @@ static func trace_region(
 		seed,
 		sample,
 		tolerance,
-		include_alpha
+		include_alpha,
+		limit_polygon
 	)
 	var original_pixel_count: int = mask.get_true_bit_count()
 	if cleanup_radius > 0:
@@ -96,6 +106,7 @@ static func trace_region(
 		"vertex_error": vertex_error,
 		"include_alpha": include_alpha,
 		"cleanup_radius": cleanup_radius,
+		"limit_polygon": limit_polygon,
 	}
 
 
@@ -191,7 +202,8 @@ static func _flood_fill_mask(
 	seed: Vector2i,
 	sample: Color,
 	tolerance: float,
-	include_alpha: bool
+	include_alpha: bool,
+	limit_polygon: PackedVector2Array
 ) -> BitMap:
 	var image_size := image.get_size()
 	var mask := BitMap.new()
@@ -203,6 +215,14 @@ static func _flood_fill_mask(
 
 	while not pending.is_empty():
 		var point: Vector2i = pending.pop_back()
+		if (
+			limit_polygon.size() >= 3
+			and not Geometry2D.is_point_in_polygon(
+				Vector2(point) + Vector2(0.5, 0.5),
+				limit_polygon
+			)
+		):
+			continue
 		var color: Color = image.get_pixelv(point)
 		if not _colors_match(color, sample, tolerance, include_alpha):
 			continue

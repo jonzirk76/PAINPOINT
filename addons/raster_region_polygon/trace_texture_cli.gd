@@ -40,6 +40,10 @@ func _run() -> void:
 	var tolerance := float(options.get("tolerance", 0.08))
 	var vertex_error := float(options.get("vertex-error", 1.5))
 	var cleanup_radius: int = int(options.get("cleanup-radius", 0))
+	var limit_polygon: PackedVector2Array = _parse_limit_polygon(str(options.get("limit-points", "")))
+	if options.has("limit-points") and limit_polygon.size() < 3:
+		_fail("--limit-points requires at least three x,y pairs separated by semicolons.")
+		return
 	var include_alpha := _parse_bool(
 		str(options.get("include-alpha", "true"))
 	)
@@ -49,7 +53,8 @@ func _run() -> void:
 		tolerance,
 		vertex_error,
 		include_alpha,
-		cleanup_radius
+		cleanup_radius,
+		limit_polygon
 	)
 	if not result.get("ok", false):
 		_fail(str(result.get("error", "Trace failed.")), result)
@@ -81,7 +86,8 @@ func _run() -> void:
 			tolerance,
 			vertex_error,
 			include_alpha,
-			cleanup_radius
+			cleanup_radius,
+			limit_polygon
 		)
 		if updated_scene.is_empty():
 			return
@@ -101,6 +107,7 @@ func _run() -> void:
 		"vertex_error": vertex_error,
 		"include_alpha": include_alpha,
 		"cleanup_radius": cleanup_radius,
+		"limit_point_count": limit_polygon.size(),
 	}
 	if not _parse_bool(str(options.get("summary-only", "false"))):
 		output["points"] = points
@@ -128,7 +135,8 @@ func _update_scene_polygon(
 	tolerance: float,
 	vertex_error: float,
 	include_alpha: bool,
-	cleanup_radius: int
+	cleanup_radius: int,
+	limit_polygon: PackedVector2Array
 ) -> String:
 	var packed_scene: Resource = load(scene_path)
 	if packed_scene == null or not packed_scene is PackedScene:
@@ -159,12 +167,13 @@ func _update_scene_polygon(
 	polygon_node.polygons = polygon_data["polygons"]
 	polygon_node.color = sample
 	polygon_node.set_meta(&"raster_region_trace", {
-		"version": 2,
+		"version": 3,
 		"seed": seed,
 		"tolerance": tolerance,
 		"vertex_error": vertex_error,
 		"include_alpha": include_alpha,
 		"cleanup_radius": cleanup_radius,
+		"limit_polygon": limit_polygon,
 	})
 
 	var updated_scene := PackedScene.new()
@@ -206,6 +215,18 @@ func _parse_options(arguments: PackedStringArray) -> Dictionary:
 
 func _parse_bool(value: String) -> bool:
 	return value.to_lower() not in ["0", "false", "no", "off"]
+
+
+func _parse_limit_polygon(value: String) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	if value.strip_edges().is_empty():
+		return points
+	for encoded_point in value.split(";", false):
+		var coordinates := encoded_point.split(",", false)
+		if coordinates.size() != 2:
+			return PackedVector2Array()
+		points.append(Vector2(float(coordinates[0]), float(coordinates[1])))
+	return points
 
 
 func _read_region(options: Dictionary) -> Rect2i:
