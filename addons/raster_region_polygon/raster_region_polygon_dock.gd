@@ -10,7 +10,7 @@ var _source_image: Image
 var _seed := Vector2i(-1, -1)
 var _trace := PackedVector2Array()
 
-var _preview: Control
+var _preview
 var _source_label: Label
 var _tolerance_spin: SpinBox
 var _epsilon_spin: SpinBox
