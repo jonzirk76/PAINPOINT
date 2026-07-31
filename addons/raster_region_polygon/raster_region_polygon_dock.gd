@@ -39,7 +39,9 @@ class RegionPreview:
 			return
 
 		var image_size := Vector2(image.get_size())
-		var normalized := (event.position - image_rect.position) / image_rect.size
+		var normalized: Vector2 = (
+			(event.position - image_rect.position) / image_rect.size
+		)
 		var point := Vector2i(
 			clampi(int(normalized.x * image_size.x), 0, image.get_width() - 1),
 			clampi(int(normalized.y * image_size.y), 0, image.get_height() - 1)
