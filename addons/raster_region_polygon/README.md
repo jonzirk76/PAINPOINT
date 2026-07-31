@@ -18,7 +18,18 @@ texture into an editable `Polygon2D`.
 5. Click **Create Polygon2D Child**.
 
 The generated node is a child of the source sprite, uses the sampled color, and
-is added through the editor undo/redo history.
+is added through the editor undo/redo history. It also stores its trace seed and
+settings as node metadata.
+
+To revise a generated polygon:
+
+1. Select the traced `Polygon2D`.
+2. Click **Edit Selected Traced Polygon**.
+3. Adjust tolerance or vertex error and inspect the live preview.
+4. Click **Update Selected Polygon2D**.
+
+Updating replaces the existing geometry through editor undo/redo rather than
+creating a duplicate node.
 
 ## Headless/agent use
 

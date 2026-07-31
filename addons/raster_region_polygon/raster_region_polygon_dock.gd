@@ -2,6 +2,7 @@
 extends VBoxContainer
 
 const Tracer := preload("res://addons/raster_region_polygon/raster_region_tracer.gd")
+const TRACE_METADATA := &"raster_region_trace"
 
 
 class RegionPreview:
@@ -91,6 +92,7 @@ var _editor_interface: EditorInterface
 var _undo_redo: EditorUndoRedoManager
 var _source_sprite: Sprite2D
 var _source_image: Image
+var _editing_polygon: Polygon2D
 var _seed := Vector2i(-1, -1)
 var _trace := PackedVector2Array()
 
@@ -127,6 +129,11 @@ func _ready() -> void:
 	use_selection_button.text = "Use Selected Sprite2D"
 	use_selection_button.pressed.connect(_use_selected_sprite)
 	add_child(use_selection_button)
+
+	var edit_trace_button := Button.new()
+	edit_trace_button.text = "Edit Selected Traced Polygon"
+	edit_trace_button.pressed.connect(_edit_selected_trace)
+	add_child(edit_trace_button)
 
 	_source_label = Label.new()
 	_source_label.text = "Source: none"
@@ -214,10 +221,59 @@ func _use_selected_sprite() -> void:
 		_set_error("Region-enabled Sprite2D textures are not supported in this first version.")
 		return
 
+	_editing_polygon = null
+	_create_button.text = "Create Polygon2D Child"
+	_set_source_sprite(sprite)
+
+
+func _edit_selected_trace() -> void:
+	var selection := _editor_interface.get_selection().get_selected_nodes()
+	if selection.size() != 1 or not selection[0] is Polygon2D:
+		_set_error("Select exactly one traced Polygon2D.")
+		return
+
+	var polygon := selection[0] as Polygon2D
+	if not polygon.has_meta(TRACE_METADATA):
+		_set_error("This Polygon2D has no Raster Region trace metadata.")
+		return
+	if not polygon.get_parent() is Sprite2D:
+		_set_error("The traced Polygon2D must remain a child of its source Sprite2D.")
+		return
+
+	var metadata: Dictionary = polygon.get_meta(TRACE_METADATA)
+	var sprite := polygon.get_parent() as Sprite2D
+	if not _set_source_sprite(sprite):
+		return
+
+	_editing_polygon = polygon
+	var stored_seed: Variant = metadata.get("seed", Vector2i(-1, -1))
+	if stored_seed is Vector2i:
+		_seed = stored_seed
+	elif stored_seed is Vector2:
+		_seed = Vector2i(stored_seed)
+	else:
+		_set_error("The selected polygon has invalid trace seed metadata.")
+		return
+	_tolerance_spin.value = float(metadata.get("tolerance", 0.08))
+	_epsilon_spin.value = float(metadata.get("vertex_error", 1.5))
+	_include_alpha_check.button_pressed = bool(metadata.get("include_alpha", true))
+	_polygon_name_edit.text = polygon.name
+	_create_button.text = "Update Selected Polygon2D"
+	_rebuild_trace()
+
+
+func _set_source_sprite(sprite: Sprite2D) -> bool:
+	if sprite.texture == null:
+		_set_error("The selected Sprite2D has no texture.")
+		return false
+	if sprite.region_enabled:
+		_set_error("Region-enabled Sprite2D textures are not supported in this first version.")
+		return false
+
 	var image := sprite.texture.get_image()
 	if image == null or image.is_empty():
 		_set_error("Godot could not read image data from this texture.")
-		return
+		return false
 
 	_source_sprite = sprite
 	_source_image = image
@@ -229,6 +285,7 @@ func _use_selected_sprite() -> void:
 	_preview.set_source(sprite.texture, image)
 	_create_button.disabled = true
 	_status_label.text = "Click inside a color region to trace it."
+	return true
 
 
 func _on_image_point_selected(point: Vector2i) -> void:
@@ -282,6 +339,10 @@ func _create_polygon() -> void:
 		_set_error("Open an editable scene before creating a polygon.")
 		return
 
+	if is_instance_valid(_editing_polygon):
+		_update_polygon()
+		return
+
 	var polygon_node := Polygon2D.new()
 	var requested_name := _polygon_name_edit.text.strip_edges()
 	polygon_node.name = requested_name if not requested_name.is_empty() else "TracedRegion"
@@ -294,6 +355,7 @@ func _create_polygon() -> void:
 		_source_sprite.flip_v
 	)
 	polygon_node.color = _sample_swatch.color
+	polygon_node.set_meta(TRACE_METADATA, _make_trace_metadata())
 
 	_undo_redo.create_action("Create raster region Polygon2D")
 	_undo_redo.add_do_method(_source_sprite, "add_child", polygon_node, true)
@@ -307,6 +369,61 @@ func _create_polygon() -> void:
 		polygon_node.name,
 		polygon_node.polygon.size()
 	]
+
+
+func _update_polygon() -> void:
+	if not is_instance_valid(_editing_polygon):
+		_set_error("The polygon being edited no longer exists.")
+		return
+
+	var new_polygon := Tracer.image_points_to_sprite_local(
+		_trace,
+		_source_image.get_size(),
+		_source_sprite.offset,
+		_source_sprite.centered,
+		_source_sprite.flip_h,
+		_source_sprite.flip_v
+	)
+	var old_polygon := _editing_polygon.polygon
+	var old_color := _editing_polygon.color
+	var old_metadata: Variant = _editing_polygon.get_meta(
+		TRACE_METADATA,
+		{}
+	)
+	var new_metadata := _make_trace_metadata()
+
+	_undo_redo.create_action("Update raster region Polygon2D")
+	_undo_redo.add_do_property(_editing_polygon, "polygon", new_polygon)
+	_undo_redo.add_do_property(_editing_polygon, "color", _sample_swatch.color)
+	_undo_redo.add_do_method(
+		_editing_polygon,
+		"set_meta",
+		TRACE_METADATA,
+		new_metadata
+	)
+	_undo_redo.add_undo_property(_editing_polygon, "polygon", old_polygon)
+	_undo_redo.add_undo_property(_editing_polygon, "color", old_color)
+	_undo_redo.add_undo_method(
+		_editing_polygon,
+		"set_meta",
+		TRACE_METADATA,
+		old_metadata
+	)
+	_undo_redo.commit_action()
+	_status_label.text = "Updated %s with %d vertices." % [
+		_editing_polygon.name,
+		new_polygon.size()
+	]
+
+
+func _make_trace_metadata() -> Dictionary:
+	return {
+		"version": 1,
+		"seed": _seed,
+		"tolerance": float(_tolerance_spin.value),
+		"vertex_error": float(_epsilon_spin.value),
+		"include_alpha": _include_alpha_check.button_pressed,
+	}
 
 
 func _set_error(message: String) -> void:
