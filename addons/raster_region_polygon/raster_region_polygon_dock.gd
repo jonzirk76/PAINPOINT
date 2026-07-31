@@ -194,6 +194,7 @@ var _sample_swatch: ColorRect
 var _status_label: Label
 var _create_button: Button
 var _regeneration_warning: ConfirmationDialog
+var _name_conflict_warning: AcceptDialog
 
 
 func initialize(
@@ -302,7 +303,7 @@ func _ready() -> void:
 	_polygon_name_edit.text = "TracedRegion"
 	_polygon_name_edit.placeholder_text = "TracedRegion"
 	_polygon_name_edit.tooltip_text = (
-		"Names a newly created polygon or renames the traced polygon being updated."
+		"Creates a new named trace or targets an existing generated trace for update."
 	)
 	settings.add_child(_polygon_name_edit)
 
@@ -326,6 +327,10 @@ func _ready() -> void:
 	_regeneration_warning.ok_button_text = "Regenerate Anyway"
 	_regeneration_warning.confirmed.connect(_update_polygon)
 	add_child(_regeneration_warning)
+
+	_name_conflict_warning = AcceptDialog.new()
+	_name_conflict_warning.title = "Node Name Already In Use"
+	add_child(_name_conflict_warning)
 
 
 func _make_label(text: String) -> Label:
@@ -385,9 +390,9 @@ func _edit_selected_trace() -> void:
 	_epsilon_spin.value = float(metadata.get("vertex_error", 1.5))
 	_include_alpha_check.button_pressed = bool(metadata.get("include_alpha", true))
 	_polygon_name_edit.text = polygon.name
-	_create_button.text = "Update Selected Polygon2D"
+	_create_button.text = "Create or Update Named Polygon2D"
 	_rebuild_trace()
-	_capture_regenerated_baseline()
+	_capture_regenerated_baseline_for(polygon)
 	if _editing_polygon_differs_from_baseline():
 		_status_label.text += " Manual edits detected; updating will ask for confirmation."
 
@@ -476,16 +481,30 @@ func _create_polygon() -> void:
 		_set_error("Open an editable scene before creating a polygon.")
 		return
 
-	if is_instance_valid(_editing_polygon):
+	var requested_name := _polygon_name_edit.text.strip_edges()
+	if requested_name.is_empty():
+		requested_name = (
+			str(_editing_polygon.name)
+			if is_instance_valid(_editing_polygon)
+			else "TracedRegion"
+		)
+	var named_node := _find_source_child_named(StringName(requested_name))
+	if named_node != null:
+		if not named_node is Polygon2D or not named_node.has_meta(TRACE_METADATA):
+			_show_name_conflict_warning(requested_name)
+			return
+		_editing_polygon = named_node as Polygon2D
+		if not _capture_regenerated_baseline_for(_editing_polygon):
+			return
 		if _editing_polygon_differs_from_baseline():
 			_regeneration_warning.popup_centered()
 			return
 		_update_polygon()
 		return
 
+	_editing_polygon = null
 	var polygon_node := Polygon2D.new()
-	var requested_name := _polygon_name_edit.text.strip_edges()
-	polygon_node.name = requested_name if not requested_name.is_empty() else "TracedRegion"
+	polygon_node.name = requested_name
 	var polygon_data: Dictionary = Tracer.build_polygon_data(
 		_trace_pieces,
 		_source_image.get_size(),
@@ -564,19 +583,41 @@ func _update_polygon() -> void:
 		old_metadata
 	)
 	_undo_redo.commit_action()
-	_capture_regenerated_baseline()
+	_capture_regenerated_baseline_for(_editing_polygon)
 	_status_label.text = "Updated %s with %d vertices." % [
 		_editing_polygon.name,
 		new_polygon.size()
 	]
 
 
-func _capture_regenerated_baseline() -> void:
-	if not is_instance_valid(_source_sprite) or _trace_pieces.is_empty():
+func _capture_regenerated_baseline_for(polygon: Polygon2D) -> bool:
+	if (
+		not is_instance_valid(polygon)
+		or not is_instance_valid(_source_sprite)
+		or not polygon.has_meta(TRACE_METADATA)
+	):
 		_clear_regenerated_baseline()
-		return
+		return false
+	var metadata: Dictionary = polygon.get_meta(TRACE_METADATA)
+	var baseline_seed: Vector2i = metadata.get("seed", Vector2i(-1, -1))
+	var baseline_result: Dictionary = Tracer.trace_region(
+		_source_image,
+		baseline_seed,
+		float(metadata.get("tolerance", 0.08)),
+		float(metadata.get("vertex_error", 1.5)),
+		bool(metadata.get("include_alpha", true))
+	)
+	if not baseline_result.get("ok", false):
+		_clear_regenerated_baseline()
+		_set_error(
+			"Could not reconstruct %s for edit detection: %s" % [
+				polygon.name,
+				str(baseline_result.get("error", "trace failed")),
+			]
+		)
+		return false
 	var polygon_data: Dictionary = Tracer.build_polygon_data(
-		_trace_pieces,
+		baseline_result["pieces"],
 		_source_image.get_size(),
 		_source_sprite.offset,
 		_source_sprite.centered,
@@ -585,7 +626,24 @@ func _capture_regenerated_baseline() -> void:
 	)
 	_baseline_polygon = polygon_data["vertices"]
 	_baseline_polygons = polygon_data["polygons"]
-	_baseline_color = _sample_swatch.color
+	_baseline_color = baseline_result["sample"]
+	return true
+
+
+func _find_source_child_named(requested_name: StringName) -> Node:
+	for child in _source_sprite.get_children():
+		if child.name == requested_name:
+			return child
+	return null
+
+
+func _show_name_conflict_warning(requested_name: String) -> void:
+	_name_conflict_warning.dialog_text = (
+		"A node named '%s' already exists under %s, but it was not generated "
+		+ "by Raster Region Polygon. Choose another name; the existing node "
+		+ "will not be changed."
+	) % [requested_name, _source_sprite.name]
+	_name_conflict_warning.popup_centered()
 
 
 func _clear_regenerated_baseline() -> void:
