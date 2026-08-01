@@ -71,8 +71,8 @@ func get_image_vertices(image_size: Vector2i) -> PackedVector2Array:
 		return result
 	var size := Vector2(image_size)
 	var origin := sprite.offset - (size * 0.5 if sprite.centered else Vector2.ZERO)
-	for local_point in session.target.polygon:
-		var image_point := local_point - origin
+	for local_point: Vector2 in session.target.polygon:
+		var image_point: Vector2 = local_point - origin
 		if sprite.flip_h:
 			image_point.x = size.x - image_point.x
 		if sprite.flip_v:
