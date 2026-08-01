@@ -30,7 +30,7 @@ const MOTION_PATHS := [
 		_refresh_workbench()
 
 ## Shows the matching haired concept cell beside the editing area.
-@export var show_hair_comparison: bool = true:
+@export var show_hair_comparison: bool = false:
 	set(value):
 		show_hair_comparison = value
 		_refresh_workbench()
@@ -54,8 +54,8 @@ const MOTION_PATHS := [
 			_restore_motion_rest_pose()
 		_update_processing()
 
-## Chooses which independently authored diagonal assembly receives the motion preview.
-@export_enum("Down Right", "Up Right") var motion_preview_direction: int = 0:
+## Chooses which diagonal source assembly receives the motion preview.
+@export_enum("Bottom Left (Authored)", "Top Right (Draft)") var motion_preview_direction: int = 0:
 	set(value):
 		_restore_motion_rest_pose()
 		motion_preview_direction = value
@@ -138,6 +138,13 @@ func _refresh_workbench() -> void:
 		var assembly := get_node_or_null(path) as CanvasItem
 		if assembly != null:
 			assembly.visible = show_editable_assembly
+	var instructions := get_node_or_null("GuideLabels/Instructions") as Label
+	if instructions != null:
+		instructions.text = (
+			"BOTTOM-LEFT AUTHORED SOURCE: edit the *Mass Polygon2D nodes. "
+			+ "Move pivots only when changing an anchor/socket.\n"
+			+ "The opposite view is mirrored; guns and hair are excluded from the body contract."
+		)
 
 
 func _update_processing() -> void:

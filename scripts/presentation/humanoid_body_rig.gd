@@ -24,6 +24,12 @@ enum PreviewDirection {
 		animate_preview = value
 		_update_processing()
 
+## Shows optional hairstyle overlays. Body projection work keeps these hidden by default.
+@export var show_hair: bool = false:
+	set(value):
+		show_hair = value
+		_refresh_hair_visibility()
+
 ## Eight-way direction shown by the editor preview and used as the initial runtime facing.
 @export_enum("Down", "Down Right", "Right", "Up Right", "Up", "Up Left", "Left", "Down Left") var preview_direction: int = PreviewDirection.DOWN:
 	set(value):
@@ -58,6 +64,7 @@ var _rest_transforms: Dictionary = {}
 
 
 func _ready() -> void:
+	_refresh_hair_visibility()
 	_capture_rest_pose()
 	set_motion_state(_preview_direction_vector(), preview_speed_ratio if Engine.is_editor_hint() else 0.0)
 	_update_processing()
@@ -132,7 +139,7 @@ func _update_processing() -> void:
 
 func _capture_rest_pose() -> void:
 	_rest_transforms.clear()
-	for view_name in [&"FrontView", &"SideView", &"ThreeQuarterView", &"RearView"]:
+	for view_name in [&"FrontView", &"SideView", &"ThreeQuarterView", &"RearThreeQuarterView", &"RearView"]:
 		var view := get_node_or_null(NodePath(String(view_name))) as Node2D
 		if view == null:
 			continue
@@ -146,6 +153,8 @@ func _capture_rest_pose() -> void:
 			"BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/RightHipSocket/RightLegPivot",
 			"BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/BackHipSocket/BackLegPivot",
 			"BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/FrontHipSocket/FrontLegPivot",
+			"BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/FarHipSocket/FarLegPivot",
+			"BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/NearHipSocket/NearLegPivot",
 			"BodyMotion/TorsoPivot/LeftShoulderAnchor/LeftArmPivot",
 			"BodyMotion/TorsoPivot/RightShoulderAnchor/RightArmPivot",
 			"BodyMotion/TorsoPivot/FarShoulderAnchor/FarArmPivot",
@@ -173,27 +182,34 @@ func _select_directional_view() -> void:
 	var front := get_node_or_null("FrontView") as Node2D
 	var side := get_node_or_null("SideView") as Node2D
 	var three_quarter := get_node_or_null("ThreeQuarterView") as Node2D
+	var rear_three_quarter := get_node_or_null("RearThreeQuarterView") as Node2D
 	var rear := get_node_or_null("RearView") as Node2D
-	if front == null or side == null or three_quarter == null or rear == null:
+	if front == null or side == null or three_quarter == null or rear_three_quarter == null or rear == null:
 		return
 	front.visible = false
 	side.visible = false
 	three_quarter.visible = false
+	rear_three_quarter.visible = false
 	rear.visible = false
 	var has_horizontal := absf(_facing.x) > 0.001
 	var has_vertical := absf(_facing.y) > 0.001
 	var horizontal_vertical_ratio := absf(_facing.x) / maxf(absf(_facing.y), 0.001)
-	var is_forward_diagonal := (
+	var is_diagonal := (
 		has_horizontal
 		and has_vertical
-		and _facing.y >= 0.0
 		and horizontal_vertical_ratio >= 0.4142
 		and horizontal_vertical_ratio <= 2.4142
 	)
-	if is_forward_diagonal:
+	if is_diagonal and _facing.y >= 0.0:
 		_active_view = three_quarter
 		three_quarter.visible = true
-		three_quarter.scale.x = -1.0 if _facing.x < 0.0 else 1.0
+		# The authored source is the bottom-left concept cell.
+		three_quarter.scale.x = 1.0 if _facing.x < 0.0 else -1.0
+	elif is_diagonal:
+		_active_view = rear_three_quarter
+		rear_three_quarter.visible = true
+		# The rear source is authored up-right and mirrors to up-left.
+		rear_three_quarter.scale.x = 1.0 if _facing.x > 0.0 else -1.0
 	elif absf(_facing.x) > absf(_facing.y):
 		_active_view = side
 		side.visible = true
@@ -212,19 +228,23 @@ func _apply_pose() -> void:
 		_select_directional_view()
 	if not is_instance_valid(_active_view):
 		return
-	if _active_view.name == &"SideView" or _active_view.name == &"ThreeQuarterView":
+	if _active_view.name == &"SideView":
 		_active_view.scale.x = -1.0 if _facing.x < 0.0 else 1.0
+	elif _active_view.name == &"ThreeQuarterView":
+		_active_view.scale.x = 1.0 if _facing.x < 0.0 else -1.0
+	elif _active_view.name == &"RearThreeQuarterView":
+		_active_view.scale.x = 1.0 if _facing.x > 0.0 else -1.0
 	var wave := sin(_phase * TAU) * _speed_ratio
 	var lift := absf(sin(_phase * TAU * 0.65)) * _speed_ratio
 	var body_motion := _active_view.get_node_or_null("BodyMotion") as Node2D
 	var torso := _active_view.get_node_or_null("BodyMotion/TorsoPivot") as Node2D
 	var hips := _find_first(_active_view, ["BodyMotion/TorsoPivot/HipsAnchor/HipsPivot", "BodyMotion/PelvisPivot"])
 	var head := _find_first(_active_view, ["BodyMotion/TorsoPivot/HeadAnchor/HeadPivot", "BodyMotion/TorsoPivot/NeckPivot/HeadPivot"])
-	var left_leg := _find_first(_active_view, ["BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/LeftHipSocket/LeftLegPivot", "BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/BackHipSocket/BackLegPivot", "BodyMotion/LeftLegPivot"])
-	var right_leg := _find_first(_active_view, ["BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/RightHipSocket/RightLegPivot", "BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/FrontHipSocket/FrontLegPivot", "BodyMotion/RightLegPivot", "BodyMotion/RightLegMirrorAxis/RightLegPivot"])
+	var left_leg := _find_first(_active_view, ["BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/LeftHipSocket/LeftLegPivot", "BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/BackHipSocket/BackLegPivot", "BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/FarHipSocket/FarLegPivot", "BodyMotion/LeftLegPivot"])
+	var right_leg := _find_first(_active_view, ["BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/RightHipSocket/RightLegPivot", "BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/FrontHipSocket/FrontLegPivot", "BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/NearHipSocket/NearLegPivot", "BodyMotion/RightLegPivot", "BodyMotion/RightLegMirrorAxis/RightLegPivot"])
 	var left_arm := _find_first(_active_view, ["BodyMotion/TorsoPivot/LeftShoulderAnchor/LeftArmPivot", "BodyMotion/TorsoPivot/FarShoulderAnchor/FarArmPivot", "BodyMotion/LeftArmPivot"])
 	var right_arm := _find_first(_active_view, ["BodyMotion/TorsoPivot/RightShoulderAnchor/RightArmPivot", "BodyMotion/TorsoPivot/NearShoulderAnchor/NearArmPivot", "BodyMotion/RightArmPivot", "BodyMotion/RightArmMirrorAxis/RightArmPivot"])
-	var uses_forward_depth_projection := _active_view.name == &"FrontView" or _active_view.name == &"ThreeQuarterView"
+	var uses_forward_depth_projection := _active_view.name in [&"FrontView", &"ThreeQuarterView", &"RearThreeQuarterView"]
 	var uses_profile_projection := _active_view.name == &"SideView"
 	var motion: Resource = _get_active_motion_profile()
 	if body_motion != null:
@@ -263,7 +283,7 @@ func _get_active_motion_profile():
 	if is_instance_valid(_active_view):
 		if _active_view.name == &"SideView":
 			return profile_motion_profile if profile_motion_profile != null else DEFAULT_PROFILE_MOTION
-		if _active_view.name == &"ThreeQuarterView":
+		if _active_view.name in [&"ThreeQuarterView", &"RearThreeQuarterView"]:
 			return three_quarter_motion_profile if three_quarter_motion_profile != null else DEFAULT_THREE_QUARTER_MOTION
 		if _active_view.name == &"RearView":
 			return rear_motion_profile if rear_motion_profile != null else DEFAULT_REAR_MOTION
@@ -309,6 +329,8 @@ func _reset_dynamic_depth_layers() -> void:
 		"FrontView/BodyMotion/TorsoPivot/RightShoulderAnchor/RightArmPivot",
 		"ThreeQuarterView/BodyMotion/TorsoPivot/FarShoulderAnchor/FarArmPivot",
 		"ThreeQuarterView/BodyMotion/TorsoPivot/NearShoulderAnchor/NearArmPivot",
+		"RearThreeQuarterView/BodyMotion/TorsoPivot/FarShoulderAnchor/FarArmPivot",
+		"RearThreeQuarterView/BodyMotion/TorsoPivot/NearShoulderAnchor/NearArmPivot",
 	]:
 		var arm := get_node_or_null(NodePath(path)) as Node2D
 		if arm != null:
@@ -320,3 +342,13 @@ func _restore_rest_pose() -> void:
 		var target := get_node_or_null(path) as Node2D
 		if target != null:
 			target.transform = _rest_transforms[path]
+
+
+func _refresh_hair_visibility() -> void:
+	for view_name in [&"FrontView", &"SideView", &"ThreeQuarterView", &"RearThreeQuarterView", &"RearView"]:
+		var view := get_node_or_null(NodePath(String(view_name)))
+		if view == null:
+			continue
+		for candidate in view.find_children("*Hair*", "", true, false):
+			if candidate is CanvasItem:
+				(candidate as CanvasItem).visible = show_hair

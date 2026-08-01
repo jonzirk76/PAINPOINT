@@ -1,0 +1,94 @@
+[gd_scene format=3]
+
+[node name="BodyMotion" type="Node2D" unique_id=1290915531]
+
+[node name="TorsoPivot" type="Node2D" parent="." unique_id=1070488248]
+position = Vector2(0, 15)
+
+[node name="HipsAnchor" type="Node2D" parent="TorsoPivot" unique_id=1372006559]
+z_index = -2
+position = Vector2(2, 50)
+
+[node name="HipsPivot" type="Node2D" parent="TorsoPivot/HipsAnchor" unique_id=1137783280]
+
+[node name="Hips" type="Node2D" parent="TorsoPivot/HipsAnchor/HipsPivot" unique_id=244664309]
+
+[node name="HipsMass" type="Polygon2D" parent="TorsoPivot/HipsAnchor/HipsPivot/Hips" unique_id=1424732984]
+color = Color(0.027451, 0.082353, 0.211765, 0.72)
+polygon = PackedVector2Array(-48, -18, 14, -20, 54, -5, 53, 29, 21, 43, -28, 38, -52, 17)
+
+[node name="FarHipSocket" type="Node2D" parent="TorsoPivot/HipsAnchor/HipsPivot" unique_id=1164159240]
+position = Vector2(-28, 30)
+
+[node name="FarLegPivot" type="Node2D" parent="TorsoPivot/HipsAnchor/HipsPivot/FarHipSocket" unique_id=90611363]
+z_index = -6
+
+[node name="FarLeg" type="Node2D" parent="TorsoPivot/HipsAnchor/HipsPivot/FarHipSocket/FarLegPivot" unique_id=893579625]
+
+[node name="FarLegMass" type="Polygon2D" parent="TorsoPivot/HipsAnchor/HipsPivot/FarHipSocket/FarLegPivot/FarLeg" unique_id=1651897532]
+color = Color(0.019608, 0.188235, 0.501961, 0.72)
+polygon = PackedVector2Array(-17, -10, 16, -7, 23, 26, 17, 56, 25, 82, 17, 108, -3, 126, -29, 121, -39, 103, -33, 79, -24, 56, -30, 27, -27, 4)
+
+[node name="NearHipSocket" type="Node2D" parent="TorsoPivot/HipsAnchor/HipsPivot" unique_id=466593635]
+position = Vector2(23, 34)
+
+[node name="NearLegPivot" type="Node2D" parent="TorsoPivot/HipsAnchor/HipsPivot/NearHipSocket" unique_id=2114575314]
+z_index = -4
+
+[node name="NearLeg" type="Node2D" parent="TorsoPivot/HipsAnchor/HipsPivot/NearHipSocket/NearLegPivot" unique_id=605108249]
+
+[node name="NearLegMass" type="Polygon2D" parent="TorsoPivot/HipsAnchor/HipsPivot/NearHipSocket/NearLegPivot/NearLeg" unique_id=1364840643]
+color = Color(0.019608, 0.188235, 0.501961, 0.72)
+polygon = PackedVector2Array(-16, -11, 18, -8, 28, 24, 20, 54, 34, 84, 41, 119, 34, 146, 13, 162, -13, 157, -25, 139, -22, 108, -13, 78, -23, 51, -25, 17)
+
+[node name="Torso" type="Node2D" parent="TorsoPivot" unique_id=732646611]
+
+[node name="TorsoMass" type="Polygon2D" parent="TorsoPivot/Torso" unique_id=844301829]
+color = Color(0.019608, 0.188235, 0.501961, 0.72)
+polygon = PackedVector2Array(-67, -77, -14, -94, 36, -79, 61, -53, 58, 12, 39, 36, -29, 41, -56, 17, -72, -37)
+
+[node name="BackArmorMass" type="Polygon2D" parent="TorsoPivot/Torso" unique_id=1774800486]
+z_index = 1
+color = Color(0.070588, 0.086275, 0.145098, 0.78)
+polygon = PackedVector2Array(-52, -67, -15, -79, 28, -68, 46, -43, 35, -9, 9, 6, -28, 1, -52, -22, -61, -48)
+
+[node name="FarShoulderAnchor" type="Node2D" parent="TorsoPivot" unique_id=1285736522]
+position = Vector2(-57, -62)
+
+[node name="FarArmPivot" type="Node2D" parent="TorsoPivot/FarShoulderAnchor" unique_id=1660434352]
+z_index = -1
+
+[node name="FarArm" type="Node2D" parent="TorsoPivot/FarShoulderAnchor/FarArmPivot" unique_id=2050663640]
+
+[node name="FarArmMass" type="Polygon2D" parent="TorsoPivot/FarShoulderAnchor/FarArmPivot/FarArm" unique_id=569161305]
+color = Color(0.019608, 0.188235, 0.501961, 0.72)
+polygon = PackedVector2Array(-13, -12, 10, -10, 21, 10, 17, 36, 7, 61, -2, 87, -9, 118, -22, 138, -37, 132, -44, 115, -36, 88, -26, 61, -23, 32, -28, 7)
+
+[node name="NearShoulderAnchor" type="Node2D" parent="TorsoPivot" unique_id=1504100757]
+position = Vector2(55, -62)
+
+[node name="NearArmPivot" type="Node2D" parent="TorsoPivot/NearShoulderAnchor" unique_id=1342598052]
+z_index = 1
+
+[node name="NearArm" type="Node2D" parent="TorsoPivot/NearShoulderAnchor/NearArmPivot" unique_id=2481073]
+
+[node name="NearArmMass" type="Polygon2D" parent="TorsoPivot/NearShoulderAnchor/NearArmPivot/NearArm" unique_id=797839554]
+color = Color(0.019608, 0.188235, 0.501961, 0.72)
+polygon = PackedVector2Array(-14, -12, 12, -9, 25, 14, 23, 43, 33, 69, 31, 99, 43, 126, 36, 144, 17, 148, 3, 132, 7, 104, -3, 80, 2, 48, -10, 23)
+
+[node name="HeadAnchor" type="Node2D" parent="TorsoPivot" unique_id=1806552079]
+z_index = 2
+position = Vector2(2, -80)
+
+[node name="HeadPivot" type="Node2D" parent="TorsoPivot/HeadAnchor" unique_id=1842387674]
+
+[node name="Head" type="Node2D" parent="TorsoPivot/HeadAnchor/HeadPivot" unique_id=916431582]
+
+[node name="NeckMass" type="Polygon2D" parent="TorsoPivot/HeadAnchor/HeadPivot/Head" unique_id=1012162929]
+z_index = -1
+color = Color(0.827451, 0.682353, 0.619608, 0.72)
+polygon = PackedVector2Array(-17, -3, 14, -3, 17, 23, -15, 24)
+
+[node name="HeadMass" type="Polygon2D" parent="TorsoPivot/HeadAnchor/HeadPivot/Head" unique_id=1826788227]
+color = Color(0.839216, 0.678431, 0.607843, 0.72)
+polygon = PackedVector2Array(-3, -158, -38, -151, -58, -132, -63, -98, -56, -55, -40, -22, -16, -5, 9, 5, 33, -1, 51, -21, 59, -48, 55, -86, 45, -123, 24, -149)
