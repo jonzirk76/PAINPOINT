@@ -4,6 +4,7 @@ extends VBoxContainer
 const SessionModel := preload("res://addons/raster_region_polygon/trace_session_model.gd")
 const OperationController := preload("res://addons/raster_region_polygon/trace_operation_controller.gd")
 const OperationPlan := preload("res://addons/raster_region_polygon/trace_operation_plan.gd")
+const LimitMask := preload("res://addons/raster_region_polygon/trace_limit_mask.gd")
 const TRACE_METADATA := &"raster_region_trace"
 const PREVIEW_HEIGHT_SETTING := "raster_region_polygon/preview_height"
 
@@ -144,6 +145,8 @@ class RegionPreview:
 				limit_drawing_enabled = false
 				if limit_polygon.size() < 3:
 					limit_polygon.clear()
+				else:
+					limit_polygon = LimitMask.simplify_polygon(limit_polygon, 1.5)
 				limit_polygon_changed.emit(limit_polygon.duplicate())
 				limit_drawing_finished.emit()
 				queue_redraw()

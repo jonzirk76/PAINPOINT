@@ -33,6 +33,12 @@ travel outside the blue boundary, even when pixels beyond it match the sampled
 color. The lasso is stored with the generated node for recapture. **Clear
 Limit** restores unrestricted fill.
 
+When drawing finishes, the lasso is simplified conservatively before it is
+stored. Tracing converts it into a scanline-rasterized inclusion mask and
+restricts flood-fill traversal to its clipped bounding rectangle. This keeps
+lasso membership checks constant-time without changing the canonical vector
+boundary saved in the trace recipe.
+
 The generated node is a child of the source sprite, uses the sampled color, and
 is added through the editor undo/redo history. It also stores its trace seed and
 settings as node metadata.

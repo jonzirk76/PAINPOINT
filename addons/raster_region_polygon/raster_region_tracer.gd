@@ -1,6 +1,8 @@
 @tool
 extends RefCounted
 
+const LimitMask := preload("res://addons/raster_region_polygon/trace_limit_mask.gd")
+
 const NEIGHBOR_OFFSETS: Array[Vector2i] = [
 	Vector2i.LEFT,
 	Vector2i.RIGHT,
@@ -37,13 +39,8 @@ static func trace_region(
 		return {"ok": false, "error": "Vertex error cannot be negative."}
 	if cleanup_radius < 0 or cleanup_radius > 8:
 		return {"ok": false, "error": "Cleanup radius must be between 0 and 8."}
-	if (
-		limit_polygon.size() >= 3
-		and not Geometry2D.is_point_in_polygon(
-			Vector2(seed) + Vector2(0.5, 0.5),
-			limit_polygon
-		)
-	):
+	var limit_mask: RefCounted = LimitMask.build(image.get_size(), limit_polygon)
+	if limit_polygon.size() >= 3 and not limit_mask.contains(seed):
 		return {"ok": false, "error": "Seed pixel is outside the drawn fill limit."}
 
 	var sample: Color = image.get_pixelv(seed)
@@ -53,7 +50,7 @@ static func trace_region(
 		sample,
 		tolerance,
 		include_alpha,
-		limit_polygon
+		limit_mask
 	)
 	var original_pixel_count: int = mask.get_true_bit_count()
 	if cleanup_radius > 0:
@@ -203,7 +200,7 @@ static func _flood_fill_mask(
 	sample: Color,
 	tolerance: float,
 	include_alpha: bool,
-	limit_polygon: PackedVector2Array
+	limit_mask: RefCounted
 ) -> BitMap:
 	var image_size := image.get_size()
 	var mask := BitMap.new()
@@ -215,13 +212,7 @@ static func _flood_fill_mask(
 
 	while not pending.is_empty():
 		var point: Vector2i = pending.pop_back()
-		if (
-			limit_polygon.size() >= 3
-			and not Geometry2D.is_point_in_polygon(
-				Vector2(point) + Vector2(0.5, 0.5),
-				limit_polygon
-			)
-		):
+		if limit_mask.is_active() and not limit_mask.contains(point):
 			continue
 		var color: Color = image.get_pixelv(point)
 		if not _colors_match(color, sample, tolerance, include_alpha):
@@ -235,6 +226,7 @@ static func _flood_fill_mask(
 				or neighbor.y < 0
 				or neighbor.x >= image_size.x
 				or neighbor.y >= image_size.y
+				or (limit_mask.is_active() and not limit_mask.bounds.has_point(neighbor))
 			):
 				continue
 			var index := neighbor.y * image_size.x + neighbor.x
