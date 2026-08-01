@@ -21,19 +21,25 @@ class_name HumanoidBodyRig
 		set_motion_state(preview_direction, preview_speed_ratio)
 
 ## Cycles per second for the procedural prototype walk.
-@export_range(0.1, 8.0, 0.1) var cycle_speed := 2.4
+@export_range(0.1, 8.0, 0.1) var cycle_speed := 1.7
 
 ## Maximum rigid upper-leg rotation in degrees.
-@export_range(0.0, 30.0, 0.5) var leg_swing_degrees := 12.0
+@export_range(0.0, 30.0, 0.1) var leg_swing_degrees := 1.3
+
+## Opposing local-pixel leg travel, matched to the established Volette walk preview.
+@export_range(0.0, 24.0, 0.5) var stride_distance := 8.5
+
+## Upward travel applied to the ankle of the recovering leg.
+@export_range(0.0, 12.0, 0.25) var foot_lift_distance := 2.5
 
 ## Maximum elbow counter-swing in degrees.
-@export_range(0.0, 24.0, 0.5) var arm_swing_degrees := 8.0
+@export_range(0.0, 24.0, 0.5) var arm_swing_degrees := 3.0
 
 ## Vertical body travel at full locomotion speed.
-@export_range(0.0, 8.0, 0.25) var body_bob_distance := 1.5
+@export_range(0.0, 8.0, 0.25) var body_bob_distance := 2.0
 
 ## Small torso counter-rotation at full locomotion speed.
-@export_range(0.0, 8.0, 0.25) var torso_twist_degrees := 2.0
+@export_range(0.0, 8.0, 0.25) var torso_twist_degrees := 3.0
 
 var _phase := 0.0
 var _speed_ratio := 0.0
@@ -96,6 +102,9 @@ func _capture_rest_pose() -> void:
 			"BodyMotion/LeftLegPivot",
 			"BodyMotion/RightLegPivot",
 			"BodyMotion/RightLegMirrorAxis/RightLegPivot",
+			"BodyMotion/LeftLegPivot/KneePivot/AnklePivot",
+			"BodyMotion/RightLegPivot/KneePivot/AnklePivot",
+			"BodyMotion/RightLegMirrorAxis/RightLegPivot/KneePivot/AnklePivot",
 			"BodyMotion/LeftArmPivot",
 			"BodyMotion/LeftArmPivot/ElbowPivot",
 			"BodyMotion/RightArmPivot",
@@ -140,21 +149,29 @@ func _apply_pose() -> void:
 	if not is_instance_valid(_active_view):
 		return
 	var wave := sin(_phase * TAU) * _speed_ratio
-	var lift := absf(cos(_phase * TAU)) * _speed_ratio
+	var lift := absf(sin(_phase * TAU * 0.65)) * _speed_ratio
 	var body_motion := _active_view.get_node_or_null("BodyMotion") as Node2D
 	var torso := _active_view.get_node_or_null("BodyMotion/TorsoPivot") as Node2D
 	var left_leg := _active_view.get_node_or_null("BodyMotion/LeftLegPivot") as Node2D
 	var right_leg := _find_part(_active_view, "BodyMotion/RightLegPivot", "BodyMotion/RightLegMirrorAxis/RightLegPivot")
 	var left_arm := _active_view.get_node_or_null("BodyMotion/LeftArmPivot") as Node2D
 	var right_arm := _find_part(_active_view, "BodyMotion/RightArmPivot", "BodyMotion/RightArmMirrorAxis/RightArmPivot")
+	var left_ankle := _active_view.get_node_or_null("BodyMotion/LeftLegPivot/KneePivot/AnklePivot") as Node2D
+	var right_ankle := _find_part(_active_view, "BodyMotion/RightLegPivot/KneePivot/AnklePivot", "BodyMotion/RightLegMirrorAxis/RightLegPivot/KneePivot/AnklePivot")
 	if body_motion != null:
 		body_motion.position.y -= lift * body_bob_distance
 	if torso != null:
-		torso.rotation += deg_to_rad(torso_twist_degrees) * wave
+		torso.rotation -= deg_to_rad(torso_twist_degrees) * wave
 	if left_leg != null:
+		left_leg.position.y += stride_distance * wave
 		left_leg.rotation += deg_to_rad(leg_swing_degrees) * wave
 	if right_leg != null:
+		right_leg.position.y -= stride_distance * wave
 		right_leg.rotation -= deg_to_rad(leg_swing_degrees) * wave
+	if left_ankle != null and wave > 0.0:
+		left_ankle.position.y -= foot_lift_distance * wave
+	if right_ankle != null and wave < 0.0:
+		right_ankle.position.y += foot_lift_distance * wave
 	if left_arm != null:
 		left_arm.rotation -= deg_to_rad(arm_swing_degrees) * wave
 	if right_arm != null:

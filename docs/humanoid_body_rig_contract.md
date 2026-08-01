@@ -51,6 +51,11 @@ commands and has no manager or orchestrator references.
 
 ## Prototype decisions
 
+- Forward-view proportions and locomotion timing use
+  `volette_walk_cycle_preview.tscn` as their visual reference: opposing 8.5-pixel
+  strides, restrained 1.3-degree leg rotation, recovering-foot lift, hip/body
+  counter-motion, and a slower two-pixel bounce. The arms remain independent
+  rig components instead of being fused into the torso artwork.
 - Limbs are rigid overlapping polygon pieces. This makes gaps and pivot errors
   visible before weight painting or skeletal deformation is introduced.
 - Arms belong to the body contract, but hands have no grip or weapon sockets in

@@ -1,7 +1,7 @@
 [gd_scene format=3]
 
 [node name="ArmPivot" type="Node2D"]
-position = Vector2(-20, -17)
+position = Vector2(-52, -17)
 rotation = -0.0872665
 
 [node name="UpperArm" type="Polygon2D" parent="."]

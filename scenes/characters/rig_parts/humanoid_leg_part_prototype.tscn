@@ -1,7 +1,7 @@
 [gd_scene format=3]
 
 [node name="LegPivot" type="Node2D"]
-position = Vector2(-10, 16)
+position = Vector2(-17, 16)
 
 [node name="UpperLeg" type="Polygon2D" parent="."]
 color = Color(0.054902, 0.12549, 0.286275, 1)
@@ -25,4 +25,3 @@ position = Vector2(0, 25)
 [node name="Boot" type="Polygon2D" parent="KneePivot/AnklePivot"]
 color = Color(0.035294, 0.054902, 0.101961, 1)
 polygon = PackedVector2Array(-7, -2, 7, -2, 10, 10, 7, 15, -9, 15, -11, 11)
-
