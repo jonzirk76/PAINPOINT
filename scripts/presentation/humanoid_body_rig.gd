@@ -7,23 +7,34 @@ const DEFAULT_PROFILE_MOTION: Resource = preload("res://resources/presentation/h
 const DEFAULT_THREE_QUARTER_MOTION: Resource = preload("res://resources/presentation/humanoid_three_quarter_motion_profile.tres")
 const DEFAULT_REAR_MOTION: Resource = preload("res://resources/presentation/humanoid_rear_motion_profile.tres")
 
+enum PreviewDirection {
+	DOWN,
+	DOWN_RIGHT,
+	RIGHT,
+	UP_RIGHT,
+	UP,
+	UP_LEFT,
+	LEFT,
+	DOWN_LEFT,
+}
+
 ## Plays the locomotion pose in the editor so pivots can be evaluated without running gameplay.
 @export var animate_preview: bool = true:
 	set(value):
 		animate_preview = value
 		_update_processing()
 
-## Direction used by the editor preview and as the initial runtime facing.
-@export var preview_direction := Vector2.DOWN:
+## Eight-way direction shown by the editor preview and used as the initial runtime facing.
+@export_enum("Down", "Down Right", "Right", "Up Right", "Up", "Up Left", "Left", "Down Left") var preview_direction: int = PreviewDirection.DOWN:
 	set(value):
 		preview_direction = value
-		set_motion_state(preview_direction, preview_speed_ratio)
+		set_motion_state(_preview_direction_vector(), preview_speed_ratio)
 
 ## Normalized locomotion speed used by the editor preview.
 @export_range(0.0, 1.0, 0.01) var preview_speed_ratio := 0.75:
 	set(value):
 		preview_speed_ratio = value
-		set_motion_state(preview_direction, preview_speed_ratio)
+		set_motion_state(_preview_direction_vector(), preview_speed_ratio)
 
 @export_group("View Motion Profiles")
 
@@ -48,8 +59,28 @@ var _rest_transforms: Dictionary = {}
 
 func _ready() -> void:
 	_capture_rest_pose()
-	set_motion_state(preview_direction, preview_speed_ratio if Engine.is_editor_hint() else 0.0)
+	set_motion_state(_preview_direction_vector(), preview_speed_ratio if Engine.is_editor_hint() else 0.0)
 	_update_processing()
+
+
+func _preview_direction_vector() -> Vector2:
+	match preview_direction:
+		PreviewDirection.DOWN_RIGHT:
+			return Vector2(1.0, 1.0).normalized()
+		PreviewDirection.RIGHT:
+			return Vector2.RIGHT
+		PreviewDirection.UP_RIGHT:
+			return Vector2(1.0, -1.0).normalized()
+		PreviewDirection.UP:
+			return Vector2.UP
+		PreviewDirection.UP_LEFT:
+			return Vector2(-1.0, -1.0).normalized()
+		PreviewDirection.LEFT:
+			return Vector2.LEFT
+		PreviewDirection.DOWN_LEFT:
+			return Vector2(-1.0, 1.0).normalized()
+		_:
+			return Vector2.DOWN
 
 
 func _notification(what: int) -> void:
