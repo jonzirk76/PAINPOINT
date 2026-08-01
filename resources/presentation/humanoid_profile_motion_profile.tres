@@ -1,15 +1,16 @@
-[gd_resource type="Resource" script_class="HumanoidViewMotionProfile" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="HumanoidViewMotionProfile" format=3 uid="uid://mucjhftiec18"]
 
-[ext_resource type="Script" path="res://scripts/presentation/humanoid_view_motion_profile.gd" id="1_profile"]
+[ext_resource type="Script" uid="uid://cwxkw58nudq8p" path="res://scripts/presentation/humanoid_view_motion_profile.gd" id="1_profile"]
 
 [resource]
 script = ExtResource("1_profile")
-leg_swing_degrees = 14.0
+cycle_speed = 2.3000000000000003
+leg_swing_degrees = 15.3
 stride_distance = 0.0
 leg_depth_swing_ratio = 0.0
-arm_swing_degrees = 12.0
+arm_swing_degrees = 19.5
 arm_depth_swing_ratio = 0.0
-hip_tilt_degrees = 3.0
+hip_tilt_degrees = 0.0
 body_bob_distance = 2.5
-torso_twist_degrees = 1.5
-head_counter_tilt_degrees = 2.0
+torso_twist_degrees = 0.0
+head_counter_tilt_degrees = 0.0

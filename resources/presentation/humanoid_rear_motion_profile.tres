@@ -1,6 +1,9 @@
-[gd_resource type="Resource" script_class="HumanoidViewMotionProfile" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="HumanoidViewMotionProfile" format=3 uid="uid://dbxnrwemw76xe"]
 
-[ext_resource type="Script" path="res://scripts/presentation/humanoid_view_motion_profile.gd" id="1_profile"]
+[ext_resource type="Script" uid="uid://cwxkw58nudq8p" path="res://scripts/presentation/humanoid_view_motion_profile.gd" id="1_profile"]
 
 [resource]
 script = ExtResource("1_profile")
+hip_tilt_degrees = 0.0
+torso_twist_degrees = 0.0
+head_counter_tilt_degrees = 0.0

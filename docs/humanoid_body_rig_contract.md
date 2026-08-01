@@ -50,11 +50,18 @@ for the opposite side. Profile limbs rotate rigidly around their sockets; they
 do not use the forward view's projected-length depth mutation.
 
 Motion tuning belongs to projection-specific `HumanoidViewMotionProfile`
-resources. Forward, profile, and rear views expose separate swing, depth,
+resources. Forward, three-quarter, profile, and rear views expose separate swing, depth,
 stride, tilt, stabilization, bob, and cadence values. They share locomotion
 phase and normalized speed only. A field name must retain one projection-local
 meaning; profile socket rotation must never be tuned through a forward depth
 mutation control merely because both happen to use the same sine phase.
+
+The initial forward three-quarter assembly is an editable 50% landmark blend
+between the authored forward and profile endpoints. Principal-form outlines,
+neck/hips/head anchors, shoulder sockets, and hip sockets are interpolated;
+near/far layering and scale establish depth. It is intentionally stored as
+ordinary polygon component scenes for manual correction rather than evaluated
+as a runtime morph.
 
 ## Ownership
 

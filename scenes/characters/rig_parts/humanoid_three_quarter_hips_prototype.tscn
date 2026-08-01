@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[node name="Hips" type="Node2D"]
+
+[node name="HipsMass" type="Polygon2D" parent="."]
+color = Color(0.027451, 0.082353, 0.211765, 1)
+polygon = PackedVector2Array(-8, 34, -22, 38, -25, 50, -19, 62, -4, 69, 17, 70, 35, 64, 43, 52, 37, 40, 17, 34)

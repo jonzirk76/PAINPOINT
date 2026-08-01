@@ -4,6 +4,7 @@ class_name HumanoidBodyRig
 
 const DEFAULT_FORWARD_MOTION: Resource = preload("res://resources/presentation/humanoid_forward_motion_profile.tres")
 const DEFAULT_PROFILE_MOTION: Resource = preload("res://resources/presentation/humanoid_profile_motion_profile.tres")
+const DEFAULT_THREE_QUARTER_MOTION: Resource = preload("res://resources/presentation/humanoid_three_quarter_motion_profile.tres")
 const DEFAULT_REAR_MOTION: Resource = preload("res://resources/presentation/humanoid_rear_motion_profile.tres")
 
 ## Plays the locomotion pose in the editor so pivots can be evaluated without running gameplay.
@@ -31,6 +32,9 @@ const DEFAULT_REAR_MOTION: Resource = preload("res://resources/presentation/huma
 
 ## Motion semantics and tuning used only by the left/right profile projection.
 @export var profile_motion_profile: Resource = DEFAULT_PROFILE_MOTION
+
+## Motion semantics and tuning used only by the forward three-quarter projection.
+@export var three_quarter_motion_profile: Resource = DEFAULT_THREE_QUARTER_MOTION
 
 ## Motion semantics and tuning used only by the rear-facing projection.
 @export var rear_motion_profile: Resource = DEFAULT_REAR_MOTION
@@ -97,7 +101,7 @@ func _update_processing() -> void:
 
 func _capture_rest_pose() -> void:
 	_rest_transforms.clear()
-	for view_name in [&"FrontView", &"SideView", &"RearView"]:
+	for view_name in [&"FrontView", &"SideView", &"ThreeQuarterView", &"RearView"]:
 		var view := get_node_or_null(NodePath(String(view_name))) as Node2D
 		if view == null:
 			continue
@@ -137,13 +141,29 @@ func _capture_node(node: Node2D) -> void:
 func _select_directional_view() -> void:
 	var front := get_node_or_null("FrontView") as Node2D
 	var side := get_node_or_null("SideView") as Node2D
+	var three_quarter := get_node_or_null("ThreeQuarterView") as Node2D
 	var rear := get_node_or_null("RearView") as Node2D
-	if front == null or side == null or rear == null:
+	if front == null or side == null or three_quarter == null or rear == null:
 		return
 	front.visible = false
 	side.visible = false
+	three_quarter.visible = false
 	rear.visible = false
-	if absf(_facing.x) > absf(_facing.y):
+	var has_horizontal := absf(_facing.x) > 0.001
+	var has_vertical := absf(_facing.y) > 0.001
+	var horizontal_vertical_ratio := absf(_facing.x) / maxf(absf(_facing.y), 0.001)
+	var is_forward_diagonal := (
+		has_horizontal
+		and has_vertical
+		and _facing.y >= 0.0
+		and horizontal_vertical_ratio >= 0.4142
+		and horizontal_vertical_ratio <= 2.4142
+	)
+	if is_forward_diagonal:
+		_active_view = three_quarter
+		three_quarter.visible = true
+		three_quarter.scale.x = -1.0 if _facing.x < 0.0 else 1.0
+	elif absf(_facing.x) > absf(_facing.y):
 		_active_view = side
 		side.visible = true
 		side.scale.x = -1.0 if _facing.x < 0.0 else 1.0
@@ -161,7 +181,7 @@ func _apply_pose() -> void:
 		_select_directional_view()
 	if not is_instance_valid(_active_view):
 		return
-	if _active_view.name == &"SideView":
+	if _active_view.name == &"SideView" or _active_view.name == &"ThreeQuarterView":
 		_active_view.scale.x = -1.0 if _facing.x < 0.0 else 1.0
 	var wave := sin(_phase * TAU) * _speed_ratio
 	var lift := absf(sin(_phase * TAU * 0.65)) * _speed_ratio
@@ -173,7 +193,7 @@ func _apply_pose() -> void:
 	var right_leg := _find_first(_active_view, ["BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/RightHipSocket/RightLegPivot", "BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/FrontHipSocket/FrontLegPivot", "BodyMotion/RightLegPivot", "BodyMotion/RightLegMirrorAxis/RightLegPivot"])
 	var left_arm := _find_first(_active_view, ["BodyMotion/TorsoPivot/LeftShoulderAnchor/LeftArmPivot", "BodyMotion/TorsoPivot/FarShoulderAnchor/FarArmPivot", "BodyMotion/LeftArmPivot"])
 	var right_arm := _find_first(_active_view, ["BodyMotion/TorsoPivot/RightShoulderAnchor/RightArmPivot", "BodyMotion/TorsoPivot/NearShoulderAnchor/NearArmPivot", "BodyMotion/RightArmPivot", "BodyMotion/RightArmMirrorAxis/RightArmPivot"])
-	var uses_forward_depth_projection := _active_view.name == &"FrontView"
+	var uses_forward_depth_projection := _active_view.name == &"FrontView" or _active_view.name == &"ThreeQuarterView"
 	var uses_profile_projection := _active_view.name == &"SideView"
 	var motion: Resource = _get_active_motion_profile()
 	if body_motion != null:
@@ -212,6 +232,8 @@ func _get_active_motion_profile():
 	if is_instance_valid(_active_view):
 		if _active_view.name == &"SideView":
 			return profile_motion_profile if profile_motion_profile != null else DEFAULT_PROFILE_MOTION
+		if _active_view.name == &"ThreeQuarterView":
+			return three_quarter_motion_profile if three_quarter_motion_profile != null else DEFAULT_THREE_QUARTER_MOTION
 		if _active_view.name == &"RearView":
 			return rear_motion_profile if rear_motion_profile != null else DEFAULT_REAR_MOTION
 	return forward_motion_profile if forward_motion_profile != null else DEFAULT_FORWARD_MOTION
@@ -252,6 +274,8 @@ func _reset_dynamic_depth_layers() -> void:
 	for path in [
 		"FrontView/BodyMotion/TorsoPivot/LeftShoulderAnchor/LeftArmPivot",
 		"FrontView/BodyMotion/TorsoPivot/RightShoulderAnchor/RightArmPivot",
+		"ThreeQuarterView/BodyMotion/TorsoPivot/FarShoulderAnchor/FarArmPivot",
+		"ThreeQuarterView/BodyMotion/TorsoPivot/NearShoulderAnchor/NearArmPivot",
 	]:
 		var arm := get_node_or_null(NodePath(path)) as Node2D
 		if arm != null:

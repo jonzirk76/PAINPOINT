@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="HumanoidViewMotionProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/humanoid_view_motion_profile.gd" id="1_profile"]
+
+[resource]
+script = ExtResource("1_profile")
+leg_swing_degrees = 7.0
+stride_distance = 0.0
+leg_depth_swing_ratio = 0.12
+arm_swing_degrees = 8.0
+arm_depth_swing_ratio = 0.14
+hip_tilt_degrees = 0.0
+body_bob_distance = 2.5
+torso_twist_degrees = 0.0
+head_counter_tilt_degrees = 0.0
