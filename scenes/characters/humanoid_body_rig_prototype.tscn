@@ -26,8 +26,10 @@ scale = Vector2(-1, 1)
 position = Vector2(0, -10)
 
 [node name="LeftLegPivot" parent="FrontView/BodyMotion" instance=ExtResource("2_leg")]
+z_index = -4
 
 [node name="RightLegMirrorAxis" type="Node2D" parent="FrontView/BodyMotion"]
+z_index = -4
 scale = Vector2(-1, 1)
 
 [node name="RightLegPivot" parent="FrontView/BodyMotion/RightLegMirrorAxis" instance=ExtResource("2_leg")]
@@ -54,9 +56,11 @@ polygon = PackedVector2Array(-10, -48, 10, -50, 17, -38, 20, 12, 8, 22, -12, 17,
 
 [node name="LeftLegPivot" parent="SideView/BodyMotion" instance=ExtResource("2_leg")]
 position = Vector2(-4, 16)
+z_index = -4
 
 [node name="RightLegPivot" parent="SideView/BodyMotion" instance=ExtResource("2_leg")]
 position = Vector2(5, 16)
+z_index = -5
 
 [node name="PelvisPivot" type="Node2D" parent="SideView/BodyMotion"]
 position = Vector2(0, 14)
@@ -112,8 +116,10 @@ scale = Vector2(-1, 1)
 position = Vector2(0, -10)
 
 [node name="LeftLegPivot" parent="RearView/BodyMotion" instance=ExtResource("2_leg")]
+z_index = -4
 
 [node name="RightLegMirrorAxis" type="Node2D" parent="RearView/BodyMotion"]
+z_index = -4
 scale = Vector2(-1, 1)
 
 [node name="RightLegPivot" parent="RearView/BodyMotion/RightLegMirrorAxis" instance=ExtResource("2_leg")]

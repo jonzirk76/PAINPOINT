@@ -51,6 +51,17 @@ commands and has no manager or orchestrator references.
 
 ## Prototype decisions
 
+- The established `volette_visual.tscn` upper-body polygon is treated as a
+  combined torso-and-arms envelope, not as anatomical torso width. The armor
+  mass is the torso-width reference; separate arm components occupy the rest of
+  the old envelope.
+- Base draw order is explicit and anatomical: boots are furthest back, followed
+  by lower legs, knees, upper legs, pelvis, torso/armor, neck, head, and hair.
+  Arm segments layer independently above the base torso where their joints
+  require it. Scene-tree insertion order is not the layering contract.
+- The front head half is adapted from the developed outline in
+  `volette_visual.tscn`, then mirrored canonically instead of being redrawn as a
+  generic oval.
 - Forward-view proportions and locomotion timing use
   `volette_walk_cycle_preview.tscn` as their visual reference: opposing 8.5-pixel
   strides, restrained 1.3-degree leg rotation, recovering-foot lift, hip/body
