@@ -5,6 +5,7 @@ const SessionModel := preload("res://addons/raster_region_polygon/trace_session_
 const OperationController := preload("res://addons/raster_region_polygon/trace_operation_controller.gd")
 const OperationPlan := preload("res://addons/raster_region_polygon/trace_operation_plan.gd")
 const TRACE_METADATA := &"raster_region_trace"
+const PREVIEW_HEIGHT_SETTING := "raster_region_polygon/preview_height"
 
 
 class RegionPreview:
@@ -379,6 +380,7 @@ var _syncing_controls := false
 
 var _preview
 var _zoom_label: Label
+var _preview_height_spin: SpinBox
 var _draw_limit_button: Button
 var _source_label: Label
 var _tolerance_spin: SpinBox
@@ -454,6 +456,13 @@ func _ready() -> void:
 	_preview.edit_box_selected.connect(_on_edit_box_selected)
 	_preview.edit_vertices_moved.connect(_on_edit_vertices_moved)
 	add_child(_preview)
+	var editor_settings := _editor_interface.get_editor_settings()
+	if editor_settings.has_setting(PREVIEW_HEIGHT_SETTING):
+		_preview.custom_minimum_size.y = clampf(
+			float(editor_settings.get_setting(PREVIEW_HEIGHT_SETTING)),
+			220.0,
+			900.0
+		)
 
 	var zoom_controls := HBoxContainer.new()
 	var zoom_out_button := Button.new()
@@ -476,6 +485,15 @@ func _ready() -> void:
 	_zoom_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_zoom_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	zoom_controls.add_child(_zoom_label)
+	_preview_height_spin = SpinBox.new()
+	_preview_height_spin.min_value = 220.0
+	_preview_height_spin.max_value = 900.0
+	_preview_height_spin.step = 20.0
+	_preview_height_spin.value = _preview.custom_minimum_size.y
+	_preview_height_spin.suffix = " px high"
+	_preview_height_spin.tooltip_text = "Adjust and remember the dock preview height."
+	_preview_height_spin.value_changed.connect(_on_preview_height_changed)
+	zoom_controls.add_child(_preview_height_spin)
 	_preview.zoom_changed.connect(_on_preview_zoom_changed)
 	add_child(zoom_controls)
 
@@ -749,6 +767,11 @@ func _on_image_point_selected(point: Vector2i) -> void:
 
 func _on_preview_zoom_changed(percent: int) -> void:
 	_zoom_label.text = "%d%%" % percent
+
+
+func _on_preview_height_changed(height: float) -> void:
+	_preview.custom_minimum_size.y = height
+	_editor_interface.get_editor_settings().set_setting(PREVIEW_HEIGHT_SETTING, height)
 
 
 func _on_draw_limit_toggled(enabled: bool) -> void:
