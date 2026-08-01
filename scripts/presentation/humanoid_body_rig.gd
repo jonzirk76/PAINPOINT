@@ -286,11 +286,13 @@ func _find_first(view: Node2D, paths: Array) -> Node2D:
 
 
 func _apply_opposed_rotation(part: Node2D, visual_angle: float) -> void:
-	var mirrored := part.global_transform.determinant() < 0.0
-	# A direct partner needs the opposite local angle. A partner beneath a
-	# negative-X axis receives the same local angle because reflection reverses
-	# the resulting screen-space rotation for us.
-	part.rotation += -visual_angle if not mirrored else visual_angle
+	var relative_transform := part.global_transform
+	if is_instance_valid(_active_view):
+		relative_transform = _active_view.global_transform.affine_inverse() * part.global_transform
+	var internally_mirrored := relative_transform.determinant() < 0.0
+	# Ignore reflection of the complete directional view here. Only a mirror
+	# inside the assembly changes which local sign produces the opposed pose.
+	part.rotation += visual_angle if internally_mirrored else -visual_angle
 
 
 func _depth_layer(depth_amount: float) -> int:
