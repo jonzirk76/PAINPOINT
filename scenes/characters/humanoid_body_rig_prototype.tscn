@@ -4,8 +4,8 @@
 [ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_leg_part_prototype.tscn" id="2_leg"]
 [ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_arm_part_prototype.tscn" id="3_arm"]
 [ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_rear_core_half_prototype.tscn" id="5_rear_core"]
-[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_front_leg_part_prototype.tscn" id="6_front_leg"]
-[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_front_arm_part_prototype.tscn" id="7_front_arm"]
+[ext_resource type="PackedScene" uid="uid://bkvl20vlvuoe0" path="res://scenes/characters/rig_parts/humanoid_front_leg_part_prototype.tscn" id="6_front_leg"]
+[ext_resource type="PackedScene" uid="uid://bnd1uuyy8v7y2" path="res://scenes/characters/rig_parts/humanoid_front_arm_part_prototype.tscn" id="7_front_arm"]
 [ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_front_hips_half_prototype.tscn" id="8_front_hips"]
 [ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_front_torso_half_prototype.tscn" id="9_front_torso"]
 [ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_front_head_half_prototype.tscn" id="10_front_head"]
@@ -14,15 +14,6 @@
 
 [node name="HumanoidBodyRigPrototype" type="Node2D" unique_id=1346914329]
 script = ExtResource("1_rig")
-leg_swing_degrees = 0.0
-stride_distance = 9.0
-leg_depth_swing_ratio = 0.24
-arm_swing_degrees = 4.0
-arm_depth_swing_ratio = 0.27
-hip_tilt_degrees = 7.0
-body_bob_distance = 2.5
-torso_twist_degrees = 3.5
-head_counter_tilt_degrees = 3.0
 
 [node name="FrontView" type="Node2D" parent="." unique_id=554173520]
 
@@ -102,7 +93,7 @@ position = Vector2(0, 10)
 [node name="SideView" type="Node2D" parent="." unique_id=1835877859]
 visible = false
 
-[node name="BodyMotion" parent="SideView" instance=ExtResource("12_profile")]
+[node name="BodyMotion" parent="SideView" unique_id=236794024 instance=ExtResource("12_profile")]
 
 [node name="RearView" type="Node2D" parent="." unique_id=696323846]
 visible = false

@@ -49,6 +49,13 @@ layers, owns near/far shoulder and hip sockets, and flips as a complete assembly
 for the opposite side. Profile limbs rotate rigidly around their sockets; they
 do not use the forward view's projected-length depth mutation.
 
+Motion tuning belongs to projection-specific `HumanoidViewMotionProfile`
+resources. Forward, profile, and rear views expose separate swing, depth,
+stride, tilt, stabilization, bob, and cadence values. They share locomotion
+phase and normalized speed only. A field name must retain one projection-local
+meaning; profile socket rotation must never be tuned through a forward depth
+mutation control merely because both happen to use the same sine phase.
+
 ## Ownership
 
 The owning entity may call only:

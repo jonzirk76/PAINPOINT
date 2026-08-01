@@ -2,6 +2,10 @@
 extends Node2D
 class_name HumanoidBodyRig
 
+const DEFAULT_FORWARD_MOTION: Resource = preload("res://resources/presentation/humanoid_forward_motion_profile.tres")
+const DEFAULT_PROFILE_MOTION: Resource = preload("res://resources/presentation/humanoid_profile_motion_profile.tres")
+const DEFAULT_REAR_MOTION: Resource = preload("res://resources/presentation/humanoid_rear_motion_profile.tres")
+
 ## Plays the locomotion pose in the editor so pivots can be evaluated without running gameplay.
 @export var animate_preview: bool = true:
 	set(value):
@@ -20,35 +24,16 @@ class_name HumanoidBodyRig
 		preview_speed_ratio = value
 		set_motion_state(preview_direction, preview_speed_ratio)
 
-## Cycles per second for the procedural prototype walk.
-@export_range(0.1, 8.0, 0.1) var cycle_speed := 1.7
+@export_group("View Motion Profiles")
 
-## Maximum rotation of each complete stiff leg around its hip socket.
-@export_range(0.0, 30.0, 0.1) var leg_swing_degrees := 4.0
+## Motion semantics and tuning used only by the forward-facing projection.
+@export var forward_motion_profile: Resource = DEFAULT_FORWARD_MOTION
 
-## Opposing local-pixel leg travel, matched to the established Volette walk preview.
-@export_range(0.0, 24.0, 0.5) var stride_distance := 8.5
+## Motion semantics and tuning used only by the left/right profile projection.
+@export var profile_motion_profile: Resource = DEFAULT_PROFILE_MOTION
 
-## Projected length change used to imply a stiff leg swinging in depth from its fixed hip socket.
-@export_range(0.0, 0.35, 0.01) var leg_depth_swing_ratio := 0.12
-
-## Maximum rotation of each complete stiff arm around its shoulder anchor.
-@export_range(0.0, 24.0, 0.5) var arm_swing_degrees := 5.0
-
-## Projected length change used to imply a stiff arm swinging from back to front.
-@export_range(0.0, 0.35, 0.01) var arm_depth_swing_ratio := 0.14
-
-## Maximum hips counter-tilt relative to the torso.
-@export_range(0.0, 12.0, 0.25) var hip_tilt_degrees := 3.0
-
-## Vertical body travel at full locomotion speed.
-@export_range(0.0, 8.0, 0.25) var body_bob_distance := 2.0
-
-## Small torso counter-rotation at full locomotion speed.
-@export_range(0.0, 8.0, 0.25) var torso_twist_degrees := 1.5
-
-## Independent head stabilization around its neck anchor during the stiff walk.
-@export_range(0.0, 8.0, 0.25) var head_counter_tilt_degrees := 2.0
+## Motion semantics and tuning used only by the rear-facing projection.
+@export var rear_motion_profile: Resource = DEFAULT_REAR_MOTION
 
 var _phase := 0.0
 var _speed_ratio := 0.0
@@ -76,7 +61,8 @@ func _notification(what: int) -> void:
 func _process(delta: float) -> void:
 	if not Engine.is_editor_hint() or not animate_preview:
 		return
-	_phase = fposmod(_phase + delta * cycle_speed * maxf(preview_speed_ratio, 0.05), 1.0)
+	var motion: Resource = _get_active_motion_profile()
+	_phase = fposmod(_phase + delta * motion.cycle_speed * maxf(preview_speed_ratio, 0.05), 1.0)
 	_apply_pose()
 
 
@@ -94,7 +80,8 @@ func advance_motion(delta: float) -> void:
 	if _speed_ratio <= 0.001:
 		_apply_pose()
 		return
-	_phase = fposmod(_phase + delta * cycle_speed * _speed_ratio, 1.0)
+	var motion: Resource = _get_active_motion_profile()
+	_phase = fposmod(_phase + delta * motion.cycle_speed * _speed_ratio, 1.0)
 	_apply_pose()
 
 
@@ -188,36 +175,46 @@ func _apply_pose() -> void:
 	var right_arm := _find_first(_active_view, ["BodyMotion/TorsoPivot/RightShoulderAnchor/RightArmPivot", "BodyMotion/TorsoPivot/NearShoulderAnchor/NearArmPivot", "BodyMotion/RightArmPivot", "BodyMotion/RightArmMirrorAxis/RightArmPivot"])
 	var uses_forward_depth_projection := _active_view.name == &"FrontView"
 	var uses_profile_projection := _active_view.name == &"SideView"
+	var motion: Resource = _get_active_motion_profile()
 	if body_motion != null:
-		body_motion.position.y -= lift * body_bob_distance
+		body_motion.position.y -= lift * motion.body_bob_distance
 	if torso != null:
-		torso.rotation -= deg_to_rad(torso_twist_degrees) * wave
+		torso.rotation -= deg_to_rad(motion.torso_twist_degrees) * wave
 	if hips != null:
-		hips.rotation += deg_to_rad(hip_tilt_degrees) * wave
+		hips.rotation += deg_to_rad(motion.hip_tilt_degrees) * wave
 	if head != null:
-		head.rotation += deg_to_rad(head_counter_tilt_degrees) * wave
+		head.rotation += deg_to_rad(motion.head_counter_tilt_degrees) * wave
 	if left_leg != null:
 		if uses_forward_depth_projection:
-			left_leg.scale.y *= 1.0 + leg_depth_swing_ratio * wave
+			left_leg.scale.y *= 1.0 + motion.leg_depth_swing_ratio * wave
 		elif not uses_profile_projection:
-			left_leg.position.y += stride_distance * wave
-		left_leg.rotation += deg_to_rad(leg_swing_degrees) * wave
+			left_leg.position.y += motion.stride_distance * wave
+		left_leg.rotation += deg_to_rad(motion.leg_swing_degrees) * wave
 	if right_leg != null:
 		if uses_forward_depth_projection:
-			right_leg.scale.y *= 1.0 - leg_depth_swing_ratio * wave
+			right_leg.scale.y *= 1.0 - motion.leg_depth_swing_ratio * wave
 		elif not uses_profile_projection:
-			right_leg.position.y -= stride_distance * wave
-		_apply_opposed_rotation(right_leg, deg_to_rad(leg_swing_degrees) * wave)
+			right_leg.position.y -= motion.stride_distance * wave
+		_apply_opposed_rotation(right_leg, deg_to_rad(motion.leg_swing_degrees) * wave)
 	if left_arm != null:
 		if uses_forward_depth_projection:
-			left_arm.scale.y *= 1.0 - arm_depth_swing_ratio * wave
+			left_arm.scale.y *= 1.0 - motion.arm_depth_swing_ratio * wave
 			left_arm.z_index = _depth_layer(-wave)
-		left_arm.rotation -= deg_to_rad(arm_swing_degrees) * wave
+		left_arm.rotation -= deg_to_rad(motion.arm_swing_degrees) * wave
 	if right_arm != null:
 		if uses_forward_depth_projection:
-			right_arm.scale.y *= 1.0 + arm_depth_swing_ratio * wave
+			right_arm.scale.y *= 1.0 + motion.arm_depth_swing_ratio * wave
 			right_arm.z_index = _depth_layer(wave)
-		_apply_opposed_rotation(right_arm, -deg_to_rad(arm_swing_degrees) * wave)
+		_apply_opposed_rotation(right_arm, -deg_to_rad(motion.arm_swing_degrees) * wave)
+
+
+func _get_active_motion_profile():
+	if is_instance_valid(_active_view):
+		if _active_view.name == &"SideView":
+			return profile_motion_profile if profile_motion_profile != null else DEFAULT_PROFILE_MOTION
+		if _active_view.name == &"RearView":
+			return rear_motion_profile if rear_motion_profile != null else DEFAULT_REAR_MOTION
+	return forward_motion_profile if forward_motion_profile != null else DEFAULT_FORWARD_MOTION
 
 
 func _find_part(view: Node2D, direct_path: NodePath, mirrored_path: NodePath) -> Node2D:
