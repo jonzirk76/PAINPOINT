@@ -43,6 +43,12 @@ components preserve Volette's foreshortened gameplay silhouette, while the side
 profile retains lateral components. Symmetry is shared within a projection;
 geometry is not forced across incompatible projections.
 
+The profile implementation is a complete lateral assembly derived from
+`volette_visual.tscn`. It preserves distinct near/far leg shapes and depth
+layers, owns near/far shoulder and hip sockets, and flips as a complete assembly
+for the opposite side. Profile limbs rotate rigidly around their sockets; they
+do not use the forward view's projected-length depth mutation.
+
 ## Ownership
 
 The owning entity may call only:
@@ -80,6 +86,10 @@ commands and has no manager or orchestrator references.
   cross behind or above the torso according to their back/front phase. Small
   planar rotation is secondary. This is intentionally different from rotating
   the arms side-to-side like windshield wipers.
+- Editor previews restore canonical transforms and dynamic arm layers before a
+  scene save, then resume afterward. Animation extremes must never be serialized
+  and recaptured as biased rest poses; every appendage owns the complete signed
+  rear-to-front sine arc regardless of mirror state.
 - The front head half is adapted from the developed outline in
   `volette_visual.tscn`, then mirrored canonically instead of being redrawn as a
   generic oval.

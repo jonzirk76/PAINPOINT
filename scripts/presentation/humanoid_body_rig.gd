@@ -63,6 +63,16 @@ func _ready() -> void:
 	_update_processing()
 
 
+func _notification(what: int) -> void:
+	if not Engine.is_editor_hint() or _rest_transforms.is_empty():
+		return
+	if what == NOTIFICATION_EDITOR_PRE_SAVE or what == NOTIFICATION_EXIT_TREE:
+		_restore_rest_pose()
+		_reset_dynamic_depth_layers()
+	elif what == NOTIFICATION_EDITOR_POST_SAVE and animate_preview:
+		_apply_pose()
+
+
 func _process(delta: float) -> void:
 	if not Engine.is_editor_hint() or not animate_preview:
 		return
@@ -112,8 +122,12 @@ func _capture_rest_pose() -> void:
 			"BodyMotion/TorsoPivot/HeadAnchor/HeadPivot",
 			"BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/LeftHipSocket/LeftLegPivot",
 			"BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/RightHipSocket/RightLegPivot",
+			"BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/BackHipSocket/BackLegPivot",
+			"BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/FrontHipSocket/FrontLegPivot",
 			"BodyMotion/TorsoPivot/LeftShoulderAnchor/LeftArmPivot",
 			"BodyMotion/TorsoPivot/RightShoulderAnchor/RightArmPivot",
+			"BodyMotion/TorsoPivot/FarShoulderAnchor/FarArmPivot",
+			"BodyMotion/TorsoPivot/NearShoulderAnchor/NearArmPivot",
 			"BodyMotion/LeftLegPivot",
 			"BodyMotion/RightLegPivot",
 			"BodyMotion/RightLegMirrorAxis/RightLegPivot",
@@ -160,17 +174,20 @@ func _apply_pose() -> void:
 		_select_directional_view()
 	if not is_instance_valid(_active_view):
 		return
+	if _active_view.name == &"SideView":
+		_active_view.scale.x = -1.0 if _facing.x < 0.0 else 1.0
 	var wave := sin(_phase * TAU) * _speed_ratio
 	var lift := absf(sin(_phase * TAU * 0.65)) * _speed_ratio
 	var body_motion := _active_view.get_node_or_null("BodyMotion") as Node2D
 	var torso := _active_view.get_node_or_null("BodyMotion/TorsoPivot") as Node2D
 	var hips := _find_first(_active_view, ["BodyMotion/TorsoPivot/HipsAnchor/HipsPivot", "BodyMotion/PelvisPivot"])
 	var head := _find_first(_active_view, ["BodyMotion/TorsoPivot/HeadAnchor/HeadPivot", "BodyMotion/TorsoPivot/NeckPivot/HeadPivot"])
-	var left_leg := _find_first(_active_view, ["BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/LeftHipSocket/LeftLegPivot", "BodyMotion/LeftLegPivot"])
-	var right_leg := _find_first(_active_view, ["BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/RightHipSocket/RightLegPivot", "BodyMotion/RightLegPivot", "BodyMotion/RightLegMirrorAxis/RightLegPivot"])
-	var left_arm := _find_first(_active_view, ["BodyMotion/TorsoPivot/LeftShoulderAnchor/LeftArmPivot", "BodyMotion/LeftArmPivot"])
-	var right_arm := _find_first(_active_view, ["BodyMotion/TorsoPivot/RightShoulderAnchor/RightArmPivot", "BodyMotion/RightArmPivot", "BodyMotion/RightArmMirrorAxis/RightArmPivot"])
+	var left_leg := _find_first(_active_view, ["BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/LeftHipSocket/LeftLegPivot", "BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/BackHipSocket/BackLegPivot", "BodyMotion/LeftLegPivot"])
+	var right_leg := _find_first(_active_view, ["BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/RightHipSocket/RightLegPivot", "BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/FrontHipSocket/FrontLegPivot", "BodyMotion/RightLegPivot", "BodyMotion/RightLegMirrorAxis/RightLegPivot"])
+	var left_arm := _find_first(_active_view, ["BodyMotion/TorsoPivot/LeftShoulderAnchor/LeftArmPivot", "BodyMotion/TorsoPivot/FarShoulderAnchor/FarArmPivot", "BodyMotion/LeftArmPivot"])
+	var right_arm := _find_first(_active_view, ["BodyMotion/TorsoPivot/RightShoulderAnchor/RightArmPivot", "BodyMotion/TorsoPivot/NearShoulderAnchor/NearArmPivot", "BodyMotion/RightArmPivot", "BodyMotion/RightArmMirrorAxis/RightArmPivot"])
 	var uses_forward_depth_projection := _active_view.name == &"FrontView"
+	var uses_profile_projection := _active_view.name == &"SideView"
 	if body_motion != null:
 		body_motion.position.y -= lift * body_bob_distance
 	if torso != null:
@@ -182,13 +199,13 @@ func _apply_pose() -> void:
 	if left_leg != null:
 		if uses_forward_depth_projection:
 			left_leg.scale.y *= 1.0 + leg_depth_swing_ratio * wave
-		else:
+		elif not uses_profile_projection:
 			left_leg.position.y += stride_distance * wave
 		left_leg.rotation += deg_to_rad(leg_swing_degrees) * wave
 	if right_leg != null:
 		if uses_forward_depth_projection:
 			right_leg.scale.y *= 1.0 - leg_depth_swing_ratio * wave
-		else:
+		elif not uses_profile_projection:
 			right_leg.position.y -= stride_distance * wave
 		_apply_opposed_rotation(right_leg, deg_to_rad(leg_swing_degrees) * wave)
 	if left_arm != null:
@@ -229,6 +246,16 @@ func _depth_layer(depth_amount: float) -> int:
 	if depth_amount < -0.01:
 		return -1
 	return 0
+
+
+func _reset_dynamic_depth_layers() -> void:
+	for path in [
+		"FrontView/BodyMotion/TorsoPivot/LeftShoulderAnchor/LeftArmPivot",
+		"FrontView/BodyMotion/TorsoPivot/RightShoulderAnchor/RightArmPivot",
+	]:
+		var arm := get_node_or_null(NodePath(path)) as Node2D
+		if arm != null:
+			arm.z_index = 0
 
 
 func _restore_rest_pose() -> void:

@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[node name="ArmPivot" type="Node2D"]
+
+[node name="ArmMass" type="Polygon2D" parent="."]
+color = Color(0.027451, 0.298039, 0.603922, 1)
+polygon = PackedVector2Array(14, 7, 0, 0, -10, 0, -24, 18, -28, 42, -31, 68, -2, 72, 5, 46, 13, 27)
