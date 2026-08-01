@@ -44,7 +44,7 @@ class RegionPreview:
 	var edit_additive := false
 
 	func _ready() -> void:
-		custom_minimum_size = Vector2(260.0, 260.0)
+		custom_minimum_size = Vector2(260.0, 400.0)
 		size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		clip_contents = true
 		mouse_default_cursor_shape = Control.CURSOR_CROSS
