@@ -1,0 +1,38 @@
+[gd_scene format=3]
+
+[node name="CoreHalf" type="Node2D"]
+
+[node name="BackHairHalf" type="Polygon2D" parent="."]
+z_index = -3
+color = Color(0.105882, 0.070588, 0.207843, 1)
+polygon = PackedVector2Array(0, -54, -15, -50, -23, -39, -27, 12, -18, 24, 0, 24)
+
+[node name="PelvisHalf" type="Polygon2D" parent="."]
+position = Vector2(0, 14)
+color = Color(0.027451, 0.082353, 0.211765, 1)
+polygon = PackedVector2Array(0, -7, -20, -7, -18, 10, -10, 14, 0, 14)
+
+[node name="TorsoHalf" type="Polygon2D" parent="."]
+position = Vector2(0, 10)
+color = Color(0.019608, 0.188235, 0.501961, 1)
+polygon = PackedVector2Array(0, -35, -12, -35, -23, -29, -20, 3, -13, 10, 0, 10)
+
+[node name="BackArmorHalf" type="Polygon2D" parent="."]
+position = Vector2(0, 10)
+color = Color(0.070588, 0.086275, 0.145098, 1)
+polygon = PackedVector2Array(0, -25, -15, -25, -17, 2, -10, 7, 0, 7)
+
+[node name="NeckHalf" type="Polygon2D" parent="."]
+position = Vector2(0, -21)
+color = Color(0.768627, 0.501961, 0.47451, 1)
+polygon = PackedVector2Array(0, -6, -7, -6, -8, 8, 0, 8)
+
+[node name="HeadHalf" type="Polygon2D" parent="."]
+position = Vector2(0, -33)
+color = Color(0.768627, 0.501961, 0.47451, 1)
+polygon = PackedVector2Array(0, -24, -9, -24, -18, -17, -20, 6, -12, 19, 0, 19)
+
+[node name="HairCapHalf" type="Polygon2D" parent="."]
+position = Vector2(0, -33)
+color = Color(0.32549, 0.207843, 0.517647, 1)
+polygon = PackedVector2Array(0, -29, -9, -27, -18, -20, -21, -8, -22, 11, -14, 20, 0, 20)
