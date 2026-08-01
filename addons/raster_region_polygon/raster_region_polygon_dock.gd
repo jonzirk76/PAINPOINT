@@ -250,6 +250,7 @@ var _editor_interface: EditorInterface
 var _undo_redo: EditorUndoRedoManager
 var _model: RefCounted = SessionModel.new()
 var _controller: RefCounted = OperationController.new()
+var _viewport_edit_tool: RefCounted
 var _pending_plan: RefCounted
 var _trace_pieces: Array[PackedVector2Array] = []
 var _syncing_controls := false
@@ -273,11 +274,13 @@ var _name_conflict_warning: AcceptDialog
 
 func initialize(
 	editor_interface: EditorInterface,
-	undo_redo: EditorUndoRedoManager
+	undo_redo: EditorUndoRedoManager,
+	viewport_edit_tool: RefCounted
 ) -> void:
 	_editor_interface = editor_interface
 	_undo_redo = undo_redo
 	_controller.initialize(editor_interface, undo_redo)
+	_viewport_edit_tool = viewport_edit_tool
 
 
 func _ready() -> void:
@@ -299,6 +302,23 @@ func _ready() -> void:
 	edit_trace_button.text = "Edit Selected Traced Polygon"
 	edit_trace_button.pressed.connect(_edit_selected_trace)
 	add_child(edit_trace_button)
+
+	var vertex_edit_controls := HBoxContainer.new()
+	var vertex_edit_button := Button.new()
+	vertex_edit_button.text = "Edit Vertices"
+	vertex_edit_button.tooltip_text = "Box-select and move vertices of a plugin-generated Polygon2D."
+	vertex_edit_button.pressed.connect(_begin_vertex_edit)
+	vertex_edit_controls.add_child(vertex_edit_button)
+	var delete_vertices_button := Button.new()
+	delete_vertices_button.text = "Delete Selected"
+	delete_vertices_button.tooltip_text = "Delete the selected vertices as one validated undoable edit."
+	delete_vertices_button.pressed.connect(_delete_selected_vertices)
+	vertex_edit_controls.add_child(delete_vertices_button)
+	var stop_vertex_edit_button := Button.new()
+	stop_vertex_edit_button.text = "Stop"
+	stop_vertex_edit_button.pressed.connect(_stop_vertex_edit)
+	vertex_edit_controls.add_child(stop_vertex_edit_button)
+	add_child(vertex_edit_controls)
 
 	_source_label = Label.new()
 	_source_label.text = "Source: none"
@@ -450,6 +470,27 @@ func _make_label(text: String) -> Label:
 	var label := Label.new()
 	label.text = text
 	return label
+
+
+func _begin_vertex_edit() -> void:
+	var selection := _editor_interface.get_selection().get_selected_nodes()
+	if selection.size() != 1 or not selection[0] is Polygon2D:
+		show_vertex_edit_status("Select exactly one plugin-generated Polygon2D.")
+		return
+	_viewport_edit_tool.begin(selection[0] as Polygon2D)
+
+
+func _delete_selected_vertices() -> void:
+	_viewport_edit_tool.delete_selected()
+
+
+func _stop_vertex_edit() -> void:
+	_viewport_edit_tool.end()
+
+
+func show_vertex_edit_status(message: String) -> void:
+	if is_instance_valid(_status_label):
+		_status_label.text = message
 
 
 func _use_selected_sprite() -> void:

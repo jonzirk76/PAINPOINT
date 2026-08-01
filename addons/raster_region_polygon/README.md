@@ -58,6 +58,30 @@ After every accepted mutation, the model is synchronized from the scene again.
 Generated nodes receive stable trace IDs; node names remain user-facing labels
 rather than hidden identity or command routing.
 
+### Generated polygon vertex editing
+
+The plugin includes a deliberately bounded vertex-edit mode for polygons it
+generated. Select one generated `Polygon2D`, click **Edit Vertices**, then:
+
+- Drag empty canvas space to box-select vertices. Hold Shift to add a box to
+  the current selection.
+- Click a vertex to select it, or Shift-click to add it, then drag any selected
+  vertex to move the entire selection.
+- Press Delete/Backspace or click **Delete Selected** to remove the selection.
+- Press Escape to clear the selection and **Stop** to leave vertex-edit mode.
+
+Viewport gestures never mutate scene geometry directly. `PolygonEditSession`
+owns the target, baseline, selection, and mode; `PolygonViewportEditTool`
+translates editor input into proposals; `PolygonEditChecker` verifies target
+identity and geometry; and `PolygonEditController` applies accepted plans as
+single editor undo/redo actions. A changed polygon remains associated with its
+trace recipe but is intentionally classified as manually edited, so later
+regeneration retains its existing replacement warning.
+
+The initial editor only supports box selection, group movement, and group
+deletion. It rejects edits that leave a piece with fewer than three vertices
+or that Godot cannot triangulate. It does not edit unmanaged `Polygon2D` nodes.
+
 To revise a generated polygon:
 
 1. Select the traced `Polygon2D`.
