@@ -1,18 +1,18 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://dqy8m8ars660f"]
 
-[node name="HairOverlay" type="Node2D"]
+[node name="HairOverlay" type="Node2D" unique_id=1848377139]
 
-[node name="BackHair" type="Polygon2D" parent="."]
-z_index = -2
+[node name="BackHair" type="Polygon2D" parent="." unique_id=192135975]
+z_index = -20
 color = Color(0.105882, 0.070588, 0.207843, 1)
 polygon = PackedVector2Array(0, -113, -19, -111, -38, -98, -50, -82, -62, -48, -96, -8, -99, 9, -104, 20, -104, 27, -95, 30, -88, 30, -80, 33, 0, 21, 80, 33, 88, 30, 95, 30, 104, 27, 104, 20, 99, 9, 96, -8, 62, -48, 50, -82, 38, -98, 19, -111)
 
-[node name="ScalpHair" type="Polygon2D" parent="."]
+[node name="ScalpHair" type="Polygon2D" parent="." unique_id=883581077]
 z_index = 1
 color = Color(0.32549, 0.207843, 0.517647, 1)
 polygon = PackedVector2Array(0, -115, -18, -113, -36, -103, -45, -92, -52, -74, -55, -55, -41, -28, -32, -62, 0, -63, 32, -62, 41, -28, 55, -55, 52, -74, 45, -92, 36, -103, 18, -113)
 
-[node name="Bangs" type="Polygon2D" parent="."]
+[node name="Bangs" type="Polygon2D" parent="." unique_id=536567660]
 z_index = 2
 color = Color(0.235294, 0.156863, 0.435294, 1)
 polygon = PackedVector2Array(0, -95, -17, -95, -37, -79, -53, -53, -45, -25, -34, -11, -22, -10, -30, -18, -33, -27, -24, -31, -17, -41, -13, -27, -2, -13, 14, -28, 20, -41, 24, -33, 34, -24, 31, -16, 26, -12, 41, -15, 49, -28, 55, -55, 40, -82, 19, -97)

@@ -1,12 +1,14 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://ukf8whyci1fp"]
 
-[node name="Hips" type="Node2D"]
+[node name="Hips" type="Node2D" unique_id=1232121952]
 
-[node name="HipsMass" type="Polygon2D" parent="."]
+[node name="HipsMass" type="Polygon2D" parent="." unique_id=1873897584]
+position = Vector2(-19, -48.5)
 color = Color(0.103744, 0.103744, 0.103744, 1)
 polygon = PackedVector2Array(44, 46.5, 27, 41.5, 9, 43.5, -3, 48.5, -6, 60.5, 22, 65.5, 38, 62.5)
 
-[node name="Shorts" type="Polygon2D" parent="."]
+[node name="Shorts" type="Polygon2D" parent="." unique_id=816572160]
 z_index = 1
+position = Vector2(-19, -48.5)
 color = Color(0.027451, 0.129412, 0.278431, 1)
 polygon = PackedVector2Array(44, 45.5, 31, 41.5, 5, 43.5, -5, 51.5, -7, 64.5, 15, 70.5, 39, 63.5)

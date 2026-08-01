@@ -1,7 +1,7 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://xqhwfdhxl416"]
 
-[node name="ArmPivot" type="Node2D"]
+[node name="ArmPivot" type="Node2D" unique_id=283852771]
 
-[node name="ArmMass" type="Polygon2D" parent="."]
+[node name="ArmMass" type="Polygon2D" parent="." unique_id=1930837147]
 color = Color(0.027451, 0.298039, 0.603922, 1)
-polygon = PackedVector2Array(14, 7, 0, 0, -10, 0, -24, 18, -28, 42, -31, 68, -2, 72, 5, 46, 13, 27)
+polygon = PackedVector2Array(11, 3, 0, 0, -10, 2, -19, 17, -21, 45, -13, 73, 14, 73, 7, 45, 14, 17)

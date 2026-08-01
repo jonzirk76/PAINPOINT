@@ -10,14 +10,16 @@
 [ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_front_torso_half_prototype.tscn" id="9_front_torso"]
 [ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_front_head_half_prototype.tscn" id="10_front_head"]
 [ext_resource type="PackedScene" uid="uid://dqy8m8ars660f" path="res://scenes/characters/rig_parts/humanoid_front_hair_overlay_prototype.tscn" id="11_front_hair"]
-[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_profile_body_assembly_prototype.tscn" id="12_profile"]
+[ext_resource type="PackedScene" uid="uid://caev5bei48pj8" path="res://scenes/characters/rig_parts/humanoid_profile_body_assembly_prototype.tscn" id="12_profile"]
 [ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_three_quarter_down_left_body_assembly_prototype.tscn" id="13_three_quarter"]
 [ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_three_quarter_up_right_body_assembly_prototype.tscn" id="14_rear_three_quarter"]
 
 [node name="HumanoidBodyRigPrototype" type="Node2D" unique_id=1346914329]
 script = ExtResource("1_rig")
+preview_direction = 1
 
 [node name="FrontView" type="Node2D" parent="." unique_id=554173520]
+visible = false
 
 [node name="BodyMotion" type="Node2D" parent="FrontView" unique_id=1234460923]
 
@@ -88,6 +90,7 @@ scale = Vector2(-1, 1)
 position = Vector2(0, 10)
 
 [node name="HairOverlay" parent="FrontView/BodyMotion/TorsoPivot/HeadAnchor/HeadPivot" unique_id=494783335 instance=ExtResource("11_front_hair")]
+visible = false
 position = Vector2(0, 10)
 
 [node name="FrontLayer" type="Node2D" parent="FrontView" unique_id=918835806]
@@ -97,15 +100,14 @@ visible = false
 
 [node name="BodyMotion" parent="SideView" unique_id=236794024 instance=ExtResource("12_profile")]
 
-[node name="ThreeQuarterView" type="Node2D" parent="."]
+[node name="ThreeQuarterView" type="Node2D" parent="." unique_id=1083295703]
+
+[node name="BodyMotion" parent="ThreeQuarterView" unique_id=1302564928 instance=ExtResource("13_three_quarter")]
+
+[node name="RearThreeQuarterView" type="Node2D" parent="." unique_id=1223819758]
 visible = false
 
-[node name="BodyMotion" parent="ThreeQuarterView" instance=ExtResource("13_three_quarter")]
-
-[node name="RearThreeQuarterView" type="Node2D" parent="."]
-visible = false
-
-[node name="BodyMotion" parent="RearThreeQuarterView" instance=ExtResource("14_rear_three_quarter")]
+[node name="BodyMotion" parent="RearThreeQuarterView" unique_id=1693384674 instance=ExtResource("14_rear_three_quarter")]
 
 [node name="RearView" type="Node2D" parent="." unique_id=696323846]
 visible = false
