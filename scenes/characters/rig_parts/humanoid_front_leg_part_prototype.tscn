@@ -1,7 +1,6 @@
 [gd_scene format=3]
 
 [node name="LegPivot" type="Node2D"]
-position = Vector2(-26.5, 58)
 
 [node name="UpperLeg" type="Polygon2D" parent="."]
 z_index = -3

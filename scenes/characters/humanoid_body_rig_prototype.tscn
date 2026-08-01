@@ -1,12 +1,15 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/presentation/humanoid_body_rig.gd" id="1_rig"]
 [ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_leg_part_prototype.tscn" id="2_leg"]
 [ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_arm_part_prototype.tscn" id="3_arm"]
-[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_front_core_half_prototype.tscn" id="4_front_core"]
 [ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_rear_core_half_prototype.tscn" id="5_rear_core"]
 [ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_front_leg_part_prototype.tscn" id="6_front_leg"]
 [ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_front_arm_part_prototype.tscn" id="7_front_arm"]
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_front_hips_half_prototype.tscn" id="8_front_hips"]
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_front_torso_half_prototype.tscn" id="9_front_torso"]
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_front_head_half_prototype.tscn" id="10_front_head"]
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_front_hair_overlay_prototype.tscn" id="11_front_hair"]
 
 [node name="HumanoidBodyRigPrototype" type="Node2D"]
 script = ExtResource("1_rig")
@@ -16,32 +19,73 @@ script = ExtResource("1_rig")
 [node name="BodyMotion" type="Node2D" parent="FrontView"]
 
 [node name="TorsoPivot" type="Node2D" parent="FrontView/BodyMotion"]
+position = Vector2(0, 15)
+
+[node name="HipsAnchor" type="Node2D" parent="FrontView/BodyMotion/TorsoPivot"]
+position = Vector2(0, 25)
+z_index = -2
+
+[node name="HipsPivot" type="Node2D" parent="FrontView/BodyMotion/TorsoPivot/HipsAnchor"]
+
+[node name="PrimaryHipsHalf" parent="FrontView/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot" instance=ExtResource("8_front_hips")]
+position = Vector2(0, -40)
+
+[node name="HipsMirrorAxis" type="Node2D" parent="FrontView/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot"]
+scale = Vector2(-1, 1)
+
+[node name="MirroredHipsHalf" parent="FrontView/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/HipsMirrorAxis" instance=ExtResource("8_front_hips")]
+position = Vector2(0, -40)
+
+[node name="LeftHipSocket" type="Node2D" parent="FrontView/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot"]
+position = Vector2(-26.5, 18)
+
+[node name="LeftLegPivot" parent="FrontView/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/LeftHipSocket" instance=ExtResource("6_front_leg")]
+z_index = -4
+
+[node name="RightHipSocket" type="Node2D" parent="FrontView/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot"]
+position = Vector2(26.5, 18)
+scale = Vector2(-1, 1)
+
+[node name="RightLegPivot" parent="FrontView/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/RightHipSocket" instance=ExtResource("6_front_leg")]
+z_index = -4
+
+[node name="PrimaryTorsoHalf" parent="FrontView/BodyMotion/TorsoPivot" instance=ExtResource("9_front_torso")]
+position = Vector2(0, -15)
+
+[node name="TorsoMirrorAxis" type="Node2D" parent="FrontView/BodyMotion/TorsoPivot"]
+scale = Vector2(-1, 1)
+
+[node name="MirroredTorsoHalf" parent="FrontView/BodyMotion/TorsoPivot/TorsoMirrorAxis" instance=ExtResource("9_front_torso")]
+position = Vector2(0, -15)
+
+[node name="LeftShoulderAnchor" type="Node2D" parent="FrontView/BodyMotion/TorsoPivot"]
+position = Vector2(-43, -29)
+
+[node name="LeftArmPivot" parent="FrontView/BodyMotion/TorsoPivot/LeftShoulderAnchor" instance=ExtResource("7_front_arm")]
+
+[node name="RightShoulderAnchor" type="Node2D" parent="FrontView/BodyMotion/TorsoPivot"]
+position = Vector2(43, -29)
+scale = Vector2(-1, 1)
+
+[node name="RightArmPivot" parent="FrontView/BodyMotion/TorsoPivot/RightShoulderAnchor" instance=ExtResource("7_front_arm")]
+
+[node name="HeadAnchor" type="Node2D" parent="FrontView/BodyMotion/TorsoPivot"]
+position = Vector2(0, -25)
+z_index = 2
+
+[node name="HeadPivot" type="Node2D" parent="FrontView/BodyMotion/TorsoPivot/HeadAnchor"]
+
+[node name="PrimaryHeadHalf" parent="FrontView/BodyMotion/TorsoPivot/HeadAnchor/HeadPivot" instance=ExtResource("10_front_head")]
 position = Vector2(0, 10)
 
-[node name="PrimaryCoreHalf" parent="FrontView/BodyMotion/TorsoPivot" instance=ExtResource("4_front_core")]
-position = Vector2(0, -10)
-
-[node name="CoreMirrorAxis" type="Node2D" parent="FrontView/BodyMotion/TorsoPivot"]
+[node name="HeadMirrorAxis" type="Node2D" parent="FrontView/BodyMotion/TorsoPivot/HeadAnchor/HeadPivot"]
 scale = Vector2(-1, 1)
 
-[node name="MirroredCoreHalf" parent="FrontView/BodyMotion/TorsoPivot/CoreMirrorAxis" instance=ExtResource("4_front_core")]
-position = Vector2(0, -10)
+[node name="MirroredHeadHalf" parent="FrontView/BodyMotion/TorsoPivot/HeadAnchor/HeadPivot/HeadMirrorAxis" instance=ExtResource("10_front_head")]
+position = Vector2(0, 10)
 
-[node name="LeftLegPivot" parent="FrontView/BodyMotion" instance=ExtResource("6_front_leg")]
-z_index = -4
-
-[node name="RightLegMirrorAxis" type="Node2D" parent="FrontView/BodyMotion"]
-z_index = -4
-scale = Vector2(-1, 1)
-
-[node name="RightLegPivot" parent="FrontView/BodyMotion/RightLegMirrorAxis" instance=ExtResource("6_front_leg")]
-
-[node name="LeftArmPivot" parent="FrontView/BodyMotion" instance=ExtResource("7_front_arm")]
-
-[node name="RightArmMirrorAxis" type="Node2D" parent="FrontView/BodyMotion"]
-scale = Vector2(-1, 1)
-
-[node name="RightArmPivot" parent="FrontView/BodyMotion/RightArmMirrorAxis" instance=ExtResource("7_front_arm")]
+[node name="HairOverlay" parent="FrontView/BodyMotion/TorsoPivot/HeadAnchor/HeadPivot" instance=ExtResource("11_front_hair")]
+position = Vector2(0, 10)
 
 [node name="FrontLayer" type="Node2D" parent="FrontView"]
 

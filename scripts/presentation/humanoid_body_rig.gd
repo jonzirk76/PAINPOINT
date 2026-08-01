@@ -23,23 +23,32 @@ class_name HumanoidBodyRig
 ## Cycles per second for the procedural prototype walk.
 @export_range(0.1, 8.0, 0.1) var cycle_speed := 1.7
 
-## Maximum rigid upper-leg rotation in degrees.
-@export_range(0.0, 30.0, 0.1) var leg_swing_degrees := 1.3
+## Maximum rotation of each complete stiff leg around its hip socket.
+@export_range(0.0, 30.0, 0.1) var leg_swing_degrees := 4.0
 
 ## Opposing local-pixel leg travel, matched to the established Volette walk preview.
 @export_range(0.0, 24.0, 0.5) var stride_distance := 8.5
 
-## Upward travel applied to the ankle of the recovering leg.
-@export_range(0.0, 12.0, 0.25) var foot_lift_distance := 2.5
+## Projected length change used to imply a stiff leg swinging in depth from its fixed hip socket.
+@export_range(0.0, 0.35, 0.01) var leg_depth_swing_ratio := 0.12
 
-## Maximum elbow counter-swing in degrees.
-@export_range(0.0, 24.0, 0.5) var arm_swing_degrees := 3.0
+## Maximum rotation of each complete stiff arm around its shoulder anchor.
+@export_range(0.0, 24.0, 0.5) var arm_swing_degrees := 5.0
+
+## Projected length change used to imply a stiff arm swinging from back to front.
+@export_range(0.0, 0.35, 0.01) var arm_depth_swing_ratio := 0.14
+
+## Maximum hips counter-tilt relative to the torso.
+@export_range(0.0, 12.0, 0.25) var hip_tilt_degrees := 3.0
 
 ## Vertical body travel at full locomotion speed.
 @export_range(0.0, 8.0, 0.25) var body_bob_distance := 2.0
 
 ## Small torso counter-rotation at full locomotion speed.
-@export_range(0.0, 8.0, 0.25) var torso_twist_degrees := 3.0
+@export_range(0.0, 8.0, 0.25) var torso_twist_degrees := 1.5
+
+## Independent head stabilization around its neck anchor during the stiff walk.
+@export_range(0.0, 8.0, 0.25) var head_counter_tilt_degrees := 2.0
 
 var _phase := 0.0
 var _speed_ratio := 0.0
@@ -99,12 +108,15 @@ func _capture_rest_pose() -> void:
 		for relative_path in [
 			"BodyMotion",
 			"BodyMotion/TorsoPivot",
+			"BodyMotion/TorsoPivot/HipsAnchor/HipsPivot",
+			"BodyMotion/TorsoPivot/HeadAnchor/HeadPivot",
+			"BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/LeftHipSocket/LeftLegPivot",
+			"BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/RightHipSocket/RightLegPivot",
+			"BodyMotion/TorsoPivot/LeftShoulderAnchor/LeftArmPivot",
+			"BodyMotion/TorsoPivot/RightShoulderAnchor/RightArmPivot",
 			"BodyMotion/LeftLegPivot",
 			"BodyMotion/RightLegPivot",
 			"BodyMotion/RightLegMirrorAxis/RightLegPivot",
-			"BodyMotion/LeftLegPivot/KneePivot/AnklePivot",
-			"BodyMotion/RightLegPivot/KneePivot/AnklePivot",
-			"BodyMotion/RightLegMirrorAxis/RightLegPivot/KneePivot/AnklePivot",
 			"BodyMotion/LeftArmPivot",
 			"BodyMotion/LeftArmPivot/ElbowPivot",
 			"BodyMotion/RightArmPivot",
@@ -152,30 +164,43 @@ func _apply_pose() -> void:
 	var lift := absf(sin(_phase * TAU * 0.65)) * _speed_ratio
 	var body_motion := _active_view.get_node_or_null("BodyMotion") as Node2D
 	var torso := _active_view.get_node_or_null("BodyMotion/TorsoPivot") as Node2D
-	var left_leg := _active_view.get_node_or_null("BodyMotion/LeftLegPivot") as Node2D
-	var right_leg := _find_part(_active_view, "BodyMotion/RightLegPivot", "BodyMotion/RightLegMirrorAxis/RightLegPivot")
-	var left_arm := _active_view.get_node_or_null("BodyMotion/LeftArmPivot") as Node2D
-	var right_arm := _find_part(_active_view, "BodyMotion/RightArmPivot", "BodyMotion/RightArmMirrorAxis/RightArmPivot")
-	var left_ankle := _active_view.get_node_or_null("BodyMotion/LeftLegPivot/KneePivot/AnklePivot") as Node2D
-	var right_ankle := _find_part(_active_view, "BodyMotion/RightLegPivot/KneePivot/AnklePivot", "BodyMotion/RightLegMirrorAxis/RightLegPivot/KneePivot/AnklePivot")
+	var hips := _find_first(_active_view, ["BodyMotion/TorsoPivot/HipsAnchor/HipsPivot", "BodyMotion/PelvisPivot"])
+	var head := _find_first(_active_view, ["BodyMotion/TorsoPivot/HeadAnchor/HeadPivot", "BodyMotion/TorsoPivot/NeckPivot/HeadPivot"])
+	var left_leg := _find_first(_active_view, ["BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/LeftHipSocket/LeftLegPivot", "BodyMotion/LeftLegPivot"])
+	var right_leg := _find_first(_active_view, ["BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/RightHipSocket/RightLegPivot", "BodyMotion/RightLegPivot", "BodyMotion/RightLegMirrorAxis/RightLegPivot"])
+	var left_arm := _find_first(_active_view, ["BodyMotion/TorsoPivot/LeftShoulderAnchor/LeftArmPivot", "BodyMotion/LeftArmPivot"])
+	var right_arm := _find_first(_active_view, ["BodyMotion/TorsoPivot/RightShoulderAnchor/RightArmPivot", "BodyMotion/RightArmPivot", "BodyMotion/RightArmMirrorAxis/RightArmPivot"])
+	var uses_forward_depth_projection := _active_view.name == &"FrontView"
 	if body_motion != null:
 		body_motion.position.y -= lift * body_bob_distance
 	if torso != null:
 		torso.rotation -= deg_to_rad(torso_twist_degrees) * wave
+	if hips != null:
+		hips.rotation += deg_to_rad(hip_tilt_degrees) * wave
+	if head != null:
+		head.rotation += deg_to_rad(head_counter_tilt_degrees) * wave
 	if left_leg != null:
-		left_leg.position.y += stride_distance * wave
+		if uses_forward_depth_projection:
+			left_leg.scale.y *= 1.0 + leg_depth_swing_ratio * wave
+		else:
+			left_leg.position.y += stride_distance * wave
 		left_leg.rotation += deg_to_rad(leg_swing_degrees) * wave
 	if right_leg != null:
-		right_leg.position.y -= stride_distance * wave
-		right_leg.rotation -= deg_to_rad(leg_swing_degrees) * wave
-	if left_ankle != null and wave > 0.0:
-		left_ankle.position.y -= foot_lift_distance * wave
-	if right_ankle != null and wave < 0.0:
-		right_ankle.position.y += foot_lift_distance * wave
+		if uses_forward_depth_projection:
+			right_leg.scale.y *= 1.0 - leg_depth_swing_ratio * wave
+		else:
+			right_leg.position.y -= stride_distance * wave
+		_apply_opposed_rotation(right_leg, deg_to_rad(leg_swing_degrees) * wave)
 	if left_arm != null:
+		if uses_forward_depth_projection:
+			left_arm.scale.y *= 1.0 - arm_depth_swing_ratio * wave
+			left_arm.z_index = _depth_layer(-wave)
 		left_arm.rotation -= deg_to_rad(arm_swing_degrees) * wave
 	if right_arm != null:
-		right_arm.rotation += deg_to_rad(arm_swing_degrees) * wave
+		if uses_forward_depth_projection:
+			right_arm.scale.y *= 1.0 + arm_depth_swing_ratio * wave
+			right_arm.z_index = _depth_layer(wave)
+		_apply_opposed_rotation(right_arm, -deg_to_rad(arm_swing_degrees) * wave)
 
 
 func _find_part(view: Node2D, direct_path: NodePath, mirrored_path: NodePath) -> Node2D:
@@ -183,6 +208,27 @@ func _find_part(view: Node2D, direct_path: NodePath, mirrored_path: NodePath) ->
 	if part == null:
 		part = view.get_node_or_null(mirrored_path) as Node2D
 	return part
+
+
+func _find_first(view: Node2D, paths: Array) -> Node2D:
+	for path in paths:
+		var part := view.get_node_or_null(NodePath(path)) as Node2D
+		if part != null:
+			return part
+	return null
+
+
+func _apply_opposed_rotation(part: Node2D, visual_angle: float) -> void:
+	var mirrored := part.global_transform.determinant() < 0.0
+	part.rotation += visual_angle if not mirrored else -visual_angle
+
+
+func _depth_layer(depth_amount: float) -> int:
+	if depth_amount > 0.01:
+		return 1
+	if depth_amount < -0.01:
+		return -1
+	return 0
 
 
 func _restore_rest_pose() -> void:
