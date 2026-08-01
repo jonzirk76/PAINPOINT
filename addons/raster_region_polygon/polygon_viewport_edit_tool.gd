@@ -85,6 +85,15 @@ func get_selected_indices() -> PackedInt32Array:
 	return session.selected_indices.duplicate()
 
 
+func get_polygon_pieces() -> Array[PackedInt32Array]:
+	if not active or not is_instance_valid(session.target):
+		return []
+	var pieces: Array[PackedInt32Array] = session.target.polygons.duplicate(true)
+	if pieces.is_empty():
+		pieces = [PackedInt32Array(range(session.target.polygon.size()))]
+	return pieces
+
+
 func select_vertex(index: int, additive: bool) -> void:
 	if not active or index < 0 or index >= session.target.polygon.size():
 		return

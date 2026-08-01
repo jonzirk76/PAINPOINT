@@ -36,6 +36,7 @@ class RegionPreview:
 	var vertex_edit_enabled := false
 	var edit_vertices := PackedVector2Array()
 	var edit_selected := PackedInt32Array()
+	var edit_pieces: Array[PackedInt32Array] = []
 	var edit_drag_start := Vector2.ZERO
 	var edit_drag_end := Vector2.ZERO
 	var edit_dragging_box := false
@@ -69,11 +70,13 @@ class RegionPreview:
 	func set_vertex_edit(
 		enabled: bool,
 		vertices: PackedVector2Array = PackedVector2Array(),
-		selected: PackedInt32Array = PackedInt32Array()
+		selected: PackedInt32Array = PackedInt32Array(),
+		pieces: Array[PackedInt32Array] = []
 	) -> void:
 		vertex_edit_enabled = enabled
 		edit_vertices = vertices.duplicate()
 		edit_selected = selected.duplicate()
+		edit_pieces = pieces.duplicate(true)
 		edit_dragging_box = false
 		edit_dragging_vertices = false
 		queue_redraw()
@@ -302,22 +305,42 @@ class RegionPreview:
 					true
 				)
 
-		for polygon in polygons:
-			if polygon.size() < 3:
-				continue
-			var preview_points := PackedVector2Array()
-			for point in polygon:
-				preview_points.append(image_rect.position + point * scale_factor)
-			draw_polyline(preview_points, Color(0.1, 1.0, 0.65), 2.0, true)
-			draw_line(
-				preview_points[preview_points.size() - 1],
-				preview_points[0],
-				Color(0.1, 1.0, 0.65),
-				2.0,
-				true
-			)
+		if not vertex_edit_enabled:
+			for polygon in polygons:
+				if polygon.size() < 3:
+					continue
+				var preview_points := PackedVector2Array()
+				for point in polygon:
+					preview_points.append(image_rect.position + point * scale_factor)
+				draw_polyline(preview_points, Color(0.1, 1.0, 0.65), 2.0, true)
+				draw_line(
+					preview_points[preview_points.size() - 1],
+					preview_points[0],
+					Color(0.1, 1.0, 0.65),
+					2.0,
+					true
+				)
 
 		if vertex_edit_enabled:
+			for piece in edit_pieces:
+				if piece.size() < 3:
+					continue
+				var live_outline := PackedVector2Array()
+				for index in piece:
+					if index >= 0 and index < edit_vertices.size():
+						live_outline.append(
+							image_rect.position + edit_vertices[index] * scale_factor
+						)
+				if live_outline.size() < 3:
+					continue
+				draw_polyline(live_outline, Color(1.0, 0.55, 0.15), 2.0, true)
+				draw_line(
+					live_outline[live_outline.size() - 1],
+					live_outline[0],
+					Color(1.0, 0.55, 0.15),
+					2.0,
+					true
+				)
 			for index in edit_vertices.size():
 				var edit_point := image_rect.position + edit_vertices[index] * scale_factor
 				if edit_dragging_vertices and edit_selected.has(index):
@@ -337,7 +360,7 @@ class RegionPreview:
 				draw_rect(selection_rect, Color(0.2, 0.7, 1.0, 0.14), true)
 				draw_rect(selection_rect, Color(0.2, 0.7, 1.0), false, 1.5)
 
-		if selected_point.x >= 0:
+		if selected_point.x >= 0 and not vertex_edit_enabled:
 			var marker := (
 				image_rect.position
 				+ (Vector2(selected_point) + Vector2(0.5, 0.5)) * scale_factor
@@ -633,7 +656,8 @@ func _refresh_vertex_preview() -> void:
 	_preview.set_vertex_edit(
 		true,
 		_viewport_edit_tool.get_image_vertices(_model.draft.source_image.get_size()),
-		_viewport_edit_tool.get_selected_indices()
+		_viewport_edit_tool.get_selected_indices(),
+		_viewport_edit_tool.get_polygon_pieces()
 	)
 
 
