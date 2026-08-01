@@ -61,7 +61,8 @@ rather than hidden identity or command routing.
 ### Generated polygon vertex editing
 
 The plugin includes a deliberately bounded vertex-edit mode for polygons it
-generated. Select one generated `Polygon2D`, click **Edit Vertices**, then:
+generated. Select one generated `Polygon2D`, click **Edit Vertices**, then use
+the handles inside the dock preview (not Godot's main 2D viewport):
 
 - Drag empty canvas space to box-select vertices. Hold Shift to add a box to
   the current selection.

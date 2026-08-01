@@ -33,15 +33,14 @@ func _exit_tree() -> void:
 func _forward_canvas_gui_input(event: InputEvent) -> bool:
 	if _viewport_edit_tool == null:
 		return false
+	# Pointer editing belongs to the dock preview. Only forward keyboard actions
+	# from the 2D viewport so Godot retains its normal node-selection behavior.
+	if not event is InputEventKey:
+		return false
 	var handled: bool = _viewport_edit_tool.forward_input(event)
 	if handled:
 		update_overlays()
 	return handled
-
-
-func _forward_canvas_draw_over_viewport(overlay: Control) -> void:
-	if _viewport_edit_tool != null:
-		_viewport_edit_tool.draw_overlay(overlay)
 
 
 func _on_edit_tool_state_changed(message: String) -> void:

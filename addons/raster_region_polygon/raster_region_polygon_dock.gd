@@ -14,6 +14,9 @@ class RegionPreview:
 	signal zoom_changed(percent: int)
 	signal limit_polygon_changed(points: PackedVector2Array)
 	signal limit_drawing_finished
+	signal edit_vertex_selected(index: int, additive: bool)
+	signal edit_box_selected(rect: Rect2, additive: bool)
+	signal edit_vertices_moved(image_delta: Vector2)
 
 	const MIN_ZOOM := 1.0
 	const MAX_ZOOM := 32.0
@@ -30,9 +33,18 @@ class RegionPreview:
 	var limit_polygon := PackedVector2Array()
 	var limit_drawing_enabled := false
 	var is_drawing_limit := false
+	var vertex_edit_enabled := false
+	var edit_vertices := PackedVector2Array()
+	var edit_selected := PackedInt32Array()
+	var edit_drag_start := Vector2.ZERO
+	var edit_drag_end := Vector2.ZERO
+	var edit_dragging_box := false
+	var edit_dragging_vertices := false
+	var edit_additive := false
 
 	func _ready() -> void:
 		custom_minimum_size = Vector2(260.0, 260.0)
+		size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		clip_contents = true
 		mouse_default_cursor_shape = Control.CURSOR_CROSS
 		resized.connect(queue_redraw)
@@ -44,6 +56,7 @@ class RegionPreview:
 		limit_polygon.clear()
 		limit_drawing_enabled = false
 		is_drawing_limit = false
+		vertex_edit_enabled = false
 		selected_point = Vector2i(-1, -1)
 		fit_view()
 		queue_redraw()
@@ -51,6 +64,18 @@ class RegionPreview:
 	func set_trace(points: Array[PackedVector2Array], seed: Vector2i) -> void:
 		polygons = points
 		selected_point = seed
+		queue_redraw()
+
+	func set_vertex_edit(
+		enabled: bool,
+		vertices: PackedVector2Array = PackedVector2Array(),
+		selected: PackedInt32Array = PackedInt32Array()
+	) -> void:
+		vertex_edit_enabled = enabled
+		edit_vertices = vertices.duplicate()
+		edit_selected = selected.duplicate()
+		edit_dragging_box = false
+		edit_dragging_vertices = false
 		queue_redraw()
 
 	func set_limit_polygon(points: PackedVector2Array) -> void:
@@ -66,6 +91,9 @@ class RegionPreview:
 		queue_redraw()
 
 	func _gui_input(event: InputEvent) -> void:
+		if vertex_edit_enabled and _handle_vertex_edit_input(event):
+			accept_event()
+			return
 		if event is InputEventMouseMotion and is_drawing_limit:
 			var draw_motion := event as InputEventMouseMotion
 			if image_rect.has_point(draw_motion.position):
@@ -128,6 +156,57 @@ class RegionPreview:
 			clampi(int(image_position.y), 0, image.get_height() - 1)
 		)
 		image_point_selected.emit(point)
+
+	func _handle_vertex_edit_input(event: InputEvent) -> bool:
+		if event is InputEventMouseMotion:
+			if edit_dragging_box or edit_dragging_vertices:
+				edit_drag_end = (event as InputEventMouseMotion).position
+				queue_redraw()
+				return true
+			return false
+		if not event is InputEventMouseButton:
+			return false
+		var mouse := event as InputEventMouseButton
+		if mouse.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN, MOUSE_BUTTON_MIDDLE]:
+			return false
+		if mouse.button_index != MOUSE_BUTTON_LEFT:
+			return false
+		if mouse.pressed:
+			edit_drag_start = mouse.position
+			edit_drag_end = mouse.position
+			edit_additive = mouse.shift_pressed
+			var hit_index := _find_edit_vertex(mouse.position)
+			edit_dragging_vertices = hit_index >= 0 and edit_selected.has(hit_index)
+			if hit_index >= 0 and not edit_dragging_vertices:
+				edit_vertex_selected.emit(hit_index, edit_additive)
+				edit_dragging_vertices = true
+			else:
+				edit_dragging_box = hit_index < 0
+			return true
+		if edit_dragging_vertices:
+			edit_dragging_vertices = false
+			var image_delta := (edit_drag_end - edit_drag_start) / _image_scale()
+			if image_delta.length() >= 0.5:
+				edit_vertices_moved.emit(image_delta)
+			return true
+		if edit_dragging_box:
+			edit_dragging_box = false
+			var image_start := _view_to_image(edit_drag_start)
+			var image_end := _view_to_image(edit_drag_end)
+			edit_box_selected.emit(
+				Rect2(image_start, image_end - image_start).abs(),
+				edit_additive
+			)
+			queue_redraw()
+			return true
+		return false
+
+	func _find_edit_vertex(view_position: Vector2) -> int:
+		for index in edit_vertices.size():
+			var vertex_view := image_rect.position + edit_vertices[index] * _image_scale()
+			if vertex_view.distance_to(view_position) <= 9.0:
+				return index
+		return -1
 
 	func _view_to_image(view_position: Vector2) -> Vector2:
 		return (view_position - image_rect.position) / _image_scale()
@@ -238,6 +317,26 @@ class RegionPreview:
 				true
 			)
 
+		if vertex_edit_enabled:
+			for index in edit_vertices.size():
+				var edit_point := image_rect.position + edit_vertices[index] * scale_factor
+				if edit_dragging_vertices and edit_selected.has(index):
+					edit_point += edit_drag_end - edit_drag_start
+				var handle_color := (
+					Color(1.0, 0.75, 0.15)
+					if edit_selected.has(index)
+					else Color(0.2, 0.9, 1.0)
+				)
+				draw_circle(edit_point, 6.0, handle_color)
+				draw_circle(edit_point, 3.5, Color(0.08, 0.08, 0.1))
+			if edit_dragging_box:
+				var selection_rect := Rect2(
+					edit_drag_start,
+					edit_drag_end - edit_drag_start
+				).abs()
+				draw_rect(selection_rect, Color(0.2, 0.7, 1.0, 0.14), true)
+				draw_rect(selection_rect, Color(0.2, 0.7, 1.0), false, 1.5)
+
 		if selected_point.x >= 0:
 			var marker := (
 				image_rect.position
@@ -327,8 +426,10 @@ func _ready() -> void:
 	add_child(_source_label)
 
 	_preview = RegionPreview.new()
-	_preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_preview.image_point_selected.connect(_on_image_point_selected)
+	_preview.edit_vertex_selected.connect(_on_edit_vertex_selected)
+	_preview.edit_box_selected.connect(_on_edit_box_selected)
+	_preview.edit_vertices_moved.connect(_on_edit_vertices_moved)
 	add_child(_preview)
 
 	var zoom_controls := HBoxContainer.new()
@@ -436,6 +537,9 @@ func _ready() -> void:
 	_status_label = Label.new()
 	_status_label.text = "Click inside a color region to trace it."
 	_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_status_label.custom_minimum_size.y = 48.0
+	_status_label.max_lines_visible = 3
+	_status_label.clip_text = true
 	add_child(_status_label)
 
 	_create_button = Button.new()
@@ -477,20 +581,67 @@ func _begin_vertex_edit() -> void:
 	if selection.size() != 1 or not selection[0] is Polygon2D:
 		show_vertex_edit_status("Select exactly one plugin-generated Polygon2D.")
 		return
-	_viewport_edit_tool.begin(selection[0] as Polygon2D)
+	var polygon := selection[0] as Polygon2D
+	if not polygon.get_parent() is Sprite2D:
+		show_vertex_edit_status("The generated polygon must remain under its source Sprite2D.")
+		return
+	var source := polygon.get_parent() as Sprite2D
+	if _model.draft.source_sprite != source and not _set_source_sprite(source):
+		return
+	if _viewport_edit_tool.begin(polygon):
+		_refresh_vertex_preview()
+		show_vertex_edit_status(
+			"Vertex Edit mode: drag a box or selected handles inside the dock preview."
+		)
 
 
 func _delete_selected_vertices() -> void:
-	_viewport_edit_tool.delete_selected()
+	if _viewport_edit_tool.delete_selected():
+		_refresh_vertex_preview()
 
 
 func _stop_vertex_edit() -> void:
 	_viewport_edit_tool.end()
+	_preview.set_vertex_edit(false)
+
+
+func _on_edit_vertex_selected(index: int, additive: bool) -> void:
+	_viewport_edit_tool.select_vertex(index, additive)
+	_refresh_vertex_preview()
+
+
+func _on_edit_box_selected(rect: Rect2, additive: bool) -> void:
+	if _model.draft.source_image == null:
+		return
+	_viewport_edit_tool.select_image_rect(
+		rect,
+		_model.draft.source_image.get_size(),
+		additive
+	)
+	_refresh_vertex_preview()
+
+
+func _on_edit_vertices_moved(image_delta: Vector2) -> void:
+	if _viewport_edit_tool.move_selected_image_delta(image_delta):
+		_refresh_vertex_preview()
+
+
+func _refresh_vertex_preview() -> void:
+	if _model.draft.source_image == null or not _viewport_edit_tool.active:
+		_preview.set_vertex_edit(false)
+		return
+	_preview.set_vertex_edit(
+		true,
+		_viewport_edit_tool.get_image_vertices(_model.draft.source_image.get_size()),
+		_viewport_edit_tool.get_selected_indices()
+	)
 
 
 func show_vertex_edit_status(message: String) -> void:
 	if is_instance_valid(_status_label):
 		_status_label.text = message
+	if is_instance_valid(_preview) and _viewport_edit_tool != null:
+		_refresh_vertex_preview()
 
 
 func _use_selected_sprite() -> void:

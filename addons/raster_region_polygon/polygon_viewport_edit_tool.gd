@@ -62,6 +62,78 @@ func delete_selected() -> bool:
 	return true
 
 
+func get_image_vertices(image_size: Vector2i) -> PackedVector2Array:
+	var result := PackedVector2Array()
+	if not active or not is_instance_valid(session.target):
+		return result
+	var sprite := session.target.get_parent() as Sprite2D
+	if sprite == null:
+		return result
+	var size := Vector2(image_size)
+	var origin := sprite.offset - (size * 0.5 if sprite.centered else Vector2.ZERO)
+	for local_point in session.target.polygon:
+		var image_point := local_point - origin
+		if sprite.flip_h:
+			image_point.x = size.x - image_point.x
+		if sprite.flip_v:
+			image_point.y = size.y - image_point.y
+		result.append(image_point)
+	return result
+
+
+func get_selected_indices() -> PackedInt32Array:
+	return session.selected_indices.duplicate()
+
+
+func select_vertex(index: int, additive: bool) -> void:
+	if not active or index < 0 or index >= session.target.polygon.size():
+		return
+	if not additive:
+		session.selected_indices.clear()
+	if not session.selected_indices.has(index):
+		session.selected_indices.append(index)
+	state_changed.emit("Selected %d vertices." % session.selected_indices.size())
+
+
+func select_image_rect(rect: Rect2, image_size: Vector2i, additive: bool) -> void:
+	if not active:
+		return
+	var selected := {}
+	if additive:
+		for index in session.selected_indices:
+			selected[index] = true
+	var points := get_image_vertices(image_size)
+	for index in points.size():
+		if rect.has_point(points[index]):
+			selected[index] = true
+	var indices: Array = selected.keys()
+	indices.sort()
+	session.selected_indices = PackedInt32Array(indices)
+	state_changed.emit("Selected %d vertices." % session.selected_indices.size())
+
+
+func move_selected_image_delta(delta: Vector2) -> bool:
+	if not active or not session.has_selection():
+		return false
+	var sprite := session.target.get_parent() as Sprite2D
+	if sprite == null:
+		return false
+	var local_delta := delta
+	if sprite.flip_h:
+		local_delta.x = -local_delta.x
+	if sprite.flip_v:
+		local_delta.y = -local_delta.y
+	var plan: RefCounted = controller.propose_move(session, local_delta)
+	if not plan.allowed:
+		state_changed.emit(plan.reason)
+		return false
+	if not controller.apply(session, plan):
+		state_changed.emit("The scene changed before movement could be applied. Reload the polygon.")
+		return false
+	state_changed.emit("Moved selected vertices. The polygon is now manually edited.")
+	return true
+
+
 func forward_input(event: InputEvent) -> bool:
 	if not active or not is_instance_valid(session.target):
 		return false
