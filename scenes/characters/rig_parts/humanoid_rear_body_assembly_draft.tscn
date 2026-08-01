@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_front_body_assembly_prototype.tscn" id="1_front"]
+
+[node name="RearBodyMotionDraft" type="Node2D"]
+metadata/derived_from = "res://scenes/characters/rig_parts/humanoid_front_body_assembly_prototype.tscn"
+metadata/projection = "up"
+
+[node name="BodyMotion" parent="." instance=ExtResource("1_front")]
+
+[editable path="BodyMotion"]
