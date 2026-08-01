@@ -5,39 +5,44 @@
 [node name="BackHairHalf" type="Polygon2D" parent="."]
 z_index = -3
 color = Color(0.105882, 0.070588, 0.207843, 1)
-polygon = PackedVector2Array(0, -54, -24, -50, -38, -39, -44, -13, -36, 9, -23, 20, 0, 20)
+polygon = PackedVector2Array(0, -113, -19, -111, -38, -98, -50, -82, -62, -48, -96, -8, -99, 9, -104, 20, -104, 27, -95, 30, -88, 30, -80, 33, 0, 21)
 
 [node name="PelvisHalf" type="Polygon2D" parent="."]
-position = Vector2(0, 14)
+position = Vector2(0, 0)
 z_index = -2
 color = Color(0.027451, 0.082353, 0.211765, 1)
-polygon = PackedVector2Array(0, -7, -28, -7, -26, 9, -15, 14, 0, 14)
+polygon = PackedVector2Array(0, 29, -20, 29, -40, 42, -41, 55, -10, 70, 0, 70)
 
 [node name="TorsoHalf" type="Polygon2D" parent="."]
-position = Vector2(0, 10)
+position = Vector2(0, 0)
 z_index = -1
 color = Color(0.019608, 0.188235, 0.501961, 1)
-polygon = PackedVector2Array(0, -35, -23, -35, -36, -29, -34, 1, -27, 10, 0, 10)
+polygon = PackedVector2Array(0, -21, -17, -21, -43, -16, -46, -5, -45, 39, -24, 50, 0, 52)
 
 [node name="ChestArmorHalf" type="Polygon2D" parent="."]
-position = Vector2(0, 10)
+position = Vector2(0, 0)
 color = Color(0.070588, 0.086275, 0.145098, 1)
-polygon = PackedVector2Array(0, -19, -35, -25, -43, -2, -24, 5, 0, 5)
+polygon = PackedVector2Array(0, -17, -45, -16, -33, -17, -23, 3, -2, 16, 0, 16)
 
 [node name="NeckHalf" type="Polygon2D" parent="."]
-position = Vector2(0, -21)
+position = Vector2(0, -18)
 z_index = 1
 color = Color(0.827451, 0.682353, 0.619608, 1)
 polygon = PackedVector2Array(0, -6, -11, -6, -12, 8, 0, 8)
 
 [node name="HeadHalf" type="Polygon2D" parent="."]
-position = Vector2(0, -33)
+position = Vector2(0, 0)
 z_index = 2
 color = Color(0.839216, 0.678431, 0.607843, 1)
-polygon = PackedVector2Array(0, -47, -14, -45, -25, -37, -31, -25, -33, -10, -27, 5, -19, 17, -14, 22, -7, 25, 0, 29)
+polygon = PackedVector2Array(0, -106, -21, -103, -38, -91, -47, -73, -49, -51, -40, -29, -28, -11, -21, -3, -10, 2, 0, 7)
 
 [node name="HairCapHalf" type="Polygon2D" parent="."]
-position = Vector2(0, -33)
+position = Vector2(0, 0)
 z_index = 3
 color = Color(0.32549, 0.207843, 0.517647, 1)
-polygon = PackedVector2Array(0, -29, -15, -27, -29, -20, -35, -8, -33, 2, -23, -4, -18, 9, -8, -5, 0, 12)
+polygon = PackedVector2Array(0, -115, -18, -113, -36, -103, -45, -92, -52, -74, -55, -55, -41, -28, -32, -62, 0, -63)
+
+[node name="BangHalf" type="Polygon2D" parent="."]
+z_index = 4
+color = Color(0.235294, 0.156863, 0.435294, 1)
+polygon = PackedVector2Array(0, -97, -19, -95, -40, -79, -55, -53, -47, -25, -36, -11, -24, -10, -32, -18, -35, -27, -26, -31, -19, -41, -15, -27, -4, -13, 0, -20)

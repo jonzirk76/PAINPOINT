@@ -6,4 +6,4 @@
 
 [node name="HumanoidBodyRigPrototype" parent="." instance=ExtResource("1_body")]
 position = Vector2(640, 330)
-scale = Vector2(3, 3)
+scale = Vector2(2, 2)

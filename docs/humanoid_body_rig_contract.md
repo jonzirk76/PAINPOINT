@@ -38,6 +38,12 @@ Future asymmetric anatomy, clothing, equipment, damage, or silhouette detail
 belongs in additive overlay nodes above this symmetric base. It must not replace
 or silently override the canonical mirrored construction.
 
+Directional projections own separate component resources when their geometry
+cannot be shared honestly. In particular, the forward top-down arm and leg
+components preserve Volette's foreshortened gameplay silhouette, while the side
+profile retains lateral components. Symmetry is shared within a projection;
+geometry is not forced across incompatible projections.
+
 ## Ownership
 
 The owning entity may call only:
@@ -62,6 +68,9 @@ commands and has no manager or orchestrator references.
 - The front head half is adapted from the developed outline in
   `volette_visual.tscn`, then mirrored canonically instead of being redrawn as a
   generic oval.
+- `FrontView` means the authored top-down, forward-facing gameplay projection;
+  it is not an orthographic front elevation. Its large overlapping head,
+  compressed torso, diagonal arms, and receding legs are intentional.
 - Forward-view proportions and locomotion timing use
   `volette_walk_cycle_preview.tscn` as their visual reference: opposing 8.5-pixel
   strides, restrained 1.3-degree leg rotation, recovering-foot lift, hip/body

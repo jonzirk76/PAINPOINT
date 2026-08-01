@@ -1,0 +1,22 @@
+[gd_scene format=3]
+
+[node name="ArmPivot" type="Node2D"]
+position = Vector2(-43, -14)
+
+[node name="UpperArm" type="Polygon2D" parent="."]
+color = Color(0.019608, 0.270588, 0.65098, 1)
+polygon = PackedVector2Array(3, -2, -10, 1, -30, 27, -36, 39, -27, 49, -17, 42, -13, 31, 6, 10)
+
+[node name="ElbowPivot" type="Node2D" parent="."]
+position = Vector2(-30, 32)
+
+[node name="Forearm" type="Polygon2D" parent="ElbowPivot"]
+z_index = 1
+color = Color(0.035294, 0.121569, 0.309804, 1)
+polygon = PackedVector2Array(3, -5, -7, -3, -17, 13, -16, 25, -7, 32, 2, 25, 5, 10)
+
+[node name="Hand" type="Polygon2D" parent="ElbowPivot"]
+position = Vector2(-13, 25)
+z_index = 2
+color = Color(0.827451, 0.682353, 0.619608, 1)
+polygon = PackedVector2Array(-4, -3, 4, -3, 7, 7, 2, 12, -6, 9, -8, 3)
