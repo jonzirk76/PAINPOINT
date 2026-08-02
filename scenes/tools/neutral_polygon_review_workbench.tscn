@@ -1,0 +1,142 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/neutral_polygon_review_workbench.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_8_way.tscn" id="2_directional"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_south.tscn" id="3_poly_s"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_south_west.tscn" id="4_poly_sw"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_west.tscn" id="5_poly_w"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_north_east.tscn" id="6_poly_ne"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_north.tscn" id="7_poly_n"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_cutout/neutral_humanoid_south.tscn" id="8_ref_s"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_cutout/neutral_humanoid_south_west.tscn" id="9_ref_sw"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_cutout/neutral_humanoid_west.tscn" id="10_ref_w"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_cutout/neutral_humanoid_north_east.tscn" id="11_ref_ne"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_cutout/neutral_humanoid_north.tscn" id="12_ref_n"]
+
+[node name="NeutralPolygonReviewWorkbench" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="Background" type="Polygon2D" parent="."]
+z_index = -100
+color = Color(0.045, 0.05, 0.06, 1)
+polygon = PackedVector2Array(0, 0, 1280, 0, 1280, 720, 0, 720)
+
+[node name="Title" type="Label" parent="."]
+position = Vector2(28, 14)
+text = "NEUTRAL POLYGON BASE — directional review"
+
+[node name="PreviewDescription" type="Label" parent="."]
+position = Vector2(28, 48)
+text = "Animated gameplay-scale sequence — S, SW, W, NW, N, NE, E, SE"
+
+[node name="PreviewPanel" type="Polygon2D" parent="."]
+z_index = -90
+color = Color(0.09, 0.1, 0.115, 1)
+polygon = PackedVector2Array(18, 76, 1262, 76, 1262, 270, 18, 270)
+
+[node name="EightWayPreview" type="Node2D" parent="."]
+
+[node name="South" parent="EightWayPreview" instance=ExtResource("2_directional")]
+position = Vector2(105, 248)
+scale = Vector2(0.24, 0.24)
+direction = 0
+
+[node name="SouthWest" parent="EightWayPreview" instance=ExtResource("2_directional")]
+position = Vector2(255, 248)
+scale = Vector2(0.24, 0.24)
+direction = 1
+
+[node name="West" parent="EightWayPreview" instance=ExtResource("2_directional")]
+position = Vector2(405, 248)
+scale = Vector2(0.24, 0.24)
+direction = 2
+
+[node name="NorthWest" parent="EightWayPreview" instance=ExtResource("2_directional")]
+position = Vector2(555, 248)
+scale = Vector2(0.24, 0.24)
+direction = 3
+
+[node name="North" parent="EightWayPreview" instance=ExtResource("2_directional")]
+position = Vector2(705, 248)
+scale = Vector2(0.24, 0.24)
+direction = 4
+
+[node name="NorthEast" parent="EightWayPreview" instance=ExtResource("2_directional")]
+position = Vector2(855, 248)
+scale = Vector2(0.24, 0.24)
+direction = 5
+
+[node name="East" parent="EightWayPreview" instance=ExtResource("2_directional")]
+position = Vector2(1005, 248)
+scale = Vector2(0.24, 0.24)
+direction = 6
+
+[node name="SouthEast" parent="EightWayPreview" instance=ExtResource("2_directional")]
+position = Vector2(1155, 248)
+scale = Vector2(0.24, 0.24)
+direction = 7
+
+[node name="DirectionLabels" type="Label" parent="EightWayPreview"]
+position = Vector2(75, 245)
+text = "S                 SW                W                 NW                N                 NE                E                 SE"
+
+[node name="CanonicalDescription" type="Label" parent="."]
+position = Vector2(28, 294)
+text = "Five editable canonical polygon scenes — raster reference overlay is adjustable from the root inspector"
+
+[node name="CanonicalPanel" type="Polygon2D" parent="."]
+z_index = -90
+color = Color(0.075, 0.083, 0.097, 1)
+polygon = PackedVector2Array(18, 326, 1262, 326, 1262, 690, 18, 690)
+
+[node name="CanonicalReview" type="Node2D" parent="."]
+
+[node name="PolygonResults" type="Node2D" parent="CanonicalReview"]
+
+[node name="South" parent="CanonicalReview/PolygonResults" instance=ExtResource("3_poly_s")]
+position = Vector2(135, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="SouthWest" parent="CanonicalReview/PolygonResults" instance=ExtResource("4_poly_sw")]
+position = Vector2(385, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="West" parent="CanonicalReview/PolygonResults" instance=ExtResource("5_poly_w")]
+position = Vector2(635, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="NorthEast" parent="CanonicalReview/PolygonResults" instance=ExtResource("6_poly_ne")]
+position = Vector2(885, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="North" parent="CanonicalReview/PolygonResults" instance=ExtResource("7_poly_n")]
+position = Vector2(1135, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="ReferenceOverlay" type="Node2D" parent="CanonicalReview"]
+z_index = 50
+modulate = Color(1, 1, 1, 0.38)
+
+[node name="South" parent="CanonicalReview/ReferenceOverlay" instance=ExtResource("8_ref_s")]
+position = Vector2(135, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="SouthWest" parent="CanonicalReview/ReferenceOverlay" instance=ExtResource("9_ref_sw")]
+position = Vector2(385, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="West" parent="CanonicalReview/ReferenceOverlay" instance=ExtResource("10_ref_w")]
+position = Vector2(635, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="NorthEast" parent="CanonicalReview/ReferenceOverlay" instance=ExtResource("11_ref_ne")]
+position = Vector2(885, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="North" parent="CanonicalReview/ReferenceOverlay" instance=ExtResource("12_ref_n")]
+position = Vector2(1135, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="CanonicalLabels" type="Label" parent="CanonicalReview"]
+position = Vector2(110, 662)
+text = "S                         SW                        W                         NE                        N"
