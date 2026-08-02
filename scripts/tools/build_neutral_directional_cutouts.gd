@@ -7,6 +7,10 @@ const OUTPUT_DIRECTORY := "res://scenes/characters/neutral_cutout"
 const IMAGE_CENTER := Vector2(512.0, 512.0)
 const FAR_MODULATE := Color(0.62, 0.65, 0.72, 1.0)
 const CONTOUR_ERROR := 2.0
+const FORWARD_MOTION: Resource = preload("res://resources/presentation/humanoid_forward_motion_profile.tres")
+const PROFILE_MOTION: Resource = preload("res://resources/presentation/humanoid_profile_motion_profile.tres")
+const THREE_QUARTER_MOTION: Resource = preload("res://resources/presentation/humanoid_three_quarter_motion_profile.tres")
+const REAR_MOTION: Resource = preload("res://resources/presentation/humanoid_rear_motion_profile.tres")
 
 const VIEW_SPECS := [
 	{
@@ -34,8 +38,8 @@ const VIEW_SPECS := [
 		"duplicate_far_leg": true,
 	},
 	{
-		"id": "north_west",
-		"guide": "Looking_North_West",
+		"id": "north_east",
+		"guide": "Looking_North_East",
 		"bounds": Rect2(255, 510, 235, 420),
 		"near": "Near",
 		"far": "Far",
@@ -146,7 +150,7 @@ func _build_view(spec: Dictionary, guide_root: Node, image: Image, texture: Text
 	)
 
 	_build_limb_pair(spec, joints, image, texture, hips, torso)
-	_add_animation_player(root, -origin)
+	_add_animation_player(root, -origin, spec)
 	return root
 
 
@@ -210,13 +214,16 @@ func _build_leg(
 	var hip := points[0]
 	var knee := points[1]
 	var ankle := points[2]
-	var terminal := ankle + (ankle - knee).normalized() * 55.0
+	# Feet fan away from the shin axis in several source projections. A wider,
+	# longer terminal mask preserves the toe silhouette without reconnecting it
+	# to the opposite leg above the authored ankle cut.
+	var terminal := ankle + (ankle - knee).normalized() * 78.0
 	var leg := _add_bone(parent, name_prefix, hip - _bone_global_pivot(parent))
 	_add_polygon(leg, "Thigh", image, texture, _corridor(hip, knee, 24.0, 21.0), hip, z_index, modulate_color)
 	var shin := _add_bone(leg, "Shin", knee - hip)
 	_add_polygon(shin, "ShinMass", image, texture, _corridor(knee, ankle, 21.0, 18.0), knee, z_index, modulate_color)
 	var foot := _add_bone(shin, "Foot", ankle - knee)
-	_add_polygon(foot, "FootMass", image, texture, _corridor(ankle, terminal, 19.0, 23.0), ankle, z_index, modulate_color)
+	_add_polygon(foot, "FootMass", image, texture, _corridor(ankle, terminal, 28.0, 45.0), ankle, z_index, modulate_color)
 
 
 func _limb_joint_data(joints: Dictionary, prefix: String, limb: String) -> Array[Vector2]:
@@ -370,37 +377,92 @@ func _bone_global_pivot(bone: Bone2D) -> Vector2:
 	return result + Vector2.ZERO
 
 
-func _add_animation_player(root: Node2D, skeleton_origin: Vector2) -> void:
+func _add_animation_player(root: Node2D, skeleton_origin: Vector2, spec: Dictionary) -> void:
 	var player := AnimationPlayer.new()
 	player.name = "AnimationPlayer"
 	root.add_child(player)
 	var library := AnimationLibrary.new()
-	library.add_animation("RESET", _build_reset_animation(skeleton_origin))
-	library.add_animation("walk", _build_walk_animation(skeleton_origin))
+	library.add_animation("RESET", _build_reset_animation(root, skeleton_origin))
+	library.add_animation("walk", _build_walk_animation(root, skeleton_origin, spec))
 	player.add_animation_library("", library)
 	player.autoplay = "walk"
 
 
-func _build_reset_animation(skeleton_origin: Vector2) -> Animation:
+func _build_reset_animation(root: Node2D, skeleton_origin: Vector2) -> Animation:
 	var animation := Animation.new()
 	animation.length = 0.001
 	_add_track(animation, "Skeleton2D:position", [0.0], [skeleton_origin])
 	for path in _animated_bone_paths():
 		_add_track(animation, "%s:rotation" % path, [0.0], [0.0])
+		_add_track(animation, "%s:scale" % path, [0.0], [Vector2.ONE])
+	for path in _animated_leg_paths():
+		var leg: Bone2D = root.get_node(path)
+		_add_track(animation, "%s:position" % path, [0.0], [leg.position])
 	return animation
 
 
-func _build_walk_animation(skeleton_origin: Vector2) -> Animation:
+func _build_walk_animation(root: Node2D, skeleton_origin: Vector2, spec: Dictionary) -> Animation:
+	var motion_selection := _motion_profile(String(spec["id"]))
+	var motion: Resource = motion_selection["resource"]
 	var animation := Animation.new()
-	animation.length = 0.8
+	animation.length = 1.0 / motion.cycle_speed
 	animation.loop_mode = Animation.LOOP_LINEAR
-	var times := [0.0, 0.2, 0.4, 0.6, 0.8]
-	_add_track(animation, "Skeleton2D:position", times, [skeleton_origin, skeleton_origin + Vector2(0, -2), skeleton_origin, skeleton_origin + Vector2(0, -2), skeleton_origin])
-	_add_track(animation, "Skeleton2D/Hips/FarLeg:rotation", times, [0.13, 0.0, -0.13, 0.0, 0.13])
-	_add_track(animation, "Skeleton2D/Hips/NearLeg:rotation", times, [-0.13, 0.0, 0.13, 0.0, -0.13])
-	_add_track(animation, "Skeleton2D/Hips/Torso/FarArm:rotation", times, [-0.15, 0.0, 0.15, 0.0, -0.15])
-	_add_track(animation, "Skeleton2D/Hips/Torso/NearArm:rotation", times, [0.15, 0.0, -0.15, 0.0, 0.15])
+	var quarter := animation.length * 0.25
+	var times := [0.0, quarter, quarter * 2.0, quarter * 3.0, animation.length]
+	var wave := [0.0, 1.0, 0.0, -1.0, 0.0]
+	var leg_angle: float = deg_to_rad(motion.leg_swing_degrees)
+	var arm_angle: float = deg_to_rad(motion.arm_swing_degrees)
+	_add_track(animation, "Skeleton2D:position", times, _offset_vectors(skeleton_origin, Vector2.UP * motion.body_bob_distance, [0.0, 1.0, 0.0, 1.0, 0.0]))
+	_add_track(animation, "Skeleton2D/Hips/FarLeg:rotation", times, _scaled_floats(leg_angle, wave))
+	_add_track(animation, "Skeleton2D/Hips/NearLeg:rotation", times, _scaled_floats(-leg_angle, wave))
+	_add_track(animation, "Skeleton2D/Hips/Torso/FarArm:rotation", times, _scaled_floats(-arm_angle, wave))
+	_add_track(animation, "Skeleton2D/Hips/Torso/NearArm:rotation", times, _scaled_floats(arm_angle, wave))
+
+	var projection: String = motion_selection["projection"]
+	if projection in ["forward_depth", "three_quarter_depth"]:
+		_add_track(animation, "Skeleton2D/Hips/FarLeg:scale", times, _depth_scales(motion.leg_depth_swing_ratio, wave))
+		_add_track(animation, "Skeleton2D/Hips/NearLeg:scale", times, _depth_scales(-motion.leg_depth_swing_ratio, wave))
+		_add_track(animation, "Skeleton2D/Hips/Torso/FarArm:scale", times, _depth_scales(-motion.arm_depth_swing_ratio, wave))
+		_add_track(animation, "Skeleton2D/Hips/Torso/NearArm:scale", times, _depth_scales(motion.arm_depth_swing_ratio, wave))
+	elif projection == "rear_stride":
+		var far_leg: Bone2D = root.get_node("Skeleton2D/Hips/FarLeg")
+		var near_leg: Bone2D = root.get_node("Skeleton2D/Hips/NearLeg")
+		_add_track(animation, "Skeleton2D/Hips/FarLeg:position", times, _offset_vectors(far_leg.position, Vector2.DOWN * motion.stride_distance, wave))
+		_add_track(animation, "Skeleton2D/Hips/NearLeg:position", times, _offset_vectors(near_leg.position, Vector2.UP * motion.stride_distance, wave))
 	return animation
+
+
+func _motion_profile(view_id: String) -> Dictionary:
+	match view_id:
+		"south":
+			return {"projection": "forward_depth", "resource": FORWARD_MOTION}
+		"west":
+			return {"projection": "profile_rotation", "resource": PROFILE_MOTION}
+		"north":
+			return {"projection": "rear_stride", "resource": REAR_MOTION}
+		_:
+			return {"projection": "three_quarter_depth", "resource": THREE_QUARTER_MOTION}
+
+
+func _scaled_floats(amount: float, factors: Array) -> Array:
+	var result: Array = []
+	for factor in factors:
+		result.append(amount * float(factor))
+	return result
+
+
+func _depth_scales(amount: float, factors: Array) -> Array:
+	var result: Array = []
+	for factor in factors:
+		result.append(Vector2(1.0, 1.0 + amount * float(factor)))
+	return result
+
+
+func _offset_vectors(origin: Vector2, offset: Vector2, factors: Array) -> Array:
+	var result: Array = []
+	for factor in factors:
+		result.append(origin + offset * float(factor))
+	return result
 
 
 func _animated_bone_paths() -> Array[String]:
@@ -409,6 +471,13 @@ func _animated_bone_paths() -> Array[String]:
 		"Skeleton2D/Hips/NearLeg",
 		"Skeleton2D/Hips/Torso/FarArm",
 		"Skeleton2D/Hips/Torso/NearArm",
+	]
+
+
+func _animated_leg_paths() -> Array[String]:
+	return [
+		"Skeleton2D/Hips/FarLeg",
+		"Skeleton2D/Hips/NearLeg",
 	]
 
 

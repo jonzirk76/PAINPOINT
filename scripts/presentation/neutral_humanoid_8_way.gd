@@ -15,7 +15,7 @@ enum Direction {
 const SOUTH_SCENE := preload("res://scenes/characters/neutral_cutout/neutral_humanoid_south.tscn")
 const SOUTH_WEST_SCENE := preload("res://scenes/characters/neutral_cutout/neutral_humanoid_south_west.tscn")
 const WEST_SCENE := preload("res://scenes/characters/neutral_cutout/neutral_humanoid_west.tscn")
-const NORTH_WEST_SCENE := preload("res://scenes/characters/neutral_cutout/neutral_humanoid_north_west.tscn")
+const NORTH_EAST_SCENE := preload("res://scenes/characters/neutral_cutout/neutral_humanoid_north_east.tscn")
 const NORTH_SCENE := preload("res://scenes/characters/neutral_cutout/neutral_humanoid_north.tscn")
 
 ## Selects one of five authored projections or one of their three mirrored derivatives.
@@ -55,11 +55,11 @@ func _canonical_selection(value: int) -> Dictionary:
 		Direction.WEST:
 			return {"scene": WEST_SCENE, "mirror": false}
 		Direction.NORTH_WEST:
-			return {"scene": NORTH_WEST_SCENE, "mirror": false}
+			return {"scene": NORTH_EAST_SCENE, "mirror": true}
 		Direction.NORTH:
 			return {"scene": NORTH_SCENE, "mirror": false}
 		Direction.NORTH_EAST:
-			return {"scene": NORTH_WEST_SCENE, "mirror": true}
+			return {"scene": NORTH_EAST_SCENE, "mirror": false}
 		Direction.EAST:
 			return {"scene": WEST_SCENE, "mirror": true}
 		Direction.SOUTH_EAST:

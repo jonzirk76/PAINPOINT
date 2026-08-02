@@ -4,7 +4,7 @@
 [ext_resource type="PackedScene" path="res://scenes/characters/neutral_cutout/neutral_humanoid_south.tscn" id="2_south"]
 [ext_resource type="PackedScene" path="res://scenes/characters/neutral_cutout/neutral_humanoid_south_west.tscn" id="3_south_west"]
 [ext_resource type="PackedScene" path="res://scenes/characters/neutral_cutout/neutral_humanoid_west.tscn" id="4_west"]
-[ext_resource type="PackedScene" path="res://scenes/characters/neutral_cutout/neutral_humanoid_north_west.tscn" id="5_north_west"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_cutout/neutral_humanoid_north_east.tscn" id="5_north_east"]
 [ext_resource type="PackedScene" path="res://scenes/characters/neutral_cutout/neutral_humanoid_north.tscn" id="6_north"]
 
 [node name="NeutralHumanoidCutoutWorkbench" type="Node2D"]
@@ -30,6 +30,7 @@ polygon = PackedVector2Array(20, 84, 1260, 84, 1260, 310, 20, 310)
 [node name="South" parent="." instance=ExtResource("1_directional")]
 position = Vector2(105, 280)
 scale = Vector2(0.28, 0.28)
+direction = 0
 
 [node name="SouthLabel" type="Label" parent="."]
 position = Vector2(76, 286)
@@ -100,7 +101,7 @@ text = "SE"
 
 [node name="CanonicalLabel" type="Label" parent="."]
 position = Vector2(30, 337)
-text = "Five editable canonical Skeleton2D scenes — darker limbs are farther from the camera"
+text = "Five editable canonical Skeleton2D scenes — S, SW, W, NE, N — darker limbs are farther from the camera"
 
 [node name="CanonicalPanel" type="Polygon2D" parent="."]
 z_index = -90
@@ -119,7 +120,7 @@ scale = Vector2(0.52, 0.52)
 position = Vector2(635, 650)
 scale = Vector2(0.52, 0.52)
 
-[node name="CanonicalNorthWest" parent="." instance=ExtResource("5_north_west")]
+[node name="CanonicalNorthEast" parent="." instance=ExtResource("5_north_east")]
 position = Vector2(885, 650)
 scale = Vector2(0.52, 0.52)
 

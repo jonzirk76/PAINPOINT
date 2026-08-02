@@ -144,60 +144,60 @@ points = PackedVector2Array(286, -31, 307, -23, 330, -20)
 position = Vector2(-24, -55)
 points = PackedVector2Array(301, -135, 318, -130)
 
-[node name="Looking_North_West" type="Node2D" parent="." unique_id=1672530701]
+[node name="Looking_North_East" type="Node2D" parent="." unique_id=1672530701]
 
-[node name="Neck_Joint" type="Line2D" parent="Looking_North_West" unique_id=1457595612]
+[node name="Neck_Joint" type="Line2D" parent="Looking_North_East" unique_id=1457595612]
 points = PackedVector2Array(-223, 138, -191, 156, -143, 160)
 
-[node name="Waist_Joint" type="Line2D" parent="Looking_North_West" unique_id=1732651531]
+[node name="Waist_Joint" type="Line2D" parent="Looking_North_East" unique_id=1732651531]
 position = Vector2(-31, -9)
 points = PackedVector2Array(-186, 239, -153, 251, -113, 248)
 
-[node name="Far_Shoulder_Joint" type="Line2D" parent="Looking_North_West" unique_id=514613178]
+[node name="Far_Shoulder_Joint" type="Line2D" parent="Looking_North_East" unique_id=514613178]
 position = Vector2(-36, -22)
 points = PackedVector2Array(-203, 165, -197, 180, -185, 215)
 
-[node name="Far_Elbow_Joint" type="Line2D" parent="Looking_North_West" unique_id=1390831799]
+[node name="Far_Elbow_Joint" type="Line2D" parent="Looking_North_East" unique_id=1390831799]
 position = Vector2(-25, -22)
 points = PackedVector2Array(-226, 210, -214, 224, -196, 235)
 
-[node name="Far_Wrist_Joint" type="Line2D" parent="Looking_North_West" unique_id=1092493067]
+[node name="Far_Wrist_Joint" type="Line2D" parent="Looking_North_East" unique_id=1092493067]
 position = Vector2(-25, -30)
 points = PackedVector2Array(-236, 249, -217, 261, -196, 256)
 
-[node name="Near_Shoulder_Joint" type="Line2D" parent="Looking_North_West" unique_id=267468714]
+[node name="Near_Shoulder_Joint" type="Line2D" parent="Looking_North_East" unique_id=267468714]
 position = Vector2(-41, 39)
 points = PackedVector2Array(-121, 175, -96, 174, -71, 164)
 
-[node name="Near_Elbow_Joint" type="Line2D" parent="Looking_North_West" unique_id=1005874510]
+[node name="Near_Elbow_Joint" type="Line2D" parent="Looking_North_East" unique_id=1005874510]
 position = Vector2(-39, 24)
 points = PackedVector2Array(-107, 234, -88, 232, -70, 222)
 
-[node name="Near_Wrist_Joint" type="Line2D" parent="Looking_North_West" unique_id=706211322]
+[node name="Near_Wrist_Joint" type="Line2D" parent="Looking_North_East" unique_id=706211322]
 position = Vector2(-34, -4)
 points = PackedVector2Array(-91, 299, -75, 297, -59, 289)
 
-[node name="Far_Hip_Joint" type="Line2D" parent="Looking_North_West" unique_id=659139481]
+[node name="Far_Hip_Joint" type="Line2D" parent="Looking_North_East" unique_id=659139481]
 position = Vector2(-42, 12)
 points = PackedVector2Array(-185, 251, -168, 264, -139, 282)
 
-[node name="Near_Hip_Joint" type="Line2D" parent="Looking_North_West" unique_id=1328759815]
+[node name="Near_Hip_Joint" type="Line2D" parent="Looking_North_East" unique_id=1328759815]
 position = Vector2(-45, 41)
 points = PackedVector2Array(-141, 250, -108, 250, -83, 245)
 
-[node name="Far_Knee_Joint" type="Line2D" parent="Looking_North_West" unique_id=1641202408]
+[node name="Far_Knee_Joint" type="Line2D" parent="Looking_North_East" unique_id=1641202408]
 position = Vector2(-37, -13)
 points = PackedVector2Array(-187, 315, -169, 325, -143, 329)
 
-[node name="Near_Knee_Joint" type="Line2D" parent="Looking_North_West" unique_id=136166362]
+[node name="Near_Knee_Joint" type="Line2D" parent="Looking_North_East" unique_id=136166362]
 position = Vector2(-40, 15)
 points = PackedVector2Array(-136, 316, -114, 324, -86, 326)
 
-[node name="Far_Ankle_Joint" type="Line2D" parent="Looking_North_West" unique_id=996202392]
+[node name="Far_Ankle_Joint" type="Line2D" parent="Looking_North_East" unique_id=996202392]
 position = Vector2(-41, -29)
 points = PackedVector2Array(-186, 373, -169, 383, -141, 369)
 
-[node name="Near_Ankle_Joint" type="Line2D" parent="Looking_North_West" unique_id=409411278]
+[node name="Near_Ankle_Joint" type="Line2D" parent="Looking_North_East" unique_id=409411278]
 points = PackedVector2Array(-171, 389, -130, 379)
 
 [node name="Looking_North" type="Node2D" parent="." unique_id=488062592]
