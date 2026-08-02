@@ -439,7 +439,9 @@ func _motion_profile(view_id: String) -> Dictionary:
 		"west":
 			return {"projection": "profile_rotation", "resource": PROFILE_MOTION}
 		"north":
-			return {"projection": "rear_stride", "resource": REAR_MOTION}
+			# Rear-facing locomotion shares the south view's foreshortening
+			# semantics while retaining an independently tunable rear profile.
+			return {"projection": "forward_depth", "resource": REAR_MOTION}
 		_:
 			return {"projection": "three_quarter_depth", "resource": THREE_QUARTER_MOTION}
 

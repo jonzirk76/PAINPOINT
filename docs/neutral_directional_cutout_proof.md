@@ -22,18 +22,18 @@ Each canonical scene owns this hierarchy:
 - Hips
   - HipsMass
   - FarLeg / NearLeg
-    - Thigh
-    - Shin / ShinMass
-    - Foot / FootMass
+	- Thigh
+	- Shin / ShinMass
+	- Foot / FootMass
   - Torso / TorsoMass
-    - FarArm / NearArm
-      - UpperArm
-      - Forearm / ForearmMass
-      - Hand / HandMass
-    - Head / HeadMass
+	- FarArm / NearArm
+	  - UpperArm
+	  - Forearm / ForearmMass
+	  - Hand / HandMass
+	- Head / HeadMass
 
 The arms and legs animate in opposed phases beneath connected body anchors using
-the same projection-specific depth scaling, rear stride, and profile rotation
+the same projection-specific front/rear depth scaling and profile rotation
 semantics as the earlier blocked humanoid rig. The profile's far arm and leg
 deliberately reuse the clear near-side source geometry.
 Far-side pieces render behind the body and use darker modulation to communicate
