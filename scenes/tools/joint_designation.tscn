@@ -1,0 +1,234 @@
+[gd_scene format=3 uid="uid://c6ucb6iq77n25"]
+
+[ext_resource type="Texture2D" uid="uid://cni5qyo7prb5u" path="res://art/concept_art/characterbasetransparent.png" id="1_jvq2j"]
+
+[node name="Characterbasetransparent" type="Sprite2D" unique_id=1340406915]
+position = Vector2(1147, 742)
+texture = ExtResource("1_jvq2j")
+region_enabled = true
+region_rect = Rect2(0, 0, 1024, 1024)
+
+[node name="Looking_South" type="Node2D" parent="." unique_id=614437901]
+
+[node name="Screen_Left_Hip_Joint" type="Line2D" parent="Looking_South" unique_id=553593461]
+position = Vector2(7, -42)
+points = PackedVector2Array(-380, -148, -352, -129, -323, -123)
+
+[node name="Screen_Left_Knee_Joint" type="Line2D" parent="Looking_South" unique_id=1129625968]
+points = PackedVector2Array(-369, -145, -352, -129, -324, -135)
+
+[node name="Screen_Left_Ankle_Joint" type="Line2D" parent="Looking_South" unique_id=1265921438]
+position = Vector2(-12, 29)
+points = PackedVector2Array(-356, -133, -322, -131)
+
+[node name="Screen_Left_Elbow_Joint" type="Line2D" parent="Looking_South" unique_id=1340633787]
+points = PackedVector2Array(-406, -246, -379, -230)
+
+[node name="Screen_Left_Shoulder_Joint" type="Line2D" parent="Looking_South" unique_id=291894318]
+points = PackedVector2Array(-396, -277, -365, -253)
+
+[node name="Screen_Left_Wrist_Joint" type="Line2D" parent="Looking_South" unique_id=1614246562]
+points = PackedVector2Array(-426, -203, -413, -194, -395, -193)
+
+[node name="Neck_Joint" type="Line2D" parent="Looking_South"]
+points = PackedVector2Array(-348, -277, -312, -263, -276, -277)
+
+[node name="Waist_Joint" type="Line2D" parent="Looking_South"]
+points = PackedVector2Array(-366, -177, -312, -165, -258, -177)
+
+[node name="Screen_Right_Hip_Joint" type="Line2D" parent="Looking_South"]
+points = PackedVector2Array(-308, -165, -279, -171, -251, -190)
+
+[node name="Screen_Right_Knee_Joint" type="Line2D" parent="Looking_South"]
+points = PackedVector2Array(-300, -135, -272, -129, -255, -145)
+
+[node name="Screen_Right_Ankle_Joint" type="Line2D" parent="Looking_South"]
+points = PackedVector2Array(-290, -102, -256, -104)
+
+[node name="Screen_Right_Shoulder_Joint" type="Line2D" parent="Looking_South"]
+points = PackedVector2Array(-259, -253, -228, -277)
+
+[node name="Screen_Right_Elbow_Joint" type="Line2D" parent="Looking_South"]
+points = PackedVector2Array(-245, -230, -218, -246)
+
+[node name="Screen_Right_Wrist_Joint" type="Line2D" parent="Looking_South"]
+points = PackedVector2Array(-229, -193, -211, -194, -198, -203)
+
+[node name="Looking_South_West" type="Node2D" parent="." unique_id=1827587690]
+
+[node name="Near_Knee_Joint" type="Line2D" parent="Looking_South_West" unique_id=1623482810]
+position = Vector2(372, 11)
+points = PackedVector2Array(-369, -145, -352, -129, -324, -135)
+
+[node name="Near_Elbow_Joint" type="Line2D" parent="Looking_South_West" unique_id=1289008444]
+position = Vector2(459, 31)
+points = PackedVector2Array(-408, -241, -373, -254)
+
+[node name="Far_Elbow_Joint" type="Line2D" parent="Looking_South_West" unique_id=1409961818]
+position = Vector2(459, 31)
+points = PackedVector2Array(-529, -301, -511, -275)
+
+[node name="Neck_Joint" type="Line2D" parent="Looking_South_West"]
+points = PackedVector2Array(-48, -276, -5, -257, 28, -267)
+
+[node name="Waist_Joint" type="Line2D" parent="Looking_South_West"]
+points = PackedVector2Array(-52, -156, -5, -145, 47, -151)
+
+[node name="Far_Shoulder_Joint" type="Line2D" parent="Looking_South_West"]
+points = PackedVector2Array(-72, -290, -50, -270, -34, -254)
+
+[node name="Far_Wrist_Joint" type="Line2D" parent="Looking_South_West"]
+points = PackedVector2Array(-95, -205, -82, -190, -67, -185)
+
+[node name="Near_Shoulder_Joint" type="Line2D" parent="Looking_South_West"]
+points = PackedVector2Array(36, -275, 55, -260, 70, -245)
+
+[node name="Near_Wrist_Joint" type="Line2D" parent="Looking_South_West"]
+points = PackedVector2Array(74, -155, 88, -140, 95, -125)
+
+[node name="Far_Hip_Joint" type="Line2D" parent="Looking_South_West"]
+points = PackedVector2Array(-42, -160, -24, -144, -5, -130)
+
+[node name="Near_Hip_Joint" type="Line2D" parent="Looking_South_West"]
+points = PackedVector2Array(8, -151, 28, -136, 47, -125)
+
+[node name="Far_Knee_Joint" type="Line2D" parent="Looking_South_West"]
+points = PackedVector2Array(-55, -120, -37, -107, -20, -98)
+
+[node name="Far_Ankle_Joint" type="Line2D" parent="Looking_South_West"]
+points = PackedVector2Array(-58, -67, -40, -61, -22, -58)
+
+[node name="Near_Ankle_Joint" type="Line2D" parent="Looking_South_West"]
+points = PackedVector2Array(12, -51, 31, -44, 50, -47)
+
+[node name="Looking_West" type="Node2D" parent="."]
+
+[node name="Neck_Joint" type="Line2D" parent="Looking_West"]
+points = PackedVector2Array(315, -271, 333, -263, 351, -265)
+
+[node name="Waist_Joint" type="Line2D" parent="Looking_West"]
+points = PackedVector2Array(309, -147, 330, -141, 352, -143)
+
+[node name="Near_Shoulder_Joint" type="Line2D" parent="Looking_West"]
+points = PackedVector2Array(313, -250, 330, -239, 346, -231)
+
+[node name="Near_Elbow_Joint" type="Line2D" parent="Looking_West"]
+points = PackedVector2Array(321, -194, 336, -183, 351, -176)
+
+[node name="Near_Wrist_Joint" type="Line2D" parent="Looking_West"]
+points = PackedVector2Array(322, -128, 336, -119, 350, -113)
+
+[node name="Far_Shoulder_Joint" type="Line2D" parent="Looking_West"]
+points = PackedVector2Array(329, -247, 342, -240, 354, -234)
+
+[node name="Far_Elbow_Joint" type="Line2D" parent="Looking_West"]
+points = PackedVector2Array(332, -205, 344, -194, 355, -187)
+
+[node name="Far_Wrist_Joint" type="Line2D" parent="Looking_West"]
+points = PackedVector2Array(327, -153, 340, -143, 352, -136)
+
+[node name="Near_Hip_Joint" type="Line2D" parent="Looking_West"]
+points = PackedVector2Array(309, -147, 330, -133, 350, -127)
+
+[node name="Near_Knee_Joint" type="Line2D" parent="Looking_West"]
+points = PackedVector2Array(298, -81, 319, -70, 340, -66)
+
+[node name="Near_Ankle_Joint" type="Line2D" parent="Looking_West"]
+points = PackedVector2Array(286, -31, 307, -23, 330, -20)
+
+[node name="Far_Hip_Joint" type="Line2D" parent="Looking_West"]
+points = PackedVector2Array(283, -145, 301, -135, 318, -130)
+
+[node name="Far_Knee_Joint" type="Line2D" parent="Looking_West"]
+points = PackedVector2Array(273, -103, 291, -94, 309, -91)
+
+[node name="Far_Ankle_Joint" type="Line2D" parent="Looking_West"]
+points = PackedVector2Array(270, -77, 288, -70, 306, -68)
+
+[node name="Looking_North_West" type="Node2D" parent="."]
+
+[node name="Neck_Joint" type="Line2D" parent="Looking_North_West"]
+points = PackedVector2Array(-190, 145, -160, 154, -130, 160)
+
+[node name="Waist_Joint" type="Line2D" parent="Looking_North_West"]
+points = PackedVector2Array(-190, 247, -153, 251, -113, 248)
+
+[node name="Far_Shoulder_Joint" type="Line2D" parent="Looking_North_West"]
+points = PackedVector2Array(-211, 170, -197, 180, -184, 187)
+
+[node name="Far_Elbow_Joint" type="Line2D" parent="Looking_North_West"]
+points = PackedVector2Array(-226, 210, -215, 222, -204, 231)
+
+[node name="Far_Wrist_Joint" type="Line2D" parent="Looking_North_West"]
+points = PackedVector2Array(-236, 249, -225, 259, -214, 265)
+
+[node name="Near_Shoulder_Joint" type="Line2D" parent="Looking_North_West"]
+points = PackedVector2Array(-121, 175, -107, 186, -94, 196)
+
+[node name="Near_Elbow_Joint" type="Line2D" parent="Looking_North_West"]
+points = PackedVector2Array(-107, 234, -93, 245, -79, 255)
+
+[node name="Near_Wrist_Joint" type="Line2D" parent="Looking_North_West"]
+points = PackedVector2Array(-91, 299, -78, 310, -65, 320)
+
+[node name="Far_Hip_Joint" type="Line2D" parent="Looking_North_West"]
+points = PackedVector2Array(-185, 251, -168, 264, -150, 275)
+
+[node name="Near_Hip_Joint" type="Line2D" parent="Looking_North_West"]
+points = PackedVector2Array(-141, 250, -125, 265, -109, 280)
+
+[node name="Far_Knee_Joint" type="Line2D" parent="Looking_North_West"]
+points = PackedVector2Array(-187, 315, -169, 325, -150, 331)
+
+[node name="Near_Knee_Joint" type="Line2D" parent="Looking_North_West"]
+points = PackedVector2Array(-136, 316, -116, 326, -95, 331)
+
+[node name="Far_Ankle_Joint" type="Line2D" parent="Looking_North_West"]
+points = PackedVector2Array(-190, 368, -171, 377, -151, 381)
+
+[node name="Near_Ankle_Joint" type="Line2D" parent="Looking_North_West"]
+points = PackedVector2Array(-132, 375, -111, 383, -89, 386)
+
+[node name="Looking_North" type="Node2D" parent="."]
+
+[node name="Neck_Joint" type="Line2D" parent="Looking_North"]
+points = PackedVector2Array(128, 137, 165, 146, 202, 137)
+
+[node name="Waist_Joint" type="Line2D" parent="Looking_North"]
+points = PackedVector2Array(101, 238, 165, 245, 229, 238)
+
+[node name="Screen_Left_Shoulder_Joint" type="Line2D" parent="Looking_North"]
+points = PackedVector2Array(102, 164, 119, 175, 135, 184)
+
+[node name="Screen_Left_Elbow_Joint" type="Line2D" parent="Looking_North"]
+points = PackedVector2Array(80, 220, 94, 233, 108, 242)
+
+[node name="Screen_Left_Wrist_Joint" type="Line2D" parent="Looking_North"]
+points = PackedVector2Array(67, 281, 81, 291, 95, 298)
+
+[node name="Screen_Right_Shoulder_Joint" type="Line2D" parent="Looking_North"]
+points = PackedVector2Array(195, 184, 211, 175, 228, 164)
+
+[node name="Screen_Right_Elbow_Joint" type="Line2D" parent="Looking_North"]
+points = PackedVector2Array(222, 242, 236, 233, 250, 220)
+
+[node name="Screen_Right_Wrist_Joint" type="Line2D" parent="Looking_North"]
+points = PackedVector2Array(235, 298, 249, 291, 263, 281)
+
+[node name="Screen_Left_Hip_Joint" type="Line2D" parent="Looking_North"]
+points = PackedVector2Array(105, 244, 126, 257, 148, 264)
+
+[node name="Screen_Right_Hip_Joint" type="Line2D" parent="Looking_North"]
+points = PackedVector2Array(182, 264, 204, 257, 225, 244)
+
+[node name="Screen_Left_Knee_Joint" type="Line2D" parent="Looking_North"]
+points = PackedVector2Array(99, 310, 122, 319, 145, 323)
+
+[node name="Screen_Right_Knee_Joint" type="Line2D" parent="Looking_North"]
+points = PackedVector2Array(185, 323, 208, 319, 231, 310)
+
+[node name="Screen_Left_Ankle_Joint" type="Line2D" parent="Looking_North"]
+points = PackedVector2Array(92, 374, 116, 382, 140, 384)
+
+[node name="Screen_Right_Ankle_Joint" type="Line2D" parent="Looking_North"]
+points = PackedVector2Array(190, 384, 214, 382, 238, 374)
