@@ -216,7 +216,8 @@ position = Vector2(-9, -5)
 points = PackedVector2Array(80, 220, 94, 233, 108, 242)
 
 [node name="Screen_Left_Wrist_Joint" type="Line2D" parent="Looking_North" unique_id=1319502355]
-points = PackedVector2Array(67, 281, 81, 291, 95, 298)
+position = Vector2(-15, -21)
+points = PackedVector2Array(67, 281, 81, 291, 100, 300)
 
 [node name="Screen_Right_Shoulder_Joint" type="Line2D" parent="Looking_North" unique_id=78914557]
 points = PackedVector2Array(216, 217, 228, 192, 248, 186)
@@ -226,6 +227,7 @@ position = Vector2(9, -3)
 points = PackedVector2Array(222, 242, 236, 233, 250, 220)
 
 [node name="Screen_Right_Wrist_Joint" type="Line2D" parent="Looking_North" unique_id=1900361196]
+position = Vector2(12, -21)
 points = PackedVector2Array(235, 298, 249, 291, 263, 281)
 
 [node name="Screen_Left_Hip_Joint" type="Line2D" parent="Looking_North" unique_id=317743915]
