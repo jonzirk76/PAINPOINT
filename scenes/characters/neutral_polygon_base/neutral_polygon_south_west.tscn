@@ -1,5 +1,7 @@
 [gd_scene format=3 uid="uid://c8up72hh017x3"]
 
+[ext_resource type="Texture2D" uid="uid://cni5qyo7prb5u" path="res://art/concept_art/characterbasetransparent.png" id="1_rdupd"]
+
 [sub_resource type="Animation" id="Animation_hwpdh"]
 length = 0.001
 tracks/0/type = "value"
@@ -306,19 +308,19 @@ metadata/editable_polygon_base = true
 [node name="FarPlaceholderEyeWhite" type="Polygon2D" parent="Skeleton2D/Hips/Torso/Head" unique_id=162857127]
 z_index = 31
 z_as_relative = false
-position = Vector2(-62.333344, 11.333313)
+position = Vector2(-61.333344, 7.333313)
 color = Color(0.94, 0.95, 1, 1)
 antialiased = true
-polygon = PackedVector2Array(8, -51, 16, -55, 29, -52, 37, -45, 31, -38, 20, -36, 11, -41)
+polygon = PackedVector2Array(8, -51, 12, -50, 18, -47, 21, -43, 21, -36, 19, -32, 11, -38)
 metadata/orientation_marker = true
 
 [node name="FarPlaceholderIris" type="Polygon2D" parent="Skeleton2D/Hips/Torso/Head" unique_id=1608773717]
 z_index = 32
 z_as_relative = false
-position = Vector2(-64.33334, 12.333313)
+position = Vector2(-68.33334, 12.333313)
 color = Color(0.38, 0.12, 0.68, 1)
 antialiased = true
-polygon = PackedVector2Array(18, -53, 27, -51, 29, -43, 25, -37, 18, -39, 15, -46)
+polygon = PackedVector2Array(18, -55, 26, -51, 28.021095, -45.610413, 28, -41, 25, -37, 20, -41, 18, -47)
 metadata/orientation_marker = true
 
 [node name="FarPlaceholderEyeLash" type="Polygon2D" parent="Skeleton2D/Hips/Torso/Head" unique_id=1543682086]
@@ -327,34 +329,34 @@ z_as_relative = false
 position = Vector2(-62.333344, 11.333313)
 color = Color(0.03137, 0.0196, 0.02745, 1)
 antialiased = true
-polygon = PackedVector2Array(7, -52, 16, -58, 29, -55, 38, -47, 34, -43, 28, -49, 17, -52)
+polygon = PackedVector2Array(7, -56, 9, -63, 18, -55, 22, -48, 22, -40, 17, -49, 12, -54)
 metadata/orientation_marker = true
 
 [node name="NearPlaceholderEyeWhite" type="Polygon2D" parent="Skeleton2D/Hips/Torso/Head" unique_id=1495421727]
 z_index = 31
 z_as_relative = false
-position = Vector2(37.666656, 23.333313)
+position = Vector2(30.666656, 30.333313)
 color = Color(0.94, 0.95, 1, 1)
 antialiased = true
-polygon = PackedVector2Array(-48, -52, -40, -58, -24, -57, -13, -49, -19, -40, -32, -37, -44, -41)
+polygon = PackedVector2Array(-46, -54, -40, -57, -24, -57, -16, -55, -10, -51, -19, -41, -32, -37, -44, -43)
 metadata/orientation_marker = true
 
 [node name="NearPlaceholderIris" type="Polygon2D" parent="Skeleton2D/Hips/Torso/Head" unique_id=1787726262]
 z_index = 32
 z_as_relative = false
-position = Vector2(33.666656, 24.333313)
+position = Vector2(26.666656, 27.333313)
 color = Color(0.38, 0.12, 0.68, 1)
 antialiased = true
-polygon = PackedVector2Array(-36, -56, -27, -55, -22, -48, -24, -39, -32, -36, -38, -43)
+polygon = PackedVector2Array(-32, -56, -26, -56, -20, -55, -19, -49, -20, -44, -22, -39, -26, -36, -31, -37, -34.73136, -40.19831, -37, -44, -37, -48, -36, -51)
 metadata/orientation_marker = true
 
 [node name="NearPlaceholderEyeLash" type="Polygon2D" parent="Skeleton2D/Hips/Torso/Head" unique_id=490424226]
 z_index = 33
 z_as_relative = false
-position = Vector2(37.666656, 23.333313)
+position = Vector2(37.666656, 18.333313)
 color = Color(0.03137, 0.0196, 0.02745, 1)
 antialiased = true
-polygon = PackedVector2Array(-49, -53, -40, -61, -24, -60, -12, -51, -16, -46, -25, -53, -40, -55)
+polygon = PackedVector2Array(-34, -48, -27, -47, -10, -43, -24, -30, -21, -40, -38, -44, -54, -40, -54, -43, -42, -48)
 metadata/orientation_marker = true
 
 [node name="FarArm" type="Bone2D" parent="Skeleton2D/Hips/Torso" unique_id=986144998]
@@ -512,3 +514,11 @@ metadata/editable_polygon_base = true
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=523980034]
 libraries/ = SubResource("AnimationLibrary_807lr")
 autoplay = &"walk"
+
+[node name="Characterbasetransparent" type="Sprite2D" parent="." unique_id=782788224]
+visible = false
+modulate = Color(1, 1, 1, 0.3529412)
+z_index = 999
+position = Vector2(2, 22)
+texture = ExtResource("1_rdupd")
+metadata/_edit_lock_ = true

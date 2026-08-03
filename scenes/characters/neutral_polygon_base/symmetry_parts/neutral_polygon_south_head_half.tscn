@@ -1,11 +1,13 @@
 [gd_scene format=3 uid="uid://l8ra0iq78a5h"]
 
+[ext_resource type="Texture2D" uid="uid://cni5qyo7prb5u" path="res://art/concept_art/characterbasetransparent.png" id="1_emm1n"]
+
 [node name="HeadHalf" type="Polygon2D" unique_id=514055199]
 z_index = 30
 z_as_relative = false
 color = Color(0.84705883, 0.6862745, 0.627451, 1)
 antialiased = true
-polygon = PackedVector2Array(-0.80000305, -158.2, -9.800003, -157.2, -14.800003, -157.2, -32.800003, -149.2, -34.800003, -149.2, -55.800003, -128.2, -56.800003, -128.2, -63.800003, -112.2, -64.8, -112.2, -67.8, -96.2, -68.8, -96.2, -66.8, -66.2, -66.8, -63.199997, -74.8, -59.199997, -75.8, -59.199997, -76.8, -50.199997, -77.8, -50.199997, -71.8, -34.199997, -71.8, -32.199997, -60.800003, -22.199997, -58.800003, -22.199997, -61.800003, -20.199997, -61.800003, -19.199997, -58.800003, -19.199997, -34.800003, 7.800003, -34.800003, 8.800003, -2.800003, 23.800003, -0.80000305, 23.800003, 0, 23.434286, 0, -159.05, -0.80000305, -159.2)
+polygon = PackedVector2Array(-11, -151, -23, -147, -38, -138, -49, -128, -59, -113, -65, -95, -67, -80, -66, -67, -65, -56, -70, -55, -74, -51, -75, -39, -71.8, -32.199997, -67, -25, -61.800003, -19.199997, -53, -14, -34.800003, 8.800003, -2.800003, 24, -0.80000305, 24, 0, 24, 0, -152)
 metadata/editable_polygon_base = true
 metadata/symmetry_source = "left"
 
@@ -14,7 +16,7 @@ z_index = 1
 position = Vector2(6, 25)
 color = Color(0.94, 0.95, 1, 1)
 antialiased = true
-polygon = PackedVector2Array(-57, -52, -49, -58, -34, -58, -19, -51, -17, -46, -23, -38, -39, -36, -52, -41)
+polygon = PackedVector2Array(-55, -50, -55, -59, -48, -59, -34, -55, -20, -44, -26, -35, -40, -35, -52, -41)
 metadata/orientation_marker = true
 
 [node name="PlaceholderIris" type="Polygon2D" parent="." unique_id=902342908]
@@ -22,7 +24,7 @@ z_index = 2
 position = Vector2(6, 25)
 color = Color(0.38, 0.12, 0.68, 1)
 antialiased = true
-polygon = PackedVector2Array(-42, -55, -33, -57, -26, -51, -26, -41, -33, -35, -41, -40)
+polygon = PackedVector2Array(-43, -57, -33, -57, -26, -51, -26, -45, -28, -40, -33, -35, -39, -35, -43, -37, -48, -43, -48, -50, -46, -55)
 metadata/orientation_marker = true
 
 [node name="PlaceholderEyeLash" type="Polygon2D" parent="." unique_id=1616884816]
@@ -30,5 +32,13 @@ z_index = 3
 position = Vector2(6, 25)
 color = Color(0.03137, 0.0196, 0.02745, 1)
 antialiased = true
-polygon = PackedVector2Array(-58, -53, -49, -61, -34, -62, -20, -55, -16, -48, -22, -51, -34, -55, -48, -54)
+polygon = PackedVector2Array(-54, -48, -57, -52, -58, -62, -44, -61, -32, -57, -27, -55, -21, -49, -18, -44, -20, -44, -31, -53, -46, -56, -54, -54)
 metadata/orientation_marker = true
+
+[node name="Characterbasetransparent" type="Sprite2D" parent="." unique_id=66651819]
+visible = false
+modulate = Color(1, 1, 1, 0.36862746)
+z_index = 999
+position = Vector2(312, 293)
+texture = ExtResource("1_emm1n")
+metadata/_edit_lock_ = true

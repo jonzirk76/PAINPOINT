@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://7xvus6xbvvjb"]
 
 [ext_resource type="PackedScene" uid="uid://c8up72hh017x3" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_south_west.tscn" id="1_1r1ba"]
+[ext_resource type="Texture2D" uid="uid://cni5qyo7prb5u" path="res://art/concept_art/characterbasetransparent.png" id="2_jnqpw"]
 
 [sub_resource type="Animation" id="Animation_ilj8r"]
 length = 0.001
@@ -252,37 +253,37 @@ rest = Transform2D(1, 0, 0, 1, 20, -108.33333)
 [node name="HeadMass" type="Polygon2D" parent="Skeleton2D/Hips/Torso/Head" unique_id=54876923]
 z_index = 30
 z_as_relative = false
-position = Vector2(9.666687, 12)
+position = Vector2(8, 11.333313)
 color = Color(0.84705883, 0.6862745, 0.627451, 1)
 antialiased = true
-polygon = PackedVector2Array(-8.666687, -151.66667, -33.666687, -148.66667, -55.666687, -137.66667, -71.66669, -122.66667, -82.66669, -102.66667, -85.66669, -90.66667, -85.66669, -70.66667, -76.66669, -41.66667, -75.66669, -34.66667, -81.66669, -27.666672, -81.66669, -16.666672, -63.666687, 8.333328, -30.666687, 8.333328, -11.666687, 4.3333282, -4.666687, 4.3333282, 26.333313, -8.666672, 49.333313, -26.666672, 58.333313, -38.66667, 67.33331, -60.66667, 68.33331, -79.66667, 67.33331, -95.66667, 60.333313, -113.66667, 41.333313, -135.66667, 22.333313, -146.66667)
+polygon = PackedVector2Array(-8.666687, -151.66667, -33.666687, -148.66667, -55.666687, -137.66667, -71.66669, -122.66667, -82.66669, -102.66667, -85.66669, -90.66667, -85.66669, -70.66667, -76.66669, -41.66667, -75.66669, -34.66667, -81.66669, -27.666672, -81.66669, -16.666672, -63.666687, 8.333328, -57, 11, -43, 11, -30.666687, 8.333328, -18, 4, -9, -3, -2, -2, 9, -3, 20, -10, 30, -14, 49.333313, -26.666672, 58.333313, -38.66667, 67.33331, -60.66667, 68.33331, -79.66667, 67.33331, -95.66667, 60.333313, -113.66667, 41.333313, -135.66667, 22.333313, -146.66667)
 metadata/editable_polygon_base = true
 
 [node name="PlaceholderEyeWhite" type="Polygon2D" parent="Skeleton2D/Hips/Torso/Head" unique_id=2091561770]
 z_index = 31
 z_as_relative = false
-position = Vector2(9.666687, 12)
+position = Vector2(23, 27.333313)
 color = Color(0.94, 0.95, 1, 1)
 antialiased = true
-polygon = PackedVector2Array(-75, -48, -66, -54, -51, -52, -40, -45, -46, -36, -59, -33, -71, -38)
+polygon = PackedVector2Array(-73, -51, -66, -54, -50, -45, -59, -34, -68, -32, -72, -37)
 metadata/orientation_marker = true
 
 [node name="PlaceholderIris" type="Polygon2D" parent="Skeleton2D/Hips/Torso/Head" unique_id=953330290]
 z_index = 32
 z_as_relative = false
-position = Vector2(1.666687, 12)
+position = Vector2(15, 27.333313)
 color = Color(0.38, 0.12, 0.68, 1)
 antialiased = true
-polygon = PackedVector2Array(-64, -52, -55, -50, -50, -44, -52, -35, -59, -33, -65, -40)
+polygon = PackedVector2Array(-65, -51, -55, -53, -54, -39, -59, -33, -65, -40)
 metadata/orientation_marker = true
 
 [node name="PlaceholderEyeLash" type="Polygon2D" parent="Skeleton2D/Hips/Torso/Head" unique_id=1031644082]
 z_index = 33
 z_as_relative = false
-position = Vector2(9.666687, 12)
+position = Vector2(23, 27.333313)
 color = Color(0.03137, 0.0196, 0.02745, 1)
 antialiased = true
-polygon = PackedVector2Array(-76, -49, -66, -57, -51, -55, -39, -47, -43, -42, -52, -49, -66, -52)
+polygon = PackedVector2Array(-79, -55, -66, -55, -54, -51, -47, -45, -57, -35, -59, -36, -55, -41, -55, -46, -64, -50, -79, -51)
 metadata/orientation_marker = true
 
 [node name="FarArm" type="Bone2D" parent="Skeleton2D/Hips/Torso" unique_id=916866051]
@@ -445,3 +446,11 @@ autoplay = &"walk"
 [node name="SouthWest" parent="." unique_id=1596680562 instance=ExtResource("1_1r1ba")]
 visible = false
 position = Vector2(-157, -2)
+
+[node name="Characterbasetransparent" type="Sprite2D" parent="." unique_id=270035830]
+visible = false
+modulate = Color(1, 1, 1, 0.25882354)
+z_index = 999
+position = Vector2(-312, 10)
+texture = ExtResource("2_jnqpw")
+metadata/_edit_lock_ = true
