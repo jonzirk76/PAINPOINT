@@ -292,25 +292,25 @@ func _apply_active_arm_state() -> void:
 
 
 func _select_active_arm_path() -> NodePath:
+	var far_position := torso_runtime.get_bone_global_position(FAR_ARM_PATH)
+	var near_position := torso_runtime.get_bone_global_position(NEAR_ARM_PATH)
+	var shoulder_separation := near_position - far_position
+	if shoulder_separation.length_squared() <= 0.0001:
+		return _active_arm_path
+	# The canonical torso pose owns the shoulder sockets. Projecting their
+	# authored separation onto the shot vector identifies which socket is
+	# geometrically closer to the shot without a direction-specific rule table.
+	# The torso runtime does not play gait, so locomotion cannot disturb this
+	# reference geometry.
+	var shoulder_alignment := shoulder_separation.normalized().dot(_aim_vector)
 	var switch_alignment := sin(deg_to_rad(active_arm_switch_grace_degrees))
-	# Near/Far is a depth semantic in the canonical rig: NearArm is normally
-	# the more southern shoulder, and FarArm the more northern one. Authored
-	# shoulder spacing is intentionally excluded from this decision because its
-	# lateral component can outweigh depth in profile and diagonal views.
-	if _aim_vector.y > switch_alignment:
+	if shoulder_alignment > switch_alignment:
 		return NEAR_ARM_PATH
-	if _aim_vector.y < -switch_alignment:
+	if shoulder_alignment < -switch_alignment:
 		return FAR_ARM_PATH
-	var torso_forward := Vector2.from_angle(
-		PI * 0.5 + wrapi(_torso_direction, 0, 8) * PI * 0.25
-	)
-	var forward_alignment := torso_forward.dot(_aim_vector)
-	if forward_alignment > switch_alignment:
-		return NEAR_ARM_PATH
-	if forward_alignment < -switch_alignment:
-		return FAR_ARM_PATH
-	# A nearly side-on shot stays with the current shoulder until it clearly
-	# exits the grace cone, preventing front/back arm swaps from oscillating.
+	# Retain the selected shoulder inside the ambiguous band. The wider switch
+	# threshold and zero-width retain threshold form hysteresis around the
+	# shoulder-axis boundary and prevent small aim changes from swapping arms.
 	if _active_arm_path == FAR_ARM_PATH or _active_arm_path == NEAR_ARM_PATH:
 		return _active_arm_path
 	return NEAR_ARM_PATH

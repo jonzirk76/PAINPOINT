@@ -162,14 +162,16 @@ and the completed brace remains until locomotion takes ownership again.
 
 The current body stance remains valid while later shots fall inside its exported
 angular comfort window. Separately, shoulder selection retains the current arm
-when shot depth and torso-relative direction are both ambiguous. These stateful
-hysteresis rules prevent small aim changes from repeatedly rotating the body or
-swapping the visible shooting shoulder.
+when the shot is nearly perpendicular to the authored shoulder axis. These
+stateful hysteresis rules prevent small aim changes from repeatedly rotating the
+body or swapping the visible shooting shoulder.
 
-The active shoulder follows the rig's depth semantics rather than comparing raw
-authored shoulder coordinates: southward shots prefer `NearArm`, northward shots
-prefer `FarArm`, and nearly horizontal shots use whether the shot lies forward
-or behind the torso while preserving the current arm inside the grace cone.
+The active shoulder is resolved from the canonical torso view's authored shoulder
+coordinates. Their separation is projected onto the aim direction so the shoulder
+that geometrically leads the shot is preferred. A configurable angular grace band
+retains the current shoulder when neither socket is clearly closer, preventing
+small aim changes from swapping the visible shooting shoulder. This same rule
+applies across all torso orientations without encoding directional exceptions.
 
 Run `neutral_polygon_twist_review_workbench.tscn` to inspect the representative
 orientation matrix. Its eight rows cover every hips direction; the first column
