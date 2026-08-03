@@ -201,7 +201,9 @@ func _apply_foreshortening() -> void:
 	for runtime in [hips_runtime, torso_runtime, head_runtime, arms_runtime]:
 		runtime.preserve_head_shape = preserve_head_shape
 		runtime.set_foreshortening(foreshortening)
-	active_arm_projection.scale = Vector2(1.0, foreshortening)
+	# The active arm handles projection along its own length. World-space
+	# vertical scaling would also compress its thickness when it points sideways.
+	active_arm_projection.scale = Vector2.ONE
 
 
 func _align_subassemblies() -> void:
@@ -282,11 +284,16 @@ func _apply_active_arm_state() -> void:
 	var style := arms_runtime.get_bone_visual_style(_active_arm_path)
 	arms_runtime.set_bone_branch_visible(_active_arm_path, false)
 	active_arm.global_position = torso_runtime.get_bone_global_position(_active_arm_path)
-	var local_aim := Vector2(
-		_aim_vector.x,
-		_aim_vector.y / maxf(foreshortening, 0.001)
-	).normalized()
-	active_arm.rotation = local_aim.angle() - PI * 0.5
+	var normalized_aim := _aim_vector.normalized()
+	var projected_length := Vector2(
+		normalized_aim.x,
+		normalized_aim.y * foreshortening
+	).length()
+	# The source arm extends down its local Y axis. Scaling only that axis keeps
+	# its authored thickness intact while its apparent length follows the same
+	# top-down projection as the body.
+	active_arm.scale = Vector2(1.0, projected_length)
+	active_arm.rotation = normalized_aim.angle() - PI * 0.5
 	active_arm.z_index = int(style.get("z_index", 0))
 	active_arm.modulate = style.get("modulate", Color.WHITE)
 

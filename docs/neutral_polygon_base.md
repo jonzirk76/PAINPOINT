@@ -172,6 +172,9 @@ that geometrically leads the shot is preferred. A configurable angular grace ban
 retains the current shoulder when neither socket is clearly closer, preventing
 small aim changes from swapping the visible shooting shoulder. This same rule
 applies across all torso orientations without encoding directional exceptions.
+The continuous arm applies perspective shortening only along its authored local
+length axis, preserving arm thickness as it rotates between vertical and horizontal
+screen directions.
 
 Run `neutral_polygon_twist_review_workbench.tscn` to inspect the representative
 orientation matrix. Its eight rows cover every hips direction; the first column
