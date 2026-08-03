@@ -96,6 +96,7 @@ var _current_direction: int = Direction.SOUTH
 var _walking: bool = false
 var _compiled_polygon_count: int = 0
 var _compiled: bool = false
+var _motion_state_applied: bool = false
 
 
 func _enter_tree() -> void:
@@ -132,7 +133,12 @@ func set_motion_state(direction: int, walking: bool) -> void:
 		return
 	var direction_changed_now := direction != _current_direction
 	var motion_changed := walking != _walking
-	if not direction_changed_now and not motion_changed and _playback != null:
+	if (
+		_motion_state_applied
+		and not direction_changed_now
+		and not motion_changed
+		and _playback != null
+	):
 		return
 	_current_direction = direction
 	_walking = walking
@@ -140,6 +146,7 @@ func set_motion_state(direction: int, walking: bool) -> void:
 	_apply_direction_pose(canonical_direction, _is_mirrored_direction(direction))
 	_set_active_skin(canonical_direction)
 	_play_state(canonical_direction, walking)
+	_motion_state_applied = true
 	if direction_changed_now:
 		direction_changed.emit(direction)
 
