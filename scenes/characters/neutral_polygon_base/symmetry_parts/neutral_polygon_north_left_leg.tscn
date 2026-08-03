@@ -1,0 +1,31 @@
+[gd_scene format=3 uid="uid://i7bsceg401lc"]
+
+[node name="LeftLegMasses" type="Node2D" unique_id=1801416479]
+metadata/editable_polygon_base = true
+metadata/symmetry_source = "left"
+
+[node name="Thigh" type="Polygon2D" parent="." unique_id=1353321726]
+color = Color(0.09019608, 0.37254903, 0.7294118, 1)
+antialiased = true
+polygon = PackedVector2Array(-24, 42, -23, 46, 18, 49, 23, 3, 22, -3, -22.5, -18, -23.026497, 3.059845)
+metadata/editable_polygon_base = true
+
+[node name="Shin" type="Bone2D" parent="." unique_id=330497115]
+position = Vector2(-3, 43.333313)
+rest = Transform2D(1, 0, 0, 1, -3, 43.333313)
+
+[node name="ShinMass" type="Polygon2D" parent="Shin" unique_id=250709156]
+color = Color(0.07058824, 0.24705882, 0.49019608, 1)
+antialiased = true
+polygon = PackedVector2Array(-18, 49.666687, -18, 60.666687, 16, 60.666687, 21, 6.666687, 21, -4.333313, -21, -4.333313)
+metadata/editable_polygon_base = true
+
+[node name="Foot" type="Bone2D" parent="Shin" unique_id=1320085064]
+position = Vector2(0, 56.666687)
+rest = Transform2D(1, 0, 0, 1, 0, 56.666687)
+
+[node name="FootMass" type="Polygon2D" parent="Shin/Foot" unique_id=765521358]
+color = Color(0.02745098, 0.08627451, 0.17254902, 1)
+antialiased = true
+polygon = PackedVector2Array(-30, 4, -30, 9, -23, 27, -16, 36, -9, 39, 1, 39, 9, 35, 14, 25, 16, 8, 15, -2, 8, -12, 0, -13, -12, -13, -21, -10, -28, -4)
+metadata/editable_polygon_base = true

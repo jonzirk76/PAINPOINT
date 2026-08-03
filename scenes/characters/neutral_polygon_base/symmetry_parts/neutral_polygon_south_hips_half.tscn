@@ -1,0 +1,9 @@
+[gd_scene format=3]
+
+[node name="HipsHalf" type="Polygon2D"]
+z_as_relative = false
+color = Color(0.03529412, 0.14901961, 0.30980393, 1)
+antialiased = true
+polygon = PackedVector2Array(-51.33333, -6.6666565, -55.33333, 8.3333435, -56.33333, 8.3333435, -5.8333282, 47.333344, -1.3333282, 47.333344, 0, 47.333344, 0, -9.6666565, -51.33333, -9.6666565)
+metadata/editable_polygon_base = true
+metadata/symmetry_source = "left"

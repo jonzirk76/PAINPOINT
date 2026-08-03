@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[node name="TorsoHalf" type="Polygon2D"]
+z_index = 10
+z_as_relative = false
+color = Color(0.08235294, 0.3372549, 0.6509804, 1)
+antialiased = true
+polygon = PackedVector2Array(-34, -86.79999, -61, -79.79999, -64, -79.79999, -77, -67.79999, -53, -14.799988, -53, -15.799988, -51, -11.799988, -50, -11.799988, -51, -5.7999878, -51, -3.7999878, -48, -5.7999878, -46, -5.7999878, -29, 2.2000122, -29, 3.2000122, -3, 9.200012, 0, 9.200012, 0, -79.79999, -34, -87.79999)
+metadata/editable_polygon_base = true
+metadata/symmetry_source = "left"
