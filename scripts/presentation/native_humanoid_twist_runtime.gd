@@ -41,7 +41,7 @@ const NEAR_ARM_PATH := ^"Hips/Torso/NearArm"
 @export_range(0.0, 1.0, 0.01) var brace_speed_enter_threshold: float = 0.15
 ## [Description] Movement strength required to leave a retained brace and resume locomotion ownership.
 @export_range(0.0, 1.0, 0.01) var movement_speed_resume_threshold: float = 0.25
-## [Description] Angular cone around the torso front and rear where the current pointing shoulder is retained.
+## [Description] Angular tolerance used when shot depth does not clearly select the near or far shoulder.
 @export_range(0.0, 30.0, 0.5) var active_arm_switch_grace_degrees: float = 12.0
 
 @onready var hips_runtime: NativeHumanoidSkeletonRuntime = $HipsRuntime
@@ -96,6 +96,12 @@ func register_shot(shot_vector: Vector2) -> void:
 
 func clear_active_aim() -> void:
 	_posture_resolver.clear_active_aim()
+	_apply_resolved_posture()
+	_apply_active_arm_state()
+
+
+func set_aim_held(is_held: bool) -> void:
+	_posture_resolver.set_aim_held(is_held)
 	_apply_resolved_posture()
 	_apply_active_arm_state()
 
@@ -286,17 +292,25 @@ func _apply_active_arm_state() -> void:
 
 
 func _select_active_arm_path() -> NodePath:
-	var far_position := torso_runtime.get_bone_global_position(FAR_ARM_PATH)
-	var near_position := torso_runtime.get_bone_global_position(NEAR_ARM_PATH)
-	var center := (far_position + near_position) * 0.5
-	var far_score := (far_position - center).dot(_aim_vector)
-	var near_score := (near_position - center).dot(_aim_vector)
-	var preferred_path := FAR_ARM_PATH if far_score > near_score else NEAR_ARM_PATH
-	if preferred_path == _active_arm_path:
-		return _active_arm_path
-	var shoulder_axis := (near_position - far_position).normalized()
-	var boundary_alignment := absf(shoulder_axis.dot(_aim_vector))
 	var switch_alignment := sin(deg_to_rad(active_arm_switch_grace_degrees))
-	if boundary_alignment < switch_alignment:
+	# Near/Far is a depth semantic in the canonical rig: NearArm is normally
+	# the more southern shoulder, and FarArm the more northern one. Authored
+	# shoulder spacing is intentionally excluded from this decision because its
+	# lateral component can outweigh depth in profile and diagonal views.
+	if _aim_vector.y > switch_alignment:
+		return NEAR_ARM_PATH
+	if _aim_vector.y < -switch_alignment:
+		return FAR_ARM_PATH
+	var torso_forward := Vector2.from_angle(
+		PI * 0.5 + wrapi(_torso_direction, 0, 8) * PI * 0.25
+	)
+	var forward_alignment := torso_forward.dot(_aim_vector)
+	if forward_alignment > switch_alignment:
+		return NEAR_ARM_PATH
+	if forward_alignment < -switch_alignment:
+		return FAR_ARM_PATH
+	# A nearly side-on shot stays with the current shoulder until it clearly
+	# exits the grace cone, preventing front/back arm swaps from oscillating.
+	if _active_arm_path == FAR_ARM_PATH or _active_arm_path == NEAR_ARM_PATH:
 		return _active_arm_path
-	return preferred_path
+	return NEAR_ARM_PATH

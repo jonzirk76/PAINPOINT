@@ -34,6 +34,7 @@ var _brace_entry_remaining: float = 0.0
 var _turn_step_remaining: float = 0.0
 var _moving: bool = false
 var _aim_active: bool = false
+var _aim_held: bool = false
 var _twist_sign: int = 1
 var _phase: int = Phase.LOCOMOTION
 
@@ -54,6 +55,7 @@ func reset(initial_direction: int = 0) -> void:
 	_turn_step_remaining = 0.0
 	_moving = false
 	_aim_active = false
+	_aim_held = false
 	_twist_sign = 1
 	_phase = Phase.LOCOMOTION
 
@@ -99,9 +101,15 @@ func clear_active_aim() -> void:
 		_resolve_moving_pose()
 
 
+func set_aim_held(is_held: bool) -> void:
+	_aim_held = is_held
+	if _aim_held and _last_shot_vector.length_squared() > 0.0001:
+		_aim_active = true
+
+
 func advance(delta: float) -> void:
 	var safe_delta := maxf(delta, 0.0)
-	if _aim_active:
+	if _aim_active and not _aim_held:
 		_shot_hold_remaining = maxf(_shot_hold_remaining - safe_delta, 0.0)
 		if is_zero_approx(_shot_hold_remaining):
 			_aim_active = false

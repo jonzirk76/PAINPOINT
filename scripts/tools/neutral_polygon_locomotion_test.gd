@@ -40,6 +40,7 @@ func _ready() -> void:
 	input_manager.reset_run()
 	input_manager.move_changed.connect(_on_move_changed)
 	input_manager.aim_changed.connect(_on_aim_changed)
+	input_manager.aim_hold_changed.connect(_on_aim_hold_changed)
 	var visual := player.get_node_or_null("NeutralNativeTwistRuntime") as NativeHumanoidTwistRuntime
 	if visual != null:
 		visual.pose_changed.connect(_on_visual_pose_changed)
@@ -75,6 +76,11 @@ func _on_move_changed(move_vector: Vector2) -> void:
 
 func _on_aim_changed(aim_vector: Vector2) -> void:
 	player.set_aim_vector(aim_vector)
+	_update_twist_label()
+
+
+func _on_aim_hold_changed(is_held: bool) -> void:
+	player.set_aim_held(is_held)
 	_update_twist_label()
 
 

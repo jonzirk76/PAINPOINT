@@ -52,6 +52,10 @@ func clear_aim_vector() -> void:
 	visual.clear_active_aim()
 
 
+func set_aim_held(is_held: bool) -> void:
+	visual.set_aim_held(is_held)
+
+
 func has_aim_vector() -> bool:
 	return visual.is_aim_active()
 

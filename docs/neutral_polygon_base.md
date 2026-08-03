@@ -145,7 +145,9 @@ cone prevents the active arm from rapidly changing sides near an ambiguous bound
 
 `HumanoidAimPostureResolver` owns shot memory and posture policy independently
 from the native skeleton renderer. A shot event activates the pointing arm
-immediately and refreshes a presentation-only hold timer. While moving, the hips
+immediately and refreshes a presentation-only hold timer. Holding the aim stick
+pauses that timer so the pointing arm remains active until the stick returns to
+neutral. While moving, the hips
 remain aligned to locomotion, the torso turns at most one octant toward the shot,
 and the head turns at most two further octants. The inactive arm remains part of
 the torso subassembly.
@@ -160,9 +162,14 @@ and the completed brace remains until locomotion takes ownership again.
 
 The current body stance remains valid while later shots fall inside its exported
 angular comfort window. Separately, shoulder selection retains the current arm
-inside an angular cone around the torso's front and rear axes. These stateful
+when shot depth and torso-relative direction are both ambiguous. These stateful
 hysteresis rules prevent small aim changes from repeatedly rotating the body or
 swapping the visible shooting shoulder.
+
+The active shoulder follows the rig's depth semantics rather than comparing raw
+authored shoulder coordinates: southward shots prefer `NearArm`, northward shots
+prefer `FarArm`, and nearly horizontal shots use whether the shot lies forward
+or behind the torso while preserving the current arm inside the grace cone.
 
 Run `neutral_polygon_twist_review_workbench.tscn` to inspect the representative
 orientation matrix. Its eight rows cover every hips direction; the first column
