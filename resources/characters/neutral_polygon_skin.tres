@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="PolygonCharacterSkinSource" format=3 uid="uid://ca06hjj4478ap"]
+
+[ext_resource type="Script" uid="uid://bf5p272t755un" path="res://scripts/presentation/polygon_character_skin_source.gd" id="1_skin"]
+[ext_resource type="Script" uid="uid://c0m8g7nw3j80e" path="res://scripts/presentation/humanoid_directional_view_set.gd" id="2_views"]
+[ext_resource type="PackedScene" uid="uid://c75267g1vuqua" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_south.tscn" id="3_s"]
+[ext_resource type="PackedScene" uid="uid://c8up72hh017x3" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_south_west.tscn" id="4_sw"]
+[ext_resource type="PackedScene" uid="uid://7xvus6xbvvjb" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_west.tscn" id="5_w"]
+[ext_resource type="PackedScene" uid="uid://be0gbu18crkbo" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_north_east.tscn" id="6_ne"]
+[ext_resource type="PackedScene" uid="uid://de1hybb0q1nq" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_north.tscn" id="7_n"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_active_arm.tscn" id="8_arm"]
+
+[sub_resource type="Resource" id="DirectionalViews"]
+script = ExtResource("2_views")
+south = ExtResource("3_s")
+south_west = ExtResource("4_sw")
+west = ExtResource("5_w")
+north_east = ExtResource("6_ne")
+north = ExtResource("7_n")
+
+[resource]
+script = ExtResource("1_skin")
+directional_views = SubResource("DirectionalViews")
+active_arm_scene = ExtResource("8_arm")
