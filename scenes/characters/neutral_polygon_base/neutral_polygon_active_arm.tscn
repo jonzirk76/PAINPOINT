@@ -1,20 +1,30 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://r85rro3ey1oh"]
 
-[node name="NeutralPolygonActiveArm" type="Node2D"]
+[ext_resource type="Texture2D" uid="uid://cni5qyo7prb5u" path="res://art/concept_art/characterbasetransparent.png" id="1_rbskm"]
+
+[node name="NeutralPolygonActiveArm" type="Node2D" unique_id=341086092]
 visible = false
 z_as_relative = false
 
-[node name="UpperArm" type="Polygon2D" parent="."]
+[node name="UpperArm" type="Polygon2D" parent="." unique_id=576805503]
 color = Color(0.09019608, 0.37254903, 0.7294118, 1)
 antialiased = true
-polygon = PackedVector2Array(-13, -7, 13, -7, 11, 55, -11, 55)
+polygon = PackedVector2Array(-17, -7, 17, -7, 15, 55, -12, 55)
 
-[node name="Forearm" type="Polygon2D" parent="."]
+[node name="Forearm" type="Polygon2D" parent="." unique_id=2007589193]
 color = Color(0.07058824, 0.24705882, 0.49019608, 1)
 antialiased = true
-polygon = PackedVector2Array(-11, 50, 11, 50, 9, 112, -9, 112)
+polygon = PackedVector2Array(-11, 50, 16, 50, 16, 98, -12, 95)
 
-[node name="Hand" type="Polygon2D" parent="."]
+[node name="Hand" type="Polygon2D" parent="." unique_id=2096784897]
 color = Color(0.84705883, 0.6862745, 0.627451, 1)
 antialiased = true
-polygon = PackedVector2Array(-9, 106, 9, 106, 11, 126, 5, 141, -5, 141, -11, 126)
+polygon = PackedVector2Array(-12, 95, 16, 97, 16, 125, 5, 141, -5, 141, -13, 125)
+
+[node name="Characterbasetransparent" type="Sprite2D" parent="." unique_id=721262821]
+visible = false
+modulate = Color(1, 1, 1, 0.3764706)
+z_index = 999
+position = Vector2(-327, 236)
+texture = ExtResource("1_rbskm")
+metadata/_edit_lock_ = true
