@@ -135,11 +135,34 @@ arm geometry is attached to those two anchors independently instead of bringing
 its own shoulder spacing into the composite. Releasing aim returns the chain to
 the hips direction.
 
-While aim input is active, the ordinary arm pair uses the torso-facing view and
+While the shot presentation is active, the ordinary arm pair uses the torso-facing view and
 holds at its rest pose. A single side-neutral composite arm replaces whichever
 arm has the cleaner shoulder-to-aim path, inherits that shoulder's depth, and
-rotates continuously toward the exact aim vector. A small shoulder-switch margin
-prevents the active arm from rapidly changing sides near an ambiguous boundary.
+rotates continuously toward the exact aim vector. A small angular shoulder-switch
+cone prevents the active arm from rapidly changing sides near an ambiguous boundary.
+
+## Aim Posture Resolver
+
+`HumanoidAimPostureResolver` owns shot memory and posture policy independently
+from the native skeleton renderer. A shot event activates the pointing arm
+immediately and refreshes a presentation-only hold timer. While moving, the hips
+remain aligned to locomotion, the torso turns at most one octant toward the shot,
+and the head turns at most two further octants. The inactive arm remains part of
+the torso subassembly.
+
+When movement falls below the brace threshold, a short grace period protects
+against incidental stops. The resolver then advances the hips and torso together
+through consecutive 45-degree views until the aligned body rests 45 degrees from
+the remembered shot. The head tracks immediately within its two-octant limit,
+and the pointing arm continues to use the exact continuous shot vector. Once a
+brace transition begins it finishes even if the arm's presentation timer expires,
+and the completed brace remains until locomotion takes ownership again.
+
+The current body stance remains valid while later shots fall inside its exported
+angular comfort window. Separately, shoulder selection retains the current arm
+inside an angular cone around the torso's front and rear axes. These stateful
+hysteresis rules prevent small aim changes from repeatedly rotating the body or
+swapping the visible shooting shoulder.
 
 Run `neutral_polygon_twist_review_workbench.tscn` to inspect the representative
 orientation matrix. Its eight rows cover every hips direction; the first column

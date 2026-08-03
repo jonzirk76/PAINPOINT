@@ -16,8 +16,6 @@ const DIRECTION_COUNT := 8
 
 var _move_vector: Vector2 = Vector2.ZERO
 var _direction: int = 0
-var _aim_direction: Vector2 = Vector2.ZERO
-var _has_aim_direction: bool = false
 
 
 func _ready() -> void:
@@ -25,7 +23,7 @@ func _ready() -> void:
 	collision_mask = 96
 	add_to_group("player")
 	_sync_tuning()
-	_update_visual_pose()
+	visual.set_locomotion(_direction, 0.0)
 
 
 func _physics_process(_delta: float) -> void:
@@ -40,32 +38,30 @@ func set_move_vector(value: Vector2) -> void:
 		var next_direction := _direction_from_vector(_move_vector)
 		if next_direction != _direction:
 			_direction = next_direction
-	_update_visual_pose()
+	visual.set_locomotion(_direction, _move_vector.length())
 
 
 func set_aim_vector(value: Vector2) -> void:
 	if value.length_squared() <= 0.01:
 		clear_aim_vector()
 		return
-	_aim_direction = value.normalized()
-	_has_aim_direction = true
-	_update_visual_pose()
+	visual.register_shot(value.normalized())
 
 
 func clear_aim_vector() -> void:
-	if not _has_aim_direction:
-		return
-	_has_aim_direction = false
-	_aim_direction = Vector2.ZERO
-	_update_visual_pose()
+	visual.clear_active_aim()
 
 
 func has_aim_vector() -> bool:
-	return _has_aim_direction
+	return visual.is_aim_active()
 
 
 func get_twist_pose_directions() -> PackedInt32Array:
 	return visual.get_pose_directions()
+
+
+func get_posture_phase_name() -> String:
+	return visual.get_posture_phase_name()
 
 
 func set_torso_hip_seam_enabled(_value: bool) -> void:
@@ -92,18 +88,6 @@ func get_perspective_world_rect() -> Rect2:
 func _direction_from_vector(value: Vector2) -> int:
 	var octant := roundi((value.angle() - PI * 0.5) / (PI * 0.25))
 	return wrapi(octant, 0, DIRECTION_COUNT)
-
-
-func _update_visual_pose() -> void:
-	var desired_direction := _direction
-	if _has_aim_direction:
-		desired_direction = _direction_from_vector(_aim_direction)
-	visual.set_pose(
-		_direction,
-		desired_direction,
-		_move_vector.length_squared() > 0.01,
-		_aim_direction if _has_aim_direction else Vector2.ZERO
-	)
 
 
 func _sync_tuning() -> void:

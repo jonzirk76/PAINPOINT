@@ -62,7 +62,7 @@ offset_left = 32.0
 offset_top = 56.0
 offset_right = 626.0
 offset_bottom = 80.0
-text = "Move WASD/LS  •  Aim arrows/RS  •  C clear  •  [ ] shorten"
+text = "Move WASD/LS  •  Shoot arrows/RS  •  C clear aim  •  [ ] shorten"
 
 [node name="TwistLabel" type="Label" parent="UI" unique_id=1735297417]
 offset_left = 32.0

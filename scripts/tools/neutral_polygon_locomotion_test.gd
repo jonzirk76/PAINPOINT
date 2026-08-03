@@ -40,6 +40,9 @@ func _ready() -> void:
 	input_manager.reset_run()
 	input_manager.move_changed.connect(_on_move_changed)
 	input_manager.aim_changed.connect(_on_aim_changed)
+	var visual := player.get_node_or_null("NeutralNativeTwistRuntime") as NativeHumanoidTwistRuntime
+	if visual != null:
+		visual.pose_changed.connect(_on_visual_pose_changed)
 	input_manager.set_enabled(true)
 	_update_twist_label()
 
@@ -75,15 +78,25 @@ func _on_aim_changed(aim_vector: Vector2) -> void:
 	_update_twist_label()
 
 
+func _on_visual_pose_changed(
+	_hips_direction: int,
+	_torso_direction: int,
+	_head_direction: int,
+	_arms_direction: int
+) -> void:
+	_update_twist_label()
+
+
 func _update_twist_label() -> void:
 	var directions: PackedInt32Array = player.get_twist_pose_directions()
 	if directions.is_empty():
 		return
-	twist_label.text = "NATIVE TWIST  •  H %s  T %s  HEAD %s  A %s  •  SHORT %d%%" % [
+	twist_label.text = "NATIVE TWIST  •  H %s  T %s  HEAD %s  A %s  •  %s  •  SHORT %d%%" % [
 		_direction_name(directions[0]),
 		_direction_name(directions[1]),
 		_direction_name(directions[2]),
 		_direction_name(directions[3]),
+		player.get_posture_phase_name().to_upper(),
 		roundi(player.get_foreshortening() * 100.0),
 	]
 

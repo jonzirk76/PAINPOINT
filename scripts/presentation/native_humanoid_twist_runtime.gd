@@ -3,6 +3,10 @@ extends Node2D
 
 signal pose_changed(hips_direction: int, torso_direction: int, head_direction: int, arms_direction: int)
 
+const AIM_POSTURE_RESOLVER := preload(
+	"res://scripts/presentation/humanoid_aim_posture_resolver.gd"
+)
+
 enum Direction {
 	SOUTH,
 	SOUTH_WEST,
@@ -25,8 +29,20 @@ const NEAR_ARM_PATH := ^"Hips/Torso/NearArm"
 @export var preserve_head_shape: bool = true
 ## [Description] Blends head height from the torso socket toward the selected head view's authored elevation.
 @export_range(0.0, 1.0, 0.05) var head_authored_elevation_weight: float = 1.0
-## [Description] Extra screen-space advantage required before continuous aim switches to the opposite shoulder.
-@export_range(0.0, 40.0, 1.0) var active_arm_switch_margin: float = 8.0
+## [Description] Keeps the pointing arm active for this long after each shot event.
+@export_range(0.05, 2.0, 0.05) var shot_pose_hold_seconds: float = 0.4
+## [Description] Delays stationary body rotation so brief movement interruptions do not shift the stance.
+@export_range(0.0, 0.5, 0.01) var brace_entry_delay_seconds: float = 0.15
+## [Description] Permits nearby shot angles without selecting a different 45-degree braced body view.
+@export_range(0.0, 44.0, 0.5) var brace_aim_grace_degrees: float = 30.0
+## [Description] Time between consecutive 45-degree body steps while entering a stationary brace.
+@export_range(0.01, 0.3, 0.01) var brace_turn_step_seconds: float = 0.1
+## [Description] Movement strength below which the current shot may begin taking ownership of the stance.
+@export_range(0.0, 1.0, 0.01) var brace_speed_enter_threshold: float = 0.15
+## [Description] Movement strength required to leave a retained brace and resume locomotion ownership.
+@export_range(0.0, 1.0, 0.01) var movement_speed_resume_threshold: float = 0.25
+## [Description] Angular cone around the torso front and rear where the current pointing shoulder is retained.
+@export_range(0.0, 30.0, 0.5) var active_arm_switch_grace_degrees: float = 12.0
 
 @onready var hips_runtime: NativeHumanoidSkeletonRuntime = $HipsRuntime
 @onready var torso_runtime: NativeHumanoidSkeletonRuntime = $TorsoRuntime
@@ -44,62 +60,52 @@ var _walking: bool = false
 var _aim_active: bool = false
 var _aim_vector: Vector2 = Vector2.ZERO
 var _active_arm_path: NodePath = NEAR_ARM_PATH
-var _twist_sign: int = 1
+var _posture_phase: int = 0
+var _posture_resolver = AIM_POSTURE_RESOLVER.new()
 
 
 func _ready() -> void:
+	_configure_posture_resolver()
+	_posture_resolver.reset(_hips_direction)
 	_setup_active_arm()
 	_apply_foreshortening()
-	_apply_runtime_states()
+	_apply_resolved_posture(true)
 	_align_subassemblies()
 	_apply_active_arm_state()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_posture_resolver.advance(delta)
+	_apply_resolved_posture()
 	# The hips own locomotion bob. The other persistent assemblies retain their
 	# independently mirrored view while following the authored body sockets.
 	_align_subassemblies()
 	_apply_active_arm_state()
 
 
-func set_pose(
-	hips_direction: int,
-	desired_direction: int,
-	walking: bool,
-	aim_vector: Vector2 = Vector2.ZERO
-) -> void:
-	var hips := wrapi(hips_direction, 0, 8)
-	var desired := wrapi(desired_direction, 0, 8)
-	var initial_delta := _signed_direction_delta(hips, desired)
-	if initial_delta != 0 and abs(initial_delta) < 4:
-		_twist_sign = 1 if initial_delta > 0 else -1
-	var torso := _step_toward(hips, desired, 1)
-	var head := _step_toward(torso, desired, 2)
-	# The inactive arm pair is part of the torso subassembly. The future active
-	# pointing arm owns the remaining shoulder-to-aim rotation independently.
-	var arms := torso
-	var next_aim_active := aim_vector.length_squared() > 0.01
-	var next_aim_vector := aim_vector.normalized() if next_aim_active else Vector2.ZERO
-	var changed := (
-		_hips_direction != hips
-		or _torso_direction != torso
-		or _head_direction != head
-		or _arms_direction != arms
-		or _walking != walking
-		or _aim_active != next_aim_active
-	)
-	_hips_direction = hips
-	_torso_direction = torso
-	_head_direction = head
-	_arms_direction = arms
-	_walking = walking
-	_aim_active = next_aim_active
-	_aim_vector = next_aim_vector
-	if changed:
-		_apply_runtime_states()
-		_align_subassemblies()
+func set_locomotion(direction: int, movement_strength: float) -> void:
+	_posture_resolver.set_locomotion(direction, movement_strength)
+	_apply_resolved_posture()
+
+
+func register_shot(shot_vector: Vector2) -> void:
+	_posture_resolver.register_shot(shot_vector)
+	_apply_resolved_posture()
 	_apply_active_arm_state()
-	pose_changed.emit(hips, torso, head, arms)
+
+
+func clear_active_aim() -> void:
+	_posture_resolver.clear_active_aim()
+	_apply_resolved_posture()
+	_apply_active_arm_state()
+
+
+func is_aim_active() -> bool:
+	return _posture_resolver.is_aim_active()
+
+
+func get_posture_phase_name() -> String:
+	return _posture_resolver.get_phase_name()
 
 
 func get_pose_directions() -> PackedInt32Array:
@@ -120,6 +126,62 @@ func set_foreshortening(value: float) -> void:
 
 func get_foreshortening() -> float:
 	return foreshortening
+
+
+func _configure_posture_resolver() -> void:
+	_posture_resolver.shot_pose_hold_seconds = shot_pose_hold_seconds
+	_posture_resolver.brace_entry_delay_seconds = brace_entry_delay_seconds
+	_posture_resolver.brace_aim_grace_degrees = brace_aim_grace_degrees
+	_posture_resolver.brace_turn_step_seconds = brace_turn_step_seconds
+	_posture_resolver.brace_speed_enter_threshold = brace_speed_enter_threshold
+	_posture_resolver.movement_speed_resume_threshold = maxf(
+		movement_speed_resume_threshold,
+		brace_speed_enter_threshold
+	)
+
+
+func _apply_resolved_posture(force: bool = false) -> void:
+	var pose: Dictionary = _posture_resolver.get_pose()
+	var next_hips := int(pose.get("hips_direction", _hips_direction))
+	var next_torso := int(pose.get("torso_direction", _torso_direction))
+	var next_head := int(pose.get("head_direction", _head_direction))
+	var next_arms := int(pose.get("arms_direction", _arms_direction))
+	var next_walking := bool(pose.get("walking", _walking))
+	var next_aim_active := bool(pose.get("aim_active", _aim_active))
+	var next_aim_vector := pose.get("aim_vector", _aim_vector) as Vector2
+	var next_phase := int(pose.get("phase", _posture_phase))
+	var runtime_changed := (
+		force
+		or _hips_direction != next_hips
+		or _torso_direction != next_torso
+		or _head_direction != next_head
+		or _arms_direction != next_arms
+		or _walking != next_walking
+		or _aim_active != next_aim_active
+	)
+	var posture_changed := (
+		runtime_changed
+		or not _aim_vector.is_equal_approx(next_aim_vector)
+		or _posture_phase != next_phase
+	)
+	_hips_direction = next_hips
+	_torso_direction = next_torso
+	_head_direction = next_head
+	_arms_direction = next_arms
+	_walking = next_walking
+	_aim_active = next_aim_active
+	_aim_vector = next_aim_vector
+	_posture_phase = next_phase
+	if runtime_changed:
+		_apply_runtime_states()
+		_align_subassemblies()
+	if posture_changed:
+		pose_changed.emit(
+			_hips_direction,
+			_torso_direction,
+			_head_direction,
+			_arms_direction
+		)
 
 
 func _apply_runtime_states() -> void:
@@ -229,20 +291,12 @@ func _select_active_arm_path() -> NodePath:
 	var center := (far_position + near_position) * 0.5
 	var far_score := (far_position - center).dot(_aim_vector)
 	var near_score := (near_position - center).dot(_aim_vector)
-	if _active_arm_path == FAR_ARM_PATH and near_score - far_score < active_arm_switch_margin:
-		return FAR_ARM_PATH
-	if _active_arm_path == NEAR_ARM_PATH and far_score - near_score < active_arm_switch_margin:
-		return NEAR_ARM_PATH
-	return FAR_ARM_PATH if far_score > near_score else NEAR_ARM_PATH
-
-
-func _step_toward(source: int, target: int, maximum_steps: int) -> int:
-	var delta := _signed_direction_delta(source, target)
-	return wrapi(source + clampi(delta, -maximum_steps, maximum_steps), 0, 8)
-
-
-func _signed_direction_delta(source: int, target: int) -> int:
-	var clockwise_steps := wrapi(target - source, 0, 8)
-	if clockwise_steps == 4:
-		return 4 * _twist_sign
-	return clockwise_steps if clockwise_steps < 4 else clockwise_steps - 8
+	var preferred_path := FAR_ARM_PATH if far_score > near_score else NEAR_ARM_PATH
+	if preferred_path == _active_arm_path:
+		return _active_arm_path
+	var shoulder_axis := (near_position - far_position).normalized()
+	var boundary_alignment := absf(shoulder_axis.dot(_aim_vector))
+	var switch_alignment := sin(deg_to_rad(active_arm_switch_grace_degrees))
+	if boundary_alignment < switch_alignment:
+		return _active_arm_path
+	return preferred_path
