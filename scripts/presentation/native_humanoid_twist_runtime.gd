@@ -41,8 +41,10 @@ const NEAR_ARM_PATH := ^"Hips/Torso/NearArm"
 @export_range(0.0, 1.0, 0.01) var brace_speed_enter_threshold: float = 0.15
 ## [Description] Movement strength required to leave a retained brace and resume locomotion ownership.
 @export_range(0.0, 1.0, 0.01) var movement_speed_resume_threshold: float = 0.25
-## [Description] Angular tolerance used when shot depth does not clearly select the near or far shoulder.
+## [Description] Angular tolerance before shoulder geometry can switch the active shooting arm.
 @export_range(0.0, 30.0, 0.5) var active_arm_switch_grace_degrees: float = 12.0
+## [Description] Horizontal aim tolerance where an ambiguous shot retains its current arm instead of using screen depth.
+@export_range(0.0, 30.0, 0.5) var active_arm_depth_grace_degrees: float = 7.0
 
 @onready var hips_runtime: NativeHumanoidSkeletonRuntime = $HipsRuntime
 @onready var torso_runtime: NativeHumanoidSkeletonRuntime = $TorsoRuntime
@@ -304,20 +306,27 @@ func _select_active_arm_path() -> NodePath:
 	var shoulder_separation := near_position - far_position
 	if shoulder_separation.length_squared() <= 0.0001:
 		return _active_arm_path
+	var normalized_aim := _aim_vector.normalized()
 	# The canonical torso pose owns the shoulder sockets. Projecting their
 	# authored separation onto the shot vector identifies which socket is
 	# geometrically closer to the shot without a direction-specific rule table.
 	# The torso runtime does not play gait, so locomotion cannot disturb this
 	# reference geometry.
-	var shoulder_alignment := shoulder_separation.normalized().dot(_aim_vector)
+	var shoulder_alignment := shoulder_separation.normalized().dot(normalized_aim)
 	var switch_alignment := sin(deg_to_rad(active_arm_switch_grace_degrees))
 	if shoulder_alignment > switch_alignment:
 		return NEAR_ARM_PATH
 	if shoulder_alignment < -switch_alignment:
 		return FAR_ARM_PATH
-	# Retain the selected shoulder inside the ambiguous band. The wider switch
-	# threshold and zero-width retain threshold form hysteresis around the
-	# shoulder-axis boundary and prevent small aim changes from swapping arms.
+	# Screen depth resolves only the remaining shoulder ambiguity, equally for
+	# front and rear shots: southward aim uses the near arm and northward aim
+	# uses the far arm. A narrow horizontal band retains the current arm so an
+	# east/west shot does not chatter between shoulders.
+	var depth_alignment := sin(deg_to_rad(active_arm_depth_grace_degrees))
+	if normalized_aim.y > depth_alignment:
+		return NEAR_ARM_PATH
+	if normalized_aim.y < -depth_alignment:
+		return FAR_ARM_PATH
 	if _active_arm_path == FAR_ARM_PATH or _active_arm_path == NEAR_ARM_PATH:
 		return _active_arm_path
 	return NEAR_ARM_PATH
