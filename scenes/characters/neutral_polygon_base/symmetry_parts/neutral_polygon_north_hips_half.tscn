@@ -1,8 +1,9 @@
 [gd_scene format=3]
 
 [node name="HipsHalf" type="Polygon2D"]
-z_as_relative = false
-color = Color(0.03529412, 0.14901961, 0.30980393, 1)
+z_index = 0
+z_as_relative = true
+color = Color(0.7, 0.72, 0.76, 1)
 antialiased = true
 polygon = PackedVector2Array(-51, -11.799988, -58, 36.200012, -3, 57.200012, -3, 56.200012, 0, 57.700012, 0, -12.799988, -51, -12.799988)
 metadata/editable_polygon_base = true

@@ -1,15 +1,16 @@
 [gd_scene format=3]
 
 [node name="TorsoHalf" type="Polygon2D"]
-z_index = 10
-z_as_relative = false
-color = Color(0.08235294, 0.3372549, 0.6509804, 1)
+z_index = 0
+z_as_relative = true
+color = Color(0.84705883, 0.6862745, 0.627451, 1)
 antialiased = true
 polygon = PackedVector2Array(-62.33333, -92.66666, -76.33333, -82.66666, -77.33333, -82.66666, -56.33333, -31.666656, -51.33333, -17.666656, -50.33333, -17.666656, -52.33333, -6.6666565, -52.33333, -3.6666565, -50.33333, -4.6666565, -47.33333, -4.6666565, -1.3333282, 10.3333435, -1.3333282, 11.3333435, 0, 10.870805, 0, -50.666656, -1.3333282, -50.666656, -31.333328, -65.66666, -33.33333, -65.66666, -57.33333, -92.66666, -57.33333, -93.66666, -62.33333, -93.66666)
 metadata/editable_polygon_base = true
 metadata/symmetry_source = "left"
 
 [node name="FrontEmblemHalf" type="Polygon2D" parent="."]
+z_as_relative = true
 z_index = 1
 color = Color(0.34, 0.88, 1, 1)
 antialiased = true

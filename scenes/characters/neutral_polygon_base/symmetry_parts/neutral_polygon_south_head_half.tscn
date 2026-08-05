@@ -3,8 +3,8 @@
 [ext_resource type="Texture2D" uid="uid://cni5qyo7prb5u" path="res://art/concept_art/characterbasetransparent.png" id="1_emm1n"]
 
 [node name="HeadHalf" type="Polygon2D" unique_id=514055199]
-z_index = 30
-z_as_relative = false
+z_index = 0
+z_as_relative = true
 color = Color(0.84705883, 0.6862745, 0.627451, 1)
 antialiased = true
 polygon = PackedVector2Array(-11, -151, -23, -147, -38, -138, -49, -128, -59, -113, -65, -95, -67, -80, -66, -67, -65, -56, -70, -55, -74, -51, -75, -39, -71.8, -32.199997, -67, -25, -61.800003, -19.199997, -53, -14, -34.800003, 8.800003, -2.800003, 24, -0.80000305, 24, 0, 24, 0, -152)
@@ -12,6 +12,7 @@ metadata/editable_polygon_base = true
 metadata/symmetry_source = "left"
 
 [node name="PlaceholderEyeWhite" type="Polygon2D" parent="." unique_id=948835895]
+z_as_relative = true
 z_index = 1
 position = Vector2(6, 25)
 color = Color(0.94, 0.95, 1, 1)
@@ -20,6 +21,7 @@ polygon = PackedVector2Array(-55, -50, -55, -59, -48, -59, -34, -55, -20, -44, -
 metadata/orientation_marker = true
 
 [node name="PlaceholderIris" type="Polygon2D" parent="." unique_id=902342908]
+z_as_relative = true
 z_index = 2
 position = Vector2(6, 25)
 color = Color(0.38, 0.12, 0.68, 1)
@@ -28,6 +30,7 @@ polygon = PackedVector2Array(-43, -57, -33, -57, -26, -51, -26, -45, -28, -40, -
 metadata/orientation_marker = true
 
 [node name="PlaceholderEyeLash" type="Polygon2D" parent="." unique_id=1616884816]
+z_as_relative = true
 z_index = 3
 position = Vector2(6, 25)
 color = Color(0.03137, 0.0196, 0.02745, 1)

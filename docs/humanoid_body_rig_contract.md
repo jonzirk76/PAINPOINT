@@ -84,6 +84,17 @@ commands and has no manager or orchestrator references.
   by lower legs, knees, upper legs, pelvis, torso/armor, neck, head, and hair.
   Forward arm depth is hand, forearm, then upper arm/shoulder. Scene-tree
   insertion order is not the layering contract.
+- Draw order is hierarchical rather than absolute. Semantic bones own the major
+  direction-specific depth of the hips, torso, head, and near/far appendages.
+  Artwork beneath a semantic bone uses relative Z only: principal mass `0`,
+  middle limb segment `-1`, and distal limb segment `-2`. Details use small
+  offsets from their owning form. Absolute Z is reserved for non-gameplay
+  authoring overlays and UI.
+- The neutral base palette is deliberately skin-oriented so it can serve as a
+  skinning underlay: head, torso, upper limbs, and thighs use the base skin tone;
+  forearms and shins use a medium depth tone; hands and feet use the darkest
+  distal tone; and the hips remain light grey as an assembly landmark. Far-side
+  modulation may darken an entire appendage in addition to this segment gradient.
 - The forward hierarchy has three principal forms in back-to-front order:
   `Hips`, `Torso`, and `Head`. Torso owns explicit hips, head, and shoulder
   anchors; hips own explicit left and right hip sockets. Appendages currently

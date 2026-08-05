@@ -203,18 +203,15 @@ func get_bone_visual_style(bone_path: NodePath) -> Dictionary:
 	var bone := skeleton.get_node_or_null(bone_path) as Bone2D
 	if bone == null:
 		return {}
-	var branch_z_index := bone.z_index
 	for candidate in bone.find_children("*", "Polygon2D", true, false):
 		var polygon := candidate as Polygon2D
 		if polygon.is_visible_in_tree():
 			return {
-				# Symmetrical views keep depth on the semantic Bone2D, while
-				# diagonal/profile views may encode it on the artwork itself.
-				"z_index": polygon.z_index if branch_z_index == 0 else branch_z_index,
+				"z_index": _effective_canvas_z(polygon),
 				"modulate": polygon.modulate,
 			}
 	return {
-		"z_index": branch_z_index,
+		"z_index": _effective_canvas_z(bone),
 		"modulate": bone.modulate,
 	}
 
@@ -417,6 +414,12 @@ func _capture_direction_skin(direction: int, skin_view: Node2D, skin_skeleton: S
 			source_polygon,
 			semantic_source_bone
 		)
+		compiled_polygon.z_index = _relative_z_to_ancestor(
+			source_polygon,
+			semantic_source_bone,
+			skin_view
+		)
+		compiled_polygon.z_as_relative = true
 		compiled_polygon.set_meta("native_skin_direction", _direction_name(direction))
 		compiled_polygon.set_meta("canonical_polygon_path", skin_view.get_path_to(source_polygon))
 		slot.add_child(compiled_polygon)
@@ -460,6 +463,45 @@ func _relative_transform_to_ancestor(node: Node2D, ancestor: Node2D) -> Transfor
 	if cursor != ancestor:
 		push_error("Compiled polygon is not a descendant of its semantic bone.")
 	return relative
+
+
+func _relative_z_to_ancestor(
+	node: CanvasItem,
+	ancestor: CanvasItem,
+	source_view: Node
+) -> int:
+	var cursor: Node = node
+	var warned_about_absolute_z := false
+	while cursor != null and cursor != ancestor:
+		if (
+			not warned_about_absolute_z
+			and cursor is CanvasItem
+			and not (cursor as CanvasItem).z_as_relative
+		):
+			push_warning(
+				(
+					"Canonical skin item %s uses absolute Z below semantic bone %s; "
+					+ "the runtime normalized it to relative Z."
+				)
+				% [source_view.get_path_to(node), source_view.get_path_to(ancestor)]
+			)
+			warned_about_absolute_z = true
+		cursor = cursor.get_parent()
+	if cursor != ancestor:
+		push_error("Compiled polygon Z ancestry does not reach its semantic bone.")
+	return _effective_canvas_z(node) - _effective_canvas_z(ancestor)
+
+
+func _effective_canvas_z(item: CanvasItem) -> int:
+	var effective_z := item.z_index
+	var cursor := item
+	while cursor.z_as_relative:
+		var parent := cursor.get_parent() as CanvasItem
+		if parent == null:
+			break
+		effective_z += parent.z_index
+		cursor = parent
+	return effective_z
 
 
 func _build_animation_tree() -> void:

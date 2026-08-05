@@ -176,6 +176,13 @@ The continuous arm applies perspective shortening only along its authored local
 length axis, preserving arm thickness as it rotates between vertical and horizontal
 screen directions.
 
+Canonical draw order uses relative Z at every gameplay-art level. Directional
+semantic bones own major body depth, while compiled polygons retain their
+cumulative local offset from that bone. The compiler normalizes legacy absolute
+polygon values and warns so new skins cannot silently escape their owning body
+branch. The active arm copies the selected shoulder polygon's effective Z before
+applying its own `0/-1/-2` upper-arm, forearm, and hand ordering.
+
 Run `neutral_polygon_twist_review_workbench.tscn` to inspect the representative
 orientation matrix. Its eight rows cover every hips direction; the first column
 shows the unarmed rest composite and the remaining columns aim through all eight

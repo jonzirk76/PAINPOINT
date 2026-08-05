@@ -267,6 +267,8 @@ metadata/reference_scene = "res://scenes/characters/neutral_cutout/neutral_human
 position = Vector2(-200.5, -480)
 
 [node name="Hips" type="Bone2D" parent="Skeleton2D" unique_id=976669692]
+z_as_relative = true
+z_index = 0
 position = Vector2(200.33333, 299.66666)
 rest = Transform2D(1, 0, 0, 1, 200.33333, 299.66666)
 
@@ -280,6 +282,8 @@ scale = Vector2(-1, 1)
 polygon = PackedVector2Array(-55.33333, 8.3333435, -9.833328, 47.333344, 0.16667175, 47.333344, 0, -9.6666565, -51.33333, -9.6666565)
 
 [node name="Torso" type="Bone2D" parent="Skeleton2D/Hips" unique_id=1988226583]
+z_as_relative = true
+z_index = 10
 rest = Transform2D(1, 0, 0, 1, 0, 0)
 
 [node name="AuthoredTorsoHalf" parent="Skeleton2D/Hips/Torso" unique_id=844426500 instance=ExtResource("2_torso_half")]
@@ -292,6 +296,8 @@ scale = Vector2(-1, 1)
 polygon = PackedVector2Array(-77.33333, -82.66666, -56.33333, -31.666656, -51.33333, -17.666656, -52.33333, -6.6666565, -52.33333, -3.6666565, 0, 10.870805, 0, -93.66666, -57.33333, -93.66666, -62.33333, -93.66666)
 
 [node name="Head" type="Bone2D" parent="Skeleton2D/Hips/Torso" unique_id=1375361548]
+z_as_relative = true
+z_index = 20
 position = Vector2(0, -74.46666)
 rest = Transform2D(1, 0, 0, 1, 0, -74.46666)
 
@@ -305,14 +311,16 @@ scale = Vector2(-1, 1)
 polygon = PackedVector2Array(-14.800003, -157.2, -34.800003, -149.2, -56.800003, -128.2, -64.8, -112.2, -68.8, -96.2, -66.8, -63.199997, -75.8, -59.199997, -77.8, -50.199997, -71.8, -32.199997, -60.800003, -22.199997, -58.800003, -19.199997, -34.800003, 8.800003, -2.800003, 23.800003, 0, 23.800003, 0, -158.2)
 
 [node name="FarArm" type="Bone2D" parent="Skeleton2D/Hips/Torso" unique_id=520799470]
-z_index = -20
+z_as_relative = true
+z_index = -30
 position = Vector2(-68.83333, -52.666656)
 rest = Transform2D(1, 0, 0, 1, -68.83333, -52.666656)
 
 [node name="AuthoredLeftArm" parent="Skeleton2D/Hips/Torso/FarArm" unique_id=632532161 instance=ExtResource("3_left_arm")]
 
 [node name="NearArm" type="Bone2D" parent="Skeleton2D/Hips/Torso" unique_id=523679993]
-z_index = 20
+z_as_relative = true
+z_index = 10
 position = Vector2(68.83333, -52.666656)
 rest = Transform2D(1, 0, 0, 1, 68.83333, -52.666656)
 
@@ -322,6 +330,7 @@ scale = Vector2(-1, 1)
 [node name="MirroredLeftArm" parent="Skeleton2D/Hips/Torso/NearArm/ArmMirrorAxis" unique_id=1051192723 instance=ExtResource("3_left_arm")]
 
 [node name="FarLeg" type="Bone2D" parent="Skeleton2D/Hips" unique_id=272280599]
+z_as_relative = true
 z_index = -30
 position = Vector2(-33, 37)
 rest = Transform2D(1, 0, 0, 1, -33, 37)
@@ -329,7 +338,8 @@ rest = Transform2D(1, 0, 0, 1, -33, 37)
 [node name="AuthoredLeftLeg" parent="Skeleton2D/Hips/FarLeg" unique_id=160594926 instance=ExtResource("5_left_leg")]
 
 [node name="NearLeg" type="Bone2D" parent="Skeleton2D/Hips" unique_id=1521334807]
-show_behind_parent = true
+z_as_relative = true
+z_index = -1
 position = Vector2(33, 37)
 rest = Transform2D(1, 0, 0, 1, 33, 37)
 

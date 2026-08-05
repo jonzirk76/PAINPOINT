@@ -4,20 +4,26 @@
 
 [node name="NeutralPolygonActiveArm" type="Node2D" unique_id=341086092]
 visible = false
-z_as_relative = false
+z_as_relative = true
 
 [node name="UpperArm" type="Polygon2D" parent="." unique_id=576805503]
-color = Color(0.09019608, 0.37254903, 0.7294118, 1)
+z_as_relative = true
+z_index = 0
+color = Color(0.84705883, 0.6862745, 0.627451, 1)
 antialiased = true
 polygon = PackedVector2Array(-17, -7, 17, -7, 15, 55, -12, 55)
 
 [node name="Forearm" type="Polygon2D" parent="." unique_id=2007589193]
-color = Color(0.07058824, 0.24705882, 0.49019608, 1)
+z_as_relative = true
+z_index = -1
+color = Color(0.72, 0.54, 0.49, 1)
 antialiased = true
 polygon = PackedVector2Array(-11, 50, 16, 50, 16, 98, -12, 95)
 
 [node name="Hand" type="Polygon2D" parent="." unique_id=2096784897]
-color = Color(0.84705883, 0.6862745, 0.627451, 1)
+z_as_relative = true
+z_index = -2
+color = Color(0.58, 0.4, 0.36, 1)
 antialiased = true
 polygon = PackedVector2Array(-12, 95, 16, 97, 16, 125, 5, 141, -5, 141, -13, 125)
 

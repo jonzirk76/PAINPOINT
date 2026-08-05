@@ -5,7 +5,9 @@ metadata/editable_polygon_base = true
 metadata/symmetry_source = "left"
 
 [node name="UpperArm" type="Polygon2D" parent="." unique_id=290685463]
-color = Color(0.09019608, 0.37254903, 0.7294118, 1)
+z_as_relative = true
+z_index = 0
+color = Color(0.84705883, 0.6862745, 0.627451, 1)
 antialiased = true
 polygon = PackedVector2Array(-16.833313, -10.333313, -30.333313, 21.666687, -12.333313, 32.666687, -1.333313, 36.666687, 16.666687, 5.666687, -6.833313, -31.333313)
 metadata/editable_polygon_base = true
@@ -15,7 +17,9 @@ position = Vector2(-14.333313, 26.333374)
 rest = Transform2D(1, 0, 0, 1, -14.333313, 26.333374)
 
 [node name="ForearmMass" type="Polygon2D" parent="Forearm" unique_id=1099107340]
-color = Color(0.07058824, 0.24705882, 0.49019608, 1)
+z_as_relative = true
+z_index = -1
+color = Color(0.72, 0.54, 0.49, 1)
 antialiased = true
 polygon = PackedVector2Array(-14, -6.666687, -31, 38.333313, -31, 42.333313, -9, 50.333313, -9, 51.333313, -5, 51.333313, 15, 4.333313, 13, 1.333313, -14, -9.666687)
 metadata/editable_polygon_base = true
@@ -25,7 +29,9 @@ position = Vector2(-17.333313, 43)
 rest = Transform2D(1, 0, 0, 1, -17.333313, 43)
 
 [node name="HandMass" type="Polygon2D" parent="Forearm/Hand" unique_id=80204584]
-color = Color(0.84705883, 0.6862745, 0.627451, 1)
+z_as_relative = true
+z_index = -2
+color = Color(0.58, 0.4, 0.36, 1)
 antialiased = true
 polygon = PackedVector2Array(-17.666687, 7.333313, -19.666687, 23.333313, -19.666687, 26.333313, -15.666687, 38.333313, -5.666687, 48.333313, 15.333313, 3.333313, -11.666687, -8.666687)
 metadata/editable_polygon_base = true
