@@ -5,7 +5,7 @@ extends Resource
 @export var skin_name: StringName = &"neutral_polygon"
 ## [Description] Five editable canonical scenes supplying polygons and other visible skin layers.
 @export var directional_views: HumanoidDirectionalViewSet
-## [Description] Editable arm scene used while a character has an active aim direction.
+## [Description] Editable left-arm scene mirrored automatically when the right arm owns active aim.
 @export var active_arm_scene: PackedScene
 
 

@@ -294,10 +294,26 @@ func _apply_active_arm_state() -> void:
 	# The source arm extends down its local Y axis. Scaling only that axis keeps
 	# its authored thickness intact while its apparent length follows the same
 	# top-down projection as the body.
-	active_arm.scale = Vector2(1.0, projected_length)
+	active_arm.scale = Vector2(_active_arm_handedness_scale(), projected_length)
 	active_arm.rotation = normalized_aim.angle() - PI * 0.5
 	active_arm.z_index = int(style.get("z_index", 0))
 	active_arm.modulate = style.get("modulate", Color.WHITE)
+
+
+func _active_arm_handedness_scale() -> float:
+	var far_position := torso_runtime.get_bone_global_position(FAR_ARM_PATH)
+	var near_position := torso_runtime.get_bone_global_position(NEAR_ARM_PATH)
+	var selected_position := torso_runtime.get_bone_global_position(_active_arm_path)
+	var shoulder_offset := selected_position - (far_position + near_position) * 0.5
+	if shoulder_offset.length_squared() <= 0.0001:
+		return 1.0
+	# The active-arm artwork is authored as the character's left arm. Resolve
+	# handedness from the selected socket relative to the torso facing so this
+	# remains valid for canonical and horizontally mirrored directional views.
+	var facing_angle := PI * 0.5 + wrapi(_torso_direction, 0, 8) * PI * 0.25
+	var left_axis := Vector2.from_angle(facing_angle).rotated(-PI * 0.5)
+	left_axis.y *= foreshortening
+	return 1.0 if shoulder_offset.dot(left_axis) >= 0.0 else -1.0
 
 
 func _select_active_arm_path() -> NodePath:
