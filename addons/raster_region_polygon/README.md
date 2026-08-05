@@ -1,7 +1,8 @@
 # Raster Region Polygon
 
 Godot 4.7 editor plugin for tracing a contiguous color region in a `Sprite2D`
-texture into an editable `Polygon2D`.
+texture into an editable `Polygon2D`, and for editing instantiated Polygon2D
+part scenes in assembly context without leaking local overrides.
 
 ## Enable
 
@@ -63,6 +64,38 @@ trace state:
 After every accepted mutation, the model is synchronized from the scene again.
 Generated nodes receive stable trace IDs; node names remain user-facing labels
 rather than hidden identity or command routing.
+
+### Edit a PackedScene part in place
+
+The **PackedScene part editing** section provides a block-style workflow for
+symmetrical rig pieces and other reusable 2D polygon assemblies:
+
+1. Save the current assembly scene.
+2. Select exactly one node inside an instantiated part scene. Either the
+   authored or mirrored occurrence may be selected.
+3. Click **Edit Selected Part in Place**.
+4. Edit the opened source scene with Godot's normal Polygon2D and transform
+   tools. The rest of the assembly is displayed as a dim, non-persistent
+   context overlay; other occurrences of the same source update as previews.
+5. Click **Apply to Source** to save the governing PackedScene, synchronize all
+   matching assembly occurrences, remove redundant local overrides, and return
+   to the assembly. Click **Cancel** to discard the source draft and return.
+
+The layout must be saved and the governing source must not already have
+unsaved edits when a session begins. Existing instance geometry overrides are
+loaded into the source draft so they can be promoted deliberately. The context
+overlay contains flattened Polygon2D visuals only: it is internal, has no scene
+owner, and is removed before either save or cancel. Do not manually save the
+source while this transaction is active; Apply owns that save boundary and
+checks that the source file did not change on disk during the session.
+
+This subsystem is intentionally separate from raster tracing. `InPlacePartEditChecker`
+resolves and snapshots the selected PackedScene instance,
+`InPlacePartEditSession` owns the temporary context and mirrored previews, and
+`InPlacePartEditController` owns source save/cancel and assembly normalization.
+The first version promotes Polygon2D geometry/color, descendant Node2D
+transforms, Bone2D rest transforms, and descendant relative Z settings. It does
+not promote structural additions or deletions.
 
 ### Generated polygon vertex editing
 

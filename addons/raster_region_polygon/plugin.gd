@@ -22,6 +22,7 @@ func _enter_tree() -> void:
 
 func _exit_tree() -> void:
 	if is_instance_valid(_dock_content):
+		_dock_content.shutdown_part_editing()
 		if _dock_added:
 			remove_control_from_docks(_dock_content)
 		_dock_content.queue_free()

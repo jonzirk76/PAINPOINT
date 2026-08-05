@@ -5,6 +5,9 @@ const SessionModel := preload("res://addons/raster_region_polygon/trace_session_
 const OperationController := preload("res://addons/raster_region_polygon/trace_operation_controller.gd")
 const OperationPlan := preload("res://addons/raster_region_polygon/trace_operation_plan.gd")
 const LimitMask := preload("res://addons/raster_region_polygon/trace_limit_mask.gd")
+const InPlacePartEditController := preload(
+	"res://addons/raster_region_polygon/in_place_part_edit_controller.gd"
+)
 const TRACE_METADATA := &"raster_region_trace"
 const PREVIEW_HEIGHT_SETTING := "raster_region_polygon/preview_height"
 
@@ -376,10 +379,13 @@ var _editor_interface: EditorInterface
 var _undo_redo: EditorUndoRedoManager
 var _model: RefCounted = SessionModel.new()
 var _controller: RefCounted = OperationController.new()
+var _part_edit_controller: RefCounted = InPlacePartEditController.new()
 var _viewport_edit_tool: RefCounted
 var _pending_plan: RefCounted
+var _pending_part_edit_plan: RefCounted
 var _trace_pieces: Array[PackedVector2Array] = []
 var _syncing_controls := false
+var _part_preview_sync_elapsed := 0.0
 
 var _preview
 var _zoom_label: Label
@@ -397,6 +403,10 @@ var _create_button: Button
 var _update_button: Button
 var _regeneration_warning: ConfirmationDialog
 var _name_conflict_warning: AcceptDialog
+var _part_edit_status: Label
+var _begin_part_edit_button: Button
+var _apply_part_edit_button: Button
+var _cancel_part_edit_button: Button
 
 
 func initialize(
@@ -407,6 +417,7 @@ func initialize(
 	_editor_interface = editor_interface
 	_undo_redo = undo_redo
 	_controller.initialize(editor_interface, undo_redo)
+	_part_edit_controller.initialize(editor_interface)
 	_viewport_edit_tool = viewport_edit_tool
 
 
@@ -446,6 +457,50 @@ func _ready() -> void:
 	stop_vertex_edit_button.pressed.connect(_stop_vertex_edit)
 	vertex_edit_controls.add_child(stop_vertex_edit_button)
 	add_child(vertex_edit_controls)
+
+	var part_separator := HSeparator.new()
+	add_child(part_separator)
+	var part_heading := Label.new()
+	part_heading.text = "PackedScene part editing"
+	part_heading.tooltip_text = (
+		"Edit an instantiated Polygon2D part in assembly context while keeping "
+		+ "its governing PackedScene canonical."
+	)
+	add_child(part_heading)
+	_begin_part_edit_button = Button.new()
+	_begin_part_edit_button.text = "Edit Selected Part in Place"
+	_begin_part_edit_button.tooltip_text = (
+		"Open the selected instance's governing scene with a non-persistent, "
+		+ "dimmed copy of the surrounding assembly."
+	)
+	_begin_part_edit_button.pressed.connect(_begin_in_place_part_edit)
+	add_child(_begin_part_edit_button)
+	var part_actions := HBoxContainer.new()
+	_apply_part_edit_button = Button.new()
+	_apply_part_edit_button.text = "Apply to Source"
+	_apply_part_edit_button.disabled = true
+	_apply_part_edit_button.tooltip_text = (
+		"Save the governing part scene and return to the assembly."
+	)
+	_apply_part_edit_button.pressed.connect(_apply_in_place_part_edit)
+	part_actions.add_child(_apply_part_edit_button)
+	_cancel_part_edit_button = Button.new()
+	_cancel_part_edit_button.text = "Cancel"
+	_cancel_part_edit_button.disabled = true
+	_cancel_part_edit_button.tooltip_text = (
+		"Discard this session's source edits and return to the unchanged assembly."
+	)
+	_cancel_part_edit_button.pressed.connect(_cancel_in_place_part_edit)
+	part_actions.add_child(_cancel_part_edit_button)
+	add_child(part_actions)
+	_part_edit_status = Label.new()
+	_part_edit_status.text = "Select a node inside an instantiated 2D part."
+	_part_edit_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_part_edit_status.custom_minimum_size.y = 42.0
+	add_child(_part_edit_status)
+
+	var trace_separator := HSeparator.new()
+	add_child(trace_separator)
 
 	_source_label = Label.new()
 	_source_label.text = "Source: none"
@@ -612,6 +667,108 @@ func _ready() -> void:
 	_name_conflict_warning = AcceptDialog.new()
 	_name_conflict_warning.title = "Node Name Already In Use"
 	add_child(_name_conflict_warning)
+
+
+func _process(delta: float) -> void:
+	if not _part_edit_controller.session.active:
+		return
+	_part_preview_sync_elapsed += delta
+	if _part_preview_sync_elapsed < 0.12:
+		return
+	_part_preview_sync_elapsed = 0.0
+	_part_edit_controller.synchronize_preview()
+
+
+func shutdown_part_editing() -> void:
+	_part_edit_controller.abandon_context()
+
+
+func _begin_in_place_part_edit() -> void:
+	var plan: RefCounted = _part_edit_controller.propose_begin()
+	if not plan.allowed:
+		_set_part_edit_error(plan.reason)
+		return
+	_pending_part_edit_plan = plan
+	_part_edit_status.text = "Opening %s…" % plan.source_path
+	_editor_interface.open_scene_from_path(plan.source_path)
+	call_deferred("_finish_in_place_part_edit")
+
+
+func _finish_in_place_part_edit() -> void:
+	if _pending_part_edit_plan == null:
+		return
+	var plan := _pending_part_edit_plan
+	_pending_part_edit_plan = null
+	var result: Dictionary = _part_edit_controller.finish_begin(plan)
+	if not result.valid:
+		_set_part_edit_error(result.reason)
+		return
+	_set_part_edit_active(true)
+	_part_edit_status.text = (
+		"Editing %s in assembly context.%s Use Godot's normal polygon tools, "
+		+ "then Apply or Cancel; do not save the source manually during the session."
+	) % [
+		plan.instance_name,
+		" Existing instance overrides were loaded into this draft."
+		if plan.has_instance_overrides
+		else "",
+	]
+
+
+func _apply_in_place_part_edit() -> void:
+	var result: Dictionary = _part_edit_controller.apply_to_source()
+	if not result.valid:
+		_set_part_edit_error(result.reason)
+		return
+	_set_part_edit_active(false)
+	_part_edit_status.text = "Saved %s; synchronizing assembly instances…" % result.source_path
+	call_deferred("_finalize_in_place_part_apply", result)
+
+
+func _finalize_in_place_part_apply(result: Dictionary) -> void:
+	var finalized: Dictionary = _part_edit_controller.finalize_layout_after_apply(result)
+	if not finalized.valid:
+		_set_part_edit_error(finalized.reason)
+		return
+	_part_edit_status.text = (
+		"Applied changes to %s and cleared redundant assembly overrides."
+		% result.source_path
+	)
+	call_deferred("_restore_part_instance_selection", result.instance_path)
+
+
+func _cancel_in_place_part_edit() -> void:
+	var result: Dictionary = _part_edit_controller.cancel()
+	if not result.valid:
+		_set_part_edit_error(result.reason)
+		return
+	_set_part_edit_active(false)
+	_part_edit_status.text = "Canceled the part edit; the source and assembly were not changed."
+	call_deferred("_restore_part_instance_selection", result.instance_path)
+
+
+func _restore_part_instance_selection(instance_path: NodePath) -> void:
+	var root := _editor_interface.get_edited_scene_root()
+	if root == null:
+		return
+	var instance := root.get_node_or_null(instance_path)
+	if instance == null:
+		return
+	var selection := _editor_interface.get_selection()
+	selection.clear()
+	selection.add_node(instance)
+	_editor_interface.edit_node(instance)
+
+
+func _set_part_edit_active(enabled: bool) -> void:
+	_begin_part_edit_button.disabled = enabled
+	_apply_part_edit_button.disabled = not enabled
+	_cancel_part_edit_button.disabled = not enabled
+	_part_preview_sync_elapsed = 0.0
+
+
+func _set_part_edit_error(message: String) -> void:
+	_part_edit_status.text = message
 
 
 func _make_label(text: String) -> Label:
