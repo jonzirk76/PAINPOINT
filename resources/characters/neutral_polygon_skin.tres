@@ -7,7 +7,7 @@
 [ext_resource type="PackedScene" uid="uid://7xvus6xbvvjb" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_west.tscn" id="5_w"]
 [ext_resource type="PackedScene" uid="uid://be0gbu18crkbo" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_north_east.tscn" id="6_ne"]
 [ext_resource type="PackedScene" uid="uid://de1hybb0q1nq" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_north.tscn" id="7_n"]
-[ext_resource type="PackedScene" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_active_arm.tscn" id="8_arm"]
+[ext_resource type="PackedScene" uid="uid://r85rro3ey1oh" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_active_arm.tscn" id="8_arm"]
 
 [sub_resource type="Resource" id="DirectionalViews"]
 script = ExtResource("2_views")

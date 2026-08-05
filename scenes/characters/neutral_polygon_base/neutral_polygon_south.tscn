@@ -2,9 +2,10 @@
 
 [ext_resource type="PackedScene" path="res://scenes/characters/neutral_polygon_base/symmetry_parts/neutral_polygon_south_hips_half.tscn" id="1_hips_half"]
 [ext_resource type="PackedScene" path="res://scenes/characters/neutral_polygon_base/symmetry_parts/neutral_polygon_south_torso_half.tscn" id="2_torso_half"]
-[ext_resource type="PackedScene" path="res://scenes/characters/neutral_polygon_base/symmetry_parts/neutral_polygon_south_left_arm.tscn" id="3_left_arm"]
+[ext_resource type="PackedScene" uid="uid://ds0133pyw8llq" path="res://scenes/characters/neutral_polygon_base/symmetry_parts/neutral_polygon_south_left_arm.tscn" id="3_left_arm"]
 [ext_resource type="PackedScene" uid="uid://l8ra0iq78a5h" path="res://scenes/characters/neutral_polygon_base/symmetry_parts/neutral_polygon_south_head_half.tscn" id="4_head_half"]
-[ext_resource type="PackedScene" path="res://scenes/characters/neutral_polygon_base/symmetry_parts/neutral_polygon_south_left_leg.tscn" id="5_left_leg"]
+[ext_resource type="PackedScene" uid="uid://cpjo52f04ddra" path="res://scenes/characters/neutral_polygon_base/symmetry_parts/neutral_polygon_south_left_leg.tscn" id="5_left_leg"]
+[ext_resource type="Texture2D" uid="uid://cni5qyo7prb5u" path="res://art/concept_art/characterbasetransparent.png" id="6_riomj"]
 
 [sub_resource type="Animation" id="Animation_n0btn"]
 length = 0.001
@@ -267,41 +268,38 @@ metadata/reference_scene = "res://scenes/characters/neutral_cutout/neutral_human
 position = Vector2(-200.5, -480)
 
 [node name="Hips" type="Bone2D" parent="Skeleton2D" unique_id=976669692]
-z_as_relative = true
-z_index = 0
 position = Vector2(200.33333, 299.66666)
 rest = Transform2D(1, 0, 0, 1, 200.33333, 299.66666)
 
 [node name="AuthoredHipsHalf" parent="Skeleton2D/Hips" unique_id=1026780417 instance=ExtResource("1_hips_half")]
-polygon = PackedVector2Array(-55.33333, 8.3333435, -9.833328, 47.333344, 0.16667175, 47.333344, 0, -9.6666565, -51.33333, -9.6666565)
+polygon = PackedVector2Array(-56.83333, 7.3333435, -9.833328, 47.333344, 0.16667175, 47.333344, 0, -9.6666565, -53.83333, -9.6666565)
 
 [node name="HipsMirrorAxis" type="Node2D" parent="Skeleton2D/Hips" unique_id=333109028]
 scale = Vector2(-1, 1)
 
-[node name="MirroredHipsHalf" parent="Skeleton2D/Hips/HipsMirrorAxis" unique_id=367780673 instance=ExtResource("1_hips_half")]
-polygon = PackedVector2Array(-55.33333, 8.3333435, -9.833328, 47.333344, 0.16667175, 47.333344, 0, -9.6666565, -51.33333, -9.6666565)
+[node name="MirroredHipsHalf" parent="Skeleton2D/Hips/HipsMirrorAxis" unique_id=811820004 instance=ExtResource("1_hips_half")]
+polygon = PackedVector2Array(-56.83333, 7.3333435, -9.833328, 47.333344, 0.16667175, 47.333344, 0, -9.6666565, -53.83333, -9.6666565)
 
 [node name="Torso" type="Bone2D" parent="Skeleton2D/Hips" unique_id=1988226583]
-z_as_relative = true
 z_index = 10
 rest = Transform2D(1, 0, 0, 1, 0, 0)
 
 [node name="AuthoredTorsoHalf" parent="Skeleton2D/Hips/Torso" unique_id=844426500 instance=ExtResource("2_torso_half")]
-polygon = PackedVector2Array(-77.33333, -82.66666, -56.33333, -31.666656, -51.33333, -17.666656, -52.33333, -6.6666565, -52.33333, -3.6666565, 0, 10.870805, 0, -93.66666, -57.33333, -93.66666, -62.33333, -93.66666)
+polygon = PackedVector2Array(-81.83333, -78.66666, -84.83333, -70.66666, -69.83333, -59.666656, -56.33333, -31.666656, -52.83333, -19.666656, -53.83333, -8.6666565, -54.83333, -4.6666565, 0, 10.870805, 0, -95.66666, -56.83333, -96.66666, -63.83333, -93.66666, -73.83333, -88.66666)
 
 [node name="TorsoMirrorAxis" type="Node2D" parent="Skeleton2D/Hips/Torso" unique_id=1472444672]
 scale = Vector2(-1, 1)
 
-[node name="MirroredTorsoHalf" parent="Skeleton2D/Hips/Torso/TorsoMirrorAxis" unique_id=1279724829 instance=ExtResource("2_torso_half")]
-polygon = PackedVector2Array(-77.33333, -82.66666, -56.33333, -31.666656, -51.33333, -17.666656, -52.33333, -6.6666565, -52.33333, -3.6666565, 0, 10.870805, 0, -93.66666, -57.33333, -93.66666, -62.33333, -93.66666)
+[node name="MirroredTorsoHalf" parent="Skeleton2D/Hips/Torso/TorsoMirrorAxis" unique_id=1896094446 instance=ExtResource("2_torso_half")]
+polygon = PackedVector2Array(-81.83333, -78.66666, -84.83333, -70.66666, -69.83333, -59.666656, -56.33333, -31.666656, -52.83333, -19.666656, -53.83333, -8.6666565, -54.83333, -4.6666565, 0, 10.870805, 0, -95.66666, -56.83333, -96.66666, -63.83333, -93.66666, -73.83333, -88.66666)
 
 [node name="Head" type="Bone2D" parent="Skeleton2D/Hips/Torso" unique_id=1375361548]
-z_as_relative = true
 z_index = 20
 position = Vector2(0, -74.46666)
 rest = Transform2D(1, 0, 0, 1, 0, -74.46666)
 
 [node name="AuthoredHeadHalf" parent="Skeleton2D/Hips/Torso/Head" unique_id=1682948263 instance=ExtResource("4_head_half")]
+position = Vector2(0.16667175, -0.19999695)
 polygon = PackedVector2Array(-14.800003, -157.2, -34.800003, -149.2, -56.800003, -128.2, -64.8, -112.2, -68.8, -96.2, -66.8, -63.199997, -75.8, -59.199997, -77.8, -50.199997, -71.8, -32.199997, -60.800003, -22.199997, -58.800003, -19.199997, -34.800003, 8.800003, -2.800003, 23.800003, 0, 23.800003, 0, -158.2)
 
 [node name="HeadMirrorAxis" type="Node2D" parent="Skeleton2D/Hips/Torso/Head" unique_id=426474869]
@@ -311,26 +309,25 @@ scale = Vector2(-1, 1)
 polygon = PackedVector2Array(-14.800003, -157.2, -34.800003, -149.2, -56.800003, -128.2, -64.8, -112.2, -68.8, -96.2, -66.8, -63.199997, -75.8, -59.199997, -77.8, -50.199997, -71.8, -32.199997, -60.800003, -22.199997, -58.800003, -19.199997, -34.800003, 8.800003, -2.800003, 23.800003, 0, 23.800003, 0, -158.2)
 
 [node name="FarArm" type="Bone2D" parent="Skeleton2D/Hips/Torso" unique_id=520799470]
-z_as_relative = true
 z_index = -30
-position = Vector2(-68.83333, -52.666656)
+position = Vector2(-68.83333, -62.666656)
 rest = Transform2D(1, 0, 0, 1, -68.83333, -52.666656)
 
 [node name="AuthoredLeftArm" parent="Skeleton2D/Hips/Torso/FarArm" unique_id=632532161 instance=ExtResource("3_left_arm")]
+position = Vector2(0, 10)
 
 [node name="NearArm" type="Bone2D" parent="Skeleton2D/Hips/Torso" unique_id=523679993]
-z_as_relative = true
 z_index = 10
-position = Vector2(68.83333, -52.666656)
+position = Vector2(68.83333, -62.666656)
 rest = Transform2D(1, 0, 0, 1, 68.83333, -52.666656)
 
 [node name="ArmMirrorAxis" type="Node2D" parent="Skeleton2D/Hips/Torso/NearArm" unique_id=1634394018]
+position = Vector2(0, 10)
 scale = Vector2(-1, 1)
 
 [node name="MirroredLeftArm" parent="Skeleton2D/Hips/Torso/NearArm/ArmMirrorAxis" unique_id=1051192723 instance=ExtResource("3_left_arm")]
 
 [node name="FarLeg" type="Bone2D" parent="Skeleton2D/Hips" unique_id=272280599]
-z_as_relative = true
 z_index = -30
 position = Vector2(-33, 37)
 rest = Transform2D(1, 0, 0, 1, -33, 37)
@@ -338,7 +335,6 @@ rest = Transform2D(1, 0, 0, 1, -33, 37)
 [node name="AuthoredLeftLeg" parent="Skeleton2D/Hips/FarLeg" unique_id=160594926 instance=ExtResource("5_left_leg")]
 
 [node name="NearLeg" type="Bone2D" parent="Skeleton2D/Hips" unique_id=1521334807]
-z_as_relative = true
 z_index = -1
 position = Vector2(33, 37)
 rest = Transform2D(1, 0, 0, 1, 33, 37)
@@ -351,3 +347,10 @@ scale = Vector2(-1, 1)
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=169742409]
 libraries/ = SubResource("AnimationLibrary_on1m6")
 autoplay = &"walk"
+
+[node name="Characterbasetransparent" type="Sprite2D" parent="." unique_id=2060793406]
+visible = false
+modulate = Color(1, 1, 1, 0.25882354)
+z_index = 999
+position = Vector2(308, 31)
+texture = ExtResource("6_riomj")

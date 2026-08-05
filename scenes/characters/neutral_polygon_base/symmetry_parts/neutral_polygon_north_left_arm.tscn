@@ -1,15 +1,15 @@
 [gd_scene format=3 uid="uid://bxqdqepqcvtcy"]
 
+[ext_resource type="Texture2D" uid="uid://cni5qyo7prb5u" path="res://art/concept_art/characterbasetransparent.png" id="1_fwaqo"]
+
 [node name="LeftArmMasses" type="Node2D" unique_id=1012677248]
 metadata/editable_polygon_base = true
 metadata/symmetry_source = "left"
 
 [node name="UpperArm" type="Polygon2D" parent="." unique_id=290685463]
-z_as_relative = true
-z_index = 0
 color = Color(0.84705883, 0.6862745, 0.627451, 1)
 antialiased = true
-polygon = PackedVector2Array(-16.833313, -10.333313, -30.333313, 21.666687, -12.333313, 32.666687, -1.333313, 36.666687, 16.666687, 5.666687, -6.833313, -31.333313)
+polygon = PackedVector2Array(-16, -17, -26, 16, -30, 34, -15, 40, -1.333313, 36.666687, 13.460556, 17.006386, 17, -6, -11, -28)
 metadata/editable_polygon_base = true
 
 [node name="Forearm" type="Bone2D" parent="." unique_id=1412820242]
@@ -17,11 +17,10 @@ position = Vector2(-14.333313, 26.333374)
 rest = Transform2D(1, 0, 0, 1, -14.333313, 26.333374)
 
 [node name="ForearmMass" type="Polygon2D" parent="Forearm" unique_id=1099107340]
-z_as_relative = true
 z_index = -1
 color = Color(0.72, 0.54, 0.49, 1)
 antialiased = true
-polygon = PackedVector2Array(-14, -6.666687, -31, 38.333313, -31, 42.333313, -9, 50.333313, -9, 51.333313, -5, 51.333313, 15, 4.333313, 13, 1.333313, -14, -9.666687)
+polygon = PackedVector2Array(-9.666687, -13.333374, -21.666687, 5.666626, -24.666687, 16.666626, -26.666687, 32.666626, -31, 42.333313, -9, 50.333313, -4.666687, 44.666626, 10.333313, 22.666626, 15, 4.333313, 3.333313, -3.333374)
 metadata/editable_polygon_base = true
 
 [node name="Hand" type="Bone2D" parent="Forearm" unique_id=963380464]
@@ -29,9 +28,15 @@ position = Vector2(-17.333313, 43)
 rest = Transform2D(1, 0, 0, 1, -17.333313, 43)
 
 [node name="HandMass" type="Polygon2D" parent="Forearm/Hand" unique_id=80204584]
-z_as_relative = true
 z_index = -2
 color = Color(0.58, 0.4, 0.36, 1)
 antialiased = true
-polygon = PackedVector2Array(-17.666687, 7.333313, -19.666687, 23.333313, -19.666687, 26.333313, -15.666687, 38.333313, -5.666687, 48.333313, 15.333313, 3.333313, -11.666687, -8.666687)
+polygon = PackedVector2Array(-17.666687, 7.333313, -19.333374, 15.666626, -19.666687, 26.333313, -15.666687, 38.333313, -5.666687, 48.333313, -0.33337402, 48.666626, 1.666626, 43.666626, 11.666626, 30.666626, 13.941822, 13.7062, 11.666626, 3.666626, -10.333374, -7.333374)
 metadata/editable_polygon_base = true
+
+[node name="Characterbasetransparent" type="Sprite2D" parent="." unique_id=1470656587]
+visible = false
+modulate = Color(1, 1, 1, 0.25882354)
+z_index = 999
+position = Vector2(-100, -200)
+texture = ExtResource("1_fwaqo")

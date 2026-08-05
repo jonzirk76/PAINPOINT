@@ -1,15 +1,15 @@
 [gd_scene format=3 uid="uid://i7bsceg401lc"]
 
+[ext_resource type="Texture2D" uid="uid://cni5qyo7prb5u" path="res://art/concept_art/characterbasetransparent.png" id="1_glbr6"]
+
 [node name="LeftLegMasses" type="Node2D" unique_id=1801416479]
 metadata/editable_polygon_base = true
 metadata/symmetry_source = "left"
 
 [node name="Thigh" type="Polygon2D" parent="." unique_id=1353321726]
-z_as_relative = true
-z_index = 0
 color = Color(0.84705883, 0.6862745, 0.627451, 1)
 antialiased = true
-polygon = PackedVector2Array(-24, 42, -23, 46, 18, 49, 23, 3, 22, -3, -22.5, -18, -23.026497, 3.059845)
+polygon = PackedVector2Array(-22, 33, -22, 46, -14, 52, 7, 54, 18, 49, 24, 30, 26, 16, 31, -1, -22, -24, -24, 19)
 metadata/editable_polygon_base = true
 
 [node name="Shin" type="Bone2D" parent="." unique_id=330497115]
@@ -17,11 +17,10 @@ position = Vector2(-3, 43.333313)
 rest = Transform2D(1, 0, 0, 1, -3, 43.333313)
 
 [node name="ShinMass" type="Polygon2D" parent="Shin" unique_id=250709156]
-z_as_relative = true
 z_index = -1
 color = Color(0.72, 0.54, 0.49, 1)
 antialiased = true
-polygon = PackedVector2Array(-18, 49.666687, -18, 60.666687, 16, 60.666687, 21, 6.666687, 21, -4.333313, -21, -4.333313)
+polygon = PackedVector2Array(-18, 49.666687, -12, 56.666687, 0, 57.666687, 14, 47.666687, 21, 28.666687, 21, 8.666687, 13, -1.333313, -17, -1.333313, -21, 12.666687)
 metadata/editable_polygon_base = true
 
 [node name="Foot" type="Bone2D" parent="Shin" unique_id=1320085064]
@@ -29,9 +28,16 @@ position = Vector2(0, 56.666687)
 rest = Transform2D(1, 0, 0, 1, 0, 56.666687)
 
 [node name="FootMass" type="Polygon2D" parent="Shin/Foot" unique_id=765521358]
-z_as_relative = true
 z_index = -2
+position = Vector2(0, -3)
 color = Color(0.58, 0.4, 0.36, 1)
 antialiased = true
-polygon = PackedVector2Array(-30, 4, -30, 9, -23, 27, -16, 36, -9, 39, 1, 39, 9, 35, 14, 25, 16, 8, 15, -2, 8, -12, 0, -13, -12, -13, -21, -10, -28, -4)
+polygon = PackedVector2Array(-29, 2, -29, 9, -23, 21, -21, 30, -16, 36, -9, 39, 1, 39, 9, 35, 12, 29, 13, 20, 13, 6, 6, -13, -2, -16, -12, -15, -20, -13, -26, -7)
 metadata/editable_polygon_base = true
+
+[node name="Characterbasetransparent2" type="Sprite2D" parent="." unique_id=1476158990]
+visible = false
+modulate = Color(1, 1, 1, 0.25882354)
+z_index = 999
+position = Vector2(-132, -284)
+texture = ExtResource("1_glbr6")
