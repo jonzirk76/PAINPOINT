@@ -269,7 +269,7 @@ rest = Transform2D(1, 0, 0, 1, 499, 299.33334)
 [node name="HipsMass" type="Polygon2D" parent="Skeleton2D/Hips" unique_id=1259144885]
 color = Color(0.7, 0.72, 0.76, 1)
 antialiased = true
-polygon = PackedVector2Array(-44, 8.6666565, -34.5, 27.666656, -3.5, 38.666656, 8.5, 39.666656, 55.5, 28.666656, 51, -3.3333435, 51, -9.3333435, -41, -9.3333435)
+polygon = PackedVector2Array(-44, 8.6666565, -20.5, 32.666656, -7.5, 41.666656, 2.5, 44.666656, 55.5, 28.666656, 47.5, -0.3333435, 47.5, -9.3333435, -41, -9.3333435)
 metadata/editable_polygon_base = true
 
 [node name="Torso" type="Bone2D" parent="Skeleton2D/Hips" unique_id=81278744]
@@ -298,7 +298,7 @@ rest = Transform2D(1, 0, 0, 1, 2.8333435, -79.66667)
 [node name="HeadMass" type="Polygon2D" parent="Skeleton2D/Hips/Torso/Head" unique_id=223572316]
 color = Color(0.84705883, 0.6862745, 0.627451, 1)
 antialiased = true
-polygon = PackedVector2Array(-15.8333435, -147.66667, -33.833344, -136.66667, -51.833344, -114.66667, -59.833344, -94.66667, -61.333344, -71.66669, -60.833344, -54.66667, -52.833344, -14.666672, -42.833344, -2.6666718, -22.333344, 15.333313, -14.8333435, 16.333328, 11.1666565, 11.333328, 41.166656, -6.6666718, 41.166656, -7.6666718, 49.166656, -6.6666718, 57.166656, -6.6666718, 70.16666, -20.666672, 71.16666, -20.666672, 71.16666, -33.66667, 71.16666, -36.66667, 80.16666, -54.66667, 84.16666, -72.66667, 84.16666, -91.66667, 79.16666, -109.66667, 64.16666, -132.66667, 41.166656, -147.66667, 21.166656, -152.66667, 5.1666565, -152.66667)
+polygon = PackedVector2Array(-15.8333435, -147.66667, -33.833344, -136.66667, -51.833344, -114.66667, -59.833344, -94.66667, -61.333344, -71.66669, -60.833344, -54.66667, -52.833344, -14.666672, -42.833344, -2.6666718, -22.333344, 15.333313, -14.8333435, 16.333328, 11.1666565, 11.333328, 41.166656, -6.6666718, 41.166656, -7.6666718, 49.166656, -6.6666718, 56.666656, -9.666687, 66.66666, -18.666687, 69.66666, -25.666687, 69.66666, -34.666687, 69.66666, -38.666687, 77.66666, -54.666687, 81.66666, -73.66669, 81.66666, -91.66669, 77.66666, -108.66669, 62.666656, -131.66669, 43.666656, -144.66669, 26.666656, -150.66669, 8.6666565, -151.66669)
 metadata/editable_polygon_base = true
 
 [node name="FarPlaceholderEyeWhite" type="Polygon2D" parent="Skeleton2D/Hips/Torso/Head" unique_id=162857127]
@@ -388,11 +388,11 @@ metadata/editable_polygon_base = true
 
 [node name="NearArm" type="Bone2D" parent="Skeleton2D/Hips/Torso" unique_id=711493997]
 z_index = 10
-position = Vector2(63.5, -55.333344)
+position = Vector2(58.5, -55.333344)
 rest = Transform2D(1, 0, 0, 1, 69.33331, -33.333344)
 
 [node name="UpperArm" type="Polygon2D" parent="Skeleton2D/Hips/Torso/NearArm" unique_id=1104729412]
-position = Vector2(-3.5, -7)
+position = Vector2(1.333313, -7)
 color = Color(0.84705883, 0.6862745, 0.627451, 1)
 antialiased = true
 polygon = PackedVector2Array(-18.333313, 3, -5.5, 39, 0.5, 54, 8.5, 63, 23.5, 59, 33.5, 42, 27.5, 22, 23.5, 5, 16.666687, -5, 12.666687, -10, -8, -7)
@@ -404,6 +404,7 @@ rest = Transform2D(1, 0, 0, 1, 12.166687, 29.5)
 
 [node name="ForearmMass" type="Polygon2D" parent="Skeleton2D/Hips/Torso/NearArm/Forearm" unique_id=789929882]
 z_index = -1
+position = Vector2(4.833313, 0)
 color = Color(0.72, 0.54, 0.49, 1)
 antialiased = true
 polygon = PackedVector2Array(14.5, -10.5, 3.5, -4.5, -6.5, 3.5, -9.5, 12.5, -9.5, 22.5, -0.5, 49.5, 14.5, 45.5, 18.5, 45.5, 26.5, 42.5, 26.5, 38.5, 25.5, 22.5, 21.5, 7.5)
@@ -415,6 +416,7 @@ rest = Transform2D(1, 0, 0, 1, 12.5, 42.5)
 
 [node name="HandMass" type="Polygon2D" parent="Skeleton2D/Hips/Torso/NearArm/Forearm/Hand" unique_id=291369708]
 z_index = -2
+position = Vector2(4.833313, 0)
 color = Color(0.58, 0.4, 0.36, 1)
 antialiased = true
 polygon = PackedVector2Array(-15, 0, -6.5, 32, -2, 48, 3, 52, 10, 54, 20, 45, 22, 32, 14, -3, 14, -7, 11, -8)
@@ -464,7 +466,7 @@ rest = Transform2D(1, 0, 0, 1, 28.5, 31.666656)
 [node name="Thigh" type="Polygon2D" parent="Skeleton2D/Hips/NearLeg" unique_id=1772963495]
 color = Color(0.84705883, 0.6862745, 0.627451, 1)
 antialiased = true
-polygon = PackedVector2Array(-24.5, -1.5, -17.5, 40.5, -7.5, 66.5, -7.5, 69.5, 14.5, 66.5, 28.5, 65.5, 24.5, 17.5, 24.5, 2.5, 23.5, 2.5, 23.5, -6.5, 18.5, -6.5)
+polygon = PackedVector2Array(-28, 5, -17.5, 40.5, -8, 59, 3, 66, 14.5, 66.5, 24, 59, 27, 47, 29, 26, 29, 12, 26, -6, 18.5, -6.5, -15, -1)
 metadata/editable_polygon_base = true
 
 [node name="Shin" type="Bone2D" parent="Skeleton2D/Hips/NearLeg" unique_id=34356684]
@@ -475,7 +477,7 @@ rest = Transform2D(1, 0, 0, 1, 6.833313, 63.833344)
 z_index = -1
 color = Color(0.72, 0.54, 0.49, 1)
 antialiased = true
-polygon = PackedVector2Array(-15.333313, -0.3333435, -8.333313, 43.666656, -8.333313, 45.666656, 14.166687, 44.166656, 26.666687, 38.666656, 20.666687, 1.6666565, 20.666687, -5.3333435, 17.166687, -5.8333435)
+polygon = PackedVector2Array(-15.833313, -7.8333435, -6.833313, 34.166656, 10.166687, 38.166656, 23.166687, 29.166656, 25.166687, 5.1666565, 25.166687, -5.8333435, 17.166687, -20.833344, -1.833313, -17.833344)
 metadata/editable_polygon_base = true
 
 [node name="Foot" type="Bone2D" parent="Skeleton2D/Hips/NearLeg/Shin" unique_id=470082993]
@@ -486,7 +488,7 @@ rest = Transform2D(1, 0, 0, 1, 8.666687, 38.333313)
 z_index = -2
 color = Color(0.58, 0.4, 0.36, 1)
 antialiased = true
-polygon = PackedVector2Array(-9.5, -6.1666565, -18, 6, -28, 21, -34, 36, -30, 46, -21, 51.333344, -5, 51.333344, 6, 43, 12, 29, 18, 14, 18, -0.6666565, 16.5, -8.1666565)
+polygon = PackedVector2Array(-8, -4, -18, 6, -28, 21, -34, 36, -30, 46, -21, 51.333344, -5, 51.333344, 6, 43, 12, 29, 18, 14, 15, 1, 11, -5)
 metadata/editable_polygon_base = true
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=523980034]

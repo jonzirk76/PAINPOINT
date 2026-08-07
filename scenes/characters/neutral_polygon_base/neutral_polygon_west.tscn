@@ -209,7 +209,6 @@ _data = {
 }
 
 [node name="NeutralPolygonWest" type="Node2D" unique_id=1583052238]
-position = Vector2(4, 5)
 metadata/canonical_direction = "west"
 metadata/reference_scene = "res://scenes/characters/neutral_cutout/neutral_humanoid_west.tscn"
 

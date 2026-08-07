@@ -93,7 +93,7 @@ The project uses a 1280x720 logical viewport and scales canvas items into a larg
 
 Aim-change shooting:
 
-1. `InputManager` sees a right-stick, arrow-key, or mouse aim state change.
+1. `InputManager` sees a right-stick, arrow-key, numpad, or mouse aim state change.
 2. It emits `aim_fire_requested(direction)`.
 3. `GameOrchestrator` calls `PlayerManager.request_fire(direction)`.
 4. `PlayerManager` enforces cooldown and emits `shoot_requested(origin, direction)`.

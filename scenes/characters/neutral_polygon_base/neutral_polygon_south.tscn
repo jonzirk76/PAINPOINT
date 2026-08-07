@@ -310,15 +310,15 @@ polygon = PackedVector2Array(-14.800003, -157.2, -34.800003, -149.2, -56.800003,
 
 [node name="FarArm" type="Bone2D" parent="Skeleton2D/Hips/Torso" unique_id=520799470]
 z_index = -30
-position = Vector2(-68.83333, -62.666656)
+position = Vector2(-59.83333, -62.666656)
 rest = Transform2D(1, 0, 0, 1, -68.83333, -52.666656)
 
 [node name="AuthoredLeftArm" parent="Skeleton2D/Hips/Torso/FarArm" unique_id=632532161 instance=ExtResource("3_left_arm")]
-position = Vector2(0, 10)
+position = Vector2(-9, 10)
 
 [node name="NearArm" type="Bone2D" parent="Skeleton2D/Hips/Torso" unique_id=523679993]
 z_index = 10
-position = Vector2(68.83333, -62.666656)
+position = Vector2(60.16667, -62.666656)
 rest = Transform2D(1, 0, 0, 1, 68.83333, -52.666656)
 
 [node name="ArmMirrorAxis" type="Node2D" parent="Skeleton2D/Hips/Torso/NearArm" unique_id=1634394018]
@@ -326,6 +326,7 @@ position = Vector2(0, 10)
 scale = Vector2(-1, 1)
 
 [node name="MirroredLeftArm" parent="Skeleton2D/Hips/Torso/NearArm/ArmMirrorAxis" unique_id=1051192723 instance=ExtResource("3_left_arm")]
+position = Vector2(-9, 0)
 
 [node name="FarLeg" type="Bone2D" parent="Skeleton2D/Hips" unique_id=272280599]
 z_index = -30

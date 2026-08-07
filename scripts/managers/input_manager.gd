@@ -243,13 +243,13 @@ func _read_aim_vector() -> Vector2:
 		return _snap_analog_aim_to_cardinal(joy_vector)
 
 	var digital_vector := Vector2.ZERO
-	if Input.is_physical_key_pressed(KEY_LEFT):
+	if Input.is_physical_key_pressed(KEY_LEFT) or Input.is_physical_key_pressed(KEY_KP_4) or Input.is_physical_key_pressed(KEY_KP_7) or Input.is_physical_key_pressed(KEY_KP_1):
 		digital_vector.x -= 1.0
-	if Input.is_physical_key_pressed(KEY_RIGHT):
+	if Input.is_physical_key_pressed(KEY_RIGHT) or Input.is_physical_key_pressed(KEY_KP_6) or Input.is_physical_key_pressed(KEY_KP_9) or Input.is_physical_key_pressed(KEY_KP_3):
 		digital_vector.x += 1.0
-	if Input.is_physical_key_pressed(KEY_UP):
+	if Input.is_physical_key_pressed(KEY_UP) or Input.is_physical_key_pressed(KEY_KP_8) or Input.is_physical_key_pressed(KEY_KP_7) or Input.is_physical_key_pressed(KEY_KP_9):
 		digital_vector.y -= 1.0
-	if Input.is_physical_key_pressed(KEY_DOWN):
+	if Input.is_physical_key_pressed(KEY_DOWN) or Input.is_physical_key_pressed(KEY_KP_2) or Input.is_physical_key_pressed(KEY_KP_1) or Input.is_physical_key_pressed(KEY_KP_3):
 		digital_vector.y += 1.0
 	if digital_vector.length_squared() > 0.001:
 		_last_cardinal_aim_snap = Vector2.ZERO
