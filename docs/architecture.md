@@ -173,7 +173,8 @@ Legion tactics:
 5. Controllers return advisory movement positions. `EnemyManager` applies them to owned enemies while their normal player target remains unchanged for aiming and attacks.
 6. Controllers coordinate fan-out sectors through the shared active-legion ordering; they never call one another.
 7. When a general dies, `EnemyManager` removes its controller and clears tactical orders from surviving orphaned minions, which return to independent behavior.
-8. The basic general is the first adaptive commander: stationary players invite a fan-out, active movement draws a concentrated push, and sufficiently fast outward movement near the arena edge triggers interception. Its thresholds live in `EnemySpawnProfile`; other general types retain their fixed doctrines until separately tuned.
+8. General doctrines adapt by role: stationary players invite a fan-out, active movement draws a concentrated push, and sufficiently fast outward movement near the arena edge triggers interception. Basic infantry use balanced thresholds, fast legions intercept early and switch quickly, shooter legions favor concentrated pressure, and tank legions change slowly and intercept only decisive escapes. Thresholds live in each general's `EnemySpawnProfile`.
+9. Basic melee infantry use higher movement speed than their original zombie-pressure tuning so they can reach and maintain tactical formation targets.
 
 Player down/restart:
 

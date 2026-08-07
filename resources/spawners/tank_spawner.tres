@@ -9,6 +9,12 @@ script = ExtResource("2")
 enemy_profile = ExtResource("3")
 spawn_interval = 4.85
 tactics_kind = "fan_out"
+adaptive_tactics = true
+adaptive_stationary_speed = 24.0
+adaptive_intercept_speed = 120.0
+adaptive_intercept_outward_dot = 0.65
+adaptive_intercept_edge_ratio = 0.7
+adaptive_tactic_hold_seconds = 1.5
 visual_kind = "tank"
 
 [resource]

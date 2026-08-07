@@ -9,6 +9,12 @@ script = ExtResource("2")
 enemy_profile = ExtResource("3")
 spawn_interval = 3.75
 tactics_kind = "concentrate"
+adaptive_tactics = true
+adaptive_stationary_speed = 30.0
+adaptive_intercept_speed = 110.0
+adaptive_intercept_outward_dot = 0.55
+adaptive_intercept_edge_ratio = 0.6
+adaptive_tactic_hold_seconds = 1.2
 visual_kind = "shooter"
 
 [resource]

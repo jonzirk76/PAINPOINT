@@ -10,6 +10,12 @@ enemy_profile = ExtResource("3")
 spawn_interval = 2.65
 spawn_batch_count = 3
 tactics_kind = "intercept"
+adaptive_tactics = true
+adaptive_stationary_speed = 44.0
+adaptive_intercept_speed = 80.0
+adaptive_intercept_outward_dot = 0.2
+adaptive_intercept_edge_ratio = 0.3
+adaptive_tactic_hold_seconds = 0.55
 visual_kind = "fast"
 
 [resource]
