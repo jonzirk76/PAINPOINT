@@ -88,41 +88,36 @@ func _draw_path_regions(width: float, color: Color) -> void:
 func _build_path_regions(width: float) -> Array[PackedVector2Array]:
 	var regions: Array[PackedVector2Array] = []
 	for points in _path_points:
-		for index in range(points.size() - 1):
-			var segment_polygon: PackedVector2Array = _get_segment_polygon(
-				points[index],
-				points[index + 1],
-				width
-			)
-			if segment_polygon.is_empty():
-				continue
-			var region_index: int = 0
-			while region_index < regions.size():
-				var merged: Array[PackedVector2Array] = Geometry2D.merge_polygons(
-					regions[region_index],
-					segment_polygon
-				)
-				if merged.size() == 1:
-					segment_polygon = merged[0]
-					regions.remove_at(region_index)
-					region_index = 0
-					continue
-				region_index += 1
-			regions.append(segment_polygon)
+		if points.size() < 2:
+			continue
+		var offset_regions: Array[PackedVector2Array] = Geometry2D.offset_polyline(
+			points,
+			width * 0.5,
+			Geometry2D.JOIN_MITER,
+			Geometry2D.END_SQUARE
+		)
+		for offset_region in offset_regions:
+			_merge_path_region(regions, offset_region)
 	return regions
 
 
-func _get_segment_polygon(start: Vector2, end: Vector2, width: float) -> PackedVector2Array:
-	var delta: Vector2 = end - start
-	if delta.length_squared() <= 0.001:
-		return PackedVector2Array()
-	var perpendicular: Vector2 = delta.normalized().orthogonal() * width * 0.5
-	return PackedVector2Array([
-		start + perpendicular,
-		end + perpendicular,
-		end - perpendicular,
-		start - perpendicular
-	])
+func _merge_path_region(regions: Array[PackedVector2Array], polygon: PackedVector2Array) -> void:
+	if polygon.is_empty():
+		return
+	var merged_polygon := polygon
+	var region_index: int = 0
+	while region_index < regions.size():
+		var merged: Array[PackedVector2Array] = Geometry2D.merge_polygons(
+			regions[region_index],
+			merged_polygon
+		)
+		if merged.size() == 1:
+			merged_polygon = merged[0]
+			regions.remove_at(region_index)
+			region_index = 0
+			continue
+		region_index += 1
+	regions.append(merged_polygon)
 
 
 func _build_center_paths(
@@ -146,6 +141,12 @@ func _build_center_paths(
 		clear_spokes.append(PackedVector2Array([start, room_center]))
 	if clear_spokes.size() < 2:
 		clear_spokes.clear()
+	elif clear_spokes.size() == 2:
+		return [PackedVector2Array([
+			clear_spokes[0][0],
+			room_center,
+			clear_spokes[1][0]
+		])]
 	return clear_spokes
 
 
