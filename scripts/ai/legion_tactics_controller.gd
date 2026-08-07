@@ -11,6 +11,13 @@ var general_id: int = 0
 var tactics_kind: String = TACTICS_INDEPENDENT
 var _formation_phase: float = 0.0
 var _spawn_cycle: int = 0
+var _adaptive_tactics: bool = false
+var _stationary_speed: float = 34.0
+var _intercept_speed: float = 92.0
+var _intercept_outward_dot: float = 0.45
+var _intercept_edge_ratio: float = 0.48
+var _tactic_hold_seconds: float = 0.85
+var _tactic_hold_remaining: float = 0.0
 
 
 func initialize(general: EnemyEntity, selected_tactics_kind: String) -> void:
@@ -19,6 +26,14 @@ func initialize(general: EnemyEntity, selected_tactics_kind: String) -> void:
 	legion_id = general.legion_id
 	general_id = general.general_id
 	tactics_kind = selected_tactics_kind
+	var spawn_profile: EnemySpawnProfile = general.spawn_profile
+	if spawn_profile != null:
+		_adaptive_tactics = spawn_profile.adaptive_tactics
+		_stationary_speed = max(spawn_profile.adaptive_stationary_speed, 0.0)
+		_intercept_speed = max(spawn_profile.adaptive_intercept_speed, 0.0)
+		_intercept_outward_dot = clamp(spawn_profile.adaptive_intercept_outward_dot, -1.0, 1.0)
+		_intercept_edge_ratio = clamp(spawn_profile.adaptive_intercept_edge_ratio, 0.0, 1.0)
+		_tactic_hold_seconds = max(spawn_profile.adaptive_tactic_hold_seconds, 0.0)
 	_formation_phase = float(posmod(legion_id * 37, 360)) * PI / 180.0
 
 
@@ -29,6 +44,7 @@ func notify_spawn_ready() -> void:
 
 func build_orders(context: Dictionary) -> Dictionary:
 	var orders: Dictionary = {}
+	_update_adaptive_tactics(context)
 	if tactics_kind == TACTICS_INDEPENDENT:
 		return orders
 	var members: Array = context.get("members", [])
@@ -49,6 +65,49 @@ func build_orders(context: Dictionary) -> Dictionary:
 		TACTICS_INTERCEPT:
 			_build_intercept_orders(orders, members, player_position, arena_center, legion_index, legion_count)
 	return orders
+
+
+func _update_adaptive_tactics(context: Dictionary) -> void:
+	if not _adaptive_tactics:
+		return
+	var delta: float = max(float(context.get("delta", 0.0)), 0.0)
+	_tactic_hold_remaining = max(_tactic_hold_remaining - delta, 0.0)
+	var player_position: Vector2 = context.get("player_position", Vector2.ZERO)
+	var player_velocity: Vector2 = context.get("player_velocity", Vector2.ZERO)
+	var arena_center: Vector2 = context.get("arena_center", Vector2.ZERO)
+	var arena_half_size: Vector2 = context.get("arena_half_size", Vector2.ONE)
+	var desired_tactics := _select_adaptive_tactics(
+		player_position,
+		player_velocity,
+		arena_center,
+		arena_half_size
+	)
+	if desired_tactics == tactics_kind or _tactic_hold_remaining > 0.0:
+		return
+	tactics_kind = desired_tactics
+	_tactic_hold_remaining = _tactic_hold_seconds
+	_formation_phase = fmod(_formation_phase + PI * 0.13, TAU)
+
+
+func _select_adaptive_tactics(
+	player_position: Vector2,
+	player_velocity: Vector2,
+	arena_center: Vector2,
+	arena_half_size: Vector2
+) -> String:
+	var player_speed: float = player_velocity.length()
+	if player_speed <= _stationary_speed:
+		return TACTICS_FAN_OUT
+	var from_center: Vector2 = player_position - arena_center
+	var safe_half_size := Vector2(max(arena_half_size.x, 1.0), max(arena_half_size.y, 1.0))
+	var normalized_offset := Vector2(from_center.x / safe_half_size.x, from_center.y / safe_half_size.y)
+	var edge_ratio: float = normalized_offset.length()
+	var moving_outward := false
+	if from_center.length_squared() > 1.0 and player_speed >= _intercept_speed:
+		moving_outward = player_velocity.normalized().dot(from_center.normalized()) >= _intercept_outward_dot
+	if edge_ratio >= _intercept_edge_ratio and moving_outward:
+		return TACTICS_INTERCEPT
+	return TACTICS_CONCENTRATE
 
 
 func _build_fan_out_orders(

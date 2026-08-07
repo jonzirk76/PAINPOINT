@@ -173,6 +173,7 @@ Legion tactics:
 5. Controllers return advisory movement positions. `EnemyManager` applies them to owned enemies while their normal player target remains unchanged for aiming and attacks.
 6. Controllers coordinate fan-out sectors through the shared active-legion ordering; they never call one another.
 7. When a general dies, `EnemyManager` removes its controller and clears tactical orders from surviving orphaned minions, which return to independent behavior.
+8. The basic general is the first adaptive commander: stationary players invite a fan-out, active movement draws a concentrated push, and sufficiently fast outward movement near the arena edge triggers interception. Its thresholds live in `EnemySpawnProfile`; other general types retain their fixed doctrines until separately tuned.
 
 Player down/restart:
 

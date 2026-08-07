@@ -41,6 +41,9 @@ var _perspective_room_id: String = ""
 var _legion_controllers: Dictionary = {}
 var _generals_by_id: Dictionary = {}
 var _tactical_orders: Dictionary = {}
+var _previous_player_position: Vector2 = Vector2.ZERO
+var _has_previous_player_position: bool = false
+var _smoothed_player_velocity: Vector2 = Vector2.ZERO
 
 
 func initialize(context: Dictionary) -> void:
@@ -58,6 +61,9 @@ func reset_run() -> void:
 	_legion_controllers.clear()
 	_generals_by_id.clear()
 	_tactical_orders.clear()
+	_previous_player_position = Vector2.ZERO
+	_has_previous_player_position = false
+	_smoothed_player_velocity = Vector2.ZERO
 	_boss_add_timer = 0.0
 	enemy_count_changed.emit(0)
 	horde_enemy_count_changed.emit(0)
@@ -123,9 +129,10 @@ func _physics_process(delta: float) -> void:
 	if not enabled:
 		return
 	var player_position := _get_player_position()
+	_update_player_velocity(player_position, delta)
 	var player = _get_player_ref()
 	_assign_repair_targets()
-	_refresh_legion_tactics(player_position)
+	_refresh_legion_tactics(player_position, delta)
 	for enemy in _enemies.duplicate():
 		if not is_instance_valid(enemy):
 			_enemies.erase(enemy)
@@ -391,7 +398,7 @@ func _release_legion(general: EnemyEntity) -> void:
 		member.clear_tactical_target_position()
 
 
-func _refresh_legion_tactics(player_position: Vector2) -> void:
+func _refresh_legion_tactics(player_position: Vector2, delta: float) -> void:
 	_tactical_orders.clear()
 	var active_general_ids: Array = _legion_controllers.keys()
 	active_general_ids.sort()
@@ -413,12 +420,27 @@ func _refresh_legion_tactics(player_position: Vector2) -> void:
 		var orders: Dictionary = controller.build_orders({
 			"members": members,
 			"player_position": player_position,
+			"player_velocity": _smoothed_player_velocity,
 			"arena_center": _arena_bounds.get_center(),
+			"arena_half_size": _arena_bounds.size * 0.5,
 			"legion_index": legion_index,
-			"legion_count": legion_count
+			"legion_count": legion_count,
+			"delta": delta
 		})
 		for enemy_id in orders:
 			_tactical_orders[enemy_id] = orders[enemy_id]
+
+
+func _update_player_velocity(player_position: Vector2, delta: float) -> void:
+	if not _has_previous_player_position or delta <= 0.0001:
+		_previous_player_position = player_position
+		_has_previous_player_position = true
+		_smoothed_player_velocity = Vector2.ZERO
+		return
+	var measured_velocity: Vector2 = (player_position - _previous_player_position) / delta
+	_previous_player_position = player_position
+	var smoothing_weight: float = clamp(delta * 8.0, 0.0, 1.0)
+	_smoothed_player_velocity = _smoothed_player_velocity.lerp(measured_velocity, smoothing_weight)
 
 
 func _assign_repair_targets() -> void:

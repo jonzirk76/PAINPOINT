@@ -10,6 +10,12 @@ enemy_profile = ExtResource("3")
 spawn_interval = 3.85
 spawn_batch_count = 2
 tactics_kind = "fan_out"
+adaptive_tactics = true
+adaptive_stationary_speed = 36.0
+adaptive_intercept_speed = 96.0
+adaptive_intercept_outward_dot = 0.4
+adaptive_intercept_edge_ratio = 0.45
+adaptive_tactic_hold_seconds = 0.9
 visual_kind = "basic"
 
 [resource]
