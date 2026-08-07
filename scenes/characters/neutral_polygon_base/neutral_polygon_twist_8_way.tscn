@@ -1,0 +1,16 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/neutral_polygon_twist_8_way.gd" id="1_twist"]
+[ext_resource type="Resource" path="res://resources/characters/neutral_humanoid_rig.tres" id="2_rig"]
+[ext_resource type="Resource" path="res://resources/characters/neutral_polygon_skin.tres" id="3_skin"]
+
+[node name="NeutralPolygonTwist8Way" type="Node2D"]
+script = ExtResource("1_twist")
+animation_rig_source = ExtResource("2_rig")
+character_skin_source = ExtResource("3_skin")
+
+[node name="ProjectionRoot" type="Node2D" parent="."]
+
+[node name="DirectionalCache" type="Node2D" parent="ProjectionRoot"]
+
+[node name="ActiveArmSocket" type="Node2D" parent="ProjectionRoot"]

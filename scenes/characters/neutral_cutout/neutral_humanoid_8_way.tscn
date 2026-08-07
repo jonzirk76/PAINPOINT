@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://cnp57tm7p4ooy"]
+
+[ext_resource type="Script" uid="uid://db5txjtcblajn" path="res://scripts/presentation/neutral_humanoid_8_way.gd" id="1_directional"]
+
+[node name="NeutralHumanoid8Way" type="Node2D" unique_id=1242736778]
+script = ExtResource("1_directional")
+direction = 1

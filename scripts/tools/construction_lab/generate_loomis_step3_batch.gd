@@ -4,6 +4,7 @@ const BoxProjectionUtil := preload("res://scripts/tools/construction_lab/box_pro
 const LoomisProjectionUtil := preload("res://scripts/tools/construction_lab/loomis_head_projection.gd")
 
 const GENERATED_DIR := "res://scenes/tools/anatomy/generated_loomis_step3"
+const STANDARDIZED_REVIEW_PATH := GENERATED_DIR + "/00_standardized_feature_volume_review.tscn"
 const VIEWPORT_SIZE := Vector2(1280.0, 720.0)
 const CUBE_FACE_COLORS := {
 	"x": Color(0.94, 0.43, 0.42, 0.10),
@@ -30,7 +31,7 @@ func _initialize() -> void:
 		"Generated Loomis step-3 plus primary jaw-anchor batch",
 		"",
 		"Open any .tscn in this folder and press F6.",
-		"Toggle ComplianceCube, Step1Sphere, Step2SidePlaneCut, Step3Midlines, or Step4FaceGuidesAndJaw in the scene tree.",
+		"Toggle ComplianceCube, Step1CraniumVolume, Step2SidePlaneCut, Step3Midlines, Step4FaceGuidesAndJaw, or Step5FeatureVolumes in the scene tree.",
 		"These generated visual review artifacts are intentionally untracked.",
 		"",
 	])
@@ -49,6 +50,23 @@ func _initialize() -> void:
 			return
 		manifest_lines.append("%02d  %s  ->  %s" % [index + 1, case_data["name"], scene_path])
 		print("Generated %s" % scene_path)
+
+	var standardized_batch := LoomisProjectionUtil.build_standardized_review_batch()
+	var standardized_scene := _build_standardized_review_scene(standardized_batch)
+	var standardized_save_error := ResourceSaver.save(
+		standardized_scene,
+		STANDARDIZED_REVIEW_PATH
+	)
+	if standardized_save_error != OK:
+		push_error("Could not save %s (error %d)." % [
+			STANDARDIZED_REVIEW_PATH,
+			standardized_save_error,
+		])
+		quit(1)
+		return
+	manifest_lines.append("")
+	manifest_lines.append("Standardized 3x3 review -> %s" % STANDARDIZED_REVIEW_PATH)
+	print("Generated %s" % STANDARDIZED_REVIEW_PATH)
 
 	var manifest_path := "%s/README.txt" % GENERATED_DIR
 	var manifest := FileAccess.open(manifest_path, FileAccess.WRITE)
@@ -108,13 +126,14 @@ func _build_scene(case_data: Dictionary, case_index: int) -> PackedScene:
 	_add_step2_side_plane(display, root, construction)
 	_add_step3_midlines(display, root, construction)
 	_add_step4_face_guides_and_jaw(display, root, construction)
+	_add_step5_feature_volumes(display, root, construction)
 
 	_add_label(
 		construction_panel,
 		root,
 		"ConstructionCaption",
 		Vector2(18.0, 539.0),
-		"Tangent cube contains the sphere exactly; the lower jaw remains a tunable character profile.",
+		"The Loomis sphere is refined into an elongated vault; feature volumes expand from the shared symmetric scaffold.",
 		15,
 		Color("#b9c7d9")
 	)
@@ -124,6 +143,75 @@ func _build_scene(case_data: Dictionary, case_index: int) -> PackedScene:
 	var pack_error := packed.pack(root)
 	if pack_error != OK:
 		push_error("Could not pack Loomis step-3 scene (error %d)." % pack_error)
+	root.free()
+	return packed
+
+
+func _build_standardized_review_scene(batch: Array) -> PackedScene:
+	var root := Node2D.new()
+	root.name = "StandardizedFeatureVolumeReview"
+	_add_background(root)
+	_add_label(
+		root,
+		root,
+		"Title",
+		Vector2(24.0, 13.0),
+		"STANDARDIZED HEAD-VOLUME REVIEW",
+		24,
+		Color("#f0f4fa")
+	)
+	_add_label(
+		root,
+		root,
+		"Subtitle",
+		Vector2(25.0, 47.0),
+		"Rows: neutral / up / down   •   Columns: front / 3/4 / one profile   •   identical local-space proportions",
+		14,
+		Color("#aebbd0")
+	)
+	var card_size := Vector2(398.0, 198.0)
+	for case_index in range(batch.size()):
+		var case_data: Dictionary = batch[case_index]
+		var row := floori(float(case_index) / 3.0)
+		var column := case_index % 3
+		var panel := _add_panel(
+			root,
+			root,
+			"View%02d%s%s" % [
+				case_index + 1,
+				_pascal_case(String(case_data["row_name"])),
+				_pascal_case(String(case_data["column_name"])),
+			],
+			Rect2(
+				Vector2(24.0 + float(column) * 412.0, 82.0 + float(row) * 207.0),
+				card_size
+			),
+			Color("#182333")
+		)
+		_add_label(
+			panel,
+			root,
+			"ViewLabel",
+			Vector2(11.0, 7.0),
+			String(case_data["name"]).to_upper(),
+			13,
+			Color("#dce7f5")
+		)
+		var display := Node2D.new()
+		display.name = "SharedProjection"
+		display.position = Vector2(198.0, 115.0)
+		display.scale = Vector2(0.92, 0.92)
+		_add_owned(panel, display, root)
+		var construction: Dictionary = case_data["construction"]
+		_add_step1_sphere(display, root, construction)
+		_add_step2_side_plane(display, root, construction)
+		_add_step3_midlines(display, root, construction)
+		_add_step4_face_guides_and_jaw(display, root, construction)
+		_add_step5_feature_volumes(display, root, construction)
+	var packed := PackedScene.new()
+	var pack_error := packed.pack(root)
+	if pack_error != OK:
+		push_error("Could not pack standardized feature-volume review (error %d)." % pack_error)
 	root.free()
 	return packed
 
@@ -210,17 +298,17 @@ func _add_compliance_cube(parent: Node2D, root: Node2D, construction: Dictionary
 
 func _add_step1_sphere(parent: Node2D, root: Node2D, construction: Dictionary) -> void:
 	var group := Node2D.new()
-	group.name = "Step1Sphere"
+	group.name = "Step1CraniumVolume"
 	_add_owned(parent, group, root)
 	var sphere_fill := Polygon2D.new()
-	sphere_fill.name = "CraniumSphere"
+	sphere_fill.name = "CraniumEllipsoid"
 	sphere_fill.polygon = construction["sphere_silhouette"]
 	sphere_fill.color = Color(0.42, 0.66, 0.88, 0.19)
 	_add_owned(group, sphere_fill, root)
 	_add_line(
 		group,
 		root,
-		"SphereContour",
+		"CraniumContour",
 		_closed_points(construction["sphere_silhouette"]),
 		Color("#dbeaff"),
 		2.2
@@ -426,6 +514,143 @@ func _add_step4_face_guides_and_jaw(parent: Node2D, root: Node2D, construction: 
 	)
 
 
+func _add_step5_feature_volumes(parent: Node2D, root: Node2D, construction: Dictionary) -> void:
+	var group := Node2D.new()
+	group.name = "Step5FeatureVolumes"
+	_add_owned(parent, group, root)
+	_add_polygon(
+		group,
+		root,
+		"BrowTangentPlaneMass",
+		construction["brow_tangent_plane"],
+		Color(0.96, 0.44, 0.48, 0.055)
+	)
+	_add_line(
+		group,
+		root,
+		"BrowTangentPlane",
+		construction["brow_tangent_plane"],
+		Color(0.96, 0.44, 0.48, 0.58),
+		1.25
+	)
+	for eye_index in range(construction["eye_spheres"].size()):
+		var eye_points: PackedVector2Array = construction["eye_spheres"][eye_index]
+		_add_polygon(
+			group,
+			root,
+			"EyeSphere%dMass" % (eye_index + 1),
+			eye_points,
+			Color(0.28, 0.88, 0.96, 0.18)
+		)
+		_add_line(
+			group,
+			root,
+			"EyeSphere%dContour" % (eye_index + 1),
+			_closed_points(eye_points),
+			Color(0.37, 0.94, 1.0, 0.86),
+			1.65
+		)
+		_add_anchor(
+			group,
+			root,
+			"EyeSphere%dCenter" % (eye_index + 1),
+			construction["eye_centers"][eye_index],
+			Color(0.52, 0.97, 1.0, 0.94)
+		)
+	_add_polygon(
+		group,
+		root,
+		"LowerFaceCylinderMass",
+		construction["lower_face_cylinder"],
+		Color(0.98, 0.78, 0.31, 0.16)
+	)
+	_add_line(
+		group,
+		root,
+		"LowerFaceCylinderContour",
+		_closed_points(construction["lower_face_cylinder"]),
+		Color(1.0, 0.84, 0.39, 0.88),
+		1.75
+	)
+	_add_line(
+		group,
+		root,
+		"LowerFaceCylinderAxis",
+		construction["lower_face_axis"],
+		Color(1.0, 0.92, 0.58, 0.82),
+		1.25
+	)
+	_add_line(
+		group,
+		root,
+		"LowerFaceTopCapAtNoseLine",
+		construction["lower_face_top_cap"],
+		Color(1.0, 0.80, 0.30, 0.68),
+		1.25
+	)
+	_add_line(
+		group,
+		root,
+		"LowerFaceBottomCapAtChin",
+		construction["lower_face_bottom_cap"],
+		Color(1.0, 0.80, 0.30, 0.68),
+		1.25
+	)
+	_add_line(
+		group,
+		root,
+		"MouthProjectedOnCylinder",
+		construction["mouth_surface_guide"],
+		Color(0.96, 0.39, 0.53, 0.94),
+		1.65
+	)
+	_add_polygon(
+		group,
+		root,
+		"NeckCylinderMass",
+		construction["neck_cylinder"],
+		Color(0.32, 0.82, 0.61, 0.14)
+	)
+	_add_line(
+		group,
+		root,
+		"NeckCylinderContour",
+		_closed_points(construction["neck_cylinder"]),
+		Color(0.39, 0.91, 0.68, 0.82),
+		1.75
+	)
+	_add_line(
+		group,
+		root,
+		"NeckCylinderCenterline",
+		construction["neck_axis"],
+		Color(0.54, 1.0, 0.77, 0.94),
+		1.8
+	)
+	_add_anchor(
+		group,
+		root,
+		"HeadNeckJointAtForamenCenter",
+		construction["neck_joint_anchor"],
+		Color(0.70, 1.0, 0.82, 1.0)
+	)
+	_add_polygon(
+		group,
+		root,
+		"ForamenMagnumAnchor",
+		construction["foramen_ellipse"],
+		Color(0.94, 0.25, 0.61, 0.28)
+	)
+	_add_line(
+		group,
+		root,
+		"ForamenMagnumContour",
+		construction["foramen_ellipse"],
+		Color(1.0, 0.43, 0.72, 0.88),
+		1.4
+	)
+
+
 func _add_reference_panel(root: Node2D, construction: Dictionary, spec: Dictionary) -> void:
 	var panel := _add_panel(
 		root,
@@ -441,8 +666,8 @@ func _add_reference_panel(root: Node2D, construction: Dictionary, spec: Dictiona
 		"Step1",
 		55.0,
 		Color("#dbeaff"),
-		"STEP 1 — SPHERE",
-		"Projected spherical silhouette remains circular."
+		"STEP 1 — CRANIAL VOLUME",
+		"Sphere refined into a narrower, front-to-back elongated vault."
 	)
 	_add_stage_row(
 		panel,
@@ -451,7 +676,7 @@ func _add_reference_panel(root: Node2D, construction: Dictionary, spec: Dictiona
 		132.0,
 		Color("#f2a06f"),
 		"STEP 2 — SIDE-PLANE CUT",
-		"Ellipse is a fixed %.0f%% radius slice on the near side." % (float(spec["side_cut_ratio"]) * 100.0)
+		"Elliptical slice is fixed at %.0f%% of the near-side radius." % (float(spec["side_cut_ratio"]) * 100.0)
 	)
 	_add_stage_row(
 		panel,
@@ -459,8 +684,8 @@ func _add_reference_panel(root: Node2D, construction: Dictionary, spec: Dictiona
 		"Step3",
 		222.0,
 		Color("#5ee0ec"),
-		"STEP 3 — SPHERICAL MIDLINES",
-		"Center and brow curves share the same rotated sphere."
+		"STEP 3 — CRANIAL MIDLINES",
+		"Center and brow curves share the rotated ellipsoid."
 	)
 	_add_stage_row(
 		panel,
@@ -471,30 +696,25 @@ func _add_reference_panel(root: Node2D, construction: Dictionary, spec: Dictiona
 		"STEP 4 — FACE GUIDES + JAW",
 		"Projected square directions place the chin and near-ear hinge."
 	)
-	_add_label(panel, root, "ChecksTitle", Vector2(18.0, 408.0), "VISUAL ACCEPTANCE", 18, Color("#fff3a8"))
+	_add_stage_row(
+		panel,
+		root,
+		"Step5",
+		402.0,
+		Color("#65dfaa"),
+		"STEP 5 — FEATURE VOLUMES",
+		"Eye spheres, vertical lower-face cylinder, foramen, and neck share anchors."
+	)
+	_add_label(panel, root, "ChecksTitle", Vector2(18.0, 486.0), "VISUAL ACCEPTANCE", 18, Color("#fff3a8"))
 	_add_label(
 		panel,
 		root,
 		"Checks",
-		Vector2(18.0, 442.0),
-		"• sphere is tangent to all six cube planes\n• flat face midlines match spherical guide planes\n• lower guides preserve projected convergence\n• orange hinge connects directly to yellow chin\n• jaw ratios may change per character",
-		14,
+		Vector2(18.0, 516.0),
+		"• elongated vault preserves the shared orientation\n• paired eyes remain mirrored in local space\n• eye fronts meet the brow tangent plane\n• neck axis begins at the foramen center",
+		13,
 		Color("#c3cedd")
 	)
-	_add_label(
-		panel,
-		root,
-		"SideReadout",
-		Vector2(18.0, 557.0),
-		"Near side: %s   chin drop: %.2fr" % [
-			"RIGHT (+X)" if float(construction["side_sign"]) > 0.0 else "LEFT (-X)",
-			float(construction["jaw_profile"]["chin_drop_ratio"]),
-		],
-		13,
-		Color("#aebbd0")
-	)
-
-
 func _add_stage_row(
 	parent: Node,
 	root: Node,

@@ -1,0 +1,27 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/native_humanoid_twist_runtime.gd" id="1_twist"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_polygon_base/neutral_native_skeleton_slice.tscn" id="2_native"]
+
+[node name="NeutralNativeTwistRuntime" type="Node2D"]
+process_priority = 100
+script = ExtResource("1_twist")
+
+[node name="HipsRuntime" parent="." instance=ExtResource("2_native")]
+body_parts = 17
+
+[node name="TorsoRuntime" parent="." instance=ExtResource("2_native")]
+starts_walking = false
+body_parts = 2
+
+[node name="HeadRuntime" parent="." instance=ExtResource("2_native")]
+starts_walking = false
+body_parts = 4
+
+[node name="ArmsRuntime" parent="." instance=ExtResource("2_native")]
+starts_walking = false
+body_parts = 8
+
+[node name="ActiveArmProjection" type="Node2D" parent="."]
+
+[node name="ActiveArmSocket" type="Node2D" parent="ActiveArmProjection"]

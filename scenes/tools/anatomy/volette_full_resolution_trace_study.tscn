@@ -1,0 +1,340 @@
+[gd_scene format=3 uid="uid://dpv0wgcsw2xxi"]
+
+[ext_resource type="Texture2D" uid="uid://bwyr5ja8v6ytt" path="res://art/concept_art/experiment.png" id="1_reference"]
+[ext_resource type="PackedScene" path="res://scenes/tools/anatomy/volette_full_resolution_trace_art.tscn" id="2_trace"]
+
+[node name="VoletteFullResolutionTraceStudy" type="Node2D" unique_id=2104668197]
+
+[node name="Background" type="Polygon2D" parent="." unique_id=124549146]
+color = Color(0.03529412, 0.050980393, 0.078431375, 1)
+polygon = PackedVector2Array(0, 0, 2864, 0, 2864, 1300, 0, 1300)
+
+[node name="Title" type="Label" parent="." unique_id=667467052]
+offset_left = 36.0
+offset_top = 20.0
+offset_right = 1500.0
+offset_bottom = 58.0
+theme_override_colors/font_color = Color(0.92941177, 0.9490196, 0.98039216, 1)
+theme_override_font_sizes/font_size = 26
+text = "VOLETTE — NATIVE 1372 × 1146 POLYGON TRACE"
+
+[node name="OverlayLabel" type="Label" parent="." unique_id=718405831]
+offset_left = 40.0
+offset_top = 67.0
+offset_right = 720.0
+offset_bottom = 94.0
+theme_override_colors/font_color = Color(0.52156866, 0.8627451, 0.9411765, 1)
+theme_override_font_sizes/font_size = 18
+text = "REGISTRATION OVERLAY — TRACE AT 48% OPACITY"
+
+[node name="CleanLabel" type="Label" parent="." unique_id=995840354]
+offset_left = 1452.0
+offset_top = 67.0
+offset_right = 2100.0
+offset_bottom = 94.0
+theme_override_colors/font_color = Color(0.52156866, 0.8627451, 0.9411765, 1)
+theme_override_font_sizes/font_size = 18
+text = "CLEAN TRACE — SAME NATIVE COORDINATES"
+
+[node name="Reference" type="Sprite2D" parent="." unique_id=1189731825]
+position = Vector2(40, 100)
+texture = ExtResource("1_reference")
+centered = false
+
+[node name="OverlayTrace" type="Node2D" parent="." unique_id=702019387]
+modulate = Color(1, 1, 1, 0)
+position = Vector2(40, 100)
+
+[node name="BackHair" type="Polygon2D" parent="OverlayTrace" unique_id=375188305]
+color = Color(0.105882354, 0.07058824, 0.20784314, 1)
+antialiased = true
+polygon = PackedVector2Array(72, 1055, 96, 950, 143, 846, 205, 758, 243, 665, 271, 548, 276, 420, 302, 285, 355, 168, 445, 77, 560, 19, 751, 18, 876, 77, 972, 181, 1028, 309, 1049, 445, 1094, 590, 1156, 737, 1229, 866, 1297, 1079, 1205, 1080, 1132, 1018, 1062, 934, 1002, 836, 952, 744, 911, 669, 874, 755, 823, 829, 759, 887, 681, 900, 593, 867, 513, 823, 442, 768, 356, 737, 270, 741, 179, 795, 98, 869)
+
+[node name="BackHairLeftShadow" type="Polygon2D" parent="OverlayTrace" unique_id=308613716]
+color = Color(0.07058824, 0.039215688, 0.14901961, 1)
+antialiased = true
+polygon = PackedVector2Array(72, 1055, 105, 938, 169, 833, 226, 747, 258, 638, 276, 510, 305, 588, 316, 712, 286, 827, 229, 938, 164, 1048)
+
+[node name="BackHairRightShadow" type="Polygon2D" parent="OverlayTrace" unique_id=532736257]
+color = Color(0.0627451, 0.03529412, 0.13725491, 1)
+antialiased = true
+polygon = PackedVector2Array(952, 557, 1023, 628, 1093, 727, 1160, 835, 1230, 927, 1297, 1079, 1205, 1080, 1132, 1018, 1062, 934, 1002, 836, 952, 744)
+
+[node name="ShoulderMass" type="Polygon2D" parent="OverlayTrace" unique_id=1621137368]
+color = Color(0.019607844, 0.047058824, 0.105882354, 1)
+antialiased = true
+polygon = PackedVector2Array(109, 1080, 155, 989, 286, 927, 427, 910, 541, 944, 687, 962, 826, 925, 963, 913, 1105, 969, 1227, 1080)
+
+[node name="LeftShoulderBlue" type="Polygon2D" parent="OverlayTrace" unique_id=956071491]
+color = Color(0.019607844, 0.27058825, 0.6509804, 1)
+antialiased = true
+polygon = PackedVector2Array(286, 927, 335, 790, 431, 752, 535, 793, 563, 914, 506, 1031, 381, 1080, 109, 1080, 155, 989)
+
+[node name="LeftShoulderLight" type="Polygon2D" parent="OverlayTrace" unique_id=1588314568]
+color = Color(0.07450981, 0.48235294, 0.8784314, 1)
+antialiased = true
+polygon = PackedVector2Array(335, 790, 431, 752, 474, 779, 380, 815, 456, 901, 506, 1031, 407, 950)
+
+[node name="RightShoulderBlue" type="Polygon2D" parent="OverlayTrace" unique_id=1298323972]
+color = Color(0.019607844, 0.27058825, 0.6509804, 1)
+antialiased = true
+polygon = PackedVector2Array(829, 790, 940, 753, 1013, 790, 1061, 921, 1105, 969, 1227, 1080, 953, 1080, 871, 1025, 813, 916)
+
+[node name="RightShoulderLight" type="Polygon2D" parent="OverlayTrace" unique_id=281878914]
+color = Color(0.07058824, 0.45490196, 0.8509804, 1)
+antialiased = true
+polygon = PackedVector2Array(940, 753, 1013, 790, 955, 816, 879, 925, 831, 884, 892, 801)
+
+[node name="ChestArmor" type="Polygon2D" parent="OverlayTrace" unique_id=145771051]
+color = Color(0.07058824, 0.08627451, 0.14509805, 1)
+antialiased = true
+polygon = PackedVector2Array(425, 907, 535, 839, 686, 859, 827, 839, 951, 918, 887, 1080, 505, 1080)
+
+[node name="ChestArmorLight" type="Polygon2D" parent="OverlayTrace" unique_id=151093339]
+color = Color(0.11764706, 0.14117648, 0.22745098, 1)
+antialiased = true
+polygon = PackedVector2Array(521, 947, 676, 983, 830, 934, 887, 1080, 564, 1080)
+
+[node name="NeckShadow" type="Polygon2D" parent="OverlayTrace" unique_id=1467526490]
+color = Color(0.4862745, 0.2784314, 0.29411766, 1)
+antialiased = true
+polygon = PackedVector2Array(530, 695, 593, 755, 689, 795, 757, 744, 754, 847, 694, 889, 613, 855, 548, 805)
+
+[node name="Neck" type="Polygon2D" parent="OverlayTrace" unique_id=891358198]
+color = Color(0.7921569, 0.49411765, 0.44313726, 1)
+antialiased = true
+polygon = PackedVector2Array(557, 713, 612, 760, 689, 794, 739, 757, 737, 832, 691, 858, 626, 832, 574, 794)
+
+[node name="FaceBase" type="Polygon2D" parent="OverlayTrace" unique_id=1450316378]
+color = Color(0.8862745, 0.69411767, 0.62352943, 1)
+antialiased = true
+polygon = PackedVector2Array(400, 434, 419, 353, 477, 302, 558, 274, 652, 270, 747, 292, 824, 341, 880, 413, 908, 496, 906, 578, 880, 643, 838, 696, 778, 746, 715, 787, 689, 796, 626, 768, 566, 733, 514, 688, 473, 638, 444, 579, 424, 509)
+
+[node name="FaceFarPlane" type="Polygon2D" parent="OverlayTrace" unique_id=22775915]
+color = Color(0.76862746, 0.5019608, 0.4745098, 0.2)
+antialiased = true
+polygon = PackedVector2Array(702, 279, 774, 305, 838, 350, 881, 414, 908, 496, 906, 578, 880, 643, 838, 696, 778, 746, 736, 695, 750, 618, 744, 529, 724, 420)
+
+[node name="LeftEar" type="Polygon2D" parent="OverlayTrace" unique_id=830267151]
+color = Color(0.827451, 0.5686275, 0.5176471, 1)
+antialiased = true
+polygon = PackedVector2Array(411, 466, 390, 459, 379, 477, 381, 523, 400, 566, 426, 585, 444, 565, 438, 512)
+
+[node name="LeftEarInner" type="Line2D" parent="OverlayTrace" unique_id=1096570636]
+points = PackedVector2Array(399, 481, 414, 475, 424, 502, 414, 540, 395, 522)
+width = 7.0
+default_color = Color(0.61960787, 0.3529412, 0.37254903, 1)
+antialiased = true
+
+[node name="LeftCheekLight" type="Polygon2D" parent="OverlayTrace" unique_id=650445130]
+color = Color(0.9764706, 0.7607843, 0.6901961, 0.35)
+antialiased = true
+polygon = PackedVector2Array(438, 542, 495, 570, 583, 579, 641, 616, 610, 698, 562, 730, 504, 682, 465, 634)
+
+[node name="LeftBlush" type="Polygon2D" parent="OverlayTrace" unique_id=2050444882]
+color = Color(0.9490196, 0.41568628, 0.47058824, 0.18)
+antialiased = true
+polygon = PackedVector2Array(459, 574, 523, 581, 589, 604, 566, 650, 495, 627)
+
+[node name="RightBlush" type="Polygon2D" parent="OverlayTrace" unique_id=835941038]
+color = Color(0.9490196, 0.41568628, 0.47058824, 0.17)
+antialiased = true
+polygon = PackedVector2Array(783, 589, 850, 567, 895, 585, 869, 634, 802, 640)
+
+[node name="LeftEyeWhite" type="Polygon2D" parent="OverlayTrace" unique_id=115084890]
+color = Color(0.95686275, 0.92156863, 0.9372549, 1)
+antialiased = true
+polygon = PackedVector2Array(507, 493, 529, 475, 566, 470, 603, 482, 633, 508, 640, 536, 624, 563, 592, 579, 553, 574, 522, 551, 508, 521)
+
+[node name="LeftIris" type="Polygon2D" parent="OverlayTrace" unique_id=1843214266]
+color = Color(0.40784314, 0.21960784, 0.62352943, 1)
+antialiased = true
+polygon = PackedVector2Array(551, 475, 580, 472, 607, 490, 619, 521, 615, 551, 594, 575, 566, 576, 544, 551, 538, 518)
+
+[node name="LeftIrisLight" type="Polygon2D" parent="OverlayTrace" unique_id=1966394043]
+color = Color(0.6117647, 0.34901962, 0.7647059, 1)
+antialiased = true
+polygon = PackedVector2Array(544, 535, 564, 524, 603, 529, 612, 553, 593, 574, 565, 574, 547, 556)
+
+[node name="LeftPupil" type="Polygon2D" parent="OverlayTrace" unique_id=1418112351]
+color = Color(0.14117648, 0.05490196, 0.22352941, 1)
+antialiased = true
+polygon = PackedVector2Array(570, 479, 586, 480, 596, 499, 595, 528, 583, 546, 568, 535, 563, 507)
+
+[node name="LeftEyeHighlightLarge" type="Polygon2D" parent="OverlayTrace" unique_id=1653051615]
+color = Color(1, 0.98039216, 1, 1)
+antialiased = true
+polygon = PackedVector2Array(548, 482, 561, 471, 576, 478, 574, 496, 558, 502, 547, 493)
+
+[node name="LeftEyeHighlightSmall" type="Polygon2D" parent="OverlayTrace" unique_id=682830899]
+color = Color(0.96862745, 0.91764706, 1, 1)
+antialiased = true
+polygon = PackedVector2Array(595, 544, 605, 539, 613, 548, 605, 558)
+
+[node name="LeftUpperLash" type="Polygon2D" parent="OverlayTrace" unique_id=1678191049]
+color = Color(0.08235294, 0.039215688, 0.09019608, 1)
+antialiased = true
+polygon = PackedVector2Array(496, 490, 520, 467, 559, 458, 598, 469, 628, 489, 651, 516, 632, 505, 603, 482, 566, 470, 529, 476, 507, 497, 510, 528, 499, 516)
+
+[node name="RightEyeWhite" type="Polygon2D" parent="OverlayTrace" unique_id=1596282011]
+color = Color(0.95686275, 0.92156863, 0.9372549, 1)
+antialiased = true
+polygon = PackedVector2Array(779, 506, 799, 486, 832, 479, 867, 490, 894, 514, 901, 542, 885, 568, 857, 581, 823, 576, 796, 555, 782, 532)
+
+[node name="RightIris" type="Polygon2D" parent="OverlayTrace" unique_id=1189178297]
+color = Color(0.3764706, 0.1882353, 0.5803922, 1)
+antialiased = true
+polygon = PackedVector2Array(814, 486, 841, 482, 866, 498, 878, 527, 874, 556, 855, 578, 830, 576, 810, 553, 804, 521)
+
+[node name="RightIrisLight" type="Polygon2D" parent="OverlayTrace" unique_id=2056106173]
+color = Color(0.5921569, 0.3254902, 0.74509805, 1)
+antialiased = true
+polygon = PackedVector2Array(809, 538, 829, 526, 866, 531, 874, 555, 854, 576, 829, 574, 812, 557)
+
+[node name="RightPupil" type="Polygon2D" parent="OverlayTrace" unique_id=1971083809]
+color = Color(0.13333334, 0.047058824, 0.21176471, 1)
+antialiased = true
+polygon = PackedVector2Array(832, 488, 848, 489, 858, 507, 857, 536, 846, 552, 832, 541, 826, 514)
+
+[node name="RightEyeHighlightLarge" type="Polygon2D" parent="OverlayTrace" unique_id=1173179064]
+color = Color(1, 0.98039216, 1, 1)
+antialiased = true
+polygon = PackedVector2Array(811, 492, 824, 482, 839, 488, 837, 506, 822, 512, 811, 503)
+
+[node name="RightEyeHighlightSmall" type="Polygon2D" parent="OverlayTrace" unique_id=1819806491]
+color = Color(0.96862745, 0.91764706, 1, 1)
+antialiased = true
+polygon = PackedVector2Array(855, 548, 865, 543, 873, 552, 865, 562)
+
+[node name="RightUpperLash" type="Polygon2D" parent="OverlayTrace" unique_id=117314238]
+color = Color(0.08235294, 0.039215688, 0.09019608, 1)
+antialiased = true
+polygon = PackedVector2Array(769, 504, 791, 481, 828, 468, 866, 479, 895, 498, 918, 523, 900, 514, 870, 491, 835, 480, 800, 487, 780, 510, 783, 537, 772, 527)
+
+[node name="LeftBrow" type="Polygon2D" parent="OverlayTrace" unique_id=670148179]
+color = Color(0.12941177, 0.07058824, 0.21176471, 1)
+antialiased = true
+polygon = PackedVector2Array(495, 449, 543, 432, 595, 438, 634, 454, 591, 445, 544, 440, 501, 458)
+
+[node name="RightBrow" type="Polygon2D" parent="OverlayTrace" unique_id=1875952567]
+color = Color(0.12941177, 0.07058824, 0.21176471, 1)
+antialiased = true
+polygon = PackedVector2Array(778, 452, 820, 438, 872, 441, 912, 455, 871, 449, 824, 447, 782, 460)
+
+[node name="NoseSide" type="Polygon2D" parent="OverlayTrace" unique_id=883591868]
+color = Color(0.6901961, 0.4117647, 0.40784314, 0.48)
+antialiased = true
+polygon = PackedVector2Array(706, 548, 719, 584, 728, 625, 713, 650, 697, 630, 703, 588)
+
+[node name="NoseLight" type="Polygon2D" parent="OverlayTrace" unique_id=425552566]
+color = Color(0.98039216, 0.7921569, 0.7176471, 0.52)
+antialiased = true
+polygon = PackedVector2Array(698, 550, 707, 586, 704, 629, 691, 621)
+
+[node name="Mouth" type="Polygon2D" parent="OverlayTrace" unique_id=1370703784]
+color = Color(0.3882353, 0.19607843, 0.24313726, 1)
+antialiased = true
+polygon = PackedVector2Array(672, 703, 689, 698, 708, 701, 726, 697, 741, 703, 725, 707, 708, 709, 689, 707)
+
+[node name="LowerLip" type="Polygon2D" parent="OverlayTrace" unique_id=911399525]
+color = Color(0.9490196, 0.69411767, 0.6745098, 0.7)
+antialiased = true
+polygon = PackedVector2Array(685, 716, 706, 720, 728, 714, 716, 727, 697, 729)
+
+[node name="HairCap" type="Polygon2D" parent="OverlayTrace" unique_id=1614621883]
+color = Color(0.19215687, 0.12156863, 0.35686275, 1)
+antialiased = true
+polygon = PackedVector2Array(239, 404, 286, 370, 312, 299, 321, 218, 365, 140, 442, 76, 570, 19, 752, 18, 865, 66, 945, 126, 1001, 200, 1035, 286, 1055, 361, 1014, 341, 974, 284, 929, 226, 877, 168, 817, 116, 751, 82, 679, 66, 605, 76, 536, 105, 476, 150, 427, 208, 390, 277, 366, 351, 321, 390)
+
+[node name="LeftCrownLight" type="Polygon2D" parent="OverlayTrace" unique_id=331351710]
+color = Color(0.32941177, 0.21960784, 0.54509807, 1)
+antialiased = true
+polygon = PackedVector2Array(365, 140, 442, 76, 533, 39, 489, 74, 449, 118, 419, 174, 380, 231, 321, 299, 330, 219)
+
+[node name="CenterCrownLight" type="Polygon2D" parent="OverlayTrace" unique_id=490016124]
+color = Color(0.28235295, 0.18431373, 0.4745098, 1)
+antialiased = true
+polygon = PackedVector2Array(533, 39, 620, 18, 705, 19, 770, 35, 704, 56, 646, 86, 596, 132, 558, 193, 529, 266, 492, 211, 477, 150)
+
+[node name="RightCrownLight" type="Polygon2D" parent="OverlayTrace" unique_id=953975529]
+color = Color(0.27450982, 0.17254902, 0.45882353, 1)
+antialiased = true
+polygon = PackedVector2Array(770, 35, 865, 66, 945, 126, 1001, 200, 1029, 272, 990, 232, 949, 182, 898, 137, 842, 101)
+
+[node name="LeftOuterLock" type="Polygon2D" parent="OverlayTrace" unique_id=1401058656]
+color = Color(0.22352941, 0.13725491, 0.4, 1)
+antialiased = true
+polygon = PackedVector2Array(363, 208, 321, 285, 312, 367, 278, 430, 231, 456, 281, 462, 321, 448, 355, 416, 383, 367, 407, 300, 421, 238)
+
+[node name="LeftFlipLock" type="Polygon2D" parent="OverlayTrace" unique_id=853134408]
+color = Color(0.28627452, 0.18039216, 0.47843137, 1)
+antialiased = true
+polygon = PackedVector2Array(321, 298, 286, 370, 239, 404, 286, 397, 326, 368, 362, 321, 391, 257, 369, 340, 329, 418, 274, 455, 230, 455, 279, 478, 334, 480, 385, 456, 425, 415, 451, 358, 458, 282)
+
+[node name="NearBangOuter" type="Polygon2D" parent="OverlayTrace" unique_id=683574283]
+color = Color(0.25882354, 0.16078432, 0.4392157, 1)
+antialiased = true
+polygon = PackedVector2Array(442, 76, 520, 42, 590, 39, 554, 91, 526, 157, 511, 238, 502, 329, 497, 419, 510, 503, 480, 483, 461, 443, 456, 383, 454, 310, 438, 238, 414, 175)
+
+[node name="NearBangInner" type="Polygon2D" parent="OverlayTrace" unique_id=577659461]
+color = Color(0.30980393, 0.2, 0.5058824, 1)
+antialiased = true
+polygon = PackedVector2Array(565, 32, 640, 19, 700, 24, 670, 75, 648, 143, 641, 218, 647, 302, 655, 389, 668, 469, 649, 532, 627, 491, 610, 423, 590, 356, 566, 289, 545, 218, 528, 145)
+
+[node name="CenterBang" type="Polygon2D" parent="OverlayTrace" unique_id=1574929720]
+color = Color(0.21960784, 0.12941177, 0.3882353, 1)
+antialiased = true
+polygon = PackedVector2Array(682, 25, 751, 19, 812, 39, 783, 90, 761, 159, 753, 240, 757, 330, 771, 412, 783, 488, 760, 533, 728, 563, 691, 569, 714, 534, 724, 476, 717, 407, 701, 331, 683, 257, 665, 183, 654, 107)
+
+[node name="FarBang" type="Polygon2D" parent="OverlayTrace" unique_id=2143385249]
+color = Color(0.24705882, 0.14901961, 0.41960785, 1)
+antialiased = true
+polygon = PackedVector2Array(777, 27, 850, 54, 904, 99, 929, 166, 938, 245, 933, 330, 923, 411, 918, 484, 927, 532, 895, 507, 877, 458, 873, 394, 865, 324, 850, 251, 831, 178, 807, 111)
+
+[node name="RightSideLock" type="Polygon2D" parent="OverlayTrace" unique_id=2030789290]
+color = Color(0.19607843, 0.11372549, 0.35686275, 1)
+antialiased = true
+polygon = PackedVector2Array(905, 95, 969, 154, 1007, 231, 1028, 319, 1038, 411, 1058, 491, 1104, 540, 1061, 535, 1028, 511, 1006, 475, 1008, 544, 1030, 610, 1068, 667, 1116, 704, 1080, 691, 1045, 661, 1014, 620, 989, 566, 970, 501, 953, 424, 938, 338, 923, 246)
+
+[node name="LeftFaceLock" type="Polygon2D" parent="OverlayTrace" unique_id=1441728764]
+color = Color(0.22745098, 0.13725491, 0.40392157, 1)
+antialiased = true
+polygon = PackedVector2Array(430, 340, 458, 282, 489, 233, 493, 317, 496, 402, 506, 481, 527, 547, 557, 609, 531, 642, 500, 629, 479, 598, 465, 551, 450, 495, 438, 426)
+
+[node name="RightFaceLock" type="Polygon2D" parent="OverlayTrace" unique_id=472204381]
+color = Color(0.1882353, 0.105882354, 0.34509805, 1)
+antialiased = true
+polygon = PackedVector2Array(921, 350, 945, 411, 954, 482, 949, 556, 935, 620, 917, 670, 889, 698, 905, 652, 915, 594, 918, 528, 912, 458, 902, 397)
+
+[node name="CollarLeft" type="Polygon2D" parent="OverlayTrace" unique_id=1705087378]
+color = Color(0.023529412, 0.03529412, 0.078431375, 1)
+antialiased = true
+polygon = PackedVector2Array(425, 762, 536, 728, 625, 805, 656, 936, 574, 919, 498, 862)
+
+[node name="CollarRight" type="Polygon2D" parent="OverlayTrace" unique_id=930540450]
+color = Color(0.023529412, 0.03529412, 0.078431375, 1)
+antialiased = true
+polygon = PackedVector2Array(756, 761, 831, 730, 940, 753, 878, 862, 800, 923, 718, 938, 734, 809)
+
+[node name="CollarGem" type="Polygon2D" parent="OverlayTrace" unique_id=205541036]
+color = Color(0.02745098, 0.30588236, 0.7254902, 1)
+antialiased = true
+polygon = PackedVector2Array(665, 945, 699, 927, 734, 950, 743, 987, 716, 1016, 681, 1007, 660, 978)
+
+[node name="CollarGemLight" type="Polygon2D" parent="OverlayTrace" unique_id=179243539]
+color = Color(0.1254902, 0.5254902, 0.91764706, 1)
+antialiased = true
+polygon = PackedVector2Array(675, 949, 699, 935, 719, 949, 696, 963)
+
+[node name="CleanTrace" parent="." unique_id=606150543 instance=ExtResource("2_trace")]
+position = Vector2(1452, 100)
+
+[node name="OverlayBorder" type="Line2D" parent="." unique_id=697082581]
+points = PackedVector2Array(40, 100, 1412, 100, 1412, 1246, 40, 1246, 40, 100)
+width = 2.0
+default_color = Color(0.28627452, 0.36862746, 0.49019608, 1)
+
+[node name="CleanBorder" type="Line2D" parent="." unique_id=1966340714]
+points = PackedVector2Array(1452, 100, 2824, 100, 2824, 1246, 1452, 1246, 1452, 100)
+width = 2.0
+default_color = Color(0.28627452, 0.36862746, 0.49019608, 1)

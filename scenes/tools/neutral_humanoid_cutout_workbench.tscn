@@ -1,0 +1,133 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_cutout/neutral_humanoid_8_way.tscn" id="1_directional"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_cutout/neutral_humanoid_south.tscn" id="2_south"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_cutout/neutral_humanoid_south_west.tscn" id="3_south_west"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_cutout/neutral_humanoid_west.tscn" id="4_west"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_cutout/neutral_humanoid_north_east.tscn" id="5_north_east"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_cutout/neutral_humanoid_north.tscn" id="6_north"]
+
+[node name="NeutralHumanoidCutoutWorkbench" type="Node2D"]
+
+[node name="Background" type="Polygon2D" parent="."]
+z_index = -100
+color = Color(0.055, 0.06, 0.07, 1)
+polygon = PackedVector2Array(0, 0, 1280, 0, 1280, 720, 0, 720)
+
+[node name="Title" type="Label" parent="."]
+position = Vector2(30, 16)
+text = "NEUTRAL HUMANOID CUTOUT — 8-way viability proof"
+
+[node name="RuntimeLabel" type="Label" parent="."]
+position = Vector2(30, 55)
+text = "Eight runtime directions — clockwise from South (three right-side directions reuse mirrored canonical scenes)"
+
+[node name="DirectionPanel" type="Polygon2D" parent="."]
+z_index = -90
+color = Color(0.105, 0.115, 0.13, 1)
+polygon = PackedVector2Array(20, 84, 1260, 84, 1260, 310, 20, 310)
+
+[node name="South" parent="." instance=ExtResource("1_directional")]
+position = Vector2(105, 280)
+scale = Vector2(0.28, 0.28)
+direction = 0
+
+[node name="SouthLabel" type="Label" parent="."]
+position = Vector2(76, 286)
+text = "S"
+
+[node name="SouthWest" parent="." instance=ExtResource("1_directional")]
+position = Vector2(255, 280)
+scale = Vector2(0.28, 0.28)
+direction = 1
+
+[node name="SouthWestLabel" type="Label" parent="."]
+position = Vector2(218, 286)
+text = "SW"
+
+[node name="West" parent="." instance=ExtResource("1_directional")]
+position = Vector2(405, 280)
+scale = Vector2(0.28, 0.28)
+direction = 2
+
+[node name="WestLabel" type="Label" parent="."]
+position = Vector2(376, 286)
+text = "W"
+
+[node name="NorthWest" parent="." instance=ExtResource("1_directional")]
+position = Vector2(555, 280)
+scale = Vector2(0.28, 0.28)
+direction = 3
+
+[node name="NorthWestLabel" type="Label" parent="."]
+position = Vector2(518, 286)
+text = "NW"
+
+[node name="North" parent="." instance=ExtResource("1_directional")]
+position = Vector2(705, 280)
+scale = Vector2(0.28, 0.28)
+direction = 4
+
+[node name="NorthLabel" type="Label" parent="."]
+position = Vector2(676, 286)
+text = "N"
+
+[node name="NorthEast" parent="." instance=ExtResource("1_directional")]
+position = Vector2(855, 280)
+scale = Vector2(0.28, 0.28)
+direction = 5
+
+[node name="NorthEastLabel" type="Label" parent="."]
+position = Vector2(818, 286)
+text = "NE"
+
+[node name="East" parent="." instance=ExtResource("1_directional")]
+position = Vector2(1005, 280)
+scale = Vector2(0.28, 0.28)
+direction = 6
+
+[node name="EastLabel" type="Label" parent="."]
+position = Vector2(976, 286)
+text = "E"
+
+[node name="SouthEast" parent="." instance=ExtResource("1_directional")]
+position = Vector2(1155, 280)
+scale = Vector2(0.28, 0.28)
+direction = 7
+
+[node name="SouthEastLabel" type="Label" parent="."]
+position = Vector2(1118, 286)
+text = "SE"
+
+[node name="CanonicalLabel" type="Label" parent="."]
+position = Vector2(30, 337)
+text = "Five editable canonical Skeleton2D scenes — S, SW, W, NE, N — darker limbs are farther from the camera"
+
+[node name="CanonicalPanel" type="Polygon2D" parent="."]
+z_index = -90
+color = Color(0.095, 0.103, 0.116, 1)
+polygon = PackedVector2Array(20, 368, 1260, 368, 1260, 690, 20, 690)
+
+[node name="CanonicalSouth" parent="." instance=ExtResource("2_south")]
+position = Vector2(135, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="CanonicalSouthWest" parent="." instance=ExtResource("3_south_west")]
+position = Vector2(385, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="CanonicalWest" parent="." instance=ExtResource("4_west")]
+position = Vector2(635, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="CanonicalNorthEast" parent="." instance=ExtResource("5_north_east")]
+position = Vector2(885, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="CanonicalNorth" parent="." instance=ExtResource("6_north")]
+position = Vector2(1135, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="Instructions" type="Label" parent="."]
+position = Vector2(30, 696)
+text = "Run this scene to compare gait. Open a canonical scene to edit its Head/Torso/Hips and jointed limb Polygon2D nodes."

@@ -1,0 +1,161 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Mesh" path="res://art/3d models/derived/skull_reference_reduced.obj" id="1_skull"]
+
+[sub_resource type="StandardMaterial3D" id="BoneMaterial"]
+albedo_color = Color(0.76, 0.7, 0.59, 1)
+roughness = 0.82
+
+[sub_resource type="Environment" id="BoardEnvironment"]
+background_mode = 1
+background_color = Color(0.025, 0.035, 0.055, 1)
+ambient_light_source = 3
+ambient_light_color = Color(0.48, 0.57, 0.72, 1)
+ambient_light_energy = 0.72
+
+[sub_resource type="StandardMaterial3D" id="AnchorMaterial"]
+shading_mode = 0
+albedo_color = Color(0.2, 0.95, 0.62, 1)
+
+[node name="SkullReducedProjectionBoard" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("BoardEnvironment")
+
+[node name="KeyLight" type="DirectionalLight3D" parent="."]
+rotation = Vector3(-0.55, -0.65, 0)
+light_color = Color(1, 0.9, 0.76, 1)
+light_energy = 1.15
+shadow_enabled = true
+
+[node name="FillLight" type="DirectionalLight3D" parent="."]
+rotation = Vector3(0.35, 2.25, 0)
+light_color = Color(0.48, 0.68, 1, 1)
+light_energy = 0.72
+
+[node name="ProjectionCamera" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1450)
+projection = 1
+size = 735.0
+current = true
+
+[node name="Views" type="Node3D" parent="."]
+
+[node name="Front" type="Node3D" parent="Views"]
+position = Vector3(-315, 175, 0)
+
+[node name="Skull" type="MeshInstance3D" parent="Views/Front"]
+position = Vector3(0, -110, 0)
+mesh = ExtResource("1_skull")
+material_override = SubResource("BoneMaterial")
+
+[node name="Label" type="Label3D" parent="Views/Front"]
+position = Vector3(0, -152, 180)
+text = "FRONT"
+font_size = 28
+outline_size = 6
+pixel_size = 0.35
+billboard = 1
+modulate = Color(0.62, 0.86, 1, 1)
+
+[node name="Profile" type="Node3D" parent="Views"]
+position = Vector3(0, 175, 0)
+
+[node name="Skull" type="MeshInstance3D" parent="Views/Profile"]
+position = Vector3(0, -110, 0)
+rotation = Vector3(0, 1.5707964, 0)
+mesh = ExtResource("1_skull")
+material_override = SubResource("BoneMaterial")
+
+[node name="Label" type="Label3D" parent="Views/Profile"]
+position = Vector3(0, -152, 180)
+text = "PROFILE"
+font_size = 28
+outline_size = 6
+pixel_size = 0.35
+billboard = 1
+modulate = Color(0.62, 0.86, 1, 1)
+
+[node name="ThreeQuarter" type="Node3D" parent="Views"]
+position = Vector3(315, 175, 0)
+
+[node name="Skull" type="MeshInstance3D" parent="Views/ThreeQuarter"]
+position = Vector3(0, -110, 0)
+rotation = Vector3(0, 0.7853982, 0)
+mesh = ExtResource("1_skull")
+material_override = SubResource("BoneMaterial")
+
+[node name="Label" type="Label3D" parent="Views/ThreeQuarter"]
+position = Vector3(0, -152, 180)
+text = "3/4"
+font_size = 28
+outline_size = 6
+pixel_size = 0.35
+billboard = 1
+modulate = Color(0.62, 0.86, 1, 1)
+
+[node name="ThreeQuarterUp" type="Node3D" parent="Views"]
+position = Vector3(-315, -175, 0)
+
+[node name="Skull" type="MeshInstance3D" parent="Views/ThreeQuarterUp"]
+position = Vector3(0, -110, 0)
+rotation = Vector3(-0.34906584, 0.7853982, 0)
+mesh = ExtResource("1_skull")
+material_override = SubResource("BoneMaterial")
+
+[node name="Label" type="Label3D" parent="Views/ThreeQuarterUp"]
+position = Vector3(0, -152, 180)
+text = "3/4 — LOOKING UP"
+font_size = 24
+outline_size = 6
+pixel_size = 0.32
+billboard = 1
+modulate = Color(0.62, 0.86, 1, 1)
+
+[node name="ThreeQuarterDown" type="Node3D" parent="Views"]
+position = Vector3(0, -175, 0)
+
+[node name="Skull" type="MeshInstance3D" parent="Views/ThreeQuarterDown"]
+position = Vector3(0, -110, 0)
+rotation = Vector3(0.34906584, 0.7853982, 0)
+mesh = ExtResource("1_skull")
+material_override = SubResource("BoneMaterial")
+
+[node name="Label" type="Label3D" parent="Views/ThreeQuarterDown"]
+position = Vector3(0, -152, 180)
+text = "3/4 — LOOKING DOWN"
+font_size = 24
+outline_size = 6
+pixel_size = 0.32
+billboard = 1
+modulate = Color(0.62, 0.86, 1, 1)
+
+[node name="CranialBase" type="Node3D" parent="Views"]
+position = Vector3(315, -175, 0)
+
+[node name="Skull" type="MeshInstance3D" parent="Views/CranialBase"]
+position = Vector3(0, -110, 0)
+rotation = Vector3(-1.5707964, 0, 0)
+mesh = ExtResource("1_skull")
+material_override = SubResource("BoneMaterial")
+
+[node name="ForamenAnchorPivot" type="Node3D" parent="Views/CranialBase"]
+position = Vector3(0, -110, 0)
+rotation = Vector3(-1.5707964, 0, 0)
+
+[node name="ForamenAnchor" type="CSGSphere3D" parent="Views/CranialBase/ForamenAnchorPivot"]
+position = Vector3(0, 34, 8)
+radius = 5.0
+height = 10.0
+radial_segments = 12
+rings = 6
+material = SubResource("AnchorMaterial")
+
+[node name="Label" type="Label3D" parent="Views/CranialBase"]
+position = Vector3(0, -152, 180)
+text = "CRANIAL BASE / FORAMEN"
+font_size = 22
+outline_size = 6
+pixel_size = 0.3
+billboard = 1
+modulate = Color(0.42, 1, 0.67, 1)

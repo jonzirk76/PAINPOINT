@@ -1,0 +1,31 @@
+[gd_scene format=3 uid="uid://r85rro3ey1oh"]
+
+[ext_resource type="Texture2D" uid="uid://cni5qyo7prb5u" path="res://art/concept_art/characterbasetransparent.png" id="1_rbskm"]
+
+[node name="NeutralPolygonActiveArm" type="Node2D" unique_id=341086092]
+visible = false
+
+[node name="UpperArm" type="Polygon2D" parent="." unique_id=576805503]
+color = Color(0.84705883, 0.6862745, 0.627451, 1)
+antialiased = true
+polygon = PackedVector2Array(-17, -7, 15, -13, 23, 6, 23, 16, 23, 43, 17, 52, 0, 54, -11, 46, -16, 27)
+
+[node name="Forearm" type="Polygon2D" parent="." unique_id=2007589193]
+z_index = -1
+color = Color(0.72, 0.54, 0.49, 1)
+antialiased = true
+polygon = PackedVector2Array(-11, 45, 24, 44, 22, 73, 18, 98, -14, 93, -12, 85, -13, 63)
+
+[node name="Hand" type="Polygon2D" parent="." unique_id=2096784897]
+z_index = -2
+color = Color(0.58, 0.4, 0.36, 1)
+antialiased = true
+polygon = PackedVector2Array(-14, 93, 17, 97, 22, 114, 17, 131, 10, 144, 2, 146, -7, 147, -14, 143, -23, 126, -21, 109)
+
+[node name="Characterbasetransparent" type="Sprite2D" parent="." unique_id=721262821]
+visible = false
+modulate = Color(1, 1, 1, 0.3764706)
+z_index = 999
+position = Vector2(-327, 236)
+texture = ExtResource("1_rbskm")
+metadata/_edit_lock_ = true

@@ -32,6 +32,9 @@ art/generated/characters/velora/base/*
 /art/generated/dialogue/
 /art/generated/scratch/
 
+# Large local anatomy reference meshes
+/art/3d models/human-skeleton-*/
+
 # Logs and local diagnostics
 *.log
 /logs/

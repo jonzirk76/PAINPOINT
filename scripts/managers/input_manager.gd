@@ -3,6 +3,7 @@ class_name InputManager
 
 signal move_changed(move_vector: Vector2)
 signal aim_changed(direction: Vector2)
+signal aim_hold_changed(is_held: bool)
 signal aim_fire_requested(direction: Vector2)
 signal restart_requested
 signal menu_up_requested
@@ -50,6 +51,7 @@ var _overdrive_held: bool = false
 var _fire_cooldown_multiplier: float = 1.0
 var _last_read_analog_aim_magnitude: float = 0.0
 var _aim_origin_provider: Callable
+var _aim_held: bool = false
 
 
 func _ready() -> void:
@@ -61,6 +63,7 @@ func initialize(context: Dictionary) -> void:
 
 
 func reset_run() -> void:
+	var was_aim_held := _aim_held
 	_last_move = Vector2.ZERO
 	_last_aim = Vector2.ZERO
 	_last_cardinal_aim_snap = Vector2.ZERO
@@ -72,6 +75,9 @@ func reset_run() -> void:
 	_super_held = false
 	_overdrive_held = false
 	_last_read_analog_aim_magnitude = 0.0
+	_aim_held = false
+	if was_aim_held:
+		aim_hold_changed.emit(false)
 
 
 func set_enabled(value: bool) -> void:
@@ -81,6 +87,9 @@ func set_enabled(value: bool) -> void:
 		_aim_release_fire_armed = false
 		_aim_release_neutral_latched = false
 		_last_read_aim_source = AIM_SOURCE_NONE
+		if _aim_held:
+			_aim_held = false
+			aim_hold_changed.emit(false)
 	if not enabled and _overdrive_held:
 		_overdrive_held = false
 		overdrive_changed.emit(false)
@@ -106,6 +115,10 @@ func _process(_delta: float) -> void:
 		aim_changed.emit(fire_direction)
 		if not super_held and not was_super_held:
 			aim_fire_requested.emit(fire_direction)
+	var next_aim_held := _last_aim.length_squared() > 0.001
+	if next_aim_held != _aim_held:
+		_aim_held = next_aim_held
+		aim_hold_changed.emit(_aim_held)
 	if super_held and not was_super_held:
 		super_charge_pressed.emit()
 	elif was_super_held and not super_held:
@@ -230,13 +243,13 @@ func _read_aim_vector() -> Vector2:
 		return _snap_analog_aim_to_cardinal(joy_vector)
 
 	var digital_vector := Vector2.ZERO
-	if Input.is_physical_key_pressed(KEY_LEFT):
+	if Input.is_physical_key_pressed(KEY_LEFT) or Input.is_physical_key_pressed(KEY_KP_4) or Input.is_physical_key_pressed(KEY_KP_7) or Input.is_physical_key_pressed(KEY_KP_1):
 		digital_vector.x -= 1.0
-	if Input.is_physical_key_pressed(KEY_RIGHT):
+	if Input.is_physical_key_pressed(KEY_RIGHT) or Input.is_physical_key_pressed(KEY_KP_6) or Input.is_physical_key_pressed(KEY_KP_9) or Input.is_physical_key_pressed(KEY_KP_3):
 		digital_vector.x += 1.0
-	if Input.is_physical_key_pressed(KEY_UP):
+	if Input.is_physical_key_pressed(KEY_UP) or Input.is_physical_key_pressed(KEY_KP_8) or Input.is_physical_key_pressed(KEY_KP_7) or Input.is_physical_key_pressed(KEY_KP_9):
 		digital_vector.y -= 1.0
-	if Input.is_physical_key_pressed(KEY_DOWN):
+	if Input.is_physical_key_pressed(KEY_DOWN) or Input.is_physical_key_pressed(KEY_KP_2) or Input.is_physical_key_pressed(KEY_KP_1) or Input.is_physical_key_pressed(KEY_KP_3):
 		digital_vector.y += 1.0
 	if digital_vector.length_squared() > 0.001:
 		_last_cardinal_aim_snap = Vector2.ZERO

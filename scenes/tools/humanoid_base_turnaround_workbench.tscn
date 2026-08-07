@@ -1,0 +1,98 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/tools/humanoid_base_turnaround_workbench.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://art/concept_art/characterbase.png" id="2_reference"]
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_front_body_assembly_prototype.tscn" id="3_front"]
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_three_quarter_down_left_body_assembly_prototype.tscn" id="4_front_diagonal"]
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_profile_body_assembly_prototype.tscn" id="5_profile"]
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_rear_three_quarter_body_assembly_draft.tscn" id="6_rear_diagonal"]
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_rear_body_assembly_draft.tscn" id="7_rear"]
+
+[node name="HumanoidBaseTurnaroundWorkbench" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="WorkspaceBackground" type="Polygon2D" parent="."]
+z_index = -100
+color = Color(0.11, 0.115, 0.125, 1)
+polygon = PackedVector2Array(0, 0, 1254, 0, 1254, 1650, 0, 1650)
+
+[node name="CanonicalViews" type="Node2D" parent="."]
+
+[node name="Down" parent="CanonicalViews" instance=ExtResource("3_front")]
+position = Vector2(250, 310)
+scale = Vector2(2.2, 2.2)
+
+[node name="DownLeft" parent="CanonicalViews" instance=ExtResource("4_front_diagonal")]
+position = Vector2(635, 485)
+scale = Vector2(2.05, 2.05)
+
+[node name="Left" parent="CanonicalViews" instance=ExtResource("5_profile")]
+position = Vector2(990, 330)
+scale = Vector2(-2.45, 2.45)
+
+[node name="UpLeftDraft" parent="CanonicalViews" instance=ExtResource("6_rear_diagonal")]
+position = Vector2(430, 1060)
+scale = Vector2(2.05, 2.05)
+
+[node name="UpDraft" parent="CanonicalViews" instance=ExtResource("7_rear")]
+position = Vector2(830, 895)
+scale = Vector2(2.2, 2.2)
+
+[node name="ReferenceOverlay" type="Sprite2D" parent="."]
+z_index = 100
+modulate = Color(1, 1, 1, 0.42)
+texture = ExtResource("2_reference")
+centered = false
+
+[node name="CanonicalHeader" type="Label" parent="."]
+z_index = 110
+position = Vector2(20, 14)
+text = "CANONICAL HUMANOID PROJECTIONS — edit source assemblies; overlay is reference only"
+
+[node name="ClockwisePreview" type="Node2D" parent="."]
+position = Vector2(0, 1265)
+
+[node name="Panel" type="Polygon2D" parent="ClockwisePreview"]
+z_index = -10
+color = Color(0.045, 0.05, 0.06, 1)
+polygon = PackedVector2Array(20, 0, 1234, 0, 1234, 350, 20, 350)
+
+[node name="Header" type="Label" parent="ClockwisePreview"]
+position = Vector2(35, 12)
+text = "CLOCKWISE: Down → Down Left → Left → Up Left → Up → Up Right → Right → Down Right"
+
+[node name="Down" parent="ClockwisePreview" instance=ExtResource("3_front")]
+position = Vector2(90, 230)
+scale = Vector2(0.54, 0.54)
+
+[node name="DownLeft" parent="ClockwisePreview" instance=ExtResource("4_front_diagonal")]
+position = Vector2(245, 275)
+scale = Vector2(0.5, 0.5)
+
+[node name="Left" parent="ClockwisePreview" instance=ExtResource("5_profile")]
+position = Vector2(395, 235)
+scale = Vector2(-0.6, 0.6)
+
+[node name="UpLeft" parent="ClockwisePreview" instance=ExtResource("6_rear_diagonal")]
+position = Vector2(535, 275)
+scale = Vector2(0.5, 0.5)
+
+[node name="Up" parent="ClockwisePreview" instance=ExtResource("7_rear")]
+position = Vector2(680, 230)
+scale = Vector2(0.54, 0.54)
+
+[node name="UpRight" parent="ClockwisePreview" instance=ExtResource("6_rear_diagonal")]
+position = Vector2(825, 275)
+scale = Vector2(-0.5, 0.5)
+
+[node name="Right" parent="ClockwisePreview" instance=ExtResource("5_profile")]
+position = Vector2(975, 235)
+scale = Vector2(0.6, 0.6)
+
+[node name="DownRight" parent="ClockwisePreview" instance=ExtResource("4_front_diagonal")]
+position = Vector2(1125, 275)
+scale = Vector2(-0.5, 0.5)
+
+[node name="Instructions" type="Label" parent="ClockwisePreview"]
+position = Vector2(35, 315)
+text = "Inspector controls on the workbench toggle the reference, adjust its opacity, and hide this preview strip. Rear drafts inherit their front sources and store only rear-specific overrides."

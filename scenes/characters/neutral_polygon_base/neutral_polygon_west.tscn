@@ -1,0 +1,436 @@
+[gd_scene format=3 uid="uid://7xvus6xbvvjb"]
+
+[ext_resource type="PackedScene" uid="uid://c8up72hh017x3" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_south_west.tscn" id="1_1r1ba"]
+[ext_resource type="Texture2D" uid="uid://cni5qyo7prb5u" path="res://art/concept_art/characterbasetransparent.png" id="2_jnqpw"]
+
+[sub_resource type="Animation" id="Animation_ilj8r"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Skeleton2D:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector2(-831, -510)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("Skeleton2D/Hips/FarLeg:rotation")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("Skeleton2D/Hips/FarLeg:scale")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector2(1, 1)]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("Skeleton2D/Hips/NearLeg:rotation")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("Skeleton2D/Hips/NearLeg:scale")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector2(1, 1)]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("Skeleton2D/Hips/Torso/FarArm:rotation")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/6/type = "value"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("Skeleton2D/Hips/Torso/FarArm:scale")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector2(1, 1)]
+}
+tracks/7/type = "value"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("Skeleton2D/Hips/Torso/NearArm:rotation")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/8/type = "value"
+tracks/8/imported = false
+tracks/8/enabled = true
+tracks/8/path = NodePath("Skeleton2D/Hips/Torso/NearArm:scale")
+tracks/8/interp = 1
+tracks/8/loop_wrap = true
+tracks/8/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector2(1, 1)]
+}
+tracks/9/type = "value"
+tracks/9/imported = false
+tracks/9/enabled = true
+tracks/9/path = NodePath("Skeleton2D/Hips/FarLeg:position")
+tracks/9/interp = 1
+tracks/9/loop_wrap = true
+tracks/9/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector2(-16.166687, -3.5)]
+}
+tracks/10/type = "value"
+tracks/10/imported = false
+tracks/10/enabled = true
+tracks/10/path = NodePath("Skeleton2D/Hips/NearLeg:position")
+tracks/10/interp = 1
+tracks/10/loop_wrap = true
+tracks/10/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector2(0, 25.333344)]
+}
+
+[sub_resource type="Animation" id="Animation_7t2ht"]
+length = 0.4347826086956521
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Skeleton2D:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.10869565, 0.2173913, 0.32608697, 0.4347826),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector2(-831, -510), Vector2(-831, -512.5), Vector2(-831, -510), Vector2(-831, -512.5), Vector2(-831, -510)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("Skeleton2D/Hips/FarLeg:rotation")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.10869565, 0.2173913, 0.32608697, 0.4347826),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 0,
+"values": [0.0, 0.26703537555513246, 0.0, -0.26703537555513246, 0.0]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("Skeleton2D/Hips/NearLeg:rotation")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.10869565, 0.2173913, 0.32608697, 0.4347826),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 0,
+"values": [0.0, -0.26703537555513246, 0.0, 0.26703537555513246, 0.0]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("Skeleton2D/Hips/Torso/FarArm:rotation")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0, 0.10869565, 0.2173913, 0.32608697, 0.4347826),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 0,
+"values": [0.0, -0.34033920413889424, 0.0, 0.34033920413889424, 0.0]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("Skeleton2D/Hips/Torso/NearArm:rotation")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0, 0.10869565, 0.2173913, 0.32608697, 0.4347826),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 0,
+"values": [0.0, 0.34033920413889424, 0.0, -0.34033920413889424, 0.0]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_owejb"]
+_data = {
+&"RESET": SubResource("Animation_ilj8r"),
+&"walk": SubResource("Animation_7t2ht")
+}
+
+[node name="NeutralPolygonWest" type="Node2D" unique_id=1583052238]
+metadata/canonical_direction = "west"
+metadata/reference_scene = "res://scenes/characters/neutral_cutout/neutral_humanoid_west.tscn"
+
+[node name="Skeleton2D" type="Skeleton2D" parent="." unique_id=2038202677]
+position = Vector2(-831, -510)
+
+[node name="Hips" type="Bone2D" parent="Skeleton2D" unique_id=1437162979]
+position = Vector2(827.6667, 324)
+rest = Transform2D(1, 0, 0, 1, 813.6667, 333)
+
+[node name="HipsMass" type="Polygon2D" parent="Skeleton2D/Hips" unique_id=898107762]
+color = Color(0.7, 0.72, 0.76, 1)
+antialiased = true
+polygon = PackedVector2Array(-35.666687, 12, -31.666687, 31, 3.333313, 41, 23.333313, 47, 29.333313, 38, 33.333313, 25, 36.333313, 7, 33.333313, -8, -36.666687, -7)
+metadata/editable_polygon_base = true
+
+[node name="Torso" type="Bone2D" parent="Skeleton2D/Hips" unique_id=191432403]
+z_index = 10
+rest = Transform2D(1, 0, 0, 1, 0, 0)
+
+[node name="TorsoMass" type="Polygon2D" parent="Skeleton2D/Hips/Torso" unique_id=674836924]
+color = Color(0.84705883, 0.6862745, 0.627451, 1)
+antialiased = true
+polygon = PackedVector2Array(36.333313, -111, 3.333313, -105, -19.666687, -90, -26.666687, -78, -33.666687, -64, -38.666687, -21, -36.666687, -1, -17.666687, 2, 41.333313, -2, 41.333313, -32, 47.333313, -55, 45.333313, -80, 41.333313, -99)
+metadata/editable_polygon_base = true
+
+[node name="FrontEmblemProfile" type="Polygon2D" parent="Skeleton2D/Hips/Torso" unique_id=390388006]
+z_index = 1
+color = Color(0.34, 0.88, 1, 1)
+antialiased = true
+polygon = PackedVector2Array(-31, -61, -20, -57, -17, -31, -26, -25, -31, -37)
+metadata/orientation_marker = true
+
+[node name="Head" type="Bone2D" parent="Skeleton2D/Hips/Torso" unique_id=1146886735]
+z_index = 20
+position = Vector2(-0.666687, -104.000015)
+rest = Transform2D(1, 0, 0, 1, 20, -108.33333)
+
+[node name="HeadMass" type="Polygon2D" parent="Skeleton2D/Hips/Torso/Head" unique_id=54876923]
+position = Vector2(15, 7.666687)
+color = Color(0.84705883, 0.6862745, 0.627451, 1)
+antialiased = true
+polygon = PackedVector2Array(-4, -150.66669, -19, -150.66669, -33.666687, -148.66667, -55.666687, -137.66667, -71.66669, -122.66667, -82.66669, -102.66667, -85.66669, -90.66667, -85.66669, -70.66667, -76.66669, -41.66667, -75.66669, -34.66667, -81.66669, -27.666672, -81.66669, -16.666672, -63.666687, 8.333328, -57, 11, -43, 11, -30.666687, 8.333328, -18, 4, -9, -3, -2, -2, 9, -3, 20, -10, 30, -14, 46, -27.666687, 56, -40.666687, 64, -61.666687, 66, -79.66669, 64, -95.66669, 57, -113.66669, 39, -133.66669, 22, -144.66669)
+metadata/editable_polygon_base = true
+
+[node name="PlaceholderEyeWhite" type="Polygon2D" parent="Skeleton2D/Hips/Torso/Head" unique_id=2091561770]
+z_index = 1
+position = Vector2(30, 23.666687)
+color = Color(0.94, 0.95, 1, 1)
+antialiased = true
+polygon = PackedVector2Array(-73, -51, -66, -54, -50, -45, -59, -34, -68, -32, -72, -37)
+metadata/orientation_marker = true
+
+[node name="PlaceholderIris" type="Polygon2D" parent="Skeleton2D/Hips/Torso/Head" unique_id=953330290]
+z_index = 2
+position = Vector2(22, 23.666687)
+color = Color(0.38, 0.12, 0.68, 1)
+antialiased = true
+polygon = PackedVector2Array(-65, -51, -55, -53, -54, -39, -59, -33, -65, -40)
+metadata/orientation_marker = true
+
+[node name="PlaceholderEyeLash" type="Polygon2D" parent="Skeleton2D/Hips/Torso/Head" unique_id=1031644082]
+z_index = 3
+position = Vector2(30, 23.666687)
+color = Color(0.03137, 0.0196, 0.02745, 1)
+antialiased = true
+polygon = PackedVector2Array(-79, -55, -66, -55, -54, -51, -47, -45, -57, -35, -59, -36, -55, -41, -55, -46, -64, -50, -79, -51)
+metadata/orientation_marker = true
+
+[node name="FarArm" type="Bone2D" parent="Skeleton2D/Hips/Torso" unique_id=916866051]
+z_index = -39
+position = Vector2(-6.666687, -85)
+rest = Transform2D(1, 0, 0, 1, 20.333313, -100.5)
+
+[node name="UpperArm" type="Polygon2D" parent="Skeleton2D/Hips/Torso/FarArm" unique_id=1143728345]
+color = Color(0.84705883, 0.6862745, 0.627451, 1)
+antialiased = true
+polygon = PackedVector2Array(-21, 11, -16, 49, -9.666687, 55.333344, 0, 60, 17, 59, 24, 57, 23, 10, 18.333313, -0.6666565, 3, 0)
+metadata/editable_polygon_base = true
+
+[node name="Forearm" type="Bone2D" parent="Skeleton2D/Hips/Torso/FarArm" unique_id=549407885]
+position = Vector2(6.333313, 50.333344)
+rest = Transform2D(1, 0, 0, 1, 6.333313, 50.333344)
+
+[node name="ForearmMass" type="Polygon2D" parent="Skeleton2D/Hips/Torso/FarArm/Forearm" unique_id=53049519]
+z_index = -1
+position = Vector2(0, -11.3333435)
+color = Color(0.72, 0.54, 0.49, 1)
+antialiased = true
+polygon = PackedVector2Array(-17.333313, 37.666656, -14.333313, 63, -1.333313, 67, 15.666687, 67, 18.666687, 30.666656, 14.666687, 9.6666565, -13.333313, 18.666656)
+metadata/editable_polygon_base = true
+
+[node name="Hand" type="Bone2D" parent="Skeleton2D/Hips/Torso/FarArm/Forearm" unique_id=358661894]
+position = Vector2(1.666687, 60.666656)
+rest = Transform2D(1, 0, 0, 1, 1, 73)
+
+[node name="HandMass" type="Polygon2D" parent="Skeleton2D/Hips/Torso/FarArm/Forearm/Hand" unique_id=20862436]
+z_index = -2
+color = Color(0.58, 0.4, 0.36, 1)
+antialiased = true
+polygon = PackedVector2Array(-28, 29, -18, 44, -5, 47, 5, 42, 12, 28, 17, 11, 14, -8, -17, -13, -25, 4)
+metadata/editable_polygon_base = true
+
+[node name="NearArm" type="Bone2D" parent="Skeleton2D/Hips/Torso" unique_id=1600653999]
+z_index = 10
+position = Vector2(17.333313, -70)
+rest = Transform2D(1, 0, 0, 1, 27, -59.333344)
+
+[node name="UpperArm" type="Polygon2D" parent="Skeleton2D/Hips/Torso/NearArm" unique_id=1297894495]
+color = Color(0.84705883, 0.6862745, 0.627451, 1)
+antialiased = true
+polygon = PackedVector2Array(-24, 11, -16, 49, -9.666687, 55.333344, 0, 60, 17, 59, 24, 57, 23, 10, 18.333313, -0.6666565, 3, 0)
+metadata/editable_polygon_base = true
+
+[node name="Forearm" type="Bone2D" parent="Skeleton2D/Hips/Torso/NearArm" unique_id=1429454636]
+position = Vector2(6.333313, 50.333344)
+rest = Transform2D(1, 0, 0, 1, 6.333313, 50.333344)
+
+[node name="ForearmMass" type="Polygon2D" parent="Skeleton2D/Hips/Torso/NearArm/Forearm" unique_id=1389116390]
+z_index = -1
+position = Vector2(0, -11.3333435)
+color = Color(0.72, 0.54, 0.49, 1)
+antialiased = true
+polygon = PackedVector2Array(-17.333313, 37.666656, -14.333313, 63, -1.333313, 67, 15.666687, 67, 18.666687, 30.666656, 14.666687, 9.6666565, -13.333313, 18.666656)
+metadata/editable_polygon_base = true
+
+[node name="Hand" type="Bone2D" parent="Skeleton2D/Hips/Torso/NearArm/Forearm" unique_id=1999780248]
+position = Vector2(1.666687, 60.666656)
+rest = Transform2D(1, 0, 0, 1, 1, 73)
+
+[node name="HandMass" type="Polygon2D" parent="Skeleton2D/Hips/Torso/NearArm/Forearm/Hand" unique_id=1895287212]
+z_index = -2
+color = Color(0.58, 0.4, 0.36, 1)
+antialiased = true
+polygon = PackedVector2Array(-28, 29, -18, 44, -5, 47, 5, 42, 12, 28, 17, 11, 14, -8, -17, -13, -25, 4)
+metadata/editable_polygon_base = true
+
+[node name="FarLeg" type="Bone2D" parent="Skeleton2D/Hips" unique_id=327416036]
+z_index = -30
+position = Vector2(-16.166687, -3.5)
+rest = Transform2D(1, 0, 0, 1, -16.166687, -3.5)
+
+[node name="Thigh" type="Polygon2D" parent="Skeleton2D/Hips/FarLeg" unique_id=911168194]
+position = Vector2(0, 0.5)
+color = Color(0.84705883, 0.6862745, 0.627451, 1)
+antialiased = true
+polygon = PackedVector2Array(20.333313, -6.3333435, -14.666687, -7.3333435, -20.666687, -1.3333435, -16.666687, 32.666656, -8.666687, 51.666656, 22.333313, 46.666656, 23.333313, 2.6666565, 23.333313, -7.3333435, 20.333313, -7.3333435)
+metadata/editable_polygon_base = true
+
+[node name="Shin" type="Bone2D" parent="Skeleton2D/Hips/FarLeg" unique_id=19889527]
+position = Vector2(4.333313, 32)
+rest = Transform2D(1, 0, 0, 1, 4.333313, 32)
+
+[node name="ShinMass" type="Polygon2D" parent="Skeleton2D/Hips/FarLeg/Shin" unique_id=1580647728]
+z_index = -1
+position = Vector2(1.166687, 0)
+color = Color(0.72, 0.54, 0.49, 1)
+antialiased = true
+polygon = PackedVector2Array(-21, 0.6666565, -7, 63.666656, -7, 67.66666, 5, 71.66666, 24, 66.66666, 25, 45.666656, 18, -2.3333435, -8, -0.3333435)
+metadata/editable_polygon_base = true
+
+[node name="Foot" type="Bone2D" parent="Skeleton2D/Hips/FarLeg/Shin" unique_id=1216258167]
+position = Vector2(6.166687, 70.5)
+rest = Transform2D(1, 0, 0, 1, 6.166687, 76.5)
+
+[node name="FootMass" type="Polygon2D" parent="Skeleton2D/Hips/FarLeg/Shin/Foot" unique_id=1148765957]
+modulate = Color(0.62, 0.65, 0.72, 1)
+z_index = -2
+position = Vector2(-15, -21)
+color = Color(0.58, 0.4, 0.36, 1)
+antialiased = true
+polygon = PackedVector2Array(3, 10, -10, 12, -18, 18, -22, 27, -20.5, 33.5, -12.5, 39.5, -3.5, 41.5, 6, 41, 12.5, 40.5, 22, 37, 35.5, 32.5, 29, 8, 22, 7)
+metadata/editable_polygon_base = true
+
+[node name="NearLeg" type="Bone2D" parent="Skeleton2D/Hips" unique_id=294672223]
+z_index = 5
+position = Vector2(0, 25.333344)
+rest = Transform2D(1, 0, 0, 1, 0, 25.333344)
+
+[node name="Thigh" type="Polygon2D" parent="Skeleton2D/Hips/NearLeg" unique_id=1311900618]
+color = Color(0.84705883, 0.6862745, 0.627451, 1)
+antialiased = true
+polygon = PackedVector2Array(20.333313, -6.3333435, -14.666687, -7.3333435, -20.666687, -1.3333435, -16.666687, 32.666656, -8.666687, 51.666656, 22.333313, 46.666656, 23.333313, 2.6666565, 23.333313, -7.3333435, 20.333313, -7.3333435)
+metadata/editable_polygon_base = true
+
+[node name="Shin" type="Bone2D" parent="Skeleton2D/Hips/NearLeg" unique_id=385645861]
+position = Vector2(4.333313, 49.666656)
+rest = Transform2D(1, 0, 0, 1, 4.333313, 32)
+
+[node name="ShinMass" type="Polygon2D" parent="Skeleton2D/Hips/NearLeg/Shin" unique_id=903127769]
+z_index = -1
+position = Vector2(0, -12.6666565)
+color = Color(0.72, 0.54, 0.49, 1)
+antialiased = true
+polygon = PackedVector2Array(-21, 0.6666565, -7, 63.666656, -7, 67.66666, 5, 71.66666, 24, 66.66666, 25, 45.666656, 18, -2.3333435, -8, -0.3333435)
+metadata/editable_polygon_base = true
+
+[node name="Foot" type="Bone2D" parent="Skeleton2D/Hips/NearLeg/Shin" unique_id=558865001]
+position = Vector2(4, 59)
+rest = Transform2D(1, 0, 0, 1, 2, 90.66666)
+
+[node name="FootMass" type="Polygon2D" parent="Skeleton2D/Hips/NearLeg/Shin/Foot" unique_id=1886457053]
+modulate = Color(0.62, 0.65, 0.72, 1)
+z_index = -2
+position = Vector2(-21, -7)
+color = Color(0.58, 0.4, 0.36, 1)
+antialiased = true
+polygon = PackedVector2Array(6, -2, -23, 15, -27, 21, -26, 32, -17, 41, -3, 43, 8.5, 40.5, 23, 34, 31.5, 32.5, 40, 29, 44, 23, 39, 1, 28.5, -4.5)
+metadata/editable_polygon_base = true
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=63920307]
+libraries/ = SubResource("AnimationLibrary_owejb")
+autoplay = &"walk"
+
+[node name="SouthWest" parent="." unique_id=1596680562 instance=ExtResource("1_1r1ba")]
+visible = false
+position = Vector2(-157, -2)
+
+[node name="Characterbasetransparent" type="Sprite2D" parent="." unique_id=270035830]
+visible = false
+modulate = Color(1, 1, 1, 0.25882354)
+z_index = 999
+position = Vector2(-312, 10)
+texture = ExtResource("2_jnqpw")
+metadata/_edit_lock_ = true

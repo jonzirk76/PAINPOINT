@@ -1,0 +1,343 @@
+[gd_scene format=3 uid="uid://cld8iam7xmcj3"]
+
+[ext_resource type="Script" uid="uid://blimpul2unpm0" path="res://scripts/tools/volette_three_quarter_trace_workbench.gd" id="1_script"]
+[ext_resource type="Texture2D" uid="uid://b5amcvr4a05nf" path="res://art/concept_art/three_fourths.png" id="2_sheet"]
+[ext_resource type="PackedScene" uid="uid://kex12vlfaq5v" path="res://scenes/characters/humanoid_body_rig_prototype.tscn" id="3_3ls7h"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_structure"]
+atlas = ExtResource("2_sheet")
+region = Rect2(315, 15, 330, 570)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_hair"]
+atlas = ExtResource("2_sheet")
+region = Rect2(315, 630, 330, 570)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_rear_structure"]
+atlas = ExtResource("2_sheet")
+region = Rect2(625, 15, 330, 570)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_rear_hair"]
+atlas = ExtResource("2_sheet")
+region = Rect2(625, 630, 330, 570)
+
+[node name="VoletteThreeQuarterTraceWorkbench" type="Node2D" unique_id=1177998665]
+script = ExtResource("1_script")
+structure_reference_opacity = 0.39
+game_screen_display_scale = 0.75
+game_character_height = 63.0
+
+[node name="References" type="Node2D" parent="." unique_id=1655696363]
+z_index = -100
+
+[node name="ForwardStructureReference" type="Sprite2D" parent="References" unique_id=185184926]
+modulate = Color(1, 1, 1, 0.39)
+position = Vector2(22.999998, 32.999996)
+scale = Vector2(0.77, 0.77)
+texture = SubResource("AtlasTexture_structure")
+centered = false
+
+[node name="ForwardHairComparison" type="Sprite2D" parent="References" unique_id=142068194]
+position = Vector2(409, 34.999996)
+scale = Vector2(0.77, 0.77)
+texture = SubResource("AtlasTexture_hair")
+centered = false
+
+[node name="RearStructureReference" type="Sprite2D" parent="References" unique_id=503347980]
+modulate = Color(1, 1, 1, 0.39)
+position = Vector2(783, 32.999996)
+scale = Vector2(0.77, 0.77)
+texture = SubResource("AtlasTexture_rear_structure")
+centered = false
+
+[node name="RearHairComparison" type="Sprite2D" parent="References" unique_id=1769293353]
+position = Vector2(1163, 32.999996)
+scale = Vector2(0.77, 0.77)
+texture = SubResource("AtlasTexture_rear_hair")
+centered = false
+
+[node name="ThreeQuarterDownRight" type="Node2D" parent="." unique_id=529751477]
+position = Vector2(-149, -6)
+
+[node name="BodyMotion" type="Node2D" parent="ThreeQuarterDownRight" unique_id=1197029215]
+
+[node name="TorsoPivot" type="Node2D" parent="ThreeQuarterDownRight/BodyMotion" unique_id=1899338889]
+position = Vector2(136, 301)
+
+[node name="HipsAnchor" type="Node2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot" unique_id=1397196691]
+z_index = -2
+position = Vector2(1, 43)
+
+[node name="HipsPivot" type="Node2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot/HipsAnchor" unique_id=757697649]
+position = Vector2(-19, -73)
+
+[node name="Hips" type="Node2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot" unique_id=1094717178]
+position = Vector2(-3, -13)
+
+[node name="HipsMass" type="Polygon2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/Hips" unique_id=1690181033]
+position = Vector2(0.9999993, -21)
+scale = Vector2(0.6170216, 0.61702144)
+color = Color(0.02745098, 0.08235294, 0.21176471, 1)
+polygon = PackedVector2Array(-42.13791, 4.862091, -29, 0, 23, 7, 43.758595, 14.586243, 45.37928, 21.06897, 50.24135, 37.27588, 28.244087, 42.877953, 0, 47, -5, 45, -10, 40, -29, 35, -39, 33, -48.62066, 27.551727)
+
+[node name="FarHipSocket_Left" type="Node2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot" unique_id=479618215]
+position = Vector2(-16, 67)
+
+[node name="FarLegPivot_Left" type="Node2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/FarHipSocket_Left" unique_id=555567777]
+z_index = -6
+position = Vector2(-8, -84)
+
+[node name="FarLeg" type="Node2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/FarHipSocket_Left/FarLegPivot_Left" unique_id=476454827]
+
+[node name="FarLegMass" type="Polygon2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/FarHipSocket_Left/FarLegPivot_Left/FarLeg" unique_id=21279936]
+position = Vector2(9, -27.000002)
+scale = Vector2(0.6763286, 0.6763286)
+color = Color(0.019607844, 0.1882353, 0.5019608, 1)
+polygon = PackedVector2Array(5.9142838, 34.00714, 13.307137, 47.3143, 14.785709, 68.01428, 19.221424, 78.36429, 19.221424, 90.19284, 14.785709, 99.06427, -17.742859, 109.414276, -29.571426, 106.45712, -36.96428, 97.58569, -31.049995, 87.23572, -23, 78, -19.221428, 62.100006, -23.657143, 38.44287)
+
+[node name="NearHipSocket_Right" type="Node2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot" unique_id=975342819]
+position = Vector2(39, 72)
+
+[node name="NearLegPivot_Right" type="Node2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/NearHipSocket_Right" unique_id=841316380]
+z_index = -4
+position = Vector2(-21, -76)
+
+[node name="NearLeg" type="Node2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/NearHipSocket_Right/NearLegPivot_Right" unique_id=623432782]
+position = Vector2(-21, -77)
+
+[node name="NearLegMass" type="Polygon2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/NearHipSocket_Right/NearLegPivot_Right/NearLeg" unique_id=1862278821]
+position = Vector2(20, 70)
+scale = Vector2(0.5, 0.5)
+color = Color(0.019607844, 0.1882353, 0.5019608, 1)
+polygon = PackedVector2Array(-34, -13, 13, -9, 20, 29, 27, 53, 40, 86, 18, 114, -2, 116, -20, 104, -22, 82, -14, 64, -20, 44, -28, 28)
+
+[node name="Torso" type="Node2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot" unique_id=114396701]
+
+[node name="TorsoMass" type="Polygon2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot/Torso" unique_id=922804338]
+color = Color(0.019608, 0.188235, 0.501961, 0.72)
+polygon = PackedVector2Array(-53, -84, -48, -105, -36, -109, 6, -105, 21, -97, 5, -56, -50, -62)
+
+[node name="ArmorMass" type="Polygon2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot/Torso" unique_id=1383217576]
+z_index = 1
+position = Vector2(-18, -19)
+color = Color(0.070588, 0.086275, 0.145098, 0.78)
+polygon = PackedVector2Array(-30, -78, -13, -64, 8, -67, 33, -80, 41, -78, 27, -51, 22, -42, 7, -34, -30, -40, -39, -62)
+
+[node name="FarShoulderAnchor_Left" type="Node2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot" unique_id=1324336447]
+position = Vector2(-55, -64)
+
+[node name="FarArmPivot_Left" type="Node2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot/FarShoulderAnchor_Left" unique_id=796480203]
+z_index = -1
+position = Vector2(7, -33)
+
+[node name="FarArm" type="Node2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot/FarShoulderAnchor_Left/FarArmPivot_Left" unique_id=1957498864]
+
+[node name="FarArmMass" type="Polygon2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot/FarShoulderAnchor_Left/FarArmPivot_Left/FarArm" unique_id=1035451132]
+z_index = -3
+position = Vector2(7, 1)
+color = Color(0.019607844, 0.1882353, 0.5019608, 1)
+polygon = PackedVector2Array(-14, -11, 5, -3, 5, 18, 0, 40, -6, 57, -31, 52, -24, 31, -22, 8)
+
+[node name="NearShoulderAnchor_Right" type="Node2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot" unique_id=349045736]
+position = Vector2(32, -79)
+
+[node name="NearArmPivot_Right" type="Node2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot/NearShoulderAnchor_Right" unique_id=1155229458]
+z_index = 1
+
+[node name="NearArm" type="Node2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot/NearShoulderAnchor_Right/NearArmPivot_Right" unique_id=55060478]
+
+[node name="NearArmMass" type="Polygon2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot/NearShoulderAnchor_Right/NearArmPivot_Right/NearArm" unique_id=664993308]
+position = Vector2(-17, -8)
+color = Color(0.019607844, 0.1882353, 0.5019608, 1)
+polygon = PackedVector2Array(-14, -12, 1, -16, 20, 14, 28, 50, -2, 54, -14, 6)
+
+[node name="HeadAnchor" type="Node2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot" unique_id=1780784996]
+z_index = 2
+position = Vector2(-7, -77)
+
+[node name="HeadPivot" type="Node2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot/HeadAnchor" unique_id=1907691312]
+position = Vector2(-13, -26)
+
+[node name="Head" type="Node2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot/HeadAnchor/HeadPivot" unique_id=84743454]
+position = Vector2(13, 25)
+
+[node name="NeckMass" type="Polygon2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot/HeadAnchor/HeadPivot/Head" unique_id=399092453]
+z_index = -1
+position = Vector2(-1, -56)
+color = Color(0.827451, 0.68235296, 0.61960787, 1)
+polygon = PackedVector2Array(-14, -2, 15, -2, 17, 25, 5, 33, -12, 38)
+
+[node name="HeadMass" type="Polygon2D" parent="ThreeQuarterDownRight/BodyMotion/TorsoPivot/HeadAnchor/HeadPivot/Head" unique_id=1903104707]
+color = Color(0.8392157, 0.6784314, 0.60784316, 1)
+polygon = PackedVector2Array(20, -131, 6, -136, -12, -137, -29, -131, -43, -121, -52, -107, -58, -91, -59, -73, -50, -45, -49, -37, -38, -27, -20, -17, 4, -25, 14, -32, 20, -40, 39, -64, 45, -82, 44, -101, 34, -121)
+
+[node name="ThreeQuarterUpRight" type="Node2D" parent="." unique_id=926592749]
+position = Vector2(760, 0)
+
+[node name="BodyMotion" type="Node2D" parent="ThreeQuarterUpRight" unique_id=1093854679]
+
+[node name="TorsoPivot" type="Node2D" parent="ThreeQuarterUpRight/BodyMotion" unique_id=1076622526]
+position = Vector2(158, 300)
+
+[node name="HipsAnchor" type="Node2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot" unique_id=1394391718]
+z_index = -2
+position = Vector2(2, 50)
+
+[node name="HipsPivot" type="Node2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot/HipsAnchor" unique_id=2115959598]
+
+[node name="Hips" type="Node2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot" unique_id=476551357]
+
+[node name="HipsMass" type="Polygon2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/Hips" unique_id=1077685413]
+color = Color(0.027451, 0.082353, 0.211765, 0.72)
+polygon = PackedVector2Array(-48, -18, 14, -20, 54, -5, 53, 29, 21, 43, -28, 38, -52, 17)
+
+[node name="FarHipSocket_Left" type="Node2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot" unique_id=398981389]
+position = Vector2(-28, 30)
+
+[node name="FarLegPivot_Left" type="Node2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/FarHipSocket_Left" unique_id=1223978322]
+z_index = -6
+
+[node name="FarLeg" type="Node2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/FarHipSocket_Left/FarLegPivot_Left" unique_id=744305656]
+
+[node name="FarLegMass" type="Polygon2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/FarHipSocket_Left/FarLegPivot_Left/FarLeg" unique_id=1150951398]
+color = Color(0.019608, 0.188235, 0.501961, 0.72)
+polygon = PackedVector2Array(-17, -10, 16, -7, 23, 26, 17, 56, 25, 82, 17, 108, -3, 126, -29, 121, -39, 103, -33, 79, -24, 56, -30, 27, -27, 4)
+
+[node name="NearHipSocket_Right" type="Node2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot" unique_id=147315257]
+position = Vector2(23, 34)
+
+[node name="NearLegPivot_Right" type="Node2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/NearHipSocket_Right" unique_id=1770537847]
+z_index = -4
+
+[node name="NearLeg" type="Node2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/NearHipSocket_Right/NearLegPivot_Right" unique_id=1050354581]
+
+[node name="NearLegMass" type="Polygon2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot/HipsAnchor/HipsPivot/NearHipSocket_Right/NearLegPivot_Right/NearLeg" unique_id=1092958347]
+color = Color(0.019608, 0.188235, 0.501961, 0.72)
+polygon = PackedVector2Array(-16, -11, 18, -8, 28, 24, 20, 54, 34, 84, 41, 119, 34, 146, 13, 162, -13, 157, -25, 139, -22, 108, -13, 78, -23, 51, -25, 17)
+
+[node name="Torso" type="Node2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot" unique_id=1046037808]
+
+[node name="TorsoMass" type="Polygon2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot/Torso" unique_id=34259879]
+color = Color(0.019608, 0.188235, 0.501961, 0.72)
+polygon = PackedVector2Array(-67, -77, -14, -94, 36, -79, 61, -53, 58, 12, 39, 36, -29, 41, -56, 17, -72, -37)
+
+[node name="BackArmorMass" type="Polygon2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot/Torso" unique_id=954720698]
+z_index = 1
+color = Color(0.070588, 0.086275, 0.145098, 0.78)
+polygon = PackedVector2Array(-52, -67, -15, -79, 28, -68, 46, -43, 35, -9, 9, 6, -28, 1, -52, -22, -61, -48)
+
+[node name="FarShoulderAnchor_Left" type="Node2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot" unique_id=754278383]
+position = Vector2(-57, -62)
+
+[node name="FarArmPivot_Left" type="Node2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot/FarShoulderAnchor_Left" unique_id=1541893964]
+z_index = -1
+
+[node name="FarArm" type="Node2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot/FarShoulderAnchor_Left/FarArmPivot_Left" unique_id=1973464742]
+
+[node name="FarArmMass" type="Polygon2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot/FarShoulderAnchor_Left/FarArmPivot_Left/FarArm" unique_id=1438971223]
+color = Color(0.019608, 0.188235, 0.501961, 0.72)
+polygon = PackedVector2Array(-13, -12, 10, -10, 21, 10, 17, 36, 7, 61, -2, 87, -9, 118, -22, 138, -37, 132, -44, 115, -36, 88, -26, 61, -23, 32, -28, 7)
+
+[node name="NearShoulderAnchor_Right" type="Node2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot" unique_id=250743784]
+position = Vector2(55, -62)
+
+[node name="NearArmPivot_Right" type="Node2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot/NearShoulderAnchor_Right" unique_id=1326296960]
+z_index = 1
+
+[node name="NearArm" type="Node2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot/NearShoulderAnchor_Right/NearArmPivot_Right" unique_id=401224984]
+
+[node name="NearArmMass" type="Polygon2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot/NearShoulderAnchor_Right/NearArmPivot_Right/NearArm" unique_id=563985854]
+color = Color(0.019608, 0.188235, 0.501961, 0.72)
+polygon = PackedVector2Array(-14, -12, 12, -9, 25, 14, 23, 43, 33, 69, 31, 99, 43, 126, 36, 144, 17, 148, 3, 132, 7, 104, -3, 80, 2, 48, -10, 23)
+
+[node name="HeadAnchor" type="Node2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot" unique_id=335294957]
+z_index = 2
+position = Vector2(2, -80)
+
+[node name="HeadPivot" type="Node2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot/HeadAnchor" unique_id=1970173944]
+
+[node name="Head" type="Node2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot/HeadAnchor/HeadPivot" unique_id=400215819]
+
+[node name="NeckMass" type="Polygon2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot/HeadAnchor/HeadPivot/Head" unique_id=1866334328]
+z_index = -1
+color = Color(0.827451, 0.682353, 0.619608, 0.72)
+polygon = PackedVector2Array(-17, -3, 14, -3, 17, 23, -15, 24)
+
+[node name="HeadMass" type="Polygon2D" parent="ThreeQuarterUpRight/BodyMotion/TorsoPivot/HeadAnchor/HeadPivot/Head" unique_id=1992219149]
+color = Color(0.839216, 0.678431, 0.607843, 0.72)
+polygon = PackedVector2Array(-3, -158, -38, -151, -58, -132, -63, -98, -56, -55, -40, -22, -16, -5, 9, 5, 33, -1, 51, -21, 59, -48, 55, -86, 45, -123, 24, -149)
+
+[node name="GuideLabels" type="Node2D" parent="." unique_id=131641525]
+position = Vector2(0, -62)
+
+[node name="Title" type="Label" parent="GuideLabels" unique_id=1640792424]
+theme_override_font_sizes/font_size = 22
+text = "VOLETTE DIAGONAL BODY TRACE WORKBENCH"
+
+[node name="Instructions" type="Label" parent="GuideLabels" unique_id=1736694569]
+offset_top = 30.0
+offset_bottom = 30.0
+theme_override_colors/font_color = Color(0.78, 0.82, 0.9, 1)
+theme_override_font_sizes/font_size = 14
+text = "DOWN-RIGHT: edit the *Mass Polygon2D nodes. Move pivots only when changing an anchor/socket.
+Near = character right / screen right. Far = character left / screen left. Guns and hair are reference-only."
+
+[node name="HairComparisonLabel" type="Label" parent="GuideLabels" unique_id=1518750554]
+offset_left = 380.0
+offset_top = 30.0
+offset_right = 380.0
+offset_bottom = 30.0
+theme_override_font_sizes/font_size = 14
+text = "HAIR / SILHOUETTE COMPARISON"
+
+[node name="RearTitle" type="Label" parent="GuideLabels" unique_id=1327994270]
+offset_left = 760.0
+offset_right = 760.0
+theme_override_font_sizes/font_size = 22
+text = "UP-RIGHT — INDEPENDENT REAR ASSEMBLY"
+
+[node name="RearInstructions" type="Label" parent="GuideLabels" unique_id=2032069638]
+offset_left = 760.0
+offset_top = 30.0
+offset_right = 760.0
+offset_bottom = 30.0
+theme_override_colors/font_color = Color(0.78, 0.82, 0.9, 1)
+theme_override_font_sizes/font_size = 14
+text = "Same anchor hierarchy and near/far naming; this projection is not regenerated from the front trace."
+
+[node name="RearHairComparisonLabel" type="Label" parent="GuideLabels" unique_id=1095151227]
+offset_left = 1140.0
+offset_top = 30.0
+offset_right = 1140.0
+offset_bottom = 30.0
+theme_override_font_sizes/font_size = 14
+text = "HAIR / SILHOUETTE COMPARISON"
+
+[node name="HumanoidBodyRigPrototype" parent="." unique_id=1346914329 instance=ExtResource("3_3ls7h")]
+position = Vector2(-165, 195)
+preview_direction = 2
+metadata/_edit_lock_ = true
+
+[node name="FrontView" parent="HumanoidBodyRigPrototype" index="0" unique_id=554173520]
+visible = false
+
+[node name="SideView" parent="HumanoidBodyRigPrototype" index="1" unique_id=1835877859]
+visible = true
+
+[node name="BodyMotion" parent="HumanoidBodyRigPrototype/SideView" index="0" unique_id=236794024]
+position = Vector2(0, -0.27514917)
+
+[node name="HumanoidBodyRigPrototype2" parent="." unique_id=1525172597 instance=ExtResource("3_3ls7h")]
+position = Vector2(-27, 542)
+metadata/_edit_lock_ = true
+
+[node name="BodyMotion" parent="HumanoidBodyRigPrototype2/SideView" parent_id_path=PackedInt32Array(1525172597, 1835877859) index="0" unique_id=236794024]
+position = Vector2(0, -1.8666742)
+
+[node name="ForwardHairComparison" type="Sprite2D" parent="." unique_id=1217004591]
+position = Vector2(-522, 43.545567)
+scale = Vector2(0.7696968, 0.7696968)
+texture = SubResource("AtlasTexture_hair")
+centered = false
+
+[editable path="HumanoidBodyRigPrototype"]
+[editable path="HumanoidBodyRigPrototype2"]

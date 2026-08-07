@@ -1,6 +1,6 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://61mtvl43cfyw"]
 
-[ext_resource type="Texture2D" path="res://art/concept_art/kairo_sheet.png" id="1_4mi67"]
+[ext_resource type="Texture2D" uid="uid://c1aah46nopuwd" path="res://art/concept_art/kairo_sheet.png" id="1_4mi67"]
 
 [node name="KairoTurnaroundWorkbench" type="Node2D" unique_id=242454051]
 
@@ -315,6 +315,7 @@ color = Color(1, 0.46666667, 0.44705883, 1)
 polygon = PackedVector2Array(1029.9, 452, 1120.9, 648, 1123.9, 648, 1032.9, 454)
 
 [node name="TracingOverlay" type="Sprite2D" parent="." unique_id=27364533]
+visible = false
 modulate = Color(1, 1, 1, 0.62)
 z_index = 20
 texture = ExtResource("1_4mi67")

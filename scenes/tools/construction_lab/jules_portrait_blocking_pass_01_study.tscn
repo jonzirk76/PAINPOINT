@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/tools/construction_lab/jules_portrait_blocking_pass_01_art.tscn" id="1_portrait"]
+
+[node name="JulesPortraitBlockingPass01Study" type="Node2D"]
+
+[node name="PortraitWorkspace" parent="." instance=ExtResource("1_portrait")]

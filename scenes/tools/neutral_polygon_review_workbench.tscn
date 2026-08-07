@@ -1,0 +1,156 @@
+[gd_scene format=3 uid="uid://cb2736fsysns1"]
+
+[ext_resource type="Script" uid="uid://cjuvletxhsrm0" path="res://scripts/tools/neutral_polygon_review_workbench.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_8_way.tscn" id="2_directional"]
+[ext_resource type="PackedScene" uid="uid://c75267g1vuqua" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_south.tscn" id="3_poly_s"]
+[ext_resource type="PackedScene" uid="uid://c8up72hh017x3" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_south_west.tscn" id="4_poly_sw"]
+[ext_resource type="PackedScene" uid="uid://7xvus6xbvvjb" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_west.tscn" id="5_poly_w"]
+[ext_resource type="PackedScene" uid="uid://be0gbu18crkbo" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_north_east.tscn" id="6_poly_ne"]
+[ext_resource type="PackedScene" uid="uid://de1hybb0q1nq" path="res://scenes/characters/neutral_polygon_base/neutral_polygon_north.tscn" id="7_poly_n"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_cutout/neutral_humanoid_south.tscn" id="8_ref_s"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_cutout/neutral_humanoid_south_west.tscn" id="9_ref_sw"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_cutout/neutral_humanoid_west.tscn" id="10_ref_w"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_cutout/neutral_humanoid_north_east.tscn" id="11_ref_ne"]
+[ext_resource type="PackedScene" path="res://scenes/characters/neutral_cutout/neutral_humanoid_north.tscn" id="12_ref_n"]
+
+[node name="NeutralPolygonReviewWorkbench" type="Node2D" unique_id=71973938]
+script = ExtResource("1_script")
+
+[node name="Background" type="Polygon2D" parent="." unique_id=1689783534]
+z_index = -100
+color = Color(0.045, 0.05, 0.06, 1)
+polygon = PackedVector2Array(0, 0, 1280, 0, 1280, 720, 0, 720)
+
+[node name="Title" type="Label" parent="." unique_id=1312206227]
+offset_left = 28.0
+offset_top = 14.0
+offset_right = 28.0
+offset_bottom = 14.0
+text = "NEUTRAL POLYGON BASE — directional review"
+
+[node name="PreviewDescription" type="Label" parent="." unique_id=903395780]
+offset_left = 28.0
+offset_top = 48.0
+offset_right = 28.0
+offset_bottom = 48.0
+text = "Animated gameplay-scale sequence — S, SW, W, NW, N, NE, E, SE"
+
+[node name="PreviewPanel" type="Polygon2D" parent="." unique_id=863241629]
+z_index = -90
+color = Color(0.09, 0.1, 0.115, 1)
+polygon = PackedVector2Array(18, 76, 1262, 76, 1262, 270, 18, 270)
+
+[node name="EightWayPreview" type="Node2D" parent="." unique_id=1501542611]
+
+[node name="South" parent="EightWayPreview" unique_id=315243511 instance=ExtResource("2_directional")]
+position = Vector2(105, 248)
+scale = Vector2(0.24, 0.24)
+
+[node name="SouthWest" parent="EightWayPreview" unique_id=1711629896 instance=ExtResource("2_directional")]
+position = Vector2(255, 248)
+scale = Vector2(0.24, 0.24)
+direction = 1
+
+[node name="West" parent="EightWayPreview" unique_id=1050854596 instance=ExtResource("2_directional")]
+position = Vector2(405, 248)
+scale = Vector2(0.24, 0.24)
+direction = 2
+
+[node name="NorthWest" parent="EightWayPreview" unique_id=1843721599 instance=ExtResource("2_directional")]
+position = Vector2(555, 248)
+scale = Vector2(0.24, 0.24)
+direction = 3
+
+[node name="North" parent="EightWayPreview" unique_id=1955297781 instance=ExtResource("2_directional")]
+position = Vector2(705, 248)
+scale = Vector2(0.24, 0.24)
+direction = 4
+
+[node name="NorthEast" parent="EightWayPreview" unique_id=549731171 instance=ExtResource("2_directional")]
+position = Vector2(855, 248)
+scale = Vector2(0.24, 0.24)
+direction = 5
+
+[node name="East" parent="EightWayPreview" unique_id=2109130350 instance=ExtResource("2_directional")]
+position = Vector2(1005, 248)
+scale = Vector2(0.24, 0.24)
+direction = 6
+
+[node name="SouthEast" parent="EightWayPreview" unique_id=1935540092 instance=ExtResource("2_directional")]
+position = Vector2(1155, 248)
+scale = Vector2(0.24, 0.24)
+direction = 7
+
+[node name="DirectionLabels" type="Label" parent="EightWayPreview" unique_id=37264752]
+offset_left = 75.0
+offset_top = 245.0
+offset_right = 75.0
+offset_bottom = 245.0
+text = "S                 SW                W                 NW                N                 NE                E                 SE"
+
+[node name="CanonicalDescription" type="Label" parent="." unique_id=888308388]
+offset_left = 28.0
+offset_top = 294.0
+offset_right = 28.0
+offset_bottom = 294.0
+text = "Five editable canonical polygon scenes — raster reference overlay is adjustable from the root inspector"
+
+[node name="CanonicalPanel" type="Polygon2D" parent="." unique_id=1707406290]
+z_index = -90
+color = Color(0.075, 0.083, 0.097, 1)
+polygon = PackedVector2Array(18, 326, 1262, 326, 1262, 690, 18, 690)
+
+[node name="CanonicalReview" type="Node2D" parent="." unique_id=507202647]
+
+[node name="PolygonResults" type="Node2D" parent="CanonicalReview" unique_id=131914045]
+
+[node name="South" parent="CanonicalReview/PolygonResults" unique_id=1614807528 instance=ExtResource("3_poly_s")]
+position = Vector2(135, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="SouthWest" parent="CanonicalReview/PolygonResults" unique_id=574464937 instance=ExtResource("4_poly_sw")]
+position = Vector2(385, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="West" parent="CanonicalReview/PolygonResults" unique_id=1906181576 instance=ExtResource("5_poly_w")]
+position = Vector2(635, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="NorthEast" parent="CanonicalReview/PolygonResults" unique_id=61282546 instance=ExtResource("6_poly_ne")]
+position = Vector2(885, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="North" parent="CanonicalReview/PolygonResults" unique_id=1089945711 instance=ExtResource("7_poly_n")]
+position = Vector2(1135, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="ReferenceOverlay" type="Node2D" parent="CanonicalReview" unique_id=1965041182]
+modulate = Color(1, 1, 1, 0.38)
+z_index = 50
+
+[node name="South" parent="CanonicalReview/ReferenceOverlay" unique_id=470623440 instance=ExtResource("8_ref_s")]
+position = Vector2(135, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="SouthWest" parent="CanonicalReview/ReferenceOverlay" unique_id=1427397400 instance=ExtResource("9_ref_sw")]
+position = Vector2(385, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="West" parent="CanonicalReview/ReferenceOverlay" unique_id=1933446339 instance=ExtResource("10_ref_w")]
+position = Vector2(635, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="NorthEast" parent="CanonicalReview/ReferenceOverlay" unique_id=1420373488 instance=ExtResource("11_ref_ne")]
+position = Vector2(885, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="North" parent="CanonicalReview/ReferenceOverlay" unique_id=1494050737 instance=ExtResource("12_ref_n")]
+position = Vector2(1135, 650)
+scale = Vector2(0.52, 0.52)
+
+[node name="CanonicalLabels" type="Label" parent="CanonicalReview" unique_id=1306658101]
+offset_left = 110.0
+offset_top = 662.0
+offset_right = 110.0
+offset_bottom = 662.0
+text = "S                         SW                        W                         NE                        N"

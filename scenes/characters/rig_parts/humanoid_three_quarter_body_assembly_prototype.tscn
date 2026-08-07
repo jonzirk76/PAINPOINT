@@ -1,0 +1,67 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_three_quarter_hips_prototype.tscn" id="1_hips"]
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_three_quarter_torso_prototype.tscn" id="2_torso"]
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_three_quarter_head_prototype.tscn" id="3_head"]
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_profile_hair_overlay_prototype.tscn" id="4_hair"]
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_front_arm_part_prototype.tscn" id="5_arm"]
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_front_leg_part_prototype.tscn" id="6_leg"]
+
+[node name="BodyMotion" type="Node2D"]
+
+[node name="TorsoPivot" type="Node2D" parent="."]
+position = Vector2(5, 15)
+
+[node name="HipsAnchor" type="Node2D" parent="TorsoPivot"]
+position = Vector2(-2.5, 29)
+z_index = -2
+
+[node name="HipsPivot" type="Node2D" parent="TorsoPivot/HipsAnchor"]
+
+[node name="Hips" parent="TorsoPivot/HipsAnchor/HipsPivot" instance=ExtResource("1_hips")]
+position = Vector2(-2.5, -44)
+
+[node name="BackHipSocket" type="Node2D" parent="TorsoPivot/HipsAnchor/HipsPivot"]
+position = Vector2(1.5, 20.25)
+
+[node name="BackLegPivot" parent="TorsoPivot/HipsAnchor/HipsPivot/BackHipSocket" instance=ExtResource("6_leg")]
+z_index = -6
+scale = Vector2(0.88, 0.88)
+
+[node name="FrontHipSocket" type="Node2D" parent="TorsoPivot/HipsAnchor/HipsPivot"]
+position = Vector2(14.75, 25.5)
+
+[node name="FrontLegPivot" parent="TorsoPivot/HipsAnchor/HipsPivot/FrontHipSocket" instance=ExtResource("6_leg")]
+z_index = -4
+scale = Vector2(-1.05, 1.05)
+
+[node name="Torso" parent="TorsoPivot" instance=ExtResource("2_torso")]
+position = Vector2(-5, -15)
+
+[node name="FarShoulderAnchor" type="Node2D" parent="TorsoPivot"]
+position = Vector2(-22.5, -22)
+
+[node name="FarArmPivot" parent="TorsoPivot/FarShoulderAnchor" instance=ExtResource("5_arm")]
+z_index = -1
+scale = Vector2(0.9, 0.9)
+modulate = Color(0.76, 0.8, 0.9, 1)
+
+[node name="NearShoulderAnchor" type="Node2D" parent="TorsoPivot"]
+position = Vector2(22.5, -21)
+
+[node name="NearArmPivot" parent="TorsoPivot/NearShoulderAnchor" instance=ExtResource("5_arm")]
+z_index = 1
+scale = Vector2(-1.05, 1.05)
+
+[node name="HeadAnchor" type="Node2D" parent="TorsoPivot"]
+position = Vector2(-2.5, -22.5)
+z_index = 2
+
+[node name="HeadPivot" type="Node2D" parent="TorsoPivot/HeadAnchor"]
+
+[node name="Head" parent="TorsoPivot/HeadAnchor/HeadPivot" instance=ExtResource("3_head")]
+position = Vector2(-2.5, 7.5)
+
+[node name="HairOverlay" parent="TorsoPivot/HeadAnchor/HeadPivot" instance=ExtResource("4_hair")]
+position = Vector2(-2.5, 7.5)
+scale = Vector2(0.88, 0.96)

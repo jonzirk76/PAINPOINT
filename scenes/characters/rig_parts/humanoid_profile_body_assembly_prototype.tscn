@@ -1,0 +1,66 @@
+[gd_scene format=3 uid="uid://caev5bei48pj8"]
+
+[ext_resource type="PackedScene" uid="uid://ukf8whyci1fp" path="res://scenes/characters/rig_parts/humanoid_profile_hips_prototype.tscn" id="1_hips"]
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_profile_torso_prototype.tscn" id="2_torso"]
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_profile_head_prototype.tscn" id="3_head"]
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_profile_hair_overlay_prototype.tscn" id="4_hair"]
+[ext_resource type="PackedScene" uid="uid://xqhwfdhxl416" path="res://scenes/characters/rig_parts/humanoid_profile_arm_prototype.tscn" id="5_arm"]
+[ext_resource type="PackedScene" uid="uid://dm6h2qbas7ues" path="res://scenes/characters/rig_parts/humanoid_profile_back_leg_prototype.tscn" id="6_back_leg"]
+[ext_resource type="PackedScene" uid="uid://btcd2bvi15ro8" path="res://scenes/characters/rig_parts/humanoid_profile_front_leg_prototype.tscn" id="7_front_leg"]
+
+[node name="BodyMotion" type="Node2D" unique_id=262180061]
+
+[node name="TorsoPivot" type="Node2D" parent="." unique_id=251049674]
+position = Vector2(10, 15)
+
+[node name="HipsAnchor" type="Node2D" parent="TorsoPivot" unique_id=601076883]
+z_index = -2
+position = Vector2(-5, 33)
+
+[node name="HipsPivot" type="Node2D" parent="TorsoPivot/HipsAnchor" unique_id=387658063]
+
+[node name="Hips" parent="TorsoPivot/HipsAnchor/HipsPivot" unique_id=274314306 instance=ExtResource("1_hips")]
+position = Vector2(14, -2)
+
+[node name="BackHipSocket" type="Node2D" parent="TorsoPivot/HipsAnchor/HipsPivot" unique_id=1851954012]
+position = Vector2(29.5, 22.5)
+
+[node name="BackLegPivot" parent="TorsoPivot/HipsAnchor/HipsPivot/BackHipSocket" unique_id=1470785753 instance=ExtResource("6_back_leg")]
+z_index = -6
+position = Vector2(-5.5, -22.5)
+
+[node name="FrontHipSocket" type="Node2D" parent="TorsoPivot/HipsAnchor/HipsPivot" unique_id=1369572681]
+position = Vector2(3, 33)
+
+[node name="FrontLegPivot" parent="TorsoPivot/HipsAnchor/HipsPivot/FrontHipSocket" unique_id=489554881 instance=ExtResource("7_front_leg")]
+z_index = -4
+position = Vector2(3, -23)
+
+[node name="Torso" parent="TorsoPivot" unique_id=1051513151 instance=ExtResource("2_torso")]
+position = Vector2(-10, -15)
+
+[node name="FarShoulderAnchor" type="Node2D" parent="TorsoPivot" unique_id=997577724]
+position = Vector2(-2, -15)
+
+[node name="FarArmPivot" parent="TorsoPivot/FarShoulderAnchor" unique_id=83772363 instance=ExtResource("5_arm")]
+modulate = Color(0.72, 0.78, 0.88, 1)
+z_index = -12
+position = Vector2(23, -1)
+
+[node name="NearShoulderAnchor" type="Node2D" parent="TorsoPivot" unique_id=61459103]
+position = Vector2(2, -13)
+
+[node name="NearArmPivot" parent="TorsoPivot/NearShoulderAnchor" unique_id=2091194849 instance=ExtResource("5_arm")]
+z_index = 1
+
+[node name="HeadAnchor" type="Node2D" parent="TorsoPivot" unique_id=861423787]
+z_index = 2
+position = Vector2(-5, -20)
+
+[node name="HeadPivot" type="Node2D" parent="TorsoPivot/HeadAnchor" unique_id=1202001924]
+
+[node name="Head" parent="TorsoPivot/HeadAnchor/HeadPivot" unique_id=1073308754 instance=ExtResource("3_head")]
+position = Vector2(-5, 5)
+
+[node name="HairOverlay" parent="TorsoPivot/HeadAnchor/HeadPivot" unique_id=568542215 instance=ExtResource("4_hair")]
+position = Vector2(-5, 5)

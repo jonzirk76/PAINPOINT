@@ -1,6 +1,6 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://eulf45gt1w7s"]
 
-[ext_resource type="Texture2D" path="res://art/concept_art/volette_sheet.png" id="1_tslo4"]
+[ext_resource type="Texture2D" uid="uid://ciuidmvb62hnb" path="res://art/concept_art/volette_sheet.png" id="1_tslo4"]
 
 [node name="VoletteTurnaroundWorkbench" type="Node2D" unique_id=1469462957]
 
@@ -603,6 +603,7 @@ color = Color(0.1254902, 0.14901961, 0.1882353, 1)
 polygon = PackedVector2Array(1119.16, 284.8, 1135.4, 284.8, 1134.24, 357.9, 1123.8, 366.5, 1120.32, 327.8)
 
 [node name="TracingOverlay" type="Sprite2D" parent="." unique_id=585000036]
+visible = false
 modulate = Color(1, 1, 1, 0.62)
 z_index = 20
 texture = ExtResource("1_tslo4")

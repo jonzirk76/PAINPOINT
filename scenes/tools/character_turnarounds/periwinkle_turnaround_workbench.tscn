@@ -1,6 +1,6 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://chrwkveou7x3a"]
 
-[ext_resource type="Texture2D" path="res://art/concept_art/periwinkle_sheet.png" id="1_m7hvn"]
+[ext_resource type="Texture2D" uid="uid://digd8umcxuxbj" path="res://art/concept_art/periwinkle_sheet.png" id="1_m7hvn"]
 
 [node name="PeriwinkleTurnaroundWorkbench" type="Node2D" unique_id=63725771]
 
@@ -575,6 +575,7 @@ color = Color(0.5686275, 0.7882353, 0.23137255, 1)
 polygon = PackedVector2Array(1065.04, 159.8, 1070.84, 159.8, 1069.68, 285.8, 1063.88, 285.8)
 
 [node name="TracingOverlay" type="Sprite2D" parent="." unique_id=1921151691]
+visible = false
 modulate = Color(1, 1, 1, 0.62)
 z_index = 20
 texture = ExtResource("1_m7hvn")

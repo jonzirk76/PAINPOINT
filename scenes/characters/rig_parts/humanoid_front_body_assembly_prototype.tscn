@@ -1,0 +1,75 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_front_leg_part_prototype.tscn" id="1_leg"]
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_front_arm_part_prototype.tscn" id="2_arm"]
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_front_hips_half_prototype.tscn" id="3_hips"]
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_front_torso_half_prototype.tscn" id="4_torso"]
+[ext_resource type="PackedScene" path="res://scenes/characters/rig_parts/humanoid_front_head_half_prototype.tscn" id="5_head"]
+
+[node name="BodyMotion" type="Node2D"]
+
+[node name="TorsoPivot" type="Node2D" parent="."]
+position = Vector2(0, 15)
+
+[node name="HipsAnchor" type="Node2D" parent="TorsoPivot"]
+z_index = -2
+position = Vector2(0, 25)
+
+[node name="HipsPivot" type="Node2D" parent="TorsoPivot/HipsAnchor"]
+
+[node name="PrimaryHipsHalf" parent="TorsoPivot/HipsAnchor/HipsPivot" instance=ExtResource("3_hips")]
+position = Vector2(0, -40)
+
+[node name="HipsMirrorAxis" type="Node2D" parent="TorsoPivot/HipsAnchor/HipsPivot"]
+scale = Vector2(-1, 1)
+
+[node name="MirroredHipsHalf" parent="TorsoPivot/HipsAnchor/HipsPivot/HipsMirrorAxis" instance=ExtResource("3_hips")]
+position = Vector2(0, -40)
+
+[node name="LeftHipSocket" type="Node2D" parent="TorsoPivot/HipsAnchor/HipsPivot"]
+position = Vector2(-26.5, 18)
+
+[node name="LeftLegPivot" parent="TorsoPivot/HipsAnchor/HipsPivot/LeftHipSocket" instance=ExtResource("1_leg")]
+z_index = -4
+
+[node name="RightHipSocket" type="Node2D" parent="TorsoPivot/HipsAnchor/HipsPivot"]
+position = Vector2(26.5, 18)
+scale = Vector2(-1, 1)
+
+[node name="RightLegPivot" parent="TorsoPivot/HipsAnchor/HipsPivot/RightHipSocket" instance=ExtResource("1_leg")]
+z_index = -4
+
+[node name="PrimaryTorsoHalf" parent="TorsoPivot" instance=ExtResource("4_torso")]
+position = Vector2(0, -15)
+
+[node name="TorsoMirrorAxis" type="Node2D" parent="TorsoPivot"]
+scale = Vector2(-1, 1)
+
+[node name="MirroredTorsoHalf" parent="TorsoPivot/TorsoMirrorAxis" instance=ExtResource("4_torso")]
+position = Vector2(0, -15)
+
+[node name="LeftShoulderAnchor" type="Node2D" parent="TorsoPivot"]
+position = Vector2(-43, -29)
+
+[node name="LeftArmPivot" parent="TorsoPivot/LeftShoulderAnchor" instance=ExtResource("2_arm")]
+
+[node name="RightShoulderAnchor" type="Node2D" parent="TorsoPivot"]
+position = Vector2(43, -29)
+scale = Vector2(-1, 1)
+
+[node name="RightArmPivot" parent="TorsoPivot/RightShoulderAnchor" instance=ExtResource("2_arm")]
+
+[node name="HeadAnchor" type="Node2D" parent="TorsoPivot"]
+z_index = 2
+position = Vector2(0, -25)
+
+[node name="HeadPivot" type="Node2D" parent="TorsoPivot/HeadAnchor"]
+
+[node name="PrimaryHeadHalf" parent="TorsoPivot/HeadAnchor/HeadPivot" instance=ExtResource("5_head")]
+position = Vector2(0, 10)
+
+[node name="HeadMirrorAxis" type="Node2D" parent="TorsoPivot/HeadAnchor/HeadPivot"]
+scale = Vector2(-1, 1)
+
+[node name="MirroredHeadHalf" parent="TorsoPivot/HeadAnchor/HeadPivot/HeadMirrorAxis" instance=ExtResource("5_head")]
+position = Vector2(0, 10)
