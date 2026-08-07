@@ -22,6 +22,8 @@ signal repair_requested(enemy, repair_target, amount: int)
 @export var boss_projectile_shield_after_spawn_seconds: float = 1.15
 @export var crowd_separation_force: float = 115.0
 @export var crowd_separation_padding: float = 10.0
+## [Description] Controls how often legion controllers rebuild strategic movement orders; enemies follow cached orders between updates.
+@export_range(0.02, 0.5, 0.01) var tactical_refresh_interval: float = 0.1
 
 var enabled: bool = false
 var _enemy_layer: Node = null
@@ -44,6 +46,8 @@ var _tactical_orders: Dictionary = {}
 var _previous_player_position: Vector2 = Vector2.ZERO
 var _has_previous_player_position: bool = false
 var _smoothed_player_velocity: Vector2 = Vector2.ZERO
+var _tactical_refresh_remaining: float = 0.0
+var _tactical_elapsed: float = 0.0
 
 
 func initialize(context: Dictionary) -> void:
@@ -64,6 +68,8 @@ func reset_run() -> void:
 	_previous_player_position = Vector2.ZERO
 	_has_previous_player_position = false
 	_smoothed_player_velocity = Vector2.ZERO
+	_tactical_refresh_remaining = 0.0
+	_tactical_elapsed = 0.0
 	_boss_add_timer = 0.0
 	enemy_count_changed.emit(0)
 	horde_enemy_count_changed.emit(0)
@@ -132,7 +138,7 @@ func _physics_process(delta: float) -> void:
 	_update_player_velocity(player_position, delta)
 	var player = _get_player_ref()
 	_assign_repair_targets()
-	_refresh_legion_tactics(player_position, delta)
+	_update_legion_tactics(player_position, delta)
 	for enemy in _enemies.duplicate():
 		if not is_instance_valid(enemy):
 			_enemies.erase(enemy)
@@ -373,6 +379,7 @@ func _register_legion_controller(general: EnemyEntity) -> void:
 	controller.initialize(general, String(general.spawn_profile.tactics_kind))
 	_legion_controllers[general.general_id] = controller
 	_generals_by_id[general.general_id] = general
+	_tactical_refresh_remaining = 0.0
 	if not general.spawn_ready.is_connected(_on_general_spawn_ready_for_tactics):
 		general.spawn_ready.connect(_on_general_spawn_ready_for_tactics)
 
@@ -394,8 +401,21 @@ func _release_legion(general: EnemyEntity) -> void:
 	for member in _enemies:
 		if not is_instance_valid(member) or member.general_id != released_general_id:
 			continue
+		_tactical_orders.erase(int(member.get_instance_id()))
 		member.set_legion_identity(0, 0)
 		member.clear_tactical_target_position()
+	_tactical_refresh_remaining = 0.0
+
+
+func _update_legion_tactics(player_position: Vector2, delta: float) -> void:
+	_tactical_refresh_remaining -= delta
+	_tactical_elapsed += delta
+	if _tactical_refresh_remaining > 0.0:
+		return
+	var planning_delta: float = _tactical_elapsed
+	_tactical_elapsed = 0.0
+	_tactical_refresh_remaining = max(tactical_refresh_interval, 0.02)
+	_refresh_legion_tactics(player_position, planning_delta)
 
 
 func _refresh_legion_tactics(player_position: Vector2, delta: float) -> void:
