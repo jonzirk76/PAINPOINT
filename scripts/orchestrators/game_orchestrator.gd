@@ -2553,10 +2553,17 @@ func _on_debug_menu_requested() -> void:
 
 
 func _on_debug_generation_requested(floor_number: int, run_seed: int) -> void:
-	if not _debug_sandbox_active:
+	if not _debug_sandbox_active or _loading_transition_pending:
 		return
+	_loading_transition_pending = true
 	_on_debug_freeze_changed(false)
+	await _show_loading_before_work(
+		"LOADING SANDBOX",
+		"Generating floor %d" % max(floor_number, 1),
+		0.05
+	)
 	_start_dungeon_run(floor_number, run_seed, true)
+	_loading_transition_pending = false
 
 
 func _start_debug_sandbox() -> void:
