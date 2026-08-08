@@ -143,10 +143,6 @@ func get_current_level_definition():
 	if state.has("level_definition") and state["level_definition"] != null:
 		var cached_level = state["level_definition"]
 		cached_level.set_meta("active_room_id", current_room_id)
-		cached_level.set_meta(
-			"active_room_spawn_exclusion_rects",
-			_get_room_spawn_exclusion_rects(current_room_id)
-		)
 		return cached_level
 	var piece = state["piece"]
 	var level = piece.create_level_definition()
@@ -156,8 +152,9 @@ func get_current_level_definition():
 	level.floor_number = max(floor_number, 1)
 	level.set_meta("floor_visual_seed", floor_generation_seed)
 	level.set_meta("active_room_id", current_room_id)
-	level.set_meta("active_room_spawn_exclusion_rects", _get_room_spawn_exclusion_rects(current_room_id))
 	_apply_floor_scaling(level, String(piece.room_kind))
+	_apply_room_geometry(level, piece, state.get("connection_edges", {}))
+	_interior_generator.attach_spatial_domain(level)
 	return level
 
 
@@ -183,7 +180,10 @@ func get_full_floor_level_definition(active_room_id: String = "", include_active
 		level.set_meta("active_room_bounds", overlay.get("active_room_bounds", Rect2()))
 		if overlay.has("active_room_playable_rects"):
 			level.set_meta("active_room_playable_rects", Array(overlay.get("active_room_playable_rects", [])).duplicate())
-		level.set_meta("active_room_spawn_exclusion_rects", _get_full_floor_room_spawn_exclusion_rects(active_room_id))
+		var active_domain = _get_full_floor_room_spatial_domain(active_room_id)
+		if active_domain != null:
+			level.active_room_spatial_domain = active_domain
+			level.set_meta("active_room_spawn_exclusion_rects", active_domain.get_transition_regions())
 	_apply_visible_floor_destructible_prop_placements(level, active_room_id, room_ids, include_active_contents)
 	if include_active_contents:
 		_apply_active_room_contents_to_full_floor_level(level, active_room_id, room_ids)
@@ -312,37 +312,18 @@ func get_current_door_infos() -> Array:
 	return door_infos
 
 
-func _get_room_spawn_exclusion_rects(room_id: String) -> Array[Rect2]:
-	var rects: Array[Rect2] = []
-	if room_id.is_empty() or not _rooms.has(room_id):
-		return rects
+func _get_full_floor_room_spatial_domain(room_id: String):
+	if room_id.is_empty() or not _ensure_full_floor_geometry_cache() or not _rooms.has(room_id):
+		return null
 	var state: Dictionary = _rooms[room_id]
-	var piece: RoomPieceDefinition = state.get("piece", null) as RoomPieceDefinition
-	if piece == null:
-		return rects
-	var connection_edges: Dictionary = state.get("connection_edges", {})
-	for direction in CARDINAL_DIRECTIONS:
-		if not connection_edges.has(direction):
-			continue
-		var edge: Dictionary = Dictionary(connection_edges[direction])
-		var source_cell: Vector2i = edge.get("source_cell", Vector2i.ZERO)
-		rects.append(ROOM_GEOMETRY_BUILDER.get_gate_passage_rect(
-			piece.footprint_cells,
-			source_cell,
-			direction
-		))
-		rects.append(ROOM_GEOMETRY_BUILDER.get_door_clear_rect(piece.footprint_cells, source_cell, direction))
-	return rects
-
-
-func _get_full_floor_room_spawn_exclusion_rects(room_id: String) -> Array[Rect2]:
-	var rects: Array[Rect2] = []
-	if room_id.is_empty() or not _ensure_full_floor_geometry_cache():
-		return rects
+	var level: LevelDefinition = state.get("level_definition", null) as LevelDefinition
+	if level == null or level.room_spatial_domain == null:
+		return null
+	var domain = level.room_spatial_domain
+	if domain == null or not domain.has_method("translated"):
+		return null
 	var offset: Vector2 = _full_floor_room_offsets_cache.get(room_id, Vector2.ZERO)
-	for local_rect in _get_room_spawn_exclusion_rects(room_id):
-		rects.append(_translated_rect(local_rect, offset))
-	return rects
+	return domain.translated(offset)
 
 
 func get_current_entry_position(entry_direction: String) -> Vector2:
@@ -1930,6 +1911,8 @@ func _generate_room_interiors() -> void:
 			level.floor_number = max(floor_number, 1)
 			_apply_floor_scaling(level, room_kind)
 			_apply_room_geometry(level, piece, state["connection_edges"])
+		if level.room_spatial_domain == null:
+			_interior_generator.attach_spatial_domain(level)
 		level.set_meta("floor_visual_seed", floor_generation_seed)
 		state["level_definition"] = level
 		_rooms[room_id] = state

@@ -44,6 +44,11 @@ enum ArenaShape {
 ## Controls the authored cat spawn position when cat spawning is enabled on this level.
 @export var cat_spawn_position: Vector2 = Vector2.ZERO
 
+## Runtime spatial contract derived from this room's validated floor layout.
+var room_spatial_domain: RoomSpatialDomain = null
+## Runtime spatial contract translated into the active room's full-floor coordinates.
+var active_room_spatial_domain: RoomSpatialDomain = null
+
 
 func get_summary() -> String:
 	if boss_profile != null and get_spawner_count() == 0:

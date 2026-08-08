@@ -3141,6 +3141,10 @@ func _get_opening_encounter_positions(level_definition, count: int) -> Array[Vec
 func _opening_encounter_position_is_clear(candidate_position: Vector2, anchor: Vector2, min_distance: float, selected_positions: Array[Vector2], level_definition) -> bool:
 	if not _position_is_inside_room_playable_area(candidate_position, level_definition, 24.0):
 		return false
+	var spatial_domain = _get_level_spatial_domain(level_definition)
+	if spatial_domain != null and spatial_domain.has_method("contains_spawn_position"):
+		if not bool(spatial_domain.contains_spawn_position(candidate_position, 24.0)):
+			return false
 	if candidate_position.distance_squared_to(anchor) < min_distance * min_distance:
 		return false
 	if not _position_is_clear_of_room_walls(candidate_position, level_definition):
@@ -5150,6 +5154,15 @@ func _get_level_collision_rects(level_definition, meta_key: String, fallback: Ar
 				return rects
 	rects.append_array(fallback)
 	return rects
+
+
+func _get_level_spatial_domain(level_definition):
+	if level_definition == null:
+		return null
+	var active_domain = level_definition.get("active_room_spatial_domain")
+	if active_domain != null:
+		return active_domain
+	return level_definition.get("room_spatial_domain")
 
 
 func _rect_has_point_inclusive(rect: Rect2, point: Vector2) -> bool:

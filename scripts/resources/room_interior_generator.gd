@@ -6,6 +6,7 @@ const SPAWNER_PLACEMENT_SCRIPT := preload("res://scripts/resources/spawner_place
 const ENCOUNTER_ENTRY_SCRIPT := preload("res://scripts/resources/encounter_entry.gd")
 const DESTRUCTIBLE_PROP_PLACEMENT_SCRIPT := preload("res://scripts/resources/destructible_prop_placement.gd")
 const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_builder.gd")
+const ROOM_SPATIAL_DOMAIN := preload("res://scripts/resources/room_spatial_domain.gd")
 const BASIC_SPAWNER := preload("res://resources/spawners/basic_spawner.tres")
 const FAST_SPAWNER := preload("res://resources/spawners/fast_spawner.tres")
 const SHOOTER_SPAWNER := preload("res://resources/spawners/shooter_spawner.tres")
@@ -30,6 +31,7 @@ func generate(piece, room_id: String, floor_number: int, floor_seed: int, connec
 	var effective_connection_edges := _get_effective_connection_edges(piece.footprint_cells, connections, connection_edges)
 	var base_level = _make_base_level(piece, room_id, floor_number, effective_connection_edges)
 	if room_kind != "combat" and room_kind != "challenge" and room_kind != "boss":
+		attach_spatial_domain(base_level)
 		return base_level
 	var rng := RandomNumberGenerator.new()
 	rng.seed = _compute_room_seed(room_id, floor_number, floor_seed, String(piece.id))
@@ -55,6 +57,7 @@ func generate(piece, room_id: String, floor_number: int, floor_seed: int, connec
 				return level
 		var fallback_boss = _make_base_level(piece, room_id, floor_number, effective_connection_edges)
 		_apply_fallback_boss_interior(fallback_boss)
+		attach_spatial_domain(fallback_boss)
 		return fallback_boss
 	for attempt in range(MAX_ATTEMPTS):
 		var level = _make_base_level(piece, room_id, floor_number, effective_connection_edges)
@@ -81,6 +84,7 @@ func generate(piece, room_id: String, floor_number: int, floor_seed: int, connec
 	var fallback_rng := RandomNumberGenerator.new()
 	fallback_rng.seed = _compute_room_seed(room_id, floor_number, floor_seed, String(piece.id)) + 9091
 	_apply_fallback_interior(fallback, room_kind, floor_number, fallback_rng)
+	attach_spatial_domain(fallback)
 	return fallback
 
 
@@ -88,6 +92,7 @@ func validate_level(level, connections: Dictionary, room_kind: String) -> Dictio
 	if level == null:
 		return {"ok": false, "reason": "missing_level"}
 	var blockers: Array[Rect2] = _get_movement_blockers(level)
+	var spawn_domain_blockers: Array[Rect2] = _get_spawn_domain_blockers(level)
 	var clear_points: Array[Vector2] = [_get_room_spawn_position(level)]
 	if room_kind == "boss":
 		if level.boss_profile == null:
@@ -111,7 +116,7 @@ func validate_level(level, connections: Dictionary, room_kind: String) -> Dictio
 		if placement == null or placement.profile == null:
 			return {"ok": false, "reason": "bad_spawner"}
 		var position: Vector2 = placement.position
-		if not _point_is_clear(level, position, blockers, SPAWNER_CLEARANCE):
+		if not _point_is_clear(level, position, spawn_domain_blockers, SPAWNER_CLEARANCE):
 			return {"ok": false, "reason": "spawner_blocked"}
 		clear_points.append(position)
 	for first_index in range(level.spawner_placements.size()):
@@ -140,17 +145,64 @@ func validate_level(level, connections: Dictionary, room_kind: String) -> Dictio
 	if not has_dodge_pocket:
 		return {"ok": false, "reason": "missing_dodge_pocket"}
 	if room_kind == "boss":
-		if not _point_is_clear(level, level.boss_spawn_position, blockers, _get_boss_clearance(level)):
+		if not _point_is_clear(level, level.boss_spawn_position, spawn_domain_blockers, _get_boss_clearance(level)):
 			return {"ok": false, "reason": "boss_spawn_blocked"}
 		if level.get_spawner_count() != 0:
 			return {"ok": false, "reason": "boss_spawner_budget"}
+		attach_spatial_domain(level, reachable)
 		return {"ok": true, "reason": ""}
 	if _has_heavy_spawner(level) and _count_clear_lanes(level, blockers) < 2:
 		return {"ok": false, "reason": "heavy_spawner_lanes"}
 	var min_count := _get_spawner_count_bounds(level, room_kind).x
 	if level.spawner_placements.size() < min_count:
 		return {"ok": false, "reason": "spawner_budget_low"}
+	attach_spatial_domain(level, reachable)
 	return {"ok": true, "reason": ""}
+
+
+func attach_spatial_domain(level, validated_reachable: Dictionary = {}) -> void:
+	if level == null:
+		return
+	var playable_regions: Array[Rect2] = []
+	if level.has_meta("footprint_cells"):
+		playable_regions.append_array(ArenaGeometry.get_footprint_cell_rects(
+			level.arena_bounds,
+			level.get_meta("footprint_cells")
+		))
+	var static_blockers: Array[Rect2] = []
+	static_blockers.append_array(level.wall_rects)
+	static_blockers.append_array(level.void_rects)
+	var transition_regions: Array[Rect2] = []
+	if level.has_meta("connection_edges"):
+		var connection_edges: Dictionary = level.get_meta("connection_edges")
+		for direction_key in connection_edges.keys():
+			var direction := String(direction_key)
+			var passage_rect := _get_connection_opening_rect(level, direction)
+			var clear_rect := _get_connection_clear_rect(level, direction)
+			if passage_rect.size != Vector2.ZERO:
+				transition_regions.append(passage_rect)
+			if clear_rect.size != Vector2.ZERO:
+				transition_regions.append(clear_rect)
+	var layout_reservations := _get_prop_blocker_rects(level)
+	var reachable_cells: Array[Vector2i] = []
+	for cell_value in validated_reachable.values():
+		if cell_value is Vector2i:
+			reachable_cells.append(cell_value)
+	var domain = ROOM_SPATIAL_DOMAIN.new()
+	domain.initialize(
+		String(level.id),
+		level.arena_bounds,
+		int(level.arena_shape),
+		playable_regions,
+		static_blockers,
+		transition_regions,
+		layout_reservations,
+		reachable_cells,
+		GRID_SIZE
+	)
+	level.room_spatial_domain = domain
+	level.active_room_spatial_domain = domain
+	level.set_meta("active_room_spawn_exclusion_rects", domain.get_transition_regions())
 
 
 func _make_base_level(piece, room_id: String, floor_number: int, connection_edges: Dictionary = {}):
@@ -662,7 +714,7 @@ func _build_spawner_placements(level, room_kind: String, floor_number: int, rng:
 	var profiles: Array[Resource] = _build_spawner_profile_budget(room_kind, floor_number, rng, _get_level_cell_count(level))
 	var placements: Array[Resource] = []
 	var candidate_points := _build_spawner_candidate_points(level.arena_bounds, rng)
-	var blockers: Array[Rect2] = _get_movement_blockers(level)
+	var blockers: Array[Rect2] = _get_spawn_domain_blockers(level)
 	for profile in profiles:
 		var chosen := Vector2.INF
 		for point in candidate_points:
@@ -1160,6 +1212,22 @@ func _point_has_spacing(point: Vector2, selected_points: Array[Vector2]) -> bool
 func _get_movement_blockers(level) -> Array[Rect2]:
 	var blockers := _get_wall_void_blockers(level)
 	blockers.append_array(_get_prop_blocker_rects(level))
+	return blockers
+
+
+func _get_spawn_domain_blockers(level) -> Array[Rect2]:
+	var blockers: Array[Rect2] = _get_movement_blockers(level)
+	if level == null or not level.has_meta("connection_edges"):
+		return blockers
+	var connection_edges: Dictionary = level.get_meta("connection_edges")
+	for direction_key in connection_edges.keys():
+		var direction := String(direction_key)
+		var passage_rect := _get_connection_opening_rect(level, direction)
+		var clear_rect := _get_connection_clear_rect(level, direction)
+		if passage_rect.size != Vector2.ZERO:
+			blockers.append(passage_rect)
+		if clear_rect.size != Vector2.ZERO:
+			blockers.append(clear_rect)
 	return blockers
 
 

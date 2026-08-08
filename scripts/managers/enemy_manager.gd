@@ -42,6 +42,8 @@ var _level_wall_rects: Array[Rect2] = []
 var _void_rects: Array[Rect2] = []
 var _playable_rects: Array[Rect2] = []
 var _spawn_exclusion_rects: Array[Rect2] = []
+var _room_spatial_domain = null
+var _dynamic_wall_rects: Array[Rect2] = []
 var _boss_add_timer: float = 0.0
 var _perspective_room_id: String = ""
 var _legion_controllers: Dictionary = {}
@@ -126,12 +128,15 @@ func set_arena_definition(level_definition) -> void:
 	_void_rects = _get_level_collision_rects(level_definition, "active_room_void_rects", level_definition.void_rects)
 	_playable_rects = _get_playable_rects(level_definition)
 	_spawn_exclusion_rects = _get_level_collision_rects(level_definition, "active_room_spawn_exclusion_rects", [])
+	_room_spatial_domain = _get_level_spatial_domain(level_definition)
+	_dynamic_wall_rects.clear()
 	for enemy in _enemies:
 		if is_instance_valid(enemy):
 			enemy.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
 
 
 func set_dynamic_wall_rects(extra_wall_rects: Array[Rect2]) -> void:
+	_dynamic_wall_rects = extra_wall_rects.duplicate()
 	_wall_rects = _level_wall_rects.duplicate()
 	_wall_rects.append_array(extra_wall_rects)
 	for enemy in _enemies:
@@ -679,6 +684,8 @@ func _get_boss_add_spawn_position(boss, index: int, count: int) -> Vector2:
 
 
 func _constrain_spawn_position(position: Vector2, clearance: float) -> Vector2:
+	if _room_spatial_domain != null and _room_spatial_domain.has_method("constrain_spawn_position"):
+		return _room_spatial_domain.constrain_spawn_position(position, clearance, _dynamic_wall_rects)
 	var blockers: Array[Rect2] = []
 	blockers.append_array(_wall_rects)
 	blockers.append_array(_void_rects)
@@ -689,6 +696,8 @@ func _constrain_spawn_position(position: Vector2, clearance: float) -> Vector2:
 func _spawn_position_is_valid(position: Vector2, clearance: float) -> bool:
 	if position == Vector2.INF:
 		return false
+	if _room_spatial_domain != null and _room_spatial_domain.has_method("contains_spawn_position"):
+		return bool(_room_spatial_domain.contains_spawn_position(position, clearance, _dynamic_wall_rects))
 	var constrained: Vector2 = _constrain_spawn_position(position, clearance)
 	if constrained.distance_squared_to(position) > 0.25:
 		return false
@@ -742,3 +751,12 @@ func _get_level_collision_rects(level_definition, meta_key: String, fallback: Ar
 				return rects
 	rects.append_array(fallback)
 	return rects
+
+
+func _get_level_spatial_domain(level_definition):
+	if level_definition == null:
+		return null
+	var active_domain = level_definition.get("active_room_spatial_domain")
+	if active_domain != null:
+		return active_domain
+	return level_definition.get("room_spatial_domain")
