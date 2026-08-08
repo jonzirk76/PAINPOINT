@@ -47,6 +47,7 @@ var _hostile_he_target_reticle_enabled: bool = false
 var _visual_rotation_offset: float = 0.0
 var _collision_add_deferred: bool = false
 var _visual_refresh_remaining: float = 0.0
+var _projectile_visual: ProjectileVisual = null
 
 
 func _init() -> void:
@@ -55,9 +56,11 @@ func _init() -> void:
 
 
 func _ready() -> void:
+	_projectile_visual = get_node_or_null("ProjectileVisual") as ProjectileVisual
 	_configure_collision_identity()
 	_add_collision()
 	body_entered.connect(_on_body_entered)
+	_update_projectile_visual()
 	queue_redraw()
 
 
@@ -84,6 +87,7 @@ func initialize(origin: Vector2, shot_direction: Vector2, packet, projectile_spe
 	_configure_projectile_kind_behavior()
 	_update_collision_radius()
 	rotation = direction.angle() + _visual_rotation_offset
+	_update_projectile_visual()
 	queue_redraw()
 
 
@@ -101,6 +105,7 @@ func _physics_process(delta: float) -> void:
 	var step_distance: float = previous_position.distance_to(next_position)
 	global_position = next_position
 	_distance_traveled += step_distance
+	_update_projectile_visual_offset()
 	if not visible and _distance_traveled >= visual_reveal_distance:
 		visible = true
 	# Area monitoring is sufficient when the projectile advances by no more than its
@@ -112,7 +117,7 @@ func _physics_process(delta: float) -> void:
 		return
 	_update_growth(delta)
 	_visual_refresh_remaining -= delta
-	if _visual_refresh_remaining <= 0.0:
+	if _uses_procedural_overlay() and _visual_refresh_remaining <= 0.0:
 		queue_redraw()
 		_visual_refresh_remaining = 1.0 / max(visual_refresh_rate, 1.0)
 	if _age >= lifetime_seconds:
@@ -196,6 +201,7 @@ func _land_agent_mine() -> void:
 	speed = 0.0
 	_set_area_collision_property("collision_mask", 1)
 	_update_collision_radius()
+	_update_projectile_visual()
 	queue_redraw()
 
 
@@ -314,34 +320,7 @@ func _disable_collision_state() -> void:
 
 
 func _draw() -> void:
-	var fill_color := Color(1.0, 0.92, 0.24)
-	var streak_color := Color(1.0, 0.42, 0.08)
 	var projectile_kind: String = String(damage_packet.projectile_kind) if damage_packet != null else ""
-	if damage_packet != null:
-		if projectile_team == "hostile":
-			fill_color = Color(0.9, 0.18, 1.0)
-			streak_color = Color(0.34, 0.95, 1.0)
-			match projectile_kind:
-				AGENT_GRENADE_KIND:
-					fill_color = Color(1.0, 0.52, 0.12)
-					streak_color = Color(1.0, 0.92, 0.24)
-				AGENT_MINE_KIND:
-					fill_color = Color(1.0, 0.18, 0.08)
-					streak_color = Color(1.0, 0.78, 0.16)
-		else:
-			match damage_packet.projectile_kind:
-				"fire":
-					fill_color = Color(1.0, 0.26, 0.08)
-					streak_color = Color(1.0, 0.82, 0.16)
-				"water":
-					fill_color = Color(0.18, 0.62, 1.0)
-					streak_color = Color(0.75, 0.95, 1.0)
-				"lightning":
-					fill_color = Color(0.74, 0.48, 1.0)
-					streak_color = Color(0.72, 1.0, 1.0)
-				"super":
-					fill_color = Color(1.0, 0.86, 0.18)
-					streak_color = Color(0.28, 1.0, 1.0)
 	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.022 + _age * 18.0)
 	if _should_draw_hostile_he_target_reticle():
 		_draw_hostile_he_target_reticle(pulse)
@@ -349,21 +328,9 @@ func _draw() -> void:
 	var grenade_visual_y_offset: float = _get_lob_visual_y_offset(grenade_arc_progress, maxf(hostile_grenade_arc_height, body_radius * 1.8)) if projectile_kind == AGENT_GRENADE_KIND else 0.0
 	if projectile_kind == AGENT_GRENADE_KIND:
 		_draw_lob_shadow(grenade_arc_progress, grenade_visual_y_offset, body_radius * 0.76, Color(0.0, 0.0, 0.0, 0.18))
-	var body_visual_offset: Vector2 = _get_screen_space_local_offset(Vector2(0.0, grenade_visual_y_offset)) if grenade_visual_y_offset != 0.0 else Vector2.ZERO
-	draw_set_transform(body_visual_offset, 0.0, Vector2.ONE)
-	var glow_color := Color(fill_color.r, fill_color.g, fill_color.b, 0.2 + pulse * 0.32)
-	var glow_points := _build_lemon_points(body_radius * (1.95 + pulse * 0.25), body_radius * (1.05 + pulse * 0.12))
-	var body_points := _build_lemon_points(body_radius * 1.58, body_radius * 0.82)
-	var outline_points := body_points.duplicate()
-	outline_points.append(body_points[0])
-	draw_colored_polygon(glow_points, glow_color)
-	draw_colored_polygon(body_points, fill_color)
-	draw_polyline(outline_points, Color(0.08, 0.07, 0.03, 0.85), 2.0, true)
-	draw_line(Vector2(-body_radius * 0.75, -body_radius * 0.18), Vector2(body_radius * 0.72, -body_radius * 0.18), Color(1.0, 1.0, 1.0, 0.45 + pulse * 0.35), 2.0)
-	draw_line(Vector2(-body_radius * 0.35, body_radius * 0.26), Vector2(body_radius * 0.52, body_radius * 0.16), streak_color, 2.0)
 	if projectile_kind == AGENT_GRENADE_KIND:
-		draw_arc(Vector2.ZERO, body_radius * (1.9 + pulse * 0.22), -PI * 0.15, PI * 1.05, 24, Color(1.0, 0.94, 0.24, 0.46), 2.2)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		var grenade_visual_position: Vector2 = _projectile_visual.position if _projectile_visual != null else Vector2.ZERO
+		draw_arc(grenade_visual_position, body_radius * (1.9 + pulse * 0.22), -PI * 0.15, PI * 1.05, 24, Color(1.0, 0.94, 0.24, 0.46), 2.2)
 	if damage_packet != null and projectile_kind == AGENT_MINE_KIND:
 		if _is_agent_mine_arming():
 			var throw_progress: float = 1.0 - clamp(_agent_mine_arming_remaining / max(_agent_mine_arming_duration, 0.001), 0.0, 1.0)
@@ -381,6 +348,34 @@ func _draw() -> void:
 
 func _get_lifetime_progress() -> float:
 	return clampf(_age / maxf(lifetime_seconds, 0.001), 0.0, 1.0)
+
+
+func _uses_procedural_overlay() -> bool:
+	if damage_packet == null:
+		return false
+	var projectile_kind: String = String(damage_packet.projectile_kind)
+	return _should_draw_hostile_he_target_reticle() or projectile_kind == AGENT_GRENADE_KIND or projectile_kind == AGENT_MINE_KIND or (projectile_kind == "super" and bool(damage_packet.super_full_charge))
+
+
+func _update_projectile_visual() -> void:
+	if _projectile_visual == null:
+		_projectile_visual = get_node_or_null("ProjectileVisual") as ProjectileVisual
+	if _projectile_visual == null:
+		return
+	var projectile_kind: String = String(damage_packet.projectile_kind) if damage_packet != null else "normal"
+	_projectile_visual.configure(projectile_team, projectile_kind, body_radius)
+	_update_projectile_visual_offset()
+
+
+func _update_projectile_visual_offset() -> void:
+	if _projectile_visual == null or damage_packet == null:
+		return
+	if String(damage_packet.projectile_kind) == AGENT_GRENADE_KIND:
+		var progress: float = _get_lifetime_progress()
+		var arc_height: float = maxf(hostile_grenade_arc_height, body_radius * 1.8)
+		_projectile_visual.position = _get_screen_space_local_offset(Vector2(0.0, _get_lob_visual_y_offset(progress, arc_height)))
+	else:
+		_projectile_visual.position = Vector2.ZERO
 
 
 func _get_lob_visual_y_offset(progress: float, arc_height: float) -> float:
@@ -468,21 +463,11 @@ func _update_growth(_delta: float) -> void:
 		return
 	body_radius = next_radius
 	_update_collision_radius()
+	if _projectile_visual != null:
+		_projectile_visual.set_radius(body_radius)
 
 
 func _update_collision_radius() -> void:
 	if _collision_shape == null or _collision_shape.shape == null:
 		return
 	_collision_shape.shape.radius = body_radius
-
-
-func _build_lemon_points(length_radius: float, height_radius: float) -> PackedVector2Array:
-	var points := PackedVector2Array()
-	var segments := 24
-	for index in range(segments):
-		var angle: float = TAU * float(index) / float(segments)
-		var x: float = cos(angle) * length_radius
-		var point_factor: float = 1.0 - abs(cos(angle)) * 0.72
-		var y: float = sin(angle) * height_radius * point_factor
-		points.append(Vector2(x, y))
-	return points
