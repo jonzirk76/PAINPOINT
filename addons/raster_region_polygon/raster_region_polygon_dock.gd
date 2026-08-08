@@ -417,6 +417,8 @@ func initialize(
 	_editor_interface = editor_interface
 	_undo_redo = undo_redo
 	_controller.initialize(editor_interface, undo_redo)
+	if _part_edit_controller == null:
+		_part_edit_controller = InPlacePartEditController.new()
 	_part_edit_controller.initialize(editor_interface)
 	_viewport_edit_tool = viewport_edit_tool
 
@@ -670,7 +672,11 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	if not _part_edit_controller.session.active:
+	if (
+		_part_edit_controller == null
+		or _part_edit_controller.session == null
+		or not _part_edit_controller.session.active
+	):
 		return
 	_part_preview_sync_elapsed += delta
 	if _part_preview_sync_elapsed < 0.12:
@@ -680,6 +686,8 @@ func _process(delta: float) -> void:
 
 
 func shutdown_part_editing() -> void:
+	if _part_edit_controller == null:
+		return
 	_part_edit_controller.abandon_context()
 
 
