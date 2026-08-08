@@ -91,6 +91,8 @@ The squid is not necessarily the fast enemy's final production presentation. Whe
 
 If combat-room end hitches or dungeon traversal rebuild costs come up again, revisit full-floor `LevelDefinition` generation. The current implementation rebuilds a composed full-floor level when room state changes; caching stable full-floor geometry or incrementally updating room-state overlays, destructible placements, fog, doors, and active-room contents could reduce end-of-combat spikes more than timing deferrals alone.
 
+Opening-wave enemies are instantiated hidden and inactive during the room loading transition. Runtime general reinforcements follow a different path: `SpawnerManager` proposes complete batches, `GameOrchestrator` reserves those proposals in a room-generation-scoped queue, and the orchestrator materializes the queue under configurable per-frame count and time budgets. Pending proposals count against the horde cap and block room-clear resolution. This smooths burst construction without changing manager ownership or introducing reusable entities with stale combat state. Only add an `EnemyManager`-owned prepared reserve if the sandbox telemetry still identifies enemy construction as a meaningful peak after spawn budgeting.
+
 ## HUD And Pause Flow
 
 The normal combat HUD stays intentionally light: top-center score, lower-corner state info, and an upper-right character resource stack with green health ticks, blue overdrive ammo, and the yellow special meter. Detailed attribute modifiers, overdrive stacks, and run stats are shown in `PausePanel` instead of occupying combat space.
@@ -103,7 +105,7 @@ The project uses a 1280x720 logical viewport and scales canvas items into a larg
 
 ## Developer Sandbox
 
-The Archive contains a `Developer Sandbox` dungeon entry for testing floor-scaled systems without playing through earlier floors. `DebugSandboxPanel` owns its controls and emits commands upward; `GameOrchestrator` resolves resource IDs and routes commands to the owning managers. The panel can regenerate a selected floor and seed, freeze the world while leaving the player entity movable, enable player invincibility, keep charge shots and overdrive resources full, and deterministically set exact stack counts for overdrive effects or permanent attributes. Debug overrides are cleared whenever normal gameplay or level select is entered.
+The Archive contains a `Developer Sandbox` dungeon entry for testing floor-scaled systems without playing through earlier floors. `DebugSandboxPanel` owns its controls and emits commands upward; `GameOrchestrator` resolves resource IDs and routes commands to the owning managers. The panel can regenerate a selected floor and seed, freeze the world while leaving the player entity movable, enable player invincibility, keep charge shots and overdrive resources full, and deterministically set exact stack counts for overdrive effects or permanent attributes. Its status readout also reports current/peak runtime spawn-queue depth, last/peak spawn-budget time, and last/peak legion-tactics and crowd-separation time for the current room. Debug overrides are cleared whenever normal gameplay or level select is entered.
 
 ## Data Flow Examples
 
@@ -175,6 +177,7 @@ Opening suppression:
 2. When `GameOrchestrator` enables the room, `SpawnerManager` emits initial `spawn_requested` events for each spawner, respecting `max_active_enemies`.
 3. `GameOrchestrator` routes those requests to `EnemyManager.spawn_enemy(...)`, so spawners never directly create enemies.
 4. Generated combat and challenge rooms can also carry an `EncounterEntry` table. `GameOrchestrator` rolls that table from the run seed, floor number, and room id, then spawns one-time non-spawner enemies through `EnemyManager`.
+5. During live combat, reinforcement proposals are queued by `GameOrchestrator` and materialized across frames. Loading-time inactive proposals bypass that queue because their construction is already hidden behind the room transition.
 
 Legion tactics:
 

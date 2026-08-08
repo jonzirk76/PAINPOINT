@@ -56,6 +56,10 @@ var _tactical_refresh_remaining: float = 0.0
 var _tactical_elapsed: float = 0.0
 var _repair_target_refresh_remaining: float = 0.0
 var _crowd_separation_refresh_remaining: float = 0.0
+var _tactics_last_ms: float = 0.0
+var _tactics_peak_ms: float = 0.0
+var _crowd_last_ms: float = 0.0
+var _crowd_peak_ms: float = 0.0
 
 
 func initialize(context: Dictionary) -> void:
@@ -80,6 +84,10 @@ func reset_run() -> void:
 	_tactical_elapsed = 0.0
 	_repair_target_refresh_remaining = 0.0
 	_crowd_separation_refresh_remaining = 0.0
+	_tactics_last_ms = 0.0
+	_tactics_peak_ms = 0.0
+	_crowd_last_ms = 0.0
+	_crowd_peak_ms = 0.0
 	_boss_add_timer = 0.0
 	enemy_count_changed.emit(0)
 	horde_enemy_count_changed.emit(0)
@@ -178,7 +186,10 @@ func _physics_process(delta: float) -> void:
 				player_contact_requested.emit(enemy, player, enemy.contact_damage)
 	_crowd_separation_refresh_remaining -= delta
 	if _crowd_separation_refresh_remaining <= 0.0:
+		var crowd_started_usec: int = Time.get_ticks_usec()
 		_apply_crowd_separation()
+		_crowd_last_ms = float(Time.get_ticks_usec() - crowd_started_usec) / 1000.0
+		_crowd_peak_ms = max(_crowd_peak_ms, _crowd_last_ms)
 		_crowd_separation_refresh_remaining = max(crowd_separation_refresh_interval, 0.016)
 	_update_boss_adds(delta)
 
@@ -346,6 +357,15 @@ func get_legion_controller_count() -> int:
 	return _legion_controllers.size()
 
 
+func get_performance_snapshot() -> Dictionary:
+	return {
+		"tactics_last_ms": _tactics_last_ms,
+		"tactics_peak_ms": _tactics_peak_ms,
+		"crowd_last_ms": _crowd_last_ms,
+		"crowd_peak_ms": _crowd_peak_ms
+	}
+
+
 func get_enemy_positions() -> Array[Vector2]:
 	var positions: Array[Vector2] = []
 	for enemy in _enemies:
@@ -445,7 +465,10 @@ func _update_legion_tactics(player_position: Vector2, delta: float) -> void:
 	var planning_delta: float = _tactical_elapsed
 	_tactical_elapsed = 0.0
 	_tactical_refresh_remaining = max(tactical_refresh_interval, 0.02)
+	var tactics_started_usec: int = Time.get_ticks_usec()
 	_refresh_legion_tactics(player_position, planning_delta)
+	_tactics_last_ms = float(Time.get_ticks_usec() - tactics_started_usec) / 1000.0
+	_tactics_peak_ms = max(_tactics_peak_ms, _tactics_last_ms)
 
 
 func _refresh_legion_tactics(player_position: Vector2, delta: float) -> void:

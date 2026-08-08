@@ -170,6 +170,10 @@ const BOSS_REWARD_CHOICE_CLEARANCE := 30.0
 @export var cleared_floor_speed_multiplier: float = 1.45
 ## Delays dungeon combat-room clear resolution so floor-map rebuilds happen after the last death animation.
 @export var room_clear_resolution_delay_seconds: float = 0.38
+## [Description] Limits how many queued runtime reinforcements may be materialized during one rendered frame.
+@export_range(1, 8, 1) var runtime_spawn_max_per_frame: int = 2
+## [Description] Stops runtime reinforcement materialization for the frame after this approximate main-thread time budget is spent.
+@export_range(0.1, 8.0, 0.1) var runtime_spawn_budget_ms: float = 1.5
 ## Optional NobodyWho GGUF path, HuggingFace reference, or URL used for generated agent intro taunts.
 @export var agent_taunt_llm_model_path: String = ""
 ## Allows generated taunts to use the smallest cached NobodyWho GGUF model when no explicit model path is set.
@@ -211,6 +215,11 @@ var _level_select_page: String = "main"
 var _level_select_option_index: int = 0
 var _current_level = null
 var _spawn_generation: int = 0
+var _pending_enemy_spawn_proposals: Array[Dictionary] = []
+var _spawn_queue_peak_depth: int = 0
+var _spawn_budget_last_count: int = 0
+var _spawn_budget_last_ms: float = 0.0
+var _spawn_budget_peak_ms: float = 0.0
 var _is_dungeon_run: bool = false
 var _is_main_loop_run: bool = false
 var _active_generated_encounter_test_index: int = -1
@@ -478,6 +487,7 @@ func _process(delta: float) -> void:
 	if _update_boss_health_feedback(delta):
 		_update_boss_health_panel()
 	if _is_gameplay_running():
+		_process_pending_enemy_spawns()
 		_update_room_clear_resolution(delta)
 		_update_camera(delta)
 		_update_cat_debug_panel()
@@ -2441,6 +2451,7 @@ func _enter_level_select() -> void:
 
 func _clear_gameplay() -> void:
 	_clear_pending_room_clear_resolution()
+	_reset_pending_enemy_spawns()
 	_clear_floor_exit_portal()
 	_set_agent_debug_panel_visible(false)
 	_set_cat_debug_panel_visible(false)
@@ -2657,8 +2668,11 @@ func _disable_debug_sandbox() -> void:
 func _update_debug_sandbox_status() -> void:
 	if _debug_sandbox_panel == null or not _debug_sandbox_active:
 		return
+	var performance: Dictionary = enemy_manager.get_performance_snapshot()
 	_debug_sandbox_panel.set_status(
-		"Floor %d  Seed %d\nRoom %s (%s)\nEnemies %d  Generals %d  Legions %d%s" % [
+		("Floor %d  Seed %d\nRoom %s (%s)\nEnemies %d  Generals %d  Legions %d%s"
+		+ "\nSpawn queue %d (peak %d)  Last %d / %.2f ms  Peak %.2f ms"
+		+ "\nTactics %.2f / %.2f ms  Crowd %.2f / %.2f ms") % [
 			_main_loop_floor,
 			_run_seed,
 			String(dungeon_manager.current_room_id),
@@ -2666,7 +2680,16 @@ func _update_debug_sandbox_status() -> void:
 			enemy_manager.get_enemy_count(),
 			enemy_manager.get_general_count(),
 			enemy_manager.get_legion_controller_count(),
-			"  [FROZEN]" if _debug_world_frozen else ""
+			"  [FROZEN]" if _debug_world_frozen else "",
+			_pending_enemy_spawn_proposals.size(),
+			_spawn_queue_peak_depth,
+			_spawn_budget_last_count,
+			_spawn_budget_last_ms,
+			_spawn_budget_peak_ms,
+			float(performance.get("tactics_last_ms", 0.0)),
+			float(performance.get("tactics_peak_ms", 0.0)),
+			float(performance.get("crowd_last_ms", 0.0)),
+			float(performance.get("crowd_peak_ms", 0.0))
 		]
 	)
 
@@ -2974,6 +2997,42 @@ func _on_player_damage_resolved(amount: int) -> void:
 func _on_spawn_proposed(proposal: Dictionary) -> void:
 	if not _spawn_proposal_matches_current_room(proposal):
 		return
+	var spawn_flags: Dictionary = proposal.get("spawn_flags", {})
+	if bool(spawn_flags.get("inactive", false)) or bool(spawn_flags.get("allow_when_disabled", false)):
+		_materialize_enemy_spawn_proposal(proposal)
+		return
+	var reserved_enemy_count: int = enemy_manager.get_horde_enemy_count() + _pending_enemy_spawn_proposals.size()
+	if reserved_enemy_count >= max(int(spawner_manager.max_active_enemies), 0):
+		return
+	_pending_enemy_spawn_proposals.append(proposal.duplicate())
+	_spawn_queue_peak_depth = max(_spawn_queue_peak_depth, _pending_enemy_spawn_proposals.size())
+	_clear_pending_room_clear_resolution()
+
+
+func _process_pending_enemy_spawns() -> void:
+	if _pending_enemy_spawn_proposals.is_empty() or _tree_pause_requested or _is_loading_room or not enemy_manager.enabled:
+		return
+	var frame_started_usec: int = Time.get_ticks_usec()
+	var materialized_count: int = 0
+	var max_count: int = max(runtime_spawn_max_per_frame, 1)
+	var budget_usec: int = maxi(roundi(max(runtime_spawn_budget_ms, 0.1) * 1000.0), 100)
+	while not _pending_enemy_spawn_proposals.is_empty() and materialized_count < max_count:
+		var proposal: Dictionary = _pending_enemy_spawn_proposals.pop_front()
+		if _spawn_proposal_matches_current_room(proposal):
+			_materialize_enemy_spawn_proposal(proposal)
+			materialized_count += 1
+		if materialized_count > 0 and Time.get_ticks_usec() - frame_started_usec >= budget_usec:
+			break
+	_spawn_budget_last_count = materialized_count
+	_spawn_budget_last_ms = float(Time.get_ticks_usec() - frame_started_usec) / 1000.0
+	_spawn_budget_peak_ms = max(_spawn_budget_peak_ms, _spawn_budget_last_ms)
+	if _pending_enemy_spawn_proposals.is_empty():
+		_check_level_clear()
+
+
+func _materialize_enemy_spawn_proposal(proposal: Dictionary) -> void:
+	if not _spawn_proposal_matches_current_room(proposal):
+		return
 	var spawn_position: Vector2 = proposal.get("position", Vector2.INF)
 	var profile = proposal.get("profile", null)
 	var spawn_flags: Dictionary = proposal.get("spawn_flags", {"birth": true})
@@ -3001,7 +3060,16 @@ func _spawn_proposal_matches_current_room(proposal: Dictionary) -> bool:
 
 func _advance_spawn_context(level_definition) -> void:
 	_spawn_generation += 1
+	_reset_pending_enemy_spawns()
 	spawner_manager.set_spawn_context(_get_spawn_room_id(level_definition), _spawn_generation)
+
+
+func _reset_pending_enemy_spawns() -> void:
+	_pending_enemy_spawn_proposals.clear()
+	_spawn_queue_peak_depth = 0
+	_spawn_budget_last_count = 0
+	_spawn_budget_last_ms = 0.0
+	_spawn_budget_peak_ms = 0.0
 
 
 func _get_spawn_room_id(level_definition) -> String:
@@ -3704,7 +3772,10 @@ func _load_room_entry_transition(player_position: Vector2) -> bool:
 func _preload_pending_initial_spawner_enemies() -> void:
 	var spawn_requests: Array[Dictionary] = spawner_manager.consume_initial_spawn_requests()
 	for spawn_request in spawn_requests:
-		spawn_request["spawn_flags"] = {"inactive": true, "allow_when_disabled": true}
+		var spawn_flags: Dictionary = spawn_request.get("spawn_flags", {}).duplicate()
+		spawn_flags["inactive"] = true
+		spawn_flags["allow_when_disabled"] = true
+		spawn_request["spawn_flags"] = spawn_flags
 		_on_spawn_proposed(spawn_request)
 
 
@@ -3717,7 +3788,10 @@ func _preload_pending_initial_spawner_enemies_with_loading(progress_start: float
 	_set_loading_progress(progress_start, "Loading enemies 0/%d" % enemy_total)
 	for spawn_index: int in range(enemy_total):
 		var spawn_request: Dictionary = spawn_requests[spawn_index]
-		spawn_request["spawn_flags"] = {"inactive": true, "allow_when_disabled": true}
+		var spawn_flags: Dictionary = spawn_request.get("spawn_flags", {}).duplicate()
+		spawn_flags["inactive"] = true
+		spawn_flags["allow_when_disabled"] = true
+		spawn_request["spawn_flags"] = spawn_flags
 		_on_spawn_proposed(spawn_request)
 		var loaded_count: int = spawn_index + 1
 		var progress_ratio: float = float(loaded_count) / float(enemy_total)
@@ -4687,6 +4761,8 @@ func _level_clear_conditions_met() -> bool:
 	if _is_room_entry_transition_active:
 		return false
 	if _is_cleared_floor_map_active:
+		return false
+	if not _pending_enemy_spawn_proposals.is_empty():
 		return false
 	if spawner_manager.get_spawner_count() > 0 or enemy_manager.get_enemy_count() > 0:
 		return false
