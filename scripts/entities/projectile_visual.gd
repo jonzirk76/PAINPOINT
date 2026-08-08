@@ -20,7 +20,7 @@ func configure(projectile_team: String, projectile_kind: String, radius: float) 
 		return
 	var colors: Dictionary = _get_palette(projectile_team, projectile_kind)
 	body.color = colors["fill"]
-	glow.color = Color(colors["fill"], 0.28)
+	glow.color = Color(colors["fill"], 0.22)
 	direction_streak.default_color = colors["streak"]
 	set_radius(radius)
 
