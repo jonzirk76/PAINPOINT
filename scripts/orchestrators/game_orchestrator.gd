@@ -2207,6 +2207,8 @@ func _start_dungeon_run(start_floor: int = 1, run_seed_override: int = 0, debug_
 	_queue_loading_floor_start_feedback()
 	_on_upgrade_changed(upgrade_manager.get_modifiers(), upgrade_manager.get_active_effects())
 	_update_hud()
+	if _debug_sandbox_active and _debug_sandbox_panel != null:
+		_debug_sandbox_panel.set_generation_values(_main_loop_floor, _run_seed)
 	_update_debug_sandbox_status()
 	if _debug_sandbox_active and _debug_sandbox_panel != null:
 		_debug_sandbox_panel.visible = true
@@ -2648,7 +2650,6 @@ func _disable_debug_sandbox() -> void:
 func _update_debug_sandbox_status() -> void:
 	if _debug_sandbox_panel == null or not _debug_sandbox_active:
 		return
-	_debug_sandbox_panel.set_generation_values(max(_main_loop_floor, 1), max(_run_seed, 1))
 	_debug_sandbox_panel.set_status(
 		"Floor %d  Seed %d\nRoom %s (%s)\nEnemies %d  Generals %d  Legions %d%s" % [
 			_main_loop_floor,
