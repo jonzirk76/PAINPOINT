@@ -12,6 +12,7 @@ var _overdrive_effects: Dictionary = {}
 var _permanent_upgrades: Dictionary = {}
 var _overdrive_ammo: int = 40
 var _overdrive_active: bool = false
+var _debug_max_overdrive: bool = false
 
 
 func initialize(_context: Dictionary) -> void:
@@ -110,7 +111,7 @@ func can_fire_overdrive() -> bool:
 func consume_overdrive_shot() -> bool:
 	if not can_fire_overdrive():
 		return false
-	_overdrive_ammo = max(_overdrive_ammo - 1, 0)
+	_overdrive_ammo = get_overdrive_max_ammo() if _debug_max_overdrive else max(_overdrive_ammo - 1, 0)
 	_emit_upgrade_state()
 	return true
 
@@ -219,6 +220,46 @@ func get_overdrive_max_ammo() -> int:
 
 func get_overdrive_ammo() -> int:
 	return _overdrive_ammo
+
+
+func set_debug_max_overdrive(value: bool) -> void:
+	_debug_max_overdrive = value
+	if value:
+		_overdrive_ammo = get_overdrive_max_ammo()
+	_emit_upgrade_state()
+
+
+func set_debug_overdrive_effect(effect, value: bool) -> void:
+	if effect == null:
+		return
+	var id := String(effect.id)
+	if value:
+		_overdrive_effects[id] = {"effect": effect, "stacks": 1}
+	else:
+		_overdrive_effects.erase(id)
+	if _debug_max_overdrive:
+		_overdrive_ammo = get_overdrive_max_ammo()
+	_emit_upgrade_state()
+
+
+func set_debug_permanent_upgrade(upgrade, value: bool) -> void:
+	if upgrade == null:
+		return
+	var id: String = upgrade.get_stack_key() if upgrade.has_method("get_stack_key") else String(upgrade.id)
+	if value:
+		_permanent_upgrades[id] = {
+			"upgrade": upgrade,
+			"display_name": upgrade.get_stack_display_name(),
+			"stacks": 1,
+			"total_amount": float(upgrade.amount),
+			"max_stacks": int(upgrade.max_stacks)
+		}
+	else:
+		_permanent_upgrades.erase(id)
+	if _debug_max_overdrive:
+		_overdrive_ammo = get_overdrive_max_ammo()
+	permanent_upgrades_changed.emit(get_attribute_modifiers(), get_permanent_stats())
+	_emit_upgrade_state()
 
 
 func get_overdrive_state() -> Dictionary:

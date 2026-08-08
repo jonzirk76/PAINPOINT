@@ -15,6 +15,7 @@ signal pause_requested
 signal super_charge_pressed
 signal super_charge_released(direction: Vector2)
 signal overdrive_changed(is_held: bool)
+signal debug_menu_requested
 
 const AIM_SOURCE_NONE := 0
 const AIM_SOURCE_ANALOG := 1
@@ -127,7 +128,9 @@ func _process(_delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo and (event.physical_keycode == KEY_R or event.keycode == KEY_R):
+	if event is InputEventKey and event.pressed and not event.echo and (event.physical_keycode == KEY_F3 or event.keycode == KEY_F3):
+		debug_menu_requested.emit()
+	elif event is InputEventKey and event.pressed and not event.echo and (event.physical_keycode == KEY_R or event.keycode == KEY_R):
 		restart_requested.emit()
 		menu_back_requested.emit()
 	elif event is InputEventKey and event.pressed and not event.echo and (event.physical_keycode == KEY_ESCAPE or event.keycode == KEY_ESCAPE):

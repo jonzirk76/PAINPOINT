@@ -79,6 +79,21 @@ const AGENT_BOSS_GENERATOR := preload("res://scripts/resources/agent_boss_genera
 const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_builder.gd")
 const WALL_OCCLUSION_LAYERS := preload("res://scripts/arena/wall_occlusion_layers.gd")
 const BOLD_PIXELS_FONT := preload("res://art/fonts/BoldPixels.ttf")
+const DEBUG_SANDBOX_PANEL := preload("res://scripts/ui/debug_sandbox_panel.gd")
+const DEBUG_OVERDRIVE_EFFECTS := {
+	"spread_shot": preload("res://resources/upgrades/spread_shot.tres"),
+	"piercing_shot": preload("res://resources/upgrades/piercing_shot.tres"),
+	"chain_lightning": preload("res://resources/upgrades/chain_lightning.tres"),
+	"fire_burst": preload("res://resources/upgrades/fire_burst.tres"),
+	"water_swell": preload("res://resources/upgrades/water_swell.tres")
+}
+const DEBUG_PERMANENT_UPGRADES := {
+	"faster_reflexes": preload("res://resources/permanent_upgrades/faster_reflexes.tres"),
+	"runner_legs": preload("res://resources/permanent_upgrades/runner_legs.tres"),
+	"heavy_tears": preload("res://resources/permanent_upgrades/heavy_tears.tres"),
+	"fat_tears": preload("res://resources/permanent_upgrades/fat_tears.tres"),
+	"overdrive_capacity": preload("res://resources/permanent_upgrades/overdrive_capacity.tres")
+}
 const LOADING_PROGRESS_FLOOR_LAYOUT_START := 0.08
 const LOADING_PROGRESS_FLOOR_LAYOUT_DONE := 0.18
 const LOADING_PROGRESS_ROOM_GEOMETRY := 0.28
@@ -271,6 +286,15 @@ var _agent_debug_panel: ColorRect = null
 var _agent_debug_label: Label = null
 var _cat_debug_panel: ColorRect = null
 var _cat_debug_label: Label = null
+var _debug_sandbox_panel: DebugSandboxPanel = null
+var _debug_sandbox_active: bool = false
+var _debug_world_frozen: bool = false
+var _debug_invincible: bool = false
+var _debug_max_charge: bool = false
+var _debug_max_overdrive: bool = false
+var _debug_overdrive_effects: Dictionary = {}
+var _debug_permanent_upgrades: Dictionary = {}
+var _debug_status_refresh_remaining: float = 0.0
 var _boss_health_panel: Control = null
 var _boss_health_label: Label = null
 var _boss_health_bar_back: ColorRect = null
@@ -334,6 +358,7 @@ const LEVEL_SELECT_ACTION_DUNGEON := "dungeon"
 const LEVEL_SELECT_ACTION_GENERATED_TEST := "generated_test"
 const LEVEL_SELECT_ACTION_LEVEL := "level"
 const LEVEL_SELECT_ACTION_MAIN_LOOP := "main_loop"
+const LEVEL_SELECT_ACTION_DEBUG_SANDBOX := "debug_sandbox"
 const MAIN_LEVEL_SELECT_OPTIONS := [
 	{"action": LEVEL_SELECT_ACTION_MAIN_LOOP},
 	{"action": LEVEL_SELECT_ACTION_GENERATED_TEST, "index": GENERATED_TEST_AGENT_BOSS_INDEX},
@@ -341,6 +366,7 @@ const MAIN_LEVEL_SELECT_OPTIONS := [
 ]
 const ARCHIVE_LEVEL_SELECT_OPTIONS := [
 	{"action": LEVEL_SELECT_ACTION_BACK},
+	{"action": LEVEL_SELECT_ACTION_DEBUG_SANDBOX},
 	{"action": LEVEL_SELECT_ACTION_GENERATED_TEST, "index": GENERATED_TEST_CYBER_INDEX},
 	{"action": LEVEL_SELECT_ACTION_GENERATED_TEST, "index": GENERATED_TEST_ARMOR_INDEX},
 	{"action": LEVEL_SELECT_ACTION_GENERATED_TEST, "index": GENERATED_TEST_DRONE_INDEX},
@@ -403,6 +429,7 @@ func _ready() -> void:
 	_super_crackle_rng.randomize()
 	_capture_hud_authoring_state()
 	_ensure_agent_debug_panel()
+	_ensure_debug_sandbox_panel()
 	_ensure_boss_health_hud()
 	_ensure_agent_dialogue_box()
 	_configure_pause_process_modes()
@@ -417,6 +444,11 @@ func _exit_tree() -> void:
 
 
 func _process(delta: float) -> void:
+	if _debug_sandbox_active and _debug_sandbox_panel != null and _debug_sandbox_panel.visible:
+		_debug_status_refresh_remaining -= delta
+		if _debug_status_refresh_remaining <= 0.0:
+			_debug_status_refresh_remaining = 0.25
+			_update_debug_sandbox_status()
 	if _status == "BOSS_CLEARING":
 		_update_boss_clear_transition(delta)
 	_update_perfect_parry_slowmo()
@@ -472,6 +504,7 @@ func _connect_manager_signals() -> void:
 	_connect_once(input_manager, &"super_charge_pressed", _on_input_super_charge_pressed)
 	_connect_once(input_manager, &"super_charge_released", _on_input_super_charge_released)
 	_connect_once(input_manager, &"overdrive_changed", _on_input_overdrive_changed)
+	_connect_once(input_manager, &"debug_menu_requested", _on_debug_menu_requested)
 
 	_connect_once(player_manager, &"player_health_changed", _on_player_health_changed)
 	_connect_once(player_manager, &"player_invulnerability_changed", _on_player_invulnerability_changed)
@@ -585,6 +618,24 @@ func _configure_pause_process_modes() -> void:
 	$UI.process_mode = Node.PROCESS_MODE_ALWAYS
 	input_manager.process_mode = Node.PROCESS_MODE_ALWAYS
 	pause_panel.process_mode = Node.PROCESS_MODE_WHEN_PAUSED
+
+
+func _ensure_debug_sandbox_panel() -> void:
+	if _debug_sandbox_panel != null and is_instance_valid(_debug_sandbox_panel):
+		return
+	var ui_layer: CanvasLayer = get_node_or_null("UI") as CanvasLayer
+	if ui_layer == null:
+		return
+	_debug_sandbox_panel = DEBUG_SANDBOX_PANEL.new()
+	_debug_sandbox_panel.name = "DebugSandboxPanel"
+	ui_layer.add_child(_debug_sandbox_panel)
+	_connect_once(_debug_sandbox_panel, &"generation_requested", _on_debug_generation_requested)
+	_connect_once(_debug_sandbox_panel, &"freeze_changed", _on_debug_freeze_changed)
+	_connect_once(_debug_sandbox_panel, &"invincibility_changed", _on_debug_invincibility_changed)
+	_connect_once(_debug_sandbox_panel, &"max_charge_changed", _on_debug_max_charge_changed)
+	_connect_once(_debug_sandbox_panel, &"max_overdrive_changed", _on_debug_max_overdrive_changed)
+	_connect_once(_debug_sandbox_panel, &"overdrive_effect_changed", _on_debug_overdrive_effect_changed)
+	_connect_once(_debug_sandbox_panel, &"permanent_stat_changed", _on_debug_permanent_stat_changed)
 
 
 func _capture_hud_authoring_state() -> void:
@@ -2008,6 +2059,7 @@ func _start_selected_level() -> void:
 
 
 func _start_level(level_definition) -> void:
+	_disable_debug_sandbox()
 	_set_tree_paused(false)
 	_begin_loading_screen("LOADING", "Preparing arena", 0.05)
 	_is_dungeon_run = false
@@ -2088,17 +2140,19 @@ func _start_level(level_definition) -> void:
 	_finish_loading_screen()
 
 
-func _start_dungeon_run() -> void:
+func _start_dungeon_run(start_floor: int = 1, run_seed_override: int = 0, debug_sandbox: bool = false) -> void:
 	_set_tree_paused(false)
+	_debug_world_frozen = false
 	_begin_loading_screen("LOADING FLOOR", "Generating floor layout", 0.05)
 	_is_dungeon_run = true
 	_is_main_loop_run = false
+	_debug_sandbox_active = debug_sandbox
 	_active_generated_encounter_test_index = -1
 	_set_room_entry_transition_active(false)
 	_set_cleared_floor_map_active(false)
 	_score = 0
-	_main_loop_floor = 1
-	_run_seed = _generate_run_seed()
+	_main_loop_floor = max(start_floor, 1)
+	_run_seed = run_seed_override if run_seed_override > 0 else _generate_run_seed()
 	_paused_previous_status = ""
 	_reset_run_tally()
 	_status = "STARTING"
@@ -2142,6 +2196,7 @@ func _start_dungeon_run() -> void:
 	item_manager.clear_pickups()
 	item_manager.clear_floor_persistent_pickups()
 	upgrade_manager.reset_run()
+	_apply_debug_cheats()
 	combat_manager.reset_run()
 	effects_manager.reset_run()
 	room_manager.reset_run()
@@ -2152,11 +2207,15 @@ func _start_dungeon_run() -> void:
 	_queue_loading_floor_start_feedback()
 	_on_upgrade_changed(upgrade_manager.get_modifiers(), upgrade_manager.get_active_effects())
 	_update_hud()
+	_update_debug_sandbox_status()
+	if _debug_sandbox_active and _debug_sandbox_panel != null:
+		_debug_sandbox_panel.visible = true
 
 
 func _start_generated_encounter_test(test_index: int) -> void:
 	if test_index < 0 or test_index >= GENERATED_ENCOUNTER_TESTS.size():
 		return
+	_disable_debug_sandbox()
 	var test_config: Dictionary = GENERATED_ENCOUNTER_TESTS[test_index]
 	_set_tree_paused(false)
 	_begin_loading_screen("LOADING TEST ROOM", "Generating floor layout", 0.05)
@@ -2231,6 +2290,7 @@ func _start_generated_encounter_test(test_index: int) -> void:
 
 
 func _start_main_loop_run() -> void:
+	_disable_debug_sandbox()
 	_set_tree_paused(false)
 	_begin_loading_screen("LOADING FLOOR", "Generating floor layout", 0.05)
 	_is_dungeon_run = true
@@ -2330,6 +2390,7 @@ func _advance_main_loop_floor() -> void:
 
 
 func _enter_level_select() -> void:
+	_disable_debug_sandbox()
 	_set_tree_paused(false)
 	_status = "LEVEL_SELECT"
 	_current_level = null
@@ -2482,6 +2543,126 @@ func _set_tree_paused(value: bool) -> void:
 		get_tree().paused = value
 
 
+func _on_debug_menu_requested() -> void:
+	if not _debug_sandbox_active or _debug_sandbox_panel == null:
+		return
+	_debug_sandbox_panel.toggle_visible()
+	_update_debug_sandbox_status()
+
+
+func _on_debug_generation_requested(floor_number: int, run_seed: int) -> void:
+	if not _debug_sandbox_active:
+		return
+	_on_debug_freeze_changed(false)
+	_start_dungeon_run(floor_number, run_seed, true)
+
+
+func _start_debug_sandbox() -> void:
+	if _loading_transition_pending:
+		return
+	_loading_transition_pending = true
+	await _show_loading_before_work("LOADING SANDBOX", "Generating selected floor", 0.05)
+	_start_dungeon_run(1, _generate_run_seed(), true)
+	_loading_transition_pending = false
+
+
+func _on_debug_freeze_changed(value: bool) -> void:
+	if not _debug_sandbox_active:
+		return
+	_debug_world_frozen = value
+	var player = _get_player_ref()
+	if player != null and is_instance_valid(player):
+		player.process_mode = Node.PROCESS_MODE_ALWAYS if value else Node.PROCESS_MODE_INHERIT
+	_set_tree_paused(value)
+	if _debug_sandbox_panel != null:
+		_debug_sandbox_panel.set_freeze_enabled(value)
+	_update_debug_sandbox_status()
+
+
+func _on_debug_invincibility_changed(value: bool) -> void:
+	if not _debug_sandbox_active:
+		return
+	_debug_invincible = value
+	player_manager.set_debug_invincible(value)
+	_update_debug_sandbox_status()
+
+
+func _on_debug_max_charge_changed(value: bool) -> void:
+	if not _debug_sandbox_active:
+		return
+	_debug_max_charge = value
+	player_manager.set_debug_always_max_charge(value)
+	_update_debug_sandbox_status()
+
+
+func _on_debug_max_overdrive_changed(value: bool) -> void:
+	if not _debug_sandbox_active:
+		return
+	_debug_max_overdrive = value
+	upgrade_manager.set_debug_max_overdrive(value)
+	_update_debug_sandbox_status()
+
+
+func _on_debug_overdrive_effect_changed(effect_id: String, value: bool) -> void:
+	if not _debug_sandbox_active or not DEBUG_OVERDRIVE_EFFECTS.has(effect_id):
+		return
+	_debug_overdrive_effects[effect_id] = value
+	upgrade_manager.set_debug_overdrive_effect(DEBUG_OVERDRIVE_EFFECTS[effect_id], value)
+
+
+func _on_debug_permanent_stat_changed(stat_id: String, value: bool) -> void:
+	if not _debug_sandbox_active or not DEBUG_PERMANENT_UPGRADES.has(stat_id):
+		return
+	_debug_permanent_upgrades[stat_id] = value
+	upgrade_manager.set_debug_permanent_upgrade(DEBUG_PERMANENT_UPGRADES[stat_id], value)
+
+
+func _apply_debug_cheats() -> void:
+	player_manager.set_debug_invincible(_debug_sandbox_active and _debug_invincible)
+	player_manager.set_debug_always_max_charge(_debug_sandbox_active and _debug_max_charge)
+	upgrade_manager.set_debug_max_overdrive(_debug_sandbox_active and _debug_max_overdrive)
+	if not _debug_sandbox_active:
+		return
+	for effect_id in _debug_overdrive_effects:
+		if bool(_debug_overdrive_effects[effect_id]) and DEBUG_OVERDRIVE_EFFECTS.has(effect_id):
+			upgrade_manager.set_debug_overdrive_effect(DEBUG_OVERDRIVE_EFFECTS[effect_id], true)
+	for stat_id in _debug_permanent_upgrades:
+		if bool(_debug_permanent_upgrades[stat_id]) and DEBUG_PERMANENT_UPGRADES.has(stat_id):
+			upgrade_manager.set_debug_permanent_upgrade(DEBUG_PERMANENT_UPGRADES[stat_id], true)
+
+
+func _disable_debug_sandbox() -> void:
+	_debug_sandbox_active = false
+	_debug_world_frozen = false
+	var player = _get_player_ref()
+	if player != null and is_instance_valid(player):
+		player.process_mode = Node.PROCESS_MODE_INHERIT
+	player_manager.set_debug_invincible(false)
+	player_manager.set_debug_always_max_charge(false)
+	upgrade_manager.set_debug_max_overdrive(false)
+	if _debug_sandbox_panel != null:
+		_debug_sandbox_panel.set_freeze_enabled(false)
+		_debug_sandbox_panel.visible = false
+
+
+func _update_debug_sandbox_status() -> void:
+	if _debug_sandbox_panel == null or not _debug_sandbox_active:
+		return
+	_debug_sandbox_panel.set_generation_values(max(_main_loop_floor, 1), max(_run_seed, 1))
+	_debug_sandbox_panel.set_status(
+		"Floor %d  Seed %d\nRoom %s (%s)\nEnemies %d  Generals %d  Legions %d%s" % [
+			_main_loop_floor,
+			_run_seed,
+			String(dungeon_manager.current_room_id),
+			dungeon_manager.get_current_room_kind(),
+			enemy_manager.get_enemy_count(),
+			enemy_manager.get_general_count(),
+			enemy_manager.get_legion_controller_count(),
+			"  [FROZEN]" if _debug_world_frozen else ""
+		]
+	)
+
+
 func _reset_overdrive_hud_state() -> void:
 	_last_overdrive_ammo = upgrade_manager.get_overdrive_ammo() if upgrade_manager != null else 40
 	_last_overdrive_max_ammo = upgrade_manager.get_overdrive_max_ammo() if upgrade_manager != null else 40
@@ -2534,8 +2715,17 @@ func _is_gameplay_input_allowed() -> bool:
 	return _is_gameplay_running() and not _tree_pause_requested and not _agent_taunt_active and not _loading_overlay_blocks_game_input()
 
 
+func _is_player_movement_input_allowed() -> bool:
+	return _is_gameplay_input_allowed() or (
+		_debug_sandbox_active
+		and _debug_world_frozen
+		and _is_gameplay_running()
+		and not _loading_overlay_blocks_game_input()
+	)
+
+
 func _on_move_changed(move_vector: Vector2) -> void:
-	if not _is_gameplay_input_allowed():
+	if not _is_player_movement_input_allowed():
 		return
 	player_manager.set_move_vector(move_vector)
 
@@ -3616,6 +3806,9 @@ func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = 
 func _on_pause_requested() -> void:
 	if _loading_overlay_blocks_game_input():
 		return
+	if _debug_sandbox_active and _debug_world_frozen:
+		_on_debug_freeze_changed(false)
+		return
 	if _agent_intro_blocks_pause_input() and not _is_user_pause_menu_active():
 		return
 	if _is_gameplay_running():
@@ -4677,6 +4870,8 @@ func _activate_level_select_option() -> void:
 		LEVEL_SELECT_ACTION_MAIN_LOOP:
 			_selected_level_index = LEVELS.size() + 1
 			_start_selected_level()
+		LEVEL_SELECT_ACTION_DEBUG_SANDBOX:
+			_start_debug_sandbox()
 		LEVEL_SELECT_ACTION_GENERATED_TEST:
 			_selected_level_index = LEVELS.size() + 2 + int(option.get("index", 0))
 			_start_selected_level()
@@ -4707,6 +4902,8 @@ func _get_level_select_option_label(option: Dictionary) -> String:
 			return "Missing Level  [unavailable]"
 		LEVEL_SELECT_ACTION_MAIN_LOOP:
 			return "Main Game Loop Test  [floor loop + tally]"
+		LEVEL_SELECT_ACTION_DEBUG_SANDBOX:
+			return "Developer Sandbox  [floor depth + cheats]"
 	return "Back"
 
 
