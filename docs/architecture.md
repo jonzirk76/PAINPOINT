@@ -81,11 +81,11 @@ The dungeon minimap is UI-only rendering of `DungeonManager` state. `DungeonMana
 
 Each generated dungeon floor also chooses one start or combat room as the cat room from the floor seed. `DungeonManager` stores only the chosen room and room-local spawn point; `GameOrchestrator` turns that into a full-floor position when the room is loaded and commands `FaunaManager` to spawn the single floor cat. The cat is background fauna: it avoids player/enemy/spawner danger points but does not participate in combat damage or objective counts.
 
-### Squid Penetration Checker
+### Squid As An Emergent Penetration Checker
 
-The squid-shaped fast enemy intentionally doubles as a persistent autonomous penetration checker. Its speed, tactical movement, crowd separation, knockback response, and repeated doorway approaches make it the project's live canary for leaks in generated-floor domains, transition lanes, facade depth handling, and movement constraints. A squid appearing outside the validated playable domain is a spatial-system defect, not an accepted fast-enemy ability.
+The squid-shaped fast enemy was not assigned or scripted as a penetration checker. That role emerged because its small body and high spawn count produce many ordinary interactions with room edges and doorways; its speed, tactical movement, crowd separation, and knockback response broaden that incidental coverage. It has therefore become the project's live canary for leaks in generated-floor domains, transition lanes, facade depth handling, and movement constraints. A squid appearing outside the validated playable domain is a spatial-system defect, not an accepted fast-enemy ability.
 
-The squid is not necessarily the fast enemy's final production presentation. When the fast enemy receives its eventual visual/gameplay upgrade, preserve the existing squid identity by promoting it into `FaunaManager` as non-combat fauna similar to the cat, while the combat role receives its upgraded presentation. That handoff should retain autonomous roaming or a dedicated sandbox mode that continues to exercise boundaries, while keeping the fauna squid off combat collision layers and out of enemy/objective counts.
+The squid is not necessarily the fast enemy's final production presentation. When the fast enemy receives its eventual visual/gameplay upgrade, preserve the existing squid identity by promoting it into `FaunaManager` as non-combat fauna similar to the cat, while the combat role receives its upgraded presentation. The fauna squid should retain ordinary autonomous roaming, and a sandbox may use multiple instances when deliberate regression coverage is useful, but it should not gain artificial penetration-seeking behavior. Keep the fauna version off combat collision layers and out of enemy/objective counts.
 
 ## Performance Follow-Ups
 
