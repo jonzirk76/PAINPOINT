@@ -46,8 +46,16 @@ const BEHAVIOR_SHOOTER := "shooter"
 const BEHAVIOR_CHASER := "chaser"
 const MIN_KNOCKBACK_WEIGHT := 0.5
 
+enum HordeCommandState {
+	INDEPENDENT,
+	COORDINATED,
+	ORPHANED
+}
+
 @export var max_health: int = 3
 @export var speed: float = 85.0
+## [Description] Multiplies this enemy's movement speed after it survives the loss of its general.
+@export_range(1.0, 3.0, 0.05) var orphaned_speed_multiplier: float = 1.25
 @export var contact_damage: int = 1
 @export var contact_radius: float = 34.0
 @export var contact_cooldown: float = 0.75
@@ -219,6 +227,7 @@ var _collision_add_deferred: bool = false
 var spawn_profile: EnemySpawnProfile = null
 var legion_id: int = 0
 var general_id: int = 0
+var horde_command_state: HordeCommandState = HordeCommandState.INDEPENDENT
 var _spawn_timer: float = 0.0
 var _spawn_active: bool = true
 var _tactical_target_position: Vector2 = Vector2.INF
@@ -252,6 +261,7 @@ func initialize(profile) -> void:
 		return
 	max_health = profile.max_health
 	speed = profile.speed
+	orphaned_speed_multiplier = max(float(profile.orphaned_speed_multiplier), 1.0) if profile.get("orphaned_speed_multiplier") != null else 1.25
 	contact_damage = profile.contact_damage
 	contact_radius = profile.contact_radius
 	contact_cooldown = profile.contact_cooldown
@@ -389,7 +399,7 @@ func _physics_process(delta: float) -> void:
 					intent_velocity = Vector2.ZERO
 				else:
 					intent_velocity *= 0.38
-	intent_velocity *= _get_status_speed_multiplier()
+	intent_velocity *= _get_horde_command_speed_multiplier() * _get_status_speed_multiplier()
 	velocity = intent_velocity + _knockback_velocity + _crowd_separation_velocity
 	_update_agent_visual_state(delta, velocity)
 	_update_visual_direction(velocity)
@@ -418,6 +428,23 @@ func is_general() -> bool:
 func set_legion_identity(new_legion_id: int, new_general_id: int = 0) -> void:
 	legion_id = max(new_legion_id, 0)
 	general_id = max(new_general_id, 0)
+	if general_id > 0 and not is_general():
+		horde_command_state = HordeCommandState.COORDINATED
+	else:
+		horde_command_state = HordeCommandState.INDEPENDENT
+
+
+func enter_orphaned_horde_state() -> void:
+	if is_general():
+		return
+	legion_id = 0
+	general_id = 0
+	horde_command_state = HordeCommandState.ORPHANED
+	clear_tactical_target_position()
+
+
+func get_horde_command_state() -> HordeCommandState:
+	return horde_command_state
 
 
 func set_spawn_enabled(value: bool) -> void:
@@ -596,6 +623,12 @@ func _get_status_speed_multiplier() -> float:
 	if behavior_kind == "boss" or _is_agent_boss():
 		multiplier = max(lerp(1.0, multiplier, 0.45), 0.7)
 	return multiplier
+
+
+func _get_horde_command_speed_multiplier() -> float:
+	if horde_command_state == HordeCommandState.ORPHANED:
+		return max(orphaned_speed_multiplier, 1.0)
+	return 1.0
 
 
 func activate_projectile_shield(duration: float) -> void:

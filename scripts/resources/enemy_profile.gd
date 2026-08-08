@@ -12,6 +12,8 @@ const BEHAVIOR_CYBER_SOLDIER := "cyber_soldier"
 @export_enum("chaser", "shooter", "boss", "repair_drone", "shield_drone", "power_armor", "cyber_soldier") var behavior_kind: String = BEHAVIOR_CHASER
 @export var max_health: int = 3
 @export var speed: float = 85.0
+## [Description] Multiplies movement speed after this enemy survives the loss of its general.
+@export_range(1.0, 3.0, 0.05) var orphaned_speed_multiplier: float = 1.25
 @export var contact_damage: int = 1
 @export var contact_radius: float = 34.0
 @export var contact_cooldown: float = 0.7

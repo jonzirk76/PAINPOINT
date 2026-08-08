@@ -206,14 +206,18 @@ func try_spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary =
 		enemy.set_meta("boss_add", true)
 	var legion_id: int = max(int(spawn_flags.get("legion_id", 0)), 0)
 	var general_id: int = max(int(spawn_flags.get("general_id", 0)), 0)
+	var arrives_orphaned: bool = false
 	if bool(spawn_flags.get("general", false)) and enemy.is_general():
 		general_id = int(enemy.get_instance_id())
 		enemy.set_meta("general_warmup_seconds", float(spawn_flags.get("warmup_seconds", enemy.spawn_profile.warmup_seconds)))
 		enemy.set_meta("general_scaled_spawn_interval", float(spawn_flags.get("scaled_spawn_interval", enemy.spawn_profile.spawn_interval)))
 	elif general_id > 0 and not _legion_controllers.has(general_id):
+		arrives_orphaned = true
 		legion_id = 0
 		general_id = 0
 	enemy.set_legion_identity(legion_id, general_id)
+	if arrives_orphaned:
+		enemy.enter_orphaned_horde_state()
 	if enemy.is_general():
 		_register_legion_controller(enemy)
 	if bool(spawn_flags.get("birth", false)) and enemy.has_method("play_birth_animation"):
@@ -429,8 +433,7 @@ func _release_legion_by_general_id(released_general_id: int) -> void:
 		if not is_instance_valid(member) or member.general_id != released_general_id:
 			continue
 		_tactical_orders.erase(int(member.get_instance_id()))
-		member.set_legion_identity(0, 0)
-		member.clear_tactical_target_position()
+		member.enter_orphaned_horde_state()
 	_tactical_refresh_remaining = 0.0
 
 
