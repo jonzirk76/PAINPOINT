@@ -24,6 +24,10 @@ signal repair_requested(enemy, repair_target, amount: int)
 @export var crowd_separation_padding: float = 10.0
 ## [Description] Controls how often legion controllers rebuild strategic movement orders; enemies follow cached orders between updates.
 @export_range(0.02, 0.5, 0.01) var tactical_refresh_interval: float = 0.1
+## [Description] Controls how often repair drones reconsider their target instead of rescanning the horde every physics frame.
+@export_range(0.05, 1.0, 0.05) var repair_target_refresh_interval: float = 0.25
+## [Description] Controls how often crowd-separation pushes are rebuilt; enemies retain their normal movement between updates.
+@export_range(0.016, 0.2, 0.001) var crowd_separation_refresh_interval: float = 0.033
 
 var enabled: bool = false
 var _enemy_layer: Node = null
@@ -48,6 +52,8 @@ var _has_previous_player_position: bool = false
 var _smoothed_player_velocity: Vector2 = Vector2.ZERO
 var _tactical_refresh_remaining: float = 0.0
 var _tactical_elapsed: float = 0.0
+var _repair_target_refresh_remaining: float = 0.0
+var _crowd_separation_refresh_remaining: float = 0.0
 
 
 func initialize(context: Dictionary) -> void:
@@ -70,6 +76,8 @@ func reset_run() -> void:
 	_smoothed_player_velocity = Vector2.ZERO
 	_tactical_refresh_remaining = 0.0
 	_tactical_elapsed = 0.0
+	_repair_target_refresh_remaining = 0.0
+	_crowd_separation_refresh_remaining = 0.0
 	_boss_add_timer = 0.0
 	enemy_count_changed.emit(0)
 	horde_enemy_count_changed.emit(0)
@@ -137,7 +145,10 @@ func _physics_process(delta: float) -> void:
 	var player_position := _get_player_position()
 	_update_player_velocity(player_position, delta)
 	var player = _get_player_ref()
-	_assign_repair_targets()
+	_repair_target_refresh_remaining -= delta
+	if _repair_target_refresh_remaining <= 0.0:
+		_assign_repair_targets()
+		_repair_target_refresh_remaining = max(repair_target_refresh_interval, 0.05)
 	_update_legion_tactics(player_position, delta)
 	for enemy in _enemies.duplicate():
 		if not is_instance_valid(enemy):
@@ -160,7 +171,10 @@ func _physics_process(delta: float) -> void:
 			if enemy.global_position.distance_squared_to(player.global_position) <= contact_range * contact_range and float(_contact_timers[id]) <= 0.0:
 				_contact_timers[id] = enemy.contact_cooldown
 				player_contact_requested.emit(enemy, player, enemy.contact_damage)
-	_apply_crowd_separation()
+	_crowd_separation_refresh_remaining -= delta
+	if _crowd_separation_refresh_remaining <= 0.0:
+		_apply_crowd_separation()
+		_crowd_separation_refresh_remaining = max(crowd_separation_refresh_interval, 0.016)
 	_update_boss_adds(delta)
 
 
@@ -559,7 +573,7 @@ func _apply_crowd_separation() -> void:
 	var buckets: Dictionary = {}
 	for index in range(valid_enemies.size()):
 		var enemy = valid_enemies[index]
-		var key := _crowd_bucket_key(enemy.global_position, bucket_size)
+		var key: Vector2i = _crowd_bucket_cell(enemy.global_position, bucket_size)
 		var bucket: Array = buckets.get(key, [])
 		bucket.append(index)
 		buckets[key] = bucket
@@ -568,7 +582,7 @@ func _apply_crowd_separation() -> void:
 		var base_cell := _crowd_bucket_cell(first.global_position, bucket_size)
 		for offset_x in range(-1, 2):
 			for offset_y in range(-1, 2):
-				var key := "%d,%d" % [base_cell.x + offset_x, base_cell.y + offset_y]
+				var key := Vector2i(base_cell.x + offset_x, base_cell.y + offset_y)
 				var bucket: Array = buckets.get(key, [])
 				for second_index in bucket:
 					if int(second_index) <= first_index:
@@ -612,11 +626,6 @@ func _get_crowd_separation_bucket_size(valid_enemies: Array) -> float:
 	for enemy in valid_enemies:
 		largest_body_radius = max(largest_body_radius, float(enemy.body_radius))
 	return max(96.0, largest_body_radius * 2.0 + crowd_separation_padding + 16.0)
-
-
-func _crowd_bucket_key(position: Vector2, bucket_size: float) -> String:
-	var cell := _crowd_bucket_cell(position, bucket_size)
-	return "%d,%d" % [cell.x, cell.y]
 
 
 func _crowd_bucket_cell(position: Vector2, bucket_size: float) -> Vector2i:

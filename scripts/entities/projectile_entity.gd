@@ -22,6 +22,8 @@ const HE_TARGET_RETICLE_MAX_RADIUS := 88.0
 @export var visual_reveal_distance: float = 0.0
 ## Controls how high hostile grenades visually lift while traveling.
 @export var hostile_grenade_arc_height: float = 34.0
+## [Description] Controls the procedural projectile animation refresh rate without changing projectile movement or collision cadence.
+@export_range(15.0, 60.0, 1.0) var visual_refresh_rate: float = 30.0
 
 var direction: Vector2 = Vector2.RIGHT
 var damage_packet = null
@@ -44,6 +46,7 @@ var _hostile_he_target_radius: float = 0.0
 var _hostile_he_target_reticle_enabled: bool = false
 var _visual_rotation_offset: float = 0.0
 var _collision_add_deferred: bool = false
+var _visual_refresh_remaining: float = 0.0
 
 
 func _init() -> void:
@@ -100,12 +103,18 @@ func _physics_process(delta: float) -> void:
 	_distance_traveled += step_distance
 	if not visible and _distance_traveled >= visual_reveal_distance:
 		visible = true
-	_check_swept_hit(previous_position, next_position)
+	# Area monitoring is sufficient when the projectile advances by no more than its
+	# radius. Reserve the direct-space ray query for steps that could tunnel.
+	if step_distance > body_radius:
+		_check_swept_hit(previous_position, next_position)
 	if not _is_expired and not ArenaGeometry.contains_point(global_position, arena_bounds, arena_shape):
 		expire("bounds", global_position)
 		return
 	_update_growth(delta)
-	queue_redraw()
+	_visual_refresh_remaining -= delta
+	if _visual_refresh_remaining <= 0.0:
+		queue_redraw()
+		_visual_refresh_remaining = 1.0 / max(visual_refresh_rate, 1.0)
 	if _age >= lifetime_seconds:
 		expire("lifetime", global_position)
 
@@ -454,9 +463,11 @@ func _update_growth(_delta: float) -> void:
 	if damage_packet == null or damage_packet.projectile_growth_per_second <= 0.0:
 		return
 	var max_radius: float = _base_body_radius * max(damage_packet.projectile_max_size_multiplier, 1.0)
-	body_radius = min(_base_body_radius + _base_body_radius * damage_packet.projectile_growth_per_second * _age, max_radius)
+	var next_radius: float = min(_base_body_radius + _base_body_radius * damage_packet.projectile_growth_per_second * _age, max_radius)
+	if is_equal_approx(next_radius, body_radius):
+		return
+	body_radius = next_radius
 	_update_collision_radius()
-	queue_redraw()
 
 
 func _update_collision_radius() -> void:
