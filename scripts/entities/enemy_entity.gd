@@ -114,6 +114,7 @@ var playable_rects: Array[Rect2] = []
 var target_position: Vector2 = Vector2.ZERO
 var _knockback_velocity: Vector2 = Vector2.ZERO
 var _crowd_separation_velocity: Vector2 = Vector2.ZERO
+var _room_spatial_domain = null
 var _hit_flash_remaining: float = 0.0
 var _is_dying: bool = false
 var _death_elapsed: float = 0.0
@@ -475,9 +476,10 @@ func apply_healing(amount: int) -> bool:
 	return health > old_health
 
 
-func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: Array = [], playable_regions: Array = []) -> void:
+func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: Array = [], playable_regions: Array = [], spatial_domain = null) -> void:
 	arena_bounds = bounds
 	arena_shape = shape
+	_room_spatial_domain = spatial_domain
 	wall_rects.clear()
 	for wall in walls:
 		if wall is Rect2:
@@ -682,9 +684,13 @@ func _rebuild_path_blocker_cache() -> void:
 	_path_blocker_rects.clear()
 	_path_blocker_rects.append_array(wall_rects)
 	_path_blocker_rects.append_array(void_rects)
+	if _room_spatial_domain != null and _room_spatial_domain.has_method("get_transition_regions"):
+		_path_blocker_rects.append_array(_room_spatial_domain.get_transition_regions())
 
 
 func _constrain_to_playable(candidate_position: Vector2) -> Vector2:
+	if _room_spatial_domain != null and _room_spatial_domain.has_method("constrain_operational_position"):
+		return _room_spatial_domain.constrain_operational_position(candidate_position, body_radius)
 	return ArenaGeometry.constrain_point_to_playable_regions(candidate_position, arena_bounds, arena_shape, playable_rects, [], body_radius)
 
 

@@ -93,7 +93,7 @@ func offset_transient_enemies(offset: Vector2) -> void:
 		if not is_instance_valid(child) or not child is EnemyEntity:
 			continue
 		child.global_position += offset
-		child.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
+		child.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects, _room_spatial_domain)
 
 
 func set_enabled(value: bool) -> void:
@@ -132,7 +132,7 @@ func set_arena_definition(level_definition) -> void:
 	_dynamic_wall_rects.clear()
 	for enemy in _enemies:
 		if is_instance_valid(enemy):
-			enemy.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
+			enemy.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects, _room_spatial_domain)
 
 
 func set_dynamic_wall_rects(extra_wall_rects: Array[Rect2]) -> void:
@@ -141,7 +141,7 @@ func set_dynamic_wall_rects(extra_wall_rects: Array[Rect2]) -> void:
 	_wall_rects.append_array(extra_wall_rects)
 	for enemy in _enemies:
 		if is_instance_valid(enemy):
-			enemy.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
+			enemy.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects, _room_spatial_domain)
 
 
 func _physics_process(delta: float) -> void:
@@ -201,7 +201,7 @@ func try_spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary =
 		enemy.free()
 		return {"ok": false, "reason": "invalid_active_room_position", "enemy": null}
 	enemy.global_position = spawn_position
-	enemy.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
+	enemy.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects, _room_spatial_domain)
 	if bool(spawn_flags.get("boss_add", false)):
 		enemy.set_meta("boss_add", true)
 	var legion_id: int = max(int(spawn_flags.get("legion_id", 0)), 0)

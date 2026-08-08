@@ -57,6 +57,17 @@ func constrain_walkable_position(position: Vector2, clearance: float, runtime_bl
 	return _constrain_position(position, clearance, _get_walkable_blockers(runtime_blockers))
 
 
+func constrain_operational_position(position: Vector2, clearance: float) -> Vector2:
+	return ArenaGeometry.constrain_point_to_playable_regions(
+		position,
+		arena_bounds,
+		arena_shape,
+		playable_regions,
+		_get_operational_blockers(),
+		clearance
+	)
+
+
 func _contains_position(position: Vector2, clearance: float, blockers: Array[Rect2]) -> bool:
 	if not _position_uses_reachable_floor(position):
 		return false
@@ -149,8 +160,9 @@ func _get_grid_cell(position: Vector2) -> Vector2i:
 
 
 func _get_spawn_blockers(runtime_blockers: Array[Rect2]) -> Array[Rect2]:
-	var blockers := _get_walkable_blockers(runtime_blockers)
-	blockers.append_array(transition_regions)
+	var blockers := _get_operational_blockers()
+	blockers.append_array(layout_spawn_reservations)
+	blockers.append_array(runtime_blockers)
 	return blockers
 
 
@@ -159,6 +171,13 @@ func _get_walkable_blockers(runtime_blockers: Array[Rect2]) -> Array[Rect2]:
 	blockers.append_array(static_blockers)
 	blockers.append_array(layout_spawn_reservations)
 	blockers.append_array(runtime_blockers)
+	return blockers
+
+
+func _get_operational_blockers() -> Array[Rect2]:
+	var blockers: Array[Rect2] = []
+	blockers.append_array(static_blockers)
+	blockers.append_array(transition_regions)
 	return blockers
 
 
