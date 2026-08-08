@@ -6,8 +6,8 @@ signal freeze_changed(enabled: bool)
 signal invincibility_changed(enabled: bool)
 signal max_charge_changed(enabled: bool)
 signal max_overdrive_changed(enabled: bool)
-signal overdrive_effect_changed(effect_id: String, enabled: bool)
-signal permanent_stat_changed(stat_id: String, enabled: bool)
+signal overdrive_effect_changed(effect_id: String, stacks: int)
+signal permanent_stat_changed(stat_id: String, stacks: int)
 
 const OVERDRIVE_OPTIONS := {
 	"spread_shot": "Spread",
@@ -17,11 +17,11 @@ const OVERDRIVE_OPTIONS := {
 	"water_swell": "Water"
 }
 const STAT_OPTIONS := {
-	"faster_reflexes": "Fire Rate",
-	"runner_legs": "Move Speed",
-	"heavy_tears": "Damage",
-	"fat_tears": "Projectile Size",
-	"overdrive_capacity": "OD Capacity"
+	"faster_reflexes": {"label": "Fire Rate", "max": 16},
+	"runner_legs": {"label": "Move Speed", "max": 16},
+	"heavy_tears": {"label": "Damage", "max": 14},
+	"fat_tears": {"label": "Projectile Size", "max": 14},
+	"overdrive_capacity": {"label": "OD Capacity", "max": 12}
 }
 
 var _floor_spin: SpinBox
@@ -100,13 +100,14 @@ func _build_ui() -> void:
 	overdrive_grid.columns = 2
 	root.add_child(overdrive_grid)
 	for effect_id in OVERDRIVE_OPTIONS:
-		_add_id_toggle(overdrive_grid, String(OVERDRIVE_OPTIONS[effect_id]), String(effect_id), overdrive_effect_changed)
+		_add_stack_control(overdrive_grid, String(OVERDRIVE_OPTIONS[effect_id]), String(effect_id), 99, overdrive_effect_changed)
 	_add_heading(root, "Permanent Stats")
 	var stat_grid := GridContainer.new()
 	stat_grid.columns = 2
 	root.add_child(stat_grid)
 	for stat_id in STAT_OPTIONS:
-		_add_id_toggle(stat_grid, String(STAT_OPTIONS[stat_id]), String(stat_id), permanent_stat_changed)
+		var option: Dictionary = STAT_OPTIONS[stat_id]
+		_add_stack_control(stat_grid, String(option["label"]), String(stat_id), int(option["max"]), permanent_stat_changed)
 	_status_label = Label.new()
 	_status_label.text = "Sandbox inactive"
 	_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -128,11 +129,19 @@ func _add_toggle(parent: Control, text: String, target_signal: Signal) -> CheckB
 	return toggle
 
 
-func _add_id_toggle(parent: Control, text: String, id: String, target_signal: Signal) -> void:
-	var toggle := CheckButton.new()
-	toggle.text = text
-	toggle.toggled.connect(func(value: bool) -> void: target_signal.emit(id, value))
-	parent.add_child(toggle)
+func _add_stack_control(parent: Control, text: String, id: String, maximum: int, target_signal: Signal) -> void:
+	var label := Label.new()
+	label.text = text
+	parent.add_child(label)
+	var stacks := SpinBox.new()
+	stacks.min_value = 0
+	stacks.max_value = max(maximum, 1)
+	stacks.step = 1
+	stacks.value = 0
+	stacks.allow_greater = false
+	stacks.custom_minimum_size.x = 92.0
+	stacks.value_changed.connect(func(value: float) -> void: target_signal.emit(id, max(roundi(value), 0)))
+	parent.add_child(stacks)
 
 
 func _on_generate_pressed() -> void:

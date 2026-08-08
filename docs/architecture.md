@@ -95,7 +95,7 @@ The project uses a 1280x720 logical viewport and scales canvas items into a larg
 
 ## Developer Sandbox
 
-The Archive contains a `Developer Sandbox` dungeon entry for testing floor-scaled systems without playing through earlier floors. `DebugSandboxPanel` owns its controls and emits commands upward; `GameOrchestrator` resolves resource IDs and routes commands to the owning managers. The panel can regenerate a selected floor and seed, freeze the world while leaving the player entity movable, enable player invincibility, keep charge shots and overdrive resources full, and deterministically toggle overdrive effects or permanent attributes. Debug overrides are cleared whenever normal gameplay or level select is entered.
+The Archive contains a `Developer Sandbox` dungeon entry for testing floor-scaled systems without playing through earlier floors. `DebugSandboxPanel` owns its controls and emits commands upward; `GameOrchestrator` resolves resource IDs and routes commands to the owning managers. The panel can regenerate a selected floor and seed, freeze the world while leaving the player entity movable, enable player invincibility, keep charge shots and overdrive resources full, and deterministically set exact stack counts for overdrive effects or permanent attributes. Debug overrides are cleared whenever normal gameplay or level select is entered.
 
 ## Data Flow Examples
 

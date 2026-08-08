@@ -2603,18 +2603,18 @@ func _on_debug_max_overdrive_changed(value: bool) -> void:
 	_update_debug_sandbox_status()
 
 
-func _on_debug_overdrive_effect_changed(effect_id: String, value: bool) -> void:
+func _on_debug_overdrive_effect_changed(effect_id: String, stacks: int) -> void:
 	if not _debug_sandbox_active or not DEBUG_OVERDRIVE_EFFECTS.has(effect_id):
 		return
-	_debug_overdrive_effects[effect_id] = value
-	upgrade_manager.set_debug_overdrive_effect(DEBUG_OVERDRIVE_EFFECTS[effect_id], value)
+	_debug_overdrive_effects[effect_id] = max(stacks, 0)
+	upgrade_manager.set_debug_overdrive_effect_stacks(DEBUG_OVERDRIVE_EFFECTS[effect_id], stacks)
 
 
-func _on_debug_permanent_stat_changed(stat_id: String, value: bool) -> void:
+func _on_debug_permanent_stat_changed(stat_id: String, stacks: int) -> void:
 	if not _debug_sandbox_active or not DEBUG_PERMANENT_UPGRADES.has(stat_id):
 		return
-	_debug_permanent_upgrades[stat_id] = value
-	upgrade_manager.set_debug_permanent_upgrade(DEBUG_PERMANENT_UPGRADES[stat_id], value)
+	_debug_permanent_upgrades[stat_id] = max(stacks, 0)
+	upgrade_manager.set_debug_permanent_upgrade_stacks(DEBUG_PERMANENT_UPGRADES[stat_id], stacks)
 
 
 func _apply_debug_cheats() -> void:
@@ -2624,11 +2624,11 @@ func _apply_debug_cheats() -> void:
 	if not _debug_sandbox_active:
 		return
 	for effect_id in _debug_overdrive_effects:
-		if bool(_debug_overdrive_effects[effect_id]) and DEBUG_OVERDRIVE_EFFECTS.has(effect_id):
-			upgrade_manager.set_debug_overdrive_effect(DEBUG_OVERDRIVE_EFFECTS[effect_id], true)
+		if int(_debug_overdrive_effects[effect_id]) > 0 and DEBUG_OVERDRIVE_EFFECTS.has(effect_id):
+			upgrade_manager.set_debug_overdrive_effect_stacks(DEBUG_OVERDRIVE_EFFECTS[effect_id], int(_debug_overdrive_effects[effect_id]))
 	for stat_id in _debug_permanent_upgrades:
-		if bool(_debug_permanent_upgrades[stat_id]) and DEBUG_PERMANENT_UPGRADES.has(stat_id):
-			upgrade_manager.set_debug_permanent_upgrade(DEBUG_PERMANENT_UPGRADES[stat_id], true)
+		if int(_debug_permanent_upgrades[stat_id]) > 0 and DEBUG_PERMANENT_UPGRADES.has(stat_id):
+			upgrade_manager.set_debug_permanent_upgrade_stacks(DEBUG_PERMANENT_UPGRADES[stat_id], int(_debug_permanent_upgrades[stat_id]))
 
 
 func _disable_debug_sandbox() -> void:

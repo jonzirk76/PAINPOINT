@@ -229,12 +229,13 @@ func set_debug_max_overdrive(value: bool) -> void:
 	_emit_upgrade_state()
 
 
-func set_debug_overdrive_effect(effect, value: bool) -> void:
+func set_debug_overdrive_effect_stacks(effect, stacks: int) -> void:
 	if effect == null:
 		return
 	var id := String(effect.id)
-	if value:
-		_overdrive_effects[id] = {"effect": effect, "stacks": 1}
+	var safe_stacks: int = max(stacks, 0)
+	if safe_stacks > 0:
+		_overdrive_effects[id] = {"effect": effect, "stacks": safe_stacks}
 	else:
 		_overdrive_effects.erase(id)
 	if _debug_max_overdrive:
@@ -242,16 +243,17 @@ func set_debug_overdrive_effect(effect, value: bool) -> void:
 	_emit_upgrade_state()
 
 
-func set_debug_permanent_upgrade(upgrade, value: bool) -> void:
+func set_debug_permanent_upgrade_stacks(upgrade, stacks: int) -> void:
 	if upgrade == null:
 		return
 	var id: String = upgrade.get_stack_key() if upgrade.has_method("get_stack_key") else String(upgrade.id)
-	if value:
+	var safe_stacks: int = clamp(stacks, 0, int(upgrade.max_stacks))
+	if safe_stacks > 0:
 		_permanent_upgrades[id] = {
 			"upgrade": upgrade,
 			"display_name": upgrade.get_stack_display_name(),
-			"stacks": 1,
-			"total_amount": float(upgrade.amount),
+			"stacks": safe_stacks,
+			"total_amount": float(upgrade.amount) * float(safe_stacks),
 			"max_stacks": int(upgrade.max_stacks)
 		}
 	else:
