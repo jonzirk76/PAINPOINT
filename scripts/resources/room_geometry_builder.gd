@@ -8,6 +8,7 @@ const WALL_TILE_SIZE: float = CELL_SIZE.x / float(CELL_TILE_COLUMNS)
 const WALL_THICKNESS := WALL_TILE_SIZE
 const DEFAULT_WALL_HEIGHT_TILES := 3
 const OPENING_WIDTH := WALL_TILE_SIZE * 4.0
+const DOOR_SPAWN_CLEAR_DEPTH_TILES := DEFAULT_WALL_HEIGHT_TILES + 1
 const TRIGGER_DEPTH := WALL_TILE_SIZE * 2.0
 const ENTRY_MARGIN := 96.0
 
@@ -329,8 +330,10 @@ static func get_spawn_position(cells: Array[Vector2i]) -> Vector2:
 static func get_door_clear_rect(cells: Array[Vector2i], local_cell: Vector2i, direction: String) -> Rect2:
 	var cell_rect := get_cell_rect(cells, local_cell)
 	var opening := get_opening_rect(cells, local_cell, direction)
-	var clear_width: float = max(OPENING_WIDTH - WALL_TILE_SIZE, WALL_TILE_SIZE * 2.0)
-	var clear_depth: float = WALL_TILE_SIZE * 3.0
+	# Cover the complete doorway silhouette, including the raised wall facade, and
+	# reserve one additional floor tile so birth visuals cannot appear behind it.
+	var clear_width: float = OPENING_WIDTH
+	var clear_depth: float = WALL_TILE_SIZE * float(DOOR_SPAWN_CLEAR_DEPTH_TILES)
 	var center := opening.get_center()
 	match direction:
 		"north":
