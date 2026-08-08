@@ -116,6 +116,7 @@ This project is a Godot 4.x GDScript top-down arena shooter. Keep the architectu
 - Spawners should always drop one reward when destroyed: usually an ammo-based shot upgrade, with a chance to drop a full heal instead.
 - Spawners should request a small opening wave of enemies when a room starts so combat begins as suppression pressure, not a pure spawner-rush race.
 - Enemies should keep local hit/death feedback and bullet knockback when combat logic changes.
+- Enemies that lose their general must immediately abandon legion tactics and return to their original single-minded player pursuit. Keep that fallback strategically simple, but route it through the normal obstacle-aware path resolver so enemies still navigate around validated walls and voids.
 - The current squid-shaped fast enemy has become an emergent autonomous penetration checker for generated-floor, doorway, and movement-boundary leaks: its small body and high spawn count repeatedly exercise boundaries through ordinary enemy behavior, not bespoke testing logic. When the fast enemy receives its eventual production upgrade, preserve the existing squid identity by promoting it into `FaunaManager` as non-combat fauna similar to the cat; the upgraded fast enemy may receive a new combat visual. Preserve the squid's value as a boundary-regression canary without inventing penetration-seeking AI for it.
 - Chain lightning must show visible jump arcs through `EffectsManager`; do not route chain damage invisibly.
 - Restart controls must support keyboard and controller while in the `DOWN` state.

@@ -210,6 +210,9 @@ func try_spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary =
 		general_id = int(enemy.get_instance_id())
 		enemy.set_meta("general_warmup_seconds", float(spawn_flags.get("warmup_seconds", enemy.spawn_profile.warmup_seconds)))
 		enemy.set_meta("general_scaled_spawn_interval", float(spawn_flags.get("scaled_spawn_interval", enemy.spawn_profile.spawn_interval)))
+	elif general_id > 0 and not _legion_controllers.has(general_id):
+		legion_id = 0
+		general_id = 0
 	enemy.set_legion_identity(legion_id, general_id)
 	if enemy.is_general():
 		_register_legion_controller(enemy)
@@ -414,7 +417,12 @@ func _on_general_spawn_ready_for_tactics(general, _spawn_position: Vector2) -> v
 func _release_legion(general: EnemyEntity) -> void:
 	if general == null:
 		return
-	var released_general_id: int = general.general_id
+	_release_legion_by_general_id(general.general_id)
+
+
+func _release_legion_by_general_id(released_general_id: int) -> void:
+	if released_general_id <= 0:
+		return
 	_legion_controllers.erase(released_general_id)
 	_generals_by_id.erase(released_general_id)
 	for member in _enemies:
@@ -445,9 +453,8 @@ func _refresh_legion_tactics(player_position: Vector2, delta: float) -> void:
 	for legion_index in range(active_general_ids.size()):
 		var active_general_id: int = int(active_general_ids[legion_index])
 		var general: EnemyEntity = _generals_by_id.get(active_general_id, null) as EnemyEntity
-		if general == null or not is_instance_valid(general):
-			_legion_controllers.erase(active_general_id)
-			_generals_by_id.erase(active_general_id)
+		if general == null or not is_instance_valid(general) or general.health <= 0:
+			_release_legion_by_general_id(active_general_id)
 			continue
 		var members: Array = []
 		for enemy in _enemies:

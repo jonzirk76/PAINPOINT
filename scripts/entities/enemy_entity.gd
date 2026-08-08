@@ -429,7 +429,10 @@ func set_tactical_target_position(new_target_position: Vector2) -> void:
 
 
 func clear_tactical_target_position() -> void:
+	if _tactical_target_position == Vector2.INF:
+		return
 	_tactical_target_position = Vector2.INF
+	_invalidate_path_cache()
 
 
 func delay_next_spawn_until(delay_seconds: float) -> void:
