@@ -8,8 +8,9 @@ const BEHAVIOR_REPAIR_DRONE := "repair_drone"
 const BEHAVIOR_SHIELD_DRONE := "shield_drone"
 const BEHAVIOR_POWER_ARMOR := "power_armor"
 const BEHAVIOR_CYBER_SOLDIER := "cyber_soldier"
+const BEHAVIOR_COMMISSAR := "commissar"
 
-@export_enum("chaser", "shooter", "boss", "repair_drone", "shield_drone", "power_armor", "cyber_soldier") var behavior_kind: String = BEHAVIOR_CHASER
+@export_enum("chaser", "shooter", "boss", "repair_drone", "shield_drone", "power_armor", "cyber_soldier", "commissar") var behavior_kind: String = BEHAVIOR_CHASER
 @export var max_health: int = 3
 @export var speed: float = 85.0
 ## [Description] Multiplies movement speed after this enemy survives the loss of its general.
@@ -66,3 +67,5 @@ const BEHAVIOR_CYBER_SOLDIER := "cyber_soldier"
 @export var special_autocannon_shot_interval: float = 0.28
 ## Enables procedural agent boss behavior when this profile is spawned as a boss.
 @export var agent_program: AgentBossProgram = null
+## [Description] Configures tiered veteran, discipline, and support-corps abilities for Commissar enemies.
+@export var commissar_program: CommissarProgram = null

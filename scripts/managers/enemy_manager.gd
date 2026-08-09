@@ -10,6 +10,7 @@ signal enemy_health_changed(enemy, old_value: int, new_value: int)
 signal enemy_count_changed(count: int)
 signal horde_enemy_count_changed(count: int)
 signal player_contact_requested(enemy, player, damage: int)
+signal player_pushback_requested(direction: Vector2, force: float)
 signal hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: Dictionary)
 signal repair_requested(enemy, repair_target, amount: int)
 
@@ -60,6 +61,12 @@ var _tactics_last_ms: float = 0.0
 var _tactics_peak_ms: float = 0.0
 var _crowd_last_ms: float = 0.0
 var _crowd_peak_ms: float = 0.0
+var _commissar_discipline_remaining_by_id: Dictionary = {}
+var _commissar_discipline_sequence_by_id: Dictionary = {}
+var _commissar_rogue_by_general_id: Dictionary = {}
+var _rogue_escape_remaining_by_id: Dictionary = {}
+var _orphan_retreat_remaining_by_id: Dictionary = {}
+var _panicked_repair_drones_by_id: Dictionary = {}
 
 
 func initialize(context: Dictionary) -> void:
@@ -88,6 +95,12 @@ func reset_run() -> void:
 	_tactics_peak_ms = 0.0
 	_crowd_last_ms = 0.0
 	_crowd_peak_ms = 0.0
+	_commissar_discipline_remaining_by_id.clear()
+	_commissar_discipline_sequence_by_id.clear()
+	_commissar_rogue_by_general_id.clear()
+	_rogue_escape_remaining_by_id.clear()
+	_orphan_retreat_remaining_by_id.clear()
+	_panicked_repair_drones_by_id.clear()
 	_boss_add_timer = 0.0
 	enemy_count_changed.emit(0)
 	horde_enemy_count_changed.emit(0)
@@ -163,6 +176,8 @@ func _physics_process(delta: float) -> void:
 		_assign_repair_targets()
 		_repair_target_refresh_remaining = max(repair_target_refresh_interval, 0.05)
 	_update_legion_tactics(player_position, delta)
+	_update_commissar_discipline(delta)
+	_update_panicked_repair_drones(delta)
 	for enemy in _enemies.duplicate():
 		if not is_instance_valid(enemy):
 			_enemies.erase(enemy)
@@ -177,11 +192,17 @@ func _physics_process(delta: float) -> void:
 		_contact_timers[id] = max(float(_contact_timers.get(id, 0.0)) - delta, 0.0)
 		if enemy.has_method("is_birth_animation_active") and bool(enemy.is_birth_animation_active()):
 			continue
-		if int(enemy.contact_damage) <= 0:
-			continue
 		if player != null and is_instance_valid(player):
 			var contact_range: float = _get_effective_contact_range(enemy, player)
-			if enemy.global_position.distance_squared_to(player.global_position) <= contact_range * contact_range and float(_contact_timers[id]) <= 0.0:
+			var touching_player: bool = enemy.global_position.distance_squared_to(player.global_position) <= contact_range * contact_range
+			if enemy.behavior_kind == "commissar" and touching_player and float(_contact_timers[id]) <= 0.0 and bool(enemy.is_commissar_charge_active()):
+				var push_request: Dictionary = enemy.consume_commissar_charge_push()
+				if not push_request.is_empty():
+					var push_direction: Vector2 = push_request.get("direction", Vector2.RIGHT)
+					_contact_timers[id] = max(float(enemy.contact_cooldown), 0.35)
+					player_pushback_requested.emit(push_direction, float(push_request.get("force", 0.0)))
+					continue
+			if int(enemy.contact_damage) > 0 and touching_player and float(_contact_timers[id]) <= 0.0:
 				_contact_timers[id] = enemy.contact_cooldown
 				player_contact_requested.emit(enemy, player, enemy.contact_damage)
 	_crowd_separation_refresh_remaining -= delta
@@ -238,6 +259,10 @@ func try_spawn_enemy(profile, spawn_position: Vector2, spawn_flags: Dictionary =
 	enemy.shot_ready.connect(_on_enemy_shot_ready)
 	if enemy.has_signal("repair_ready"):
 		enemy.repair_ready.connect(_on_enemy_repair_ready)
+	if enemy.has_signal("commissar_execution_ready"):
+		enemy.commissar_execution_ready.connect(_on_commissar_execution_ready)
+	if enemy.has_signal("commissar_execution_interrupted"):
+		enemy.commissar_execution_interrupted.connect(_on_commissar_execution_interrupted)
 	_enemies.append(enemy)
 	if bool(spawn_flags.get("inactive", false)):
 		enemy.velocity = Vector2.ZERO
@@ -378,11 +403,17 @@ func _on_enemy_health_depleted(enemy) -> void:
 	if not _enemies.has(enemy):
 		return
 	_enemies.erase(enemy)
-	_contact_timers.erase(enemy.get_instance_id())
+	var defeated_id: int = int(enemy.get_instance_id())
+	_contact_timers.erase(defeated_id)
+	_rogue_escape_remaining_by_id.erase(defeated_id)
+	_orphan_retreat_remaining_by_id.erase(defeated_id)
+	_panicked_repair_drones_by_id.erase(defeated_id)
+	_clear_commissar_rogue_reference(enemy)
 	if enemy.is_general():
 		_release_legion(enemy)
-		general_defeated.emit(enemy, enemy.score_value)
-	else:
+		if not bool(enemy.get_meta("no_defeat_reward", false)):
+			general_defeated.emit(enemy, enemy.score_value)
+	elif not bool(enemy.get_meta("no_defeat_reward", false)):
 		enemy_defeated.emit(enemy, enemy.score_value)
 	enemy_count_changed.emit(_enemies.size())
 	horde_enemy_count_changed.emit(get_horde_enemy_count())
@@ -418,6 +449,120 @@ func _on_enemy_repair_ready(enemy, repair_target, amount: int) -> void:
 		enemy_target.apply_healing(amount)
 
 
+func _on_commissar_execution_ready(commissar, target) -> void:
+	var general := commissar as EnemyEntity
+	var repair_drone := target as EnemyEntity
+	if general == null or repair_drone == null or not is_instance_valid(general) or not is_instance_valid(repair_drone):
+		return
+	if not _enemies.has(general) or not _enemies.has(repair_drone) or not repair_drone.is_rogue_horde_enemy():
+		return
+	_commissar_rogue_by_general_id.erase(int(general.general_id))
+	_rogue_escape_remaining_by_id.erase(int(repair_drone.get_instance_id()))
+	_panicked_repair_drones_by_id.erase(int(repair_drone.get_instance_id()))
+	repair_drone.execute_for_cowardice()
+
+
+func _on_commissar_execution_interrupted(commissar, target) -> void:
+	var general := commissar as EnemyEntity
+	var repair_drone := target as EnemyEntity
+	if general != null and is_instance_valid(general):
+		_commissar_rogue_by_general_id.erase(int(general.general_id))
+	if repair_drone != null and is_instance_valid(repair_drone) and repair_drone.is_rogue_horde_enemy():
+		var repair_drone_id: int = int(repair_drone.get_instance_id())
+		_rogue_escape_remaining_by_id[repair_drone_id] = max(float(general.commissar_program.rogue_escape_seconds), 0.1) if general != null and general.commissar_program != null else 4.8
+		_panicked_repair_drones_by_id[repair_drone_id] = repair_drone
+
+
+func _update_commissar_discipline(delta: float) -> void:
+	for general_id_value in _commissar_discipline_remaining_by_id.keys().duplicate():
+		var general_id: int = int(general_id_value)
+		var general: EnemyEntity = _generals_by_id.get(general_id, null) as EnemyEntity
+		if general == null or not is_instance_valid(general) or general.health <= 0 or general.commissar_program == null:
+			_commissar_discipline_remaining_by_id.erase(general_id)
+			_commissar_discipline_sequence_by_id.erase(general_id)
+			_commissar_rogue_by_general_id.erase(general_id)
+			continue
+		if _commissar_rogue_by_general_id.has(general_id):
+			var existing_rogue: EnemyEntity = _commissar_rogue_by_general_id[general_id] as EnemyEntity
+			if existing_rogue != null and is_instance_valid(existing_rogue) and _enemies.has(existing_rogue):
+				continue
+			_commissar_rogue_by_general_id.erase(general_id)
+		var remaining: float = max(float(_commissar_discipline_remaining_by_id.get(general_id, 0.0)) - delta, 0.0)
+		_commissar_discipline_remaining_by_id[general_id] = remaining
+		if remaining > 0.0:
+			continue
+		var candidates: Array[EnemyEntity] = _get_disciplined_repair_drones(general_id)
+		if candidates.size() < max(int(general.commissar_program.minimum_corps_for_discipline), 1):
+			_commissar_discipline_remaining_by_id[general_id] = 1.0
+			continue
+		var discipline_sequence: int = max(int(_commissar_discipline_sequence_by_id.get(general_id, 0)), 0)
+		var selected_index: int = discipline_sequence % candidates.size()
+		_commissar_discipline_sequence_by_id[general_id] = discipline_sequence + 1
+		var rogue: EnemyEntity = candidates[selected_index]
+		if general.start_commissar_execution(rogue):
+			rogue.enter_rogue_horde_state(general.global_position)
+			_commissar_rogue_by_general_id[general_id] = rogue
+			var rogue_id: int = int(rogue.get_instance_id())
+			_rogue_escape_remaining_by_id[rogue_id] = max(float(general.commissar_program.rogue_escape_seconds), 0.1)
+			_panicked_repair_drones_by_id[rogue_id] = rogue
+		_commissar_discipline_remaining_by_id[general_id] = max(float(general.commissar_program.discipline_interval), 0.5)
+
+
+func _get_disciplined_repair_drones(general_id: int) -> Array[EnemyEntity]:
+	var candidates: Array[EnemyEntity] = []
+	for enemy_node in _enemies:
+		var enemy := enemy_node as EnemyEntity
+		if enemy == null or not is_instance_valid(enemy) or enemy.health <= 0:
+			continue
+		if enemy.general_id == general_id and enemy.behavior_kind == "repair_drone" and not enemy.is_rogue_horde_enemy():
+			candidates.append(enemy)
+	candidates.sort_custom(func(a: EnemyEntity, b: EnemyEntity) -> bool: return a.get_instance_id() < b.get_instance_id())
+	return candidates
+
+
+func _update_panicked_repair_drones(delta: float) -> void:
+	for enemy_id_value in _rogue_escape_remaining_by_id.keys().duplicate():
+		var enemy_id: int = int(enemy_id_value)
+		var rogue: EnemyEntity = _panicked_repair_drones_by_id.get(enemy_id, null) as EnemyEntity
+		if rogue == null or not is_instance_valid(rogue) or not rogue.is_rogue_horde_enemy():
+			_rogue_escape_remaining_by_id.erase(enemy_id)
+			_panicked_repair_drones_by_id.erase(enemy_id)
+			continue
+		var escape_remaining: float = float(_rogue_escape_remaining_by_id.get(enemy_id, 0.0)) - delta
+		if escape_remaining <= 0.0:
+			_rogue_escape_remaining_by_id.erase(enemy_id)
+			_panicked_repair_drones_by_id.erase(enemy_id)
+			_clear_commissar_rogue_reference(rogue)
+			rogue.retreat_from_combat()
+		else:
+			_rogue_escape_remaining_by_id[enemy_id] = escape_remaining
+	for enemy_id_value in _orphan_retreat_remaining_by_id.keys().duplicate():
+		var enemy_id: int = int(enemy_id_value)
+		var orphan: EnemyEntity = _panicked_repair_drones_by_id.get(enemy_id, null) as EnemyEntity
+		if orphan == null or not is_instance_valid(orphan) or not orphan.is_orphaned_horde_enemy():
+			_orphan_retreat_remaining_by_id.erase(enemy_id)
+			_panicked_repair_drones_by_id.erase(enemy_id)
+			continue
+		if orphan.has_active_repair_target():
+			_orphan_retreat_remaining_by_id[enemy_id] = max(float(orphan.get("repair_cooldown")), 0.5) + 1.5
+			continue
+		var retreat_remaining: float = float(_orphan_retreat_remaining_by_id.get(enemy_id, 0.0)) - delta
+		if retreat_remaining <= 0.0:
+			_orphan_retreat_remaining_by_id.erase(enemy_id)
+			_panicked_repair_drones_by_id.erase(enemy_id)
+			orphan.retreat_from_combat()
+		else:
+			_orphan_retreat_remaining_by_id[enemy_id] = retreat_remaining
+
+
+func _clear_commissar_rogue_reference(enemy: EnemyEntity) -> void:
+	if enemy == null:
+		return
+	for general_id_value in _commissar_rogue_by_general_id.keys().duplicate():
+		if _commissar_rogue_by_general_id[general_id_value] == enemy:
+			_commissar_rogue_by_general_id.erase(general_id_value)
+
+
 func _register_legion_controller(general: EnemyEntity) -> void:
 	if general == null or not general.is_general():
 		return
@@ -425,6 +570,9 @@ func _register_legion_controller(general: EnemyEntity) -> void:
 	controller.initialize(general, String(general.spawn_profile.tactics_kind))
 	_legion_controllers[general.general_id] = controller
 	_generals_by_id[general.general_id] = general
+	if general.behavior_kind == "commissar" and general.commissar_program != null:
+		_commissar_discipline_remaining_by_id[general.general_id] = max(float(general.commissar_program.first_discipline_delay), 0.1)
+		_commissar_discipline_sequence_by_id[general.general_id] = 0
 	_tactical_refresh_remaining = 0.0
 	if not general.spawn_ready.is_connected(_on_general_spawn_ready_for_tactics):
 		general.spawn_ready.connect(_on_general_spawn_ready_for_tactics)
@@ -447,13 +595,25 @@ func _release_legion(general: EnemyEntity) -> void:
 func _release_legion_by_general_id(released_general_id: int) -> void:
 	if released_general_id <= 0:
 		return
+	var released_general: EnemyEntity = _generals_by_id.get(released_general_id, null) as EnemyEntity
+	var orphan_retreat_delay := 3.2
+	if released_general != null and is_instance_valid(released_general) and released_general.commissar_program != null:
+		orphan_retreat_delay = max(float(released_general.commissar_program.orphan_retreat_delay), 0.1)
 	_legion_controllers.erase(released_general_id)
 	_generals_by_id.erase(released_general_id)
+	_commissar_discipline_remaining_by_id.erase(released_general_id)
+	_commissar_discipline_sequence_by_id.erase(released_general_id)
+	_commissar_rogue_by_general_id.erase(released_general_id)
 	for member in _enemies:
 		if not is_instance_valid(member) or member.general_id != released_general_id:
 			continue
 		_tactical_orders.erase(int(member.get_instance_id()))
 		member.enter_orphaned_horde_state()
+		if member.behavior_kind == "repair_drone":
+			var member_id: int = int(member.get_instance_id())
+			_rogue_escape_remaining_by_id.erase(member_id)
+			_orphan_retreat_remaining_by_id[member_id] = orphan_retreat_delay
+			_panicked_repair_drones_by_id[member_id] = member
 	_tactical_refresh_remaining = 0.0
 
 
@@ -484,7 +644,7 @@ func _refresh_legion_tactics(player_position: Vector2, delta: float) -> void:
 			continue
 		var members: Array = []
 		for enemy in _enemies:
-			if is_instance_valid(enemy) and not enemy.is_general() and enemy.general_id == active_general_id:
+			if is_instance_valid(enemy) and not enemy.is_general() and enemy.general_id == active_general_id and not enemy.is_rogue_horde_enemy():
 				members.append(enemy)
 		var controller = _legion_controllers.get(active_general_id, null)
 		if controller == null:
@@ -493,6 +653,7 @@ func _refresh_legion_tactics(player_position: Vector2, delta: float) -> void:
 			"members": members,
 			"player_position": player_position,
 			"player_velocity": _smoothed_player_velocity,
+			"general_position": general.global_position,
 			"arena_center": _arena_bounds.get_center(),
 			"arena_half_size": _arena_bounds.size * 0.5,
 			"legion_index": legion_index,
@@ -528,10 +689,36 @@ func _assign_repair_targets() -> void:
 func _get_repair_target_for(repair_drone: EnemyEntity) -> Node:
 	if repair_drone == null or not is_instance_valid(repair_drone):
 		return null
+	if repair_drone.is_rogue_horde_enemy():
+		return null
 	var repair_radius: float = max(float(repair_drone.repair_radius), 1.0)
-	var search_radius: float = max(repair_radius * 2.2, float(repair_drone.preferred_distance))
 	var health_ratio_threshold: float = clamp(float(repair_drone.repair_target_health_ratio), 0.0, 1.0)
+	if repair_drone.is_orphaned_horde_enemy():
+		return _get_any_enemy_repair_target_for(repair_drone, repair_radius * 1.05, health_ratio_threshold)
+	var search_radius: float = max(repair_radius * 2.2, float(repair_drone.preferred_distance))
 	return _get_large_enemy_repair_target_for(repair_drone, search_radius, health_ratio_threshold)
+
+
+func _get_any_enemy_repair_target_for(repair_drone: EnemyEntity, search_radius: float, health_ratio_threshold: float) -> EnemyEntity:
+	var search_radius_squared: float = search_radius * search_radius
+	var best_target: EnemyEntity = null
+	var best_score := INF
+	for candidate in _enemies:
+		var candidate_enemy := candidate as EnemyEntity
+		if candidate_enemy == null or not is_instance_valid(candidate_enemy) or candidate_enemy == repair_drone:
+			continue
+		if candidate_enemy.health <= 0 or candidate_enemy.health >= candidate_enemy.max_health:
+			continue
+		if repair_drone.global_position.distance_squared_to(candidate_enemy.global_position) > search_radius_squared:
+			continue
+		var health_ratio: float = float(candidate_enemy.health) / float(max(candidate_enemy.max_health, 1))
+		if health_ratio > health_ratio_threshold:
+			continue
+		var score: float = _get_repair_target_score(repair_drone, candidate_enemy)
+		if score < best_score:
+			best_score = score
+			best_target = candidate_enemy
+	return best_target
 
 
 func _get_large_enemy_repair_target_for(repair_drone: EnemyEntity, search_radius: float, health_ratio_threshold: float) -> EnemyEntity:
@@ -572,7 +759,7 @@ func _is_priority_repair_enemy(enemy: EnemyEntity) -> bool:
 	if enemy == null or not is_instance_valid(enemy):
 		return false
 	match String(enemy.behavior_kind):
-		"boss", "power_armor", "cyber_soldier":
+		"boss", "power_armor", "cyber_soldier", "commissar":
 			return true
 	return float(enemy.body_radius) >= 24.0 or int(enemy.max_health) >= 8
 

@@ -14,7 +14,7 @@ class_name EnemySpawnProfile
 ## Controls how long the general's projectile shield remains after spawning.
 @export var projectile_shield_after_spawn_seconds: float = 0.34
 ## Identifies the initial tactics policy used for this general's legion.
-@export_enum("independent", "fan_out", "concentrate", "intercept") var tactics_kind: String = "independent"
+@export_enum("independent", "fan_out", "concentrate", "intercept", "support_corps") var tactics_kind: String = "independent"
 ## Allows this general to switch tactics in response to player movement and arena position.
 @export var adaptive_tactics: bool = false
 ## Player speeds at or below this value are treated as stationary and invite a fan-out maneuver.
@@ -28,4 +28,4 @@ class_name EnemySpawnProfile
 ## Minimum time an adaptive doctrine remains active before another doctrine can replace it.
 @export var adaptive_tactic_hold_seconds: float = 0.85
 ## Selects the legacy-inspired procedural chassis used to distinguish this general from ordinary enemies.
-@export_enum("basic", "fast", "shooter", "tank") var visual_kind: String = "basic"
+@export_enum("basic", "fast", "shooter", "tank", "commissar") var visual_kind: String = "basic"

@@ -1378,16 +1378,20 @@ func _configure_encounter_test_room(room_id: String, forced_profiles: Array[Reso
 		level.encounter_budget = 0
 	if test_options.has("randomize_agent_boss_each_load"):
 		level.randomize_agent_boss_each_load = bool(test_options.get("randomize_agent_boss_each_load", false))
+	if test_options.has("max_active_enemies"):
+		level.max_active_enemies = max(int(test_options.get("max_active_enemies", level.max_active_enemies)), 1)
 	level.initial_spawn_batch_multiplier_override = 0 if bool(test_options.get("disable_initial_spawns", true)) else -1
 	var spawner_count: int = max(int(test_options.get("spawner_count", 0)), 0)
-	level.spawner_placements = _build_encounter_test_spawner_placements(level, spawner_count, bool(test_options.get("passive_spawners", true)))
+	var spawner_profile: Resource = test_options.get("spawner_profile", null) as Resource
+	var spawner_warmup_seconds: float = float(test_options.get("spawner_warmup_seconds", -1.0))
+	level.spawner_placements = _build_encounter_test_spawner_placements(level, spawner_count, bool(test_options.get("passive_spawners", true)), spawner_profile, spawner_warmup_seconds)
 	var empty_positions: Array[Vector2] = []
 	level.spawner_positions = empty_positions
 	state["level_definition"] = level
 	_rooms[room_id] = state
 
 
-func _build_encounter_test_spawner_placements(level: LevelDefinition, spawner_count: int, passive_spawners: bool) -> Array[Resource]:
+func _build_encounter_test_spawner_placements(level: LevelDefinition, spawner_count: int, passive_spawners: bool, profile_override: Resource = null, warmup_override: float = -1.0) -> Array[Resource]:
 	var placements: Array[Resource] = []
 	if level == null or spawner_count <= 0:
 		return placements
@@ -1401,8 +1405,8 @@ func _build_encounter_test_spawner_placements(level: LevelDefinition, spawner_co
 	for index in range(spawner_count):
 		var placement = SPAWNER_PLACEMENT_SCRIPT.new()
 		placement.position = source_positions[index % source_positions.size()] if not source_positions.is_empty() else _get_encounter_test_spawner_fallback_position(level, index, spawner_count)
-		placement.profile = _make_encounter_test_spawner_profile(passive_spawners)
-		placement.warmup_seconds = 999.0 if passive_spawners else 2.8 + float(index) * 0.8
+		placement.profile = profile_override.duplicate(true) if profile_override != null else _make_encounter_test_spawner_profile(passive_spawners)
+		placement.warmup_seconds = warmup_override if warmup_override >= 0.0 else (999.0 if passive_spawners else 2.8 + float(index) * 0.8)
 		placements.append(placement)
 	return placements
 

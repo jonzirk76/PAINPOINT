@@ -18,6 +18,8 @@ const ENCOUNTER_TEST_POWER_ARMOR_ROCKET := preload("res://resources/enemies/powe
 const ENCOUNTER_TEST_POWER_ARMOR_GRENADE := preload("res://resources/enemies/power_armor_grenade.tres")
 const ENCOUNTER_TEST_CYBER_SOLDIER := preload("res://resources/enemies/cyber_soldier.tres")
 const ENCOUNTER_TEST_CYBER_SOLDIER_TELEPORT := preload("res://resources/enemies/cyber_soldier_teleport.tres")
+const ENCOUNTER_TEST_COMMISSAR := preload("res://resources/spawners/commissar_spawner.tres")
+const COMMISSAR_ENCOUNTER_TEST_INDEX := 4
 const GENERATED_ENCOUNTER_TESTS := [
 	{
 		"label": "Generated Agent Intro Test",
@@ -70,6 +72,22 @@ const GENERATED_ENCOUNTER_TESTS := [
 			"spawner_count": 0,
 			"disable_initial_spawns": true,
 			"extra_enemy_slots": 1
+		}
+	},
+	{
+		"label": "Generated Commissar Test",
+		"summary": "tier-one Commissar + repair corps",
+		"floor": 7,
+		"seed": 47707,
+		"room_kind": "challenge",
+		"profiles": [],
+		"options": {
+			"spawner_count": 1,
+			"spawner_profile": ENCOUNTER_TEST_COMMISSAR,
+			"spawner_warmup_seconds": 0.7,
+			"disable_initial_spawns": true,
+			"passive_spawners": false,
+			"max_active_enemies": 11
 		}
 	}
 ]
@@ -539,6 +557,7 @@ func _connect_manager_signals() -> void:
 	_connect_once(enemy_manager, &"horde_enemy_count_changed", spawner_manager.set_enemy_count)
 	_connect_once(enemy_manager, &"enemy_count_changed", _on_enemy_count_changed)
 	_connect_once(enemy_manager, &"player_contact_requested", _on_player_contact_requested)
+	_connect_once(enemy_manager, &"player_pushback_requested", _on_player_pushback_requested)
 	_connect_once(enemy_manager, &"hostile_shot_requested", _on_hostile_shot_requested)
 	_connect_once(enemy_manager, &"repair_requested", _on_enemy_repair_requested)
 
@@ -640,6 +659,7 @@ func _ensure_debug_sandbox_panel() -> void:
 	_debug_sandbox_panel.name = "DebugSandboxPanel"
 	ui_layer.add_child(_debug_sandbox_panel)
 	_connect_once(_debug_sandbox_panel, &"generation_requested", _on_debug_generation_requested)
+	_connect_once(_debug_sandbox_panel, &"commissar_test_requested", _on_debug_commissar_test_requested)
 	_connect_once(_debug_sandbox_panel, &"freeze_changed", _on_debug_freeze_changed)
 	_connect_once(_debug_sandbox_panel, &"invincibility_changed", _on_debug_invincibility_changed)
 	_connect_once(_debug_sandbox_panel, &"max_charge_changed", _on_debug_max_charge_changed)
@@ -2224,10 +2244,11 @@ func _start_dungeon_run(start_floor: int = 1, run_seed_override: int = 0, debug_
 		_debug_sandbox_panel.visible = true
 
 
-func _start_generated_encounter_test(test_index: int) -> void:
+func _start_generated_encounter_test(test_index: int, preserve_debug_sandbox: bool = false) -> void:
 	if test_index < 0 or test_index >= GENERATED_ENCOUNTER_TESTS.size():
 		return
-	_disable_debug_sandbox()
+	if not preserve_debug_sandbox:
+		_disable_debug_sandbox()
 	var test_config: Dictionary = GENERATED_ENCOUNTER_TESTS[test_index]
 	_set_tree_paused(false)
 	_begin_loading_screen("LOADING TEST ROOM", "Generating floor layout", 0.05)
@@ -2289,6 +2310,7 @@ func _start_generated_encounter_test(test_index: int) -> void:
 	item_manager.clear_pickups()
 	item_manager.clear_floor_persistent_pickups()
 	upgrade_manager.reset_run()
+	_apply_debug_cheats()
 	combat_manager.reset_run()
 	effects_manager.reset_run()
 	room_manager.reset_run()
@@ -2299,6 +2321,11 @@ func _start_generated_encounter_test(test_index: int) -> void:
 	_queue_loading_floor_start_feedback()
 	_on_upgrade_changed(upgrade_manager.get_modifiers(), upgrade_manager.get_active_effects())
 	_update_hud()
+	if preserve_debug_sandbox and _debug_sandbox_panel != null:
+		_debug_sandbox_active = true
+		_debug_sandbox_panel.set_generation_values(_main_loop_floor, _run_seed)
+		_update_debug_sandbox_status()
+		_debug_sandbox_panel.visible = true
 
 
 func _start_main_loop_run() -> void:
@@ -2574,6 +2601,16 @@ func _on_debug_generation_requested(floor_number: int, run_seed: int) -> void:
 		0.05
 	)
 	_start_dungeon_run(floor_number, run_seed, true)
+	_loading_transition_pending = false
+
+
+func _on_debug_commissar_test_requested() -> void:
+	if not _debug_sandbox_active or _loading_transition_pending:
+		return
+	_loading_transition_pending = true
+	_on_debug_freeze_changed(false)
+	await _show_loading_before_work("LOADING SANDBOX", "Building Commissar test corps", 0.05)
+	_start_generated_encounter_test(COMMISSAR_ENCOUNTER_TEST_INDEX, true)
 	_loading_transition_pending = false
 
 
@@ -2988,6 +3025,10 @@ func _on_explosion_requested(origin: Vector2, packet) -> void:
 
 func _on_player_contact_requested(enemy, player, damage: int) -> void:
 	combat_manager.resolve_contact_damage(enemy, player, damage)
+
+
+func _on_player_pushback_requested(direction: Vector2, force: float) -> void:
+	player_manager.apply_pushback(direction, force)
 
 
 func _on_player_damage_resolved(amount: int) -> void:
@@ -3539,7 +3580,7 @@ func _on_restart_requested() -> void:
 			_start_main_loop_run()
 		elif _is_dungeon_run and _active_generated_encounter_test_index >= 0:
 			await _show_loading_before_work("LOADING TEST ROOM", "Generating floor layout", 0.05)
-			_start_generated_encounter_test(_active_generated_encounter_test_index)
+			_start_generated_encounter_test(_active_generated_encounter_test_index, _debug_sandbox_active)
 		elif _is_dungeon_run:
 			await _show_loading_before_work("LOADING FLOOR", "Generating floor layout", 0.05)
 			_start_dungeon_run()

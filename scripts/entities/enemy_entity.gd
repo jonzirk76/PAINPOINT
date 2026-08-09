@@ -7,6 +7,8 @@ signal death_animation_finished(enemy)
 signal shot_ready(enemy, origin: Vector2, direction: Vector2, shot_config: Dictionary)
 signal repair_ready(enemy, repair_target, amount: int)
 signal spawn_ready(enemy, spawn_position: Vector2)
+signal commissar_execution_ready(commissar, target)
+signal commissar_execution_interrupted(commissar, target)
 
 const BASIC_ENEMY_TEXTURE := preload("res://art/characters/basic_enemy_chaser.svg")
 const FAST_ENEMY_TEXTURE := preload("res://art/characters/fast_enemy_runner.svg")
@@ -44,12 +46,14 @@ const BEHAVIOR_CYBER_SOLDIER := "cyber_soldier"
 const BEHAVIOR_BOSS := "boss"
 const BEHAVIOR_SHOOTER := "shooter"
 const BEHAVIOR_CHASER := "chaser"
+const BEHAVIOR_COMMISSAR := "commissar"
 const MIN_KNOCKBACK_WEIGHT := 0.5
 
 enum HordeCommandState {
 	INDEPENDENT,
 	COORDINATED,
-	ORPHANED
+	ORPHANED,
+	ROGUE
 }
 
 @export var max_health: int = 3
@@ -116,6 +120,8 @@ enum HordeCommandState {
 @export var boss_minigun_shot_interval: float = 0.065
 @export var boss_minigun_sweep_degrees: float = 82.0
 @export var agent_program: AgentBossProgram = null
+## [Description] Configures veteran and support-corps behavior when this entity is a Commissar.
+@export var commissar_program: CommissarProgram = null
 
 var health: int = max_health
 var playable_rects: Array[Rect2] = []
@@ -231,6 +237,17 @@ var horde_command_state: HordeCommandState = HordeCommandState.INDEPENDENT
 var _spawn_timer: float = 0.0
 var _spawn_active: bool = true
 var _tactical_target_position: Vector2 = Vector2.INF
+var _panic_source_position: Vector2 = Vector2.INF
+var _commissar_shield_cooldown_remaining: float = 0.0
+var _commissar_charge_cooldown_remaining: float = 0.0
+var _commissar_charge_telegraph_remaining: float = 0.0
+var _commissar_charge_remaining: float = 0.0
+var _commissar_charge_direction: Vector2 = Vector2.RIGHT
+var _commissar_charge_push_available: bool = false
+var _commissar_reposition_target: Vector2 = Vector2.INF
+var _commissar_execution_target: Node2D = null
+var _commissar_execution_remaining: float = 0.0
+var _commissar_execution_duration: float = 0.0
 
 
 func _init() -> void:
@@ -296,6 +313,7 @@ func initialize(profile) -> void:
 	special_autocannon_max_shots = profile.special_autocannon_max_shots
 	special_autocannon_shot_interval = profile.special_autocannon_shot_interval
 	agent_program = profile.agent_program as AgentBossProgram if profile.get("agent_program") != null else null
+	commissar_program = profile.commissar_program as CommissarProgram if profile.get("commissar_program") != null else null
 	spawn_profile = profile.spawn_profile as EnemySpawnProfile if profile.get("spawn_profile") != null else null
 	_spawn_timer = max(float(spawn_profile.warmup_seconds), 0.0) if spawn_profile != null else 0.0
 	if is_general():
@@ -320,6 +338,16 @@ func initialize(profile) -> void:
 	_behavior_reposition_recovery_remaining = 0.0
 	_behavior_reposition_attack_pending = false
 	_behavior_dash_steps_remaining = 0
+	_panic_source_position = Vector2.INF
+	_commissar_shield_cooldown_remaining = 0.0
+	_commissar_charge_cooldown_remaining = 0.0
+	_commissar_charge_telegraph_remaining = 0.0
+	_commissar_charge_remaining = 0.0
+	_commissar_charge_push_available = false
+	_commissar_reposition_target = Vector2.INF
+	_commissar_execution_target = null
+	_commissar_execution_remaining = 0.0
+	_commissar_execution_duration = 0.0
 	if behavior_kind == BEHAVIOR_BOSS:
 		_boss_special_timer = boss_special_cooldown * 0.55
 		_boss_special_sequence_index = 0
@@ -390,6 +418,8 @@ func _physics_process(delta: float) -> void:
 				intent_velocity = _update_power_armor(delta, to_target)
 			BEHAVIOR_CYBER_SOLDIER:
 				intent_velocity = _update_cyber_soldier(delta, to_target)
+			BEHAVIOR_COMMISSAR:
+				intent_velocity = _update_commissar(delta, to_target)
 			_:
 				intent_velocity = _get_ranged_velocity(to_target) if _is_ranged_behavior() else _get_chaser_velocity(to_target)
 				var special_active := _update_general_special(delta, to_target) if is_general() else _update_boss_special(delta, to_target)
@@ -430,8 +460,10 @@ func set_legion_identity(new_legion_id: int, new_general_id: int = 0) -> void:
 	general_id = max(new_general_id, 0)
 	if general_id > 0 and not is_general():
 		horde_command_state = HordeCommandState.COORDINATED
+		_panic_source_position = Vector2.INF
 	else:
 		horde_command_state = HordeCommandState.INDEPENDENT
+		_panic_source_position = Vector2.INF
 
 
 func enter_orphaned_horde_state() -> void:
@@ -440,7 +472,25 @@ func enter_orphaned_horde_state() -> void:
 	legion_id = 0
 	general_id = 0
 	horde_command_state = HordeCommandState.ORPHANED
+	_panic_source_position = Vector2.INF
 	clear_tactical_target_position()
+
+
+func enter_rogue_horde_state(fear_source_position: Vector2) -> void:
+	if is_general():
+		return
+	horde_command_state = HordeCommandState.ROGUE
+	_panic_source_position = fear_source_position
+	_repair_target = null
+	clear_tactical_target_position()
+
+
+func is_orphaned_horde_enemy() -> bool:
+	return horde_command_state == HordeCommandState.ORPHANED
+
+
+func is_rogue_horde_enemy() -> bool:
+	return horde_command_state == HordeCommandState.ROGUE
 
 
 func get_horde_command_state() -> HordeCommandState:
@@ -530,8 +580,14 @@ func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: A
 func take_damage(packet) -> bool:
 	if packet == null or health <= 0 or _is_dying or is_birth_animation_active():
 		return false
+	if _try_activate_commissar_reactive_shield(packet):
+		return false
 	if blocks_projectile_damage(packet):
 		return false
+	if _commissar_execution_target != null:
+		var interrupted_target := _commissar_execution_target
+		_clear_commissar_execution()
+		commissar_execution_interrupted.emit(self, interrupted_target)
 	var damage_amount: int = max(int(packet.damage), 0)
 	damage_amount = _apply_lightning_charge_damage_multiplier(packet, damage_amount)
 	if _should_reduce_shield_pierce_damage(packet):
@@ -626,7 +682,7 @@ func _get_status_speed_multiplier() -> float:
 
 
 func _get_horde_command_speed_multiplier() -> float:
-	if horde_command_state == HordeCommandState.ORPHANED:
+	if horde_command_state == HordeCommandState.ORPHANED or horde_command_state == HordeCommandState.ROGUE:
 		return max(orphaned_speed_multiplier, 1.0)
 	return 1.0
 
@@ -767,6 +823,8 @@ func _draw() -> void:
 		_draw_general_character_art(draw_color)
 	else:
 		_draw_enemy_character_art(draw_color)
+	if behavior_kind == BEHAVIOR_REPAIR_DRONE and (is_rogue_horde_enemy() or is_orphaned_horde_enemy()):
+		_draw_repair_drone_panic_state()
 	if _repair_beam_remaining > 0.0:
 		_draw_repair_beam()
 	if _has_active_status_effects():
@@ -779,8 +837,12 @@ func _draw() -> void:
 		_draw_agent_high_explosive_windup()
 	if _is_agent_boss() and (_agent_special_telegraph_remaining > 0.0 or _agent_charge_remaining > 0.0):
 		_draw_agent_special_telegraph()
+	elif behavior_kind == BEHAVIOR_COMMISSAR and (_commissar_charge_telegraph_remaining > 0.0 or _commissar_charge_remaining > 0.0):
+		_draw_commissar_charge_telegraph()
 	elif _boss_special_telegraph_remaining > 0.0:
 		_draw_boss_special_telegraph()
+	if behavior_kind == BEHAVIOR_COMMISSAR and _commissar_execution_target != null:
+		_draw_commissar_execution_telegraph()
 	if _is_agent_boss() and _agent_stream_remaining > 0.0:
 		_draw_agent_special_stream()
 	elif _boss_minigun_remaining > 0.0:
@@ -839,6 +901,15 @@ func _draw_general_character_art(tint: Color) -> void:
 func _draw_general_type_details(core_color: Color, alpha: float) -> void:
 	var visual_kind: String = String(spawn_profile.visual_kind) if spawn_profile != null else "basic"
 	match visual_kind:
+		"commissar":
+			var aim := (target_position - global_position).normalized()
+			if aim.length_squared() <= 0.001:
+				aim = Vector2.RIGHT
+			draw_rect(Rect2(Vector2(-body_radius * 0.48, -body_radius * 0.32), Vector2(body_radius * 0.96, body_radius * 0.88)), Color(0.07, 0.09, 0.12, alpha), true)
+			draw_rect(Rect2(Vector2(-body_radius * 0.64, -body_radius * 0.72), Vector2(body_radius * 1.28, body_radius * 0.28)), Color(0.11, 0.13, 0.17, alpha), true)
+			draw_line(Vector2(-body_radius * 0.58, -body_radius * 0.43), Vector2(body_radius * 0.58, -body_radius * 0.43), Color(accent_color.r, accent_color.g, accent_color.b, alpha), 3.0)
+			draw_circle(Vector2.ZERO, body_radius * 0.22, core_color)
+			draw_line(aim * body_radius * 0.12, aim * (body_radius + 10.0), Color(accent_color.r, accent_color.g, accent_color.b, alpha), 5.0)
 		"tank":
 			draw_rect(Rect2(Vector2(-body_radius * 0.48, -body_radius * 0.42), Vector2(body_radius * 0.96, body_radius * 0.84)), Color(0.12, 0.08, 0.08, alpha), true)
 			draw_rect(Rect2(Vector2(-body_radius * 0.32, -body_radius * 0.3), Vector2(body_radius * 0.64, body_radius * 0.6)), core_color, true)
@@ -862,6 +933,40 @@ func _draw_general_type_details(core_color: Color, alpha: float) -> void:
 		_:
 			draw_rect(Rect2(Vector2(-body_radius * 0.42, -body_radius * 0.38), Vector2(body_radius * 0.84, body_radius * 0.78)), Color(0.16, 0.12, 0.18, alpha), true)
 			draw_circle(Vector2.ZERO, body_radius * 0.28, core_color)
+
+
+func _draw_commissar_charge_telegraph() -> void:
+	var direction := _commissar_charge_direction.normalized()
+	if direction.length_squared() <= 0.001:
+		direction = Vector2.RIGHT
+	var telegraph_ratio := 1.0
+	if _commissar_charge_telegraph_remaining > 0.0 and commissar_program != null:
+		telegraph_ratio = 1.0 - clamp(_commissar_charge_telegraph_remaining / max(float(commissar_program.charge_telegraph_seconds), 0.001), 0.0, 1.0)
+	var line_length: float = max(float(commissar_program.charge_trigger_distance), 120.0) if commissar_program != null else 160.0
+	var color := Color(1.0, 0.22, 0.1, 0.42 + telegraph_ratio * 0.42)
+	draw_line(direction * body_radius, direction * line_length, color, 5.0 + telegraph_ratio * 3.0)
+	draw_arc(Vector2.ZERO, body_radius + 10.0 + telegraph_ratio * 7.0, direction.angle() - 0.45, direction.angle() + 0.45, 16, color, 4.0)
+
+
+func _draw_commissar_execution_telegraph() -> void:
+	if not is_instance_valid(_commissar_execution_target):
+		return
+	var target_offset: Vector2 = to_local(_commissar_execution_target.global_position)
+	var progress := 1.0 - clamp(_commissar_execution_remaining / max(_commissar_execution_duration, 0.001), 0.0, 1.0)
+	var pulse := 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.04)
+	var line_color := Color(1.0, 0.16 + pulse * 0.12, 0.08, 0.48 + progress * 0.4)
+	draw_dashed_line(Vector2.ZERO, target_offset, line_color, 4.0, 10.0 - progress * 4.0)
+	draw_arc(target_offset, 16.0 + progress * 10.0, 0.0, TAU, 30, line_color, 4.0)
+
+
+func _draw_repair_drone_panic_state() -> void:
+	var pulse := 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.055)
+	var panic_color := Color(1.0, 0.18, 0.12, 0.78 + pulse * 0.2) if is_rogue_horde_enemy() else Color(0.58, 0.84, 1.0, 0.58 + pulse * 0.24)
+	var marker_position := Vector2(0.0, -body_radius - 15.0 - pulse * 3.0)
+	draw_line(marker_position + Vector2(0.0, -7.0), marker_position + Vector2(0.0, 2.0), panic_color, 3.5)
+	draw_circle(marker_position + Vector2(0.0, 7.0), 2.2, panic_color)
+	if is_rogue_horde_enemy():
+		draw_arc(Vector2.ZERO, body_radius + 6.0 + pulse * 2.0, -PI * 0.15, PI * 1.15, 28, panic_color, 2.5)
 
 
 func _get_closed_points(points: PackedVector2Array) -> PackedVector2Array:
@@ -1340,7 +1445,7 @@ func _should_reduce_shield_pierce_damage(packet) -> bool:
 
 
 func _is_non_contact_specialist() -> bool:
-	return behavior_kind == BEHAVIOR_REPAIR_DRONE or behavior_kind == BEHAVIOR_SHIELD_DRONE or behavior_kind == BEHAVIOR_POWER_ARMOR or behavior_kind == BEHAVIOR_CYBER_SOLDIER
+	return behavior_kind == BEHAVIOR_REPAIR_DRONE or behavior_kind == BEHAVIOR_SHIELD_DRONE or behavior_kind == BEHAVIOR_POWER_ARMOR or behavior_kind == BEHAVIOR_CYBER_SOLDIER or behavior_kind == BEHAVIOR_COMMISSAR
 
 
 func _is_ranged_behavior() -> bool:
@@ -1367,6 +1472,9 @@ func _configure_cyber_soldier_state() -> void:
 
 func _update_repair_drone(delta: float, to_target: Vector2) -> Vector2:
 	_repair_cooldown_remaining = max(_repair_cooldown_remaining - delta, 0.0)
+	if is_rogue_horde_enemy():
+		_repair_target = null
+		return _get_panicked_repair_drone_velocity(to_target)
 	var has_repair_target := _repair_target_is_valid()
 	if has_repair_target:
 		var to_repair_target: Vector2 = _repair_target.global_position - global_position
@@ -1384,8 +1492,35 @@ func _update_repair_drone(delta: float, to_target: Vector2) -> Vector2:
 		if to_target.length() < preferred_distance * 0.62:
 			repair_velocity += _get_slippery_escape_velocity(to_target, speed * 0.85)
 		return repair_velocity.limit_length(speed)
+	if is_orphaned_horde_enemy():
+		return _get_panicked_repair_drone_velocity(to_target)
+	if _tactical_target_position != Vector2.INF:
+		var to_order: Vector2 = _tactical_target_position - global_position
+		if to_order.length_squared() > 32.0 * 32.0:
+			var steering_target: Vector2 = _get_path_steering_target(_tactical_target_position)
+			var to_steering: Vector2 = steering_target - global_position
+			if to_steering.length_squared() > 4.0:
+				var ordered_velocity: Vector2 = to_steering.normalized() * speed
+				if to_target.length() < preferred_distance * 0.62:
+					ordered_velocity += _get_slippery_escape_velocity(to_target, speed * 0.7)
+				return ordered_velocity.limit_length(speed)
 	_try_emit_shot(to_target)
 	return _get_slippery_ranged_velocity(to_target, speed)
+
+
+func _get_panicked_repair_drone_velocity(to_target: Vector2) -> Vector2:
+	var flee_direction := -_get_target_direction(to_target)
+	if _panic_source_position != Vector2.INF:
+		var from_fear_source: Vector2 = global_position - _panic_source_position
+		if from_fear_source.length_squared() > 4.0:
+			flee_direction = (flee_direction + from_fear_source.normalized() * 1.35).normalized()
+	var side_sign := -1.0 if int(get_instance_id()) % 2 == 0 else 1.0
+	flee_direction = (flee_direction + flee_direction.orthogonal() * side_sign * 0.28).normalized()
+	return _get_agent_path_velocity_for_direction(flee_direction, max(preferred_distance, 190.0), speed)
+
+
+func has_active_repair_target() -> bool:
+	return _repair_target_is_valid()
 
 
 func _repair_target_is_valid() -> bool:
@@ -1623,6 +1758,148 @@ func _update_power_armor(delta: float, to_target: Vector2) -> Vector2:
 	if is_general():
 		_try_emit_shot(to_target)
 	return _get_ranged_velocity(to_target) * 0.72
+
+
+func _update_commissar(delta: float, to_target: Vector2) -> Vector2:
+	if commissar_program == null:
+		_try_emit_shot(to_target)
+		return _get_ranged_velocity(to_target) * 0.72
+	_commissar_shield_cooldown_remaining = max(_commissar_shield_cooldown_remaining - delta, 0.0)
+	_commissar_charge_cooldown_remaining = max(_commissar_charge_cooldown_remaining - delta, 0.0)
+	if _commissar_execution_target != null:
+		return _update_commissar_execution(delta, to_target)
+	if _commissar_charge_telegraph_remaining > 0.0:
+		_commissar_charge_telegraph_remaining = max(_commissar_charge_telegraph_remaining - delta, 0.0)
+		if _commissar_charge_telegraph_remaining <= 0.0:
+			_commissar_charge_remaining = max(float(commissar_program.charge_duration), 0.1)
+			_commissar_charge_push_available = true
+		queue_redraw()
+		return Vector2.ZERO
+	if _commissar_charge_remaining > 0.0:
+		_commissar_charge_remaining = max(_commissar_charge_remaining - delta, 0.0)
+		if _commissar_charge_remaining <= 0.0:
+			_commissar_charge_push_available = false
+			_commissar_charge_cooldown_remaining = max(float(commissar_program.charge_cooldown), 0.1)
+		queue_redraw()
+		return _commissar_charge_direction * max(float(commissar_program.charge_speed), speed)
+	if _commissar_reposition_target != Vector2.INF:
+		var to_reposition: Vector2 = _commissar_reposition_target - global_position
+		if to_reposition.length_squared() <= 22.0 * 22.0 or _path_blocks_segment(global_position, _commissar_reposition_target, body_radius * 0.55):
+			_commissar_reposition_target = Vector2.INF
+		else:
+			var steering_target: Vector2 = _get_path_steering_target(_commissar_reposition_target)
+			var to_steering: Vector2 = steering_target - global_position
+			if to_steering.length_squared() > 4.0:
+				return to_steering.normalized() * speed * max(float(commissar_program.reposition_speed_multiplier), 1.0)
+	if _commissar_charge_cooldown_remaining <= 0.0 and to_target.length() <= max(float(commissar_program.charge_trigger_distance), body_radius * 3.0) and _has_clear_player_shot(to_target):
+		_commissar_charge_direction = _get_target_direction(to_target)
+		_commissar_charge_telegraph_remaining = max(float(commissar_program.charge_telegraph_seconds), 0.12)
+		queue_redraw()
+		return Vector2.ZERO
+	_try_emit_commissar_heavy_shot(to_target)
+	return _get_ranged_velocity(to_target) * 0.72
+
+
+func _try_emit_commissar_heavy_shot(to_target: Vector2) -> void:
+	if commissar_program == null or _shot_cooldown_remaining > 0.0 or not _has_clear_player_shot(to_target):
+		return
+	if _emit_enemy_projectile(
+		to_target.normalized(),
+		max(projectile_speed, 1.0),
+		projectile_damage,
+		projectile_radius,
+		1,
+		0.0,
+		1.25,
+		"hostile_commissar",
+		max(float(commissar_program.heavy_shot_knockback), 0.0)
+	):
+		_shot_cooldown_remaining = max(shot_cooldown, 0.1)
+
+
+func _try_activate_commissar_reactive_shield(packet) -> bool:
+	if behavior_kind != BEHAVIOR_COMMISSAR or commissar_program == null or _commissar_execution_target != null:
+		return false
+	if _commissar_shield_cooldown_remaining > 0.0 or is_projectile_shield_active():
+		return false
+	if String(packet.projectile_kind).begins_with("hostile"):
+		return false
+	activate_projectile_shield(max(float(commissar_program.reactive_shield_seconds), 0.08))
+	_commissar_shield_cooldown_remaining = max(float(commissar_program.reactive_shield_cooldown), 0.1)
+	_commissar_reposition_target = _pick_behavior_reposition_target(target_position - global_position, max(float(commissar_program.reposition_distance), 48.0))
+	_projectile_shield_block_flash_remaining = 0.24
+	queue_redraw()
+	return blocks_projectile_damage(packet)
+
+
+func start_commissar_execution(target) -> bool:
+	var execution_target := target as Node2D
+	if behavior_kind != BEHAVIOR_COMMISSAR or commissar_program == null or execution_target == null or not is_instance_valid(execution_target):
+		return false
+	if health <= 0 or _is_dying or _commissar_execution_target != null:
+		return false
+	_commissar_execution_target = execution_target
+	_commissar_execution_duration = max(float(commissar_program.execution_telegraph_seconds), 0.2)
+	_commissar_execution_remaining = _commissar_execution_duration
+	_commissar_charge_telegraph_remaining = 0.0
+	_commissar_charge_remaining = 0.0
+	_commissar_charge_push_available = false
+	_commissar_reposition_target = Vector2.INF
+	_projectile_shield_remaining = 0.0
+	queue_redraw()
+	return true
+
+
+func _update_commissar_execution(delta: float, _to_target: Vector2) -> Vector2:
+	if not is_instance_valid(_commissar_execution_target) or not _commissar_execution_target.is_in_group("enemies"):
+		_clear_commissar_execution()
+		return Vector2.ZERO
+	_commissar_execution_remaining = max(_commissar_execution_remaining - delta, 0.0)
+	if _commissar_execution_remaining <= 0.0:
+		var completed_target := _commissar_execution_target
+		_clear_commissar_execution()
+		commissar_execution_ready.emit(self, completed_target)
+	queue_redraw()
+	return Vector2.ZERO
+
+
+func _clear_commissar_execution() -> void:
+	_commissar_execution_target = null
+	_commissar_execution_remaining = 0.0
+	_commissar_execution_duration = 0.0
+	queue_redraw()
+
+
+func is_commissar_charge_active() -> bool:
+	return behavior_kind == BEHAVIOR_COMMISSAR and _commissar_charge_remaining > 0.0 and _commissar_charge_push_available
+
+
+func consume_commissar_charge_push() -> Dictionary:
+	if not is_commissar_charge_active() or commissar_program == null:
+		return {}
+	_commissar_charge_push_available = false
+	_commissar_charge_remaining = 0.0
+	_commissar_charge_cooldown_remaining = max(float(commissar_program.charge_cooldown), 0.1)
+	return {
+		"direction": _commissar_charge_direction,
+		"force": max(float(commissar_program.charge_push_force), 0.0)
+	}
+
+
+func execute_for_cowardice() -> void:
+	if health <= 0 or _is_dying:
+		return
+	set_meta("no_defeat_reward", true)
+	set_meta("discipline_execution", true)
+	_apply_damage_amount(health)
+
+
+func retreat_from_combat() -> void:
+	if health <= 0 or _is_dying:
+		return
+	set_meta("no_defeat_reward", true)
+	set_meta("retreat_visual", true)
+	_apply_damage_amount(health)
 
 
 func _update_general_special(delta: float, to_target: Vector2) -> bool:
@@ -3494,6 +3771,15 @@ func _play_death_animation() -> void:
 func _draw_death_animation() -> void:
 	var progress: float = clamp(_death_elapsed / _death_duration, 0.0, 1.0)
 	var alpha: float = 1.0 - progress
+	if bool(get_meta("retreat_visual", false)):
+		var retreat_direction := -_visual_direction.normalized()
+		if retreat_direction.length_squared() <= 0.001:
+			retreat_direction = Vector2.RIGHT
+		draw_circle(retreat_direction * progress * 38.0, body_radius * (1.0 - progress * 0.5), Color(0.46, 0.82, 1.0, alpha * 0.72))
+		for trail_index in range(3):
+			var trail_offset := retreat_direction * (-12.0 - float(trail_index) * 10.0 + progress * 38.0)
+			draw_circle(trail_offset, max(5.0 - float(trail_index), 2.0), Color(0.38, 0.72, 1.0, alpha * 0.32))
+		return
 	draw_circle(Vector2.ZERO, body_radius * (1.0 - progress * 0.65), Color(1.0, 0.27, 0.22, alpha))
 	draw_arc(Vector2.ZERO, body_radius + progress * 34.0, 0.0, TAU, 28, Color(1.0, 0.72, 0.18, alpha), 4.0)
 	for index in range(6):

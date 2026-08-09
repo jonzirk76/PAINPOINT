@@ -5,6 +5,7 @@ const TACTICS_INDEPENDENT := "independent"
 const TACTICS_FAN_OUT := "fan_out"
 const TACTICS_CONCENTRATE := "concentrate"
 const TACTICS_INTERCEPT := "intercept"
+const TACTICS_SUPPORT_CORPS := "support_corps"
 
 var legion_id: int = 0
 var general_id: int = 0
@@ -55,6 +56,7 @@ func build_orders(context: Dictionary) -> Dictionary:
 	)
 	var player_position: Vector2 = context.get("player_position", Vector2.ZERO)
 	var arena_center: Vector2 = context.get("arena_center", Vector2.ZERO)
+	var general_position: Vector2 = context.get("general_position", arena_center)
 	var legion_index: int = max(int(context.get("legion_index", 0)), 0)
 	var legion_count: int = max(int(context.get("legion_count", 1)), 1)
 	match tactics_kind:
@@ -64,6 +66,8 @@ func build_orders(context: Dictionary) -> Dictionary:
 			_build_concentrate_orders(orders, members, player_position, legion_index, legion_count)
 		TACTICS_INTERCEPT:
 			_build_intercept_orders(orders, members, player_position, arena_center, legion_index, legion_count)
+		TACTICS_SUPPORT_CORPS:
+			_build_support_corps_orders(orders, members, general_position)
 	return orders
 
 
@@ -159,3 +163,11 @@ func _build_intercept_orders(
 	for index in range(members.size()):
 		var centered_index: float = float(index) - float(members.size() - 1) * 0.5
 		orders[int(members[index].get_instance_id())] = intercept_center + side * centered_index * 34.0
+
+
+func _build_support_corps_orders(orders: Dictionary, members: Array, general_position: Vector2) -> void:
+	var count: int = max(members.size(), 1)
+	for index in range(members.size()):
+		var angle: float = _formation_phase + TAU * float(index) / float(count)
+		var radius: float = 104.0 + float((index + _spawn_cycle) % 2) * 24.0
+		orders[int(members[index].get_instance_id())] = general_position + Vector2.RIGHT.rotated(angle) * radius

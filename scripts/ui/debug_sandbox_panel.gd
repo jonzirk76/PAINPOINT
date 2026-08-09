@@ -2,6 +2,7 @@ extends PanelContainer
 class_name DebugSandboxPanel
 
 signal generation_requested(floor_number: int, run_seed: int)
+signal commissar_test_requested
 signal freeze_changed(enabled: bool)
 signal invincibility_changed(enabled: bool)
 signal max_charge_changed(enabled: bool)
@@ -97,6 +98,11 @@ func _build_ui() -> void:
 	generate_button.text = "Generate"
 	generate_button.pressed.connect(_on_generate_pressed)
 	generation_row.add_child(generate_button)
+	var commissar_test_button := Button.new()
+	commissar_test_button.text = "Load Commissar Test"
+	commissar_test_button.tooltip_text = "Builds the tier-one Commissar and repair-corps encounter on its dedicated generated floor."
+	commissar_test_button.pressed.connect(func() -> void: commissar_test_requested.emit())
+	root.add_child(commissar_test_button)
 
 	_freeze_toggle = _add_toggle(root, "Freeze world (player moves)", freeze_changed)
 	_add_toggle(root, "Player invincible", invincibility_changed)
