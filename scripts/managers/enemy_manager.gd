@@ -704,16 +704,21 @@ func _update_player_velocity(player_position: Vector2, delta: float) -> void:
 
 
 func _assign_repair_targets() -> void:
+	var reserved_repairers_by_target_id: Dictionary = {}
 	for enemy in _enemies:
 		var repair_drone := enemy as EnemyEntity
 		if repair_drone == null or not is_instance_valid(repair_drone):
 			continue
 		if repair_drone.behavior_kind != "repair_drone" or not repair_drone.has_method("set_repair_target"):
 			continue
-		repair_drone.set_repair_target(_get_repair_target_for(repair_drone))
+		var repair_target: EnemyEntity = _get_repair_target_for(repair_drone, reserved_repairers_by_target_id)
+		repair_drone.set_repair_target(repair_target)
+		if repair_target != null:
+			var target_id: int = int(repair_target.get_instance_id())
+			reserved_repairers_by_target_id[target_id] = int(reserved_repairers_by_target_id.get(target_id, 0)) + 1
 
 
-func _get_repair_target_for(repair_drone: EnemyEntity) -> Node:
+func _get_repair_target_for(repair_drone: EnemyEntity, reserved_repairers_by_target_id: Dictionary) -> EnemyEntity:
 	if repair_drone == null or not is_instance_valid(repair_drone):
 		return null
 	if repair_drone.is_rogue_horde_enemy():
@@ -721,12 +726,12 @@ func _get_repair_target_for(repair_drone: EnemyEntity) -> Node:
 	var repair_radius: float = max(float(repair_drone.repair_radius), 1.0)
 	var health_ratio_threshold: float = clamp(float(repair_drone.repair_target_health_ratio), 0.0, 1.0)
 	if repair_drone.is_orphaned_horde_enemy():
-		return _get_any_enemy_repair_target_for(repair_drone, repair_radius * 1.05, health_ratio_threshold)
+		return _get_any_enemy_repair_target_for(repair_drone, repair_radius * 1.05, health_ratio_threshold, reserved_repairers_by_target_id)
 	var search_radius: float = max(repair_radius * 2.2, float(repair_drone.preferred_distance))
-	return _get_large_enemy_repair_target_for(repair_drone, search_radius, health_ratio_threshold)
+	return _get_large_enemy_repair_target_for(repair_drone, search_radius, health_ratio_threshold, reserved_repairers_by_target_id)
 
 
-func _get_any_enemy_repair_target_for(repair_drone: EnemyEntity, search_radius: float, health_ratio_threshold: float) -> EnemyEntity:
+func _get_any_enemy_repair_target_for(repair_drone: EnemyEntity, search_radius: float, health_ratio_threshold: float, reserved_repairers_by_target_id: Dictionary) -> EnemyEntity:
 	var search_radius_squared: float = search_radius * search_radius
 	var best_target: EnemyEntity = null
 	var best_score := INF
@@ -735,6 +740,8 @@ func _get_any_enemy_repair_target_for(repair_drone: EnemyEntity, search_radius: 
 		if candidate_enemy == null or not is_instance_valid(candidate_enemy) or candidate_enemy == repair_drone:
 			continue
 		if candidate_enemy.health <= 0 or candidate_enemy.health >= candidate_enemy.max_health:
+			continue
+		if not _repair_target_has_capacity(candidate_enemy, reserved_repairers_by_target_id):
 			continue
 		if repair_drone.global_position.distance_squared_to(candidate_enemy.global_position) > search_radius_squared:
 			continue
@@ -748,7 +755,7 @@ func _get_any_enemy_repair_target_for(repair_drone: EnemyEntity, search_radius: 
 	return best_target
 
 
-func _get_large_enemy_repair_target_for(repair_drone: EnemyEntity, search_radius: float, health_ratio_threshold: float) -> EnemyEntity:
+func _get_large_enemy_repair_target_for(repair_drone: EnemyEntity, search_radius: float, health_ratio_threshold: float, reserved_repairers_by_target_id: Dictionary) -> EnemyEntity:
 	var search_radius_squared: float = search_radius * search_radius
 	var best_target: EnemyEntity = null
 	var best_score := INF
@@ -762,6 +769,8 @@ func _get_large_enemy_repair_target_for(repair_drone: EnemyEntity, search_radius
 			continue
 		if candidate_enemy.health <= 0 or candidate_enemy.health >= candidate_enemy.max_health:
 			continue
+		if not _repair_target_has_capacity(candidate_enemy, reserved_repairers_by_target_id):
+			continue
 		var distance_squared: float = repair_drone.global_position.distance_squared_to(candidate_enemy.global_position)
 		if distance_squared > search_radius_squared:
 			continue
@@ -773,6 +782,15 @@ func _get_large_enemy_repair_target_for(repair_drone: EnemyEntity, search_radius
 			best_score = score
 			best_target = candidate_enemy
 	return best_target
+
+
+func _repair_target_has_capacity(target: EnemyEntity, reserved_repairers_by_target_id: Dictionary) -> bool:
+	if target == null or not is_instance_valid(target):
+		return false
+	var repairer_limit: int = max(int(target.max_simultaneous_repairers), 0)
+	if repairer_limit == 0:
+		return true
+	return int(reserved_repairers_by_target_id.get(int(target.get_instance_id()), 0)) < repairer_limit
 
 
 func _get_repair_target_score(repair_drone: EnemyEntity, target: Node2D) -> float:

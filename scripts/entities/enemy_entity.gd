@@ -101,6 +101,8 @@ enum HordeCommandState {
 @export var repair_cooldown: float = 1.25
 ## Controls the health ratio below which repair drones consider an ally worth repairing.
 @export_range(0.0, 1.0, 0.01) var repair_target_health_ratio: float = 0.92
+## [Description] Limits how many repair drones may target this enemy simultaneously; zero allows unlimited repairers.
+@export_range(0, 12, 1) var max_simultaneous_repairers: int = 2
 ## Controls the cooldown between non-boss special attack or reposition phases.
 @export var special_cooldown: float = 3.0
 ## Controls the warning duration before non-boss special attacks fire.
@@ -316,6 +318,7 @@ func initialize(profile) -> void:
 	repair_amount = profile.repair_amount
 	repair_cooldown = profile.repair_cooldown
 	repair_target_health_ratio = profile.repair_target_health_ratio
+	max_simultaneous_repairers = max(int(profile.max_simultaneous_repairers), 0)
 	special_cooldown = profile.special_cooldown
 	special_telegraph_seconds = profile.special_telegraph_seconds
 	special_attack_kind = profile.special_attack_kind

@@ -39,5 +39,6 @@ shot_cooldown = 1.85
 projectile_speed = 520.0
 projectile_damage = 2
 projectile_radius = 12.0
+max_simultaneous_repairers = 2
 spawn_profile = SubResource("EnemySpawnProfile_commissar")
 commissar_program = SubResource("CommissarProgram_tier_1")
