@@ -596,7 +596,7 @@ func _release_legion_by_general_id(released_general_id: int) -> void:
 	if released_general_id <= 0:
 		return
 	var released_general: EnemyEntity = _generals_by_id.get(released_general_id, null) as EnemyEntity
-	var orphan_retreat_delay := 3.2
+	var orphan_retreat_delay: float = 3.2
 	if released_general != null and is_instance_valid(released_general) and released_general.commissar_program != null:
 		orphan_retreat_delay = max(float(released_general.commissar_program.orphan_retreat_delay), 0.1)
 	_legion_controllers.erase(released_general_id)

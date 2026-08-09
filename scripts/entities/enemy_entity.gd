@@ -936,14 +936,14 @@ func _draw_general_type_details(core_color: Color, alpha: float) -> void:
 
 
 func _draw_commissar_charge_telegraph() -> void:
-	var direction := _commissar_charge_direction.normalized()
+	var direction: Vector2 = _commissar_charge_direction.normalized()
 	if direction.length_squared() <= 0.001:
 		direction = Vector2.RIGHT
-	var telegraph_ratio := 1.0
+	var telegraph_ratio: float = 1.0
 	if _commissar_charge_telegraph_remaining > 0.0 and commissar_program != null:
 		telegraph_ratio = 1.0 - clamp(_commissar_charge_telegraph_remaining / max(float(commissar_program.charge_telegraph_seconds), 0.001), 0.0, 1.0)
 	var line_length: float = max(float(commissar_program.charge_trigger_distance), 120.0) if commissar_program != null else 160.0
-	var color := Color(1.0, 0.22, 0.1, 0.42 + telegraph_ratio * 0.42)
+	var color: Color = Color(1.0, 0.22, 0.1, 0.42 + telegraph_ratio * 0.42)
 	draw_line(direction * body_radius, direction * line_length, color, 5.0 + telegraph_ratio * 3.0)
 	draw_arc(Vector2.ZERO, body_radius + 10.0 + telegraph_ratio * 7.0, direction.angle() - 0.45, direction.angle() + 0.45, 16, color, 4.0)
 
@@ -952,17 +952,17 @@ func _draw_commissar_execution_telegraph() -> void:
 	if not is_instance_valid(_commissar_execution_target):
 		return
 	var target_offset: Vector2 = to_local(_commissar_execution_target.global_position)
-	var progress := 1.0 - clamp(_commissar_execution_remaining / max(_commissar_execution_duration, 0.001), 0.0, 1.0)
-	var pulse := 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.04)
-	var line_color := Color(1.0, 0.16 + pulse * 0.12, 0.08, 0.48 + progress * 0.4)
+	var progress: float = 1.0 - clampf(_commissar_execution_remaining / maxf(_commissar_execution_duration, 0.001), 0.0, 1.0)
+	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.04)
+	var line_color: Color = Color(1.0, 0.16 + pulse * 0.12, 0.08, 0.48 + progress * 0.4)
 	draw_dashed_line(Vector2.ZERO, target_offset, line_color, 4.0, 10.0 - progress * 4.0)
 	draw_arc(target_offset, 16.0 + progress * 10.0, 0.0, TAU, 30, line_color, 4.0)
 
 
 func _draw_repair_drone_panic_state() -> void:
-	var pulse := 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.055)
-	var panic_color := Color(1.0, 0.18, 0.12, 0.78 + pulse * 0.2) if is_rogue_horde_enemy() else Color(0.58, 0.84, 1.0, 0.58 + pulse * 0.24)
-	var marker_position := Vector2(0.0, -body_radius - 15.0 - pulse * 3.0)
+	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.055)
+	var panic_color: Color = Color(1.0, 0.18, 0.12, 0.78 + pulse * 0.2) if is_rogue_horde_enemy() else Color(0.58, 0.84, 1.0, 0.58 + pulse * 0.24)
+	var marker_position: Vector2 = Vector2(0.0, -body_radius - 15.0 - pulse * 3.0)
 	draw_line(marker_position + Vector2(0.0, -7.0), marker_position + Vector2(0.0, 2.0), panic_color, 3.5)
 	draw_circle(marker_position + Vector2(0.0, 7.0), 2.2, panic_color)
 	if is_rogue_horde_enemy():
@@ -1509,12 +1509,12 @@ func _update_repair_drone(delta: float, to_target: Vector2) -> Vector2:
 
 
 func _get_panicked_repair_drone_velocity(to_target: Vector2) -> Vector2:
-	var flee_direction := -_get_target_direction(to_target)
+	var flee_direction: Vector2 = -_get_target_direction(to_target)
 	if _panic_source_position != Vector2.INF:
 		var from_fear_source: Vector2 = global_position - _panic_source_position
 		if from_fear_source.length_squared() > 4.0:
 			flee_direction = (flee_direction + from_fear_source.normalized() * 1.35).normalized()
-	var side_sign := -1.0 if int(get_instance_id()) % 2 == 0 else 1.0
+	var side_sign: float = -1.0 if int(get_instance_id()) % 2 == 0 else 1.0
 	flee_direction = (flee_direction + flee_direction.orthogonal() * side_sign * 0.28).normalized()
 	return _get_agent_path_velocity_for_direction(flee_direction, max(preferred_distance, 190.0), speed)
 
