@@ -5,6 +5,7 @@ const WALL_OCCLUSION_LAYERS := preload("res://scripts/arena/wall_occlusion_layer
 
 signal projectile_hit(projectile, target: Node, damage_packet)
 signal projectile_expired(projectile, expire_info: Dictionary)
+signal execution_projectile_arrived(target: Node)
 
 @export var projectile_scene: PackedScene = preload("res://scenes/entities/projectile_entity.tscn")
 @export var base_projectile_speed: float = 560.0
@@ -212,6 +213,8 @@ func _spawn_hostile_projectile(origin: Vector2, direction: Vector2, shot_config:
 	projectile.initialize(origin, direction, packet, shot_speed)
 	projectile.hit_detected.connect(_on_projectile_hit)
 	projectile.expired.connect(_on_projectile_expired)
+	if bool(shot_config.get("execution_homing", false)) and projectile.has_signal("execution_target_reached"):
+		projectile.execution_target_reached.connect(_on_execution_target_reached)
 	_projectiles.append(projectile)
 	_add_child_safely(_get_projectile_parent(), projectile)
 
@@ -305,6 +308,14 @@ func _on_projectile_hit(projectile, target: Node) -> void:
 	projectile_hit.emit(projectile, target, projectile.damage_packet)
 
 
+func _on_execution_target_reached(projectile, target: Node) -> void:
+	if projectile == null or not is_instance_valid(projectile) or not _projectiles.has(projectile):
+		return
+	if target == null or not is_instance_valid(target):
+		return
+	execution_projectile_arrived.emit(target)
+
+
 func _on_projectile_expired(projectile) -> void:
 	_projectiles.erase(projectile)
 	projectile_expired.emit(projectile, _get_projectile_expire_info(projectile))
@@ -337,6 +348,10 @@ func _discard_projectile(projectile) -> void:
 		var expired_callable := Callable(self, "_on_projectile_expired")
 		if projectile.expired.is_connected(expired_callable):
 			projectile.expired.disconnect(expired_callable)
+	if projectile.has_signal("execution_target_reached"):
+		var execution_callable := Callable(self, "_on_execution_target_reached")
+		if projectile.execution_target_reached.is_connected(execution_callable):
+			projectile.execution_target_reached.disconnect(execution_callable)
 	if projectile.has_method("despawn"):
 		projectile.despawn()
 	elif projectile is Node:

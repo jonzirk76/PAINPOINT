@@ -11,7 +11,6 @@ signal enemy_count_changed(count: int)
 signal horde_enemy_count_changed(count: int)
 signal player_contact_requested(enemy, player, damage: int)
 signal player_pushback_requested(direction: Vector2, force: float)
-signal commissar_magnum_fired(origin: Vector2, direction: Vector2)
 signal hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: Dictionary)
 signal repair_requested(enemy, repair_target, amount: int)
 
@@ -457,14 +456,36 @@ func _on_commissar_execution_ready(commissar, target) -> void:
 		return
 	if not _enemies.has(general) or not _enemies.has(repair_drone) or not repair_drone.is_rogue_horde_enemy():
 		return
-	_commissar_rogue_by_general_id.erase(int(general.general_id))
-	_rogue_escape_remaining_by_id.erase(int(repair_drone.get_instance_id()))
-	_panicked_repair_drones_by_id.erase(int(repair_drone.get_instance_id()))
 	var shot_direction: Vector2 = (repair_drone.global_position - general.global_position).normalized()
 	if shot_direction.length_squared() <= 0.001:
 		shot_direction = Vector2.RIGHT
 	var shot_origin: Vector2 = general.global_position + shot_direction * (float(general.body_radius) + 7.0)
-	commissar_magnum_fired.emit(shot_origin, shot_direction)
+	hostile_shot_requested.emit(shot_origin, shot_direction, {
+		"speed": max(float(general.projectile_speed), 1.0),
+		"damage": max(int(general.projectile_damage), 1),
+		"radius": max(float(general.projectile_radius), 1.0),
+		"projectile_count": 1,
+		"spread_angle_degrees": 0.0,
+		"lifetime": max(float(general.commissar_program.execution_projectile_lifetime_seconds), 0.1),
+		"exact_lifetime": true,
+		"kind": "hostile_commissar",
+		"knockback": 0.0,
+		"execution_homing": true,
+		"homing_target": repair_drone,
+		"homing_turn_speed_degrees": max(float(general.commissar_program.execution_homing_turn_speed_degrees), 0.0)
+	})
+
+
+func resolve_commissar_execution_projectile(target: Node) -> void:
+	var repair_drone := target as EnemyEntity
+	if repair_drone == null or not is_instance_valid(repair_drone):
+		return
+	if not _enemies.has(repair_drone) or not repair_drone.is_rogue_horde_enemy():
+		return
+	var repair_drone_id: int = int(repair_drone.get_instance_id())
+	_rogue_escape_remaining_by_id.erase(repair_drone_id)
+	_panicked_repair_drones_by_id.erase(repair_drone_id)
+	_clear_commissar_rogue_reference(repair_drone)
 	repair_drone.execute_for_cowardice()
 
 

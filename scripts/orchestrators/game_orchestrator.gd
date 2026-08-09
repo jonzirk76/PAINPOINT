@@ -547,6 +547,7 @@ func _connect_manager_signals() -> void:
 
 	_connect_once(projectile_manager, &"projectile_hit", _on_projectile_hit)
 	_connect_once(projectile_manager, &"projectile_expired", _on_projectile_expired)
+	_connect_once(projectile_manager, &"execution_projectile_arrived", _on_execution_projectile_arrived)
 	_connect_once(combat_manager, &"damage_resolved", _on_damage_resolved)
 	_connect_once(combat_manager, &"player_damage_resolved", _on_player_damage_resolved)
 	_connect_once(combat_manager, &"chain_requested", _on_chain_requested)
@@ -559,7 +560,6 @@ func _connect_manager_signals() -> void:
 	_connect_once(enemy_manager, &"enemy_count_changed", _on_enemy_count_changed)
 	_connect_once(enemy_manager, &"player_contact_requested", _on_player_contact_requested)
 	_connect_once(enemy_manager, &"player_pushback_requested", _on_player_pushback_requested)
-	_connect_once(enemy_manager, &"commissar_magnum_fired", _on_commissar_magnum_fired)
 	_connect_once(enemy_manager, &"hostile_shot_requested", _on_hostile_shot_requested)
 	_connect_once(enemy_manager, &"repair_requested", _on_enemy_repair_requested)
 
@@ -3033,9 +3033,9 @@ func _on_player_pushback_requested(direction: Vector2, force: float) -> void:
 	player_manager.apply_pushback(direction, force)
 
 
-func _on_commissar_magnum_fired(origin: Vector2, direction: Vector2) -> void:
-	audio_manager.play_enemy_shot()
-	effects_manager.play_muzzle_flash(origin, direction, 22.0)
+func _on_execution_projectile_arrived(target: Node) -> void:
+	audio_manager.play_bullet_impact()
+	enemy_manager.resolve_commissar_execution_projectile(target)
 
 
 func _on_player_damage_resolved(amount: int) -> void:

@@ -3,6 +3,7 @@ class_name ProjectileEntity
 
 signal hit_detected(projectile, target: Node)
 signal expired(projectile)
+signal execution_target_reached(projectile, target: Node)
 
 const HOSTILE_PROJECTILE_COLLISION_MASK := 33
 const PLAYER_PROJECTILE_COLLISION_MASK := 178
@@ -48,6 +49,10 @@ var _visual_rotation_offset: float = 0.0
 var _collision_add_deferred: bool = false
 var _visual_refresh_remaining: float = 0.0
 var _projectile_visual: ProjectileVisual = null
+var _execution_homing_target: Node2D = null
+var _execution_homing_turn_speed: float = 0.0
+var _execution_homing_arrival_radius: float = 0.0
+var _is_execution_homing: bool = false
 
 
 func _init() -> void:
@@ -100,11 +105,19 @@ func _physics_process(delta: float) -> void:
 		if _age >= lifetime_seconds:
 			expire("lifetime", global_position)
 		return
+	if _is_execution_homing and not _update_execution_homing_direction(delta):
+		return
 	var previous_position := global_position
 	var next_position := global_position + direction * speed * delta
 	var step_distance: float = previous_position.distance_to(next_position)
 	global_position = next_position
 	_distance_traveled += step_distance
+	if _is_execution_homing and _execution_homing_target_reached(previous_position, next_position):
+		var reached_target: Node2D = _execution_homing_target
+		global_position = reached_target.global_position
+		execution_target_reached.emit(self, reached_target)
+		expire("execution_hit", global_position)
+		return
 	_update_projectile_visual_offset()
 	if not visible and _distance_traveled >= visual_reveal_distance:
 		visible = true
@@ -150,6 +163,12 @@ func configure_hostile_metadata(shot_config: Dictionary) -> void:
 		_agent_mine_arming_remaining = _agent_mine_arming_duration
 		if configured_target is Vector2:
 			_agent_mine_target_position = configured_target
+	var homing_target := shot_config.get("homing_target", null) as Node2D
+	if bool(shot_config.get("execution_homing", false)) and homing_target != null and is_instance_valid(homing_target):
+		_is_execution_homing = true
+		_execution_homing_target = homing_target
+		_execution_homing_turn_speed = deg_to_rad(max(float(shot_config.get("homing_turn_speed_degrees", 720.0)), 0.0))
+		_execution_homing_arrival_radius = max(float(shot_config.get("homing_arrival_radius", 0.0)), 0.0)
 	_visual_rotation_offset = float(shot_config.get("visual_rotation_offset", 0.0))
 
 
@@ -173,6 +192,36 @@ func _is_hostile_he_projectile_kind(projectile_kind: String) -> bool:
 
 func _is_agent_mine_arming() -> bool:
 	return damage_packet != null and String(damage_packet.projectile_kind) == AGENT_MINE_KIND and _agent_mine_arming_remaining > 0.0
+
+
+func _update_execution_homing_direction(delta: float) -> bool:
+	if _execution_homing_target == null or not is_instance_valid(_execution_homing_target) or not _execution_homing_target.is_inside_tree():
+		expire("homing_target_lost", global_position)
+		return false
+	var desired_direction: Vector2 = (_execution_homing_target.global_position - global_position).normalized()
+	if desired_direction.length_squared() <= 0.001:
+		return true
+	var angle_delta: float = wrapf(desired_direction.angle() - direction.angle(), -PI, PI)
+	var maximum_turn: float = _execution_homing_turn_speed * max(delta, 0.0)
+	direction = direction.rotated(clampf(angle_delta, -maximum_turn, maximum_turn)).normalized()
+	rotation = direction.angle() + _visual_rotation_offset
+	return true
+
+
+func _execution_homing_target_reached(segment_start: Vector2, segment_end: Vector2) -> bool:
+	if _execution_homing_target == null or not is_instance_valid(_execution_homing_target):
+		return false
+	var target_radius: float = 0.0
+	var configured_body_radius: Variant = _execution_homing_target.get("body_radius")
+	if configured_body_radius != null:
+		target_radius = max(float(configured_body_radius), 0.0)
+	var arrival_radius: float = max(_execution_homing_arrival_radius, body_radius + target_radius)
+	var segment: Vector2 = segment_end - segment_start
+	if segment.length_squared() <= 0.001:
+		return segment_start.distance_squared_to(_execution_homing_target.global_position) <= arrival_radius * arrival_radius
+	var along_segment: float = clampf((_execution_homing_target.global_position - segment_start).dot(segment) / segment.length_squared(), 0.0, 1.0)
+	var closest_point: Vector2 = segment_start + segment * along_segment
+	return closest_point.distance_squared_to(_execution_homing_target.global_position) <= arrival_radius * arrival_radius
 
 
 func _update_agent_mine_throw(delta: float) -> void:

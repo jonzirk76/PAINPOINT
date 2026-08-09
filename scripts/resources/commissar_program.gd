@@ -31,6 +31,10 @@ class_name CommissarProgram
 @export var discipline_interval: float = 9.0
 ## [Description] Controls how long the Commissar telegraphs an execution attempt.
 @export var execution_telegraph_seconds: float = 1.2
+## [Description] Controls how sharply a Commissar execution bullet can correct its aim while pursuing a rogue drone.
+@export_range(90.0, 1440.0, 15.0) var execution_homing_turn_speed_degrees: float = 720.0
+## [Description] Controls how long a Commissar execution bullet may pursue a rogue drone before expiring.
+@export var execution_projectile_lifetime_seconds: float = 3.0
 ## [Description] Controls how long a rogue repair drone has to escape an execution attempt.
 @export var rogue_escape_seconds: float = 4.8
 ## [Description] Prevents discipline events until the corps has at least this many coordinated repair drones.
