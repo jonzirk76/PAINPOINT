@@ -24,8 +24,18 @@ const AGENT_RESTING_PISTOL_TEXTURE := preload("res://art/characters/player_resti
 const AGENT_RESTING_PISTOL_LEFT_TEXTURE := preload("res://art/characters/player_resting_pistol_left.svg")
 const PATH_REPATH_BASE_SECONDS := 0.1
 const PATH_REPATH_STAGGER_SECONDS := 0.015
+const PATH_DETOUR_REPATH_BASE_SECONDS := 0.32
+const PATH_DETOUR_REPATH_STAGGER_SECONDS := 0.025
 const PATH_CACHE_TARGET_MOVE_SQUARED := 48.0 * 48.0
 const PATH_CACHE_SELF_MOVE_SQUARED := 36.0 * 36.0
+const PATH_DETOUR_TARGET_MOVE_SQUARED := 80.0 * 80.0
+const PATH_DETOUR_SELF_MOVE_SQUARED := 64.0 * 64.0
+const PATH_DETOUR_REACHED_SQUARED := 24.0 * 24.0
+const PLAYER_LOS_CLEAR_CACHE_SECONDS := 0.07
+const PLAYER_LOS_BLOCKED_CACHE_SECONDS := 0.2
+const PLAYER_LOS_CACHE_STAGGER_SECONDS := 0.01
+const PLAYER_LOS_TARGET_MOVE_SQUARED := 28.0 * 28.0
+const PLAYER_LOS_SELF_MOVE_SQUARED := 24.0 * 24.0
 const ENEMY_COLLISION_LAYER := 2
 const AGENT_BOSS_COLLISION_LAYER := 128
 const STANDARD_ENEMY_COLLISION_MASK := 97
@@ -181,6 +191,11 @@ var _path_cache_target_position: Vector2 = Vector2.INF
 var _path_cache_enemy_position: Vector2 = Vector2.INF
 var _path_repath_remaining: float = 0.0
 var _path_repath_interval: float = PATH_REPATH_BASE_SECONDS
+var _path_cache_is_detour: bool = false
+var _player_los_cache_remaining: float = 0.0
+var _player_los_cache_target_position: Vector2 = Vector2.INF
+var _player_los_cache_enemy_position: Vector2 = Vector2.INF
+var _player_los_cache_clear: bool = false
 var _agent_rng := RandomNumberGenerator.new()
 var _agent_action_kind: String = ""
 var _agent_action_remaining: float = 0.0
@@ -384,6 +399,8 @@ func _physics_process(delta: float) -> void:
 		_shot_cooldown_remaining = max(_shot_cooldown_remaining - delta, 0.0)
 	if _path_repath_remaining > 0.0:
 		_path_repath_remaining = max(_path_repath_remaining - delta, 0.0)
+	if _player_los_cache_remaining > 0.0:
+		_player_los_cache_remaining = max(_player_los_cache_remaining - delta, 0.0)
 	if _is_dying:
 		_death_elapsed += delta
 		velocity = _knockback_velocity
@@ -574,6 +591,7 @@ func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: A
 			playable_rects.append(playable_rect)
 	_rebuild_path_blocker_cache()
 	_invalidate_path_cache()
+	_invalidate_player_los_cache()
 	global_position = _constrain_to_playable(global_position)
 
 
@@ -791,6 +809,14 @@ func _invalidate_path_cache() -> void:
 	_path_cache_target_position = Vector2.INF
 	_path_cache_enemy_position = Vector2.INF
 	_path_repath_remaining = 0.0
+	_path_cache_is_detour = false
+
+
+func _invalidate_player_los_cache() -> void:
+	_player_los_cache_remaining = 0.0
+	_player_los_cache_target_position = Vector2.INF
+	_player_los_cache_enemy_position = Vector2.INF
+	_player_los_cache_clear = false
 
 
 func is_birth_animation_active() -> bool:
@@ -2128,7 +2154,7 @@ func _get_slippery_ranged_velocity(to_target: Vector2, movement_speed: float) ->
 	var preferred_direction := target_direction.orthogonal() * _strafe_sign
 	if distance < preferred_distance - distance_band:
 		preferred_direction = _get_retreat_or_strafe_direction(target_direction, preferred_distance)
-	elif distance > preferred_distance + distance_band and not _wall_blocks_segment(global_position, target_position):
+	elif distance > preferred_distance + distance_band and _has_clear_player_line_of_sight():
 		preferred_direction = (target_direction + preferred_direction * 0.55).normalized()
 	return _get_agent_path_velocity_for_direction(preferred_direction, max(preferred_distance * 0.7, 120.0), max(movement_speed, 0.0))
 
@@ -2148,9 +2174,24 @@ func _has_clear_player_shot(to_target: Vector2) -> bool:
 	var shot_origin := global_position + shot_direction * (body_radius + projectile_radius + 4.0)
 	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
 		return false
-	if _wall_blocks_segment(global_position, target_position) or _wall_blocks_segment(global_position, shot_origin):
+	if not _has_clear_player_line_of_sight() or _wall_blocks_segment(global_position, shot_origin):
 		return false
 	return true
+
+
+func _has_clear_player_line_of_sight() -> bool:
+	if (
+		_player_los_cache_remaining > 0.0
+		and target_position.distance_squared_to(_player_los_cache_target_position) <= PLAYER_LOS_TARGET_MOVE_SQUARED
+		and global_position.distance_squared_to(_player_los_cache_enemy_position) <= PLAYER_LOS_SELF_MOVE_SQUARED
+	):
+		return _player_los_cache_clear
+	_player_los_cache_clear = not _wall_blocks_segment(global_position, target_position)
+	_player_los_cache_target_position = target_position
+	_player_los_cache_enemy_position = global_position
+	var stagger: float = float(get_instance_id() % 5) * PLAYER_LOS_CACHE_STAGGER_SECONDS
+	_player_los_cache_remaining = (PLAYER_LOS_CLEAR_CACHE_SECONDS if _player_los_cache_clear else PLAYER_LOS_BLOCKED_CACHE_SECONDS) + stagger
+	return _player_los_cache_clear
 
 
 func _emit_enemy_projectile(shot_direction: Vector2, shot_speed: float, damage: int, radius: float, projectile_count: int, spread_degrees: float, lifetime: float, kind: String, knockback: float = 0.0) -> bool:
@@ -2161,7 +2202,7 @@ func _emit_enemy_projectile(shot_direction: Vector2, shot_speed: float, damage: 
 	var shot_origin := global_position + normalized_direction * (body_radius + shot_radius + 4.0)
 	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
 		return false
-	if _wall_blocks_segment(global_position, target_position) or _wall_blocks_segment(global_position, shot_origin):
+	if not _has_clear_player_line_of_sight() or _wall_blocks_segment(global_position, shot_origin):
 		return false
 	var shot_config := {
 		"speed": max(shot_speed, 1.0),
@@ -2480,7 +2521,7 @@ func _emit_agent_high_explosive_rocket(to_target: Vector2) -> bool:
 	var shot_origin: Vector2 = _get_agent_projectile_spawn_origin(shot_direction, shot_radius, 4.0)
 	if shot_origin == Vector2.INF:
 		return false
-	if _wall_blocks_segment(global_position, target_position) or _wall_blocks_segment(global_position, shot_origin):
+	if not _has_clear_player_line_of_sight() or _wall_blocks_segment(global_position, shot_origin):
 		return false
 	var rocket_speed: float = max(float(agent_program.high_explosive_rocket_speed), 260.0)
 	var target_position_at_launch: Vector2 = target_position
@@ -2771,7 +2812,7 @@ func _get_duelist_personality_direction(target_direction: Vector2) -> Vector2:
 	var distance_to_target: float = global_position.distance_to(target_position)
 	var preferred: float = max(float(agent_program.duelist_preferred_distance), 80.0)
 	var band: float = max(float(agent_program.duelist_distance_band), 12.0)
-	if _wall_blocks_segment(global_position, target_position):
+	if not _has_clear_player_line_of_sight():
 		return target_direction
 	if distance_to_target < preferred - band:
 		return -target_direction
@@ -2967,7 +3008,7 @@ func _get_agent_personality_special_reposition(to_target: Vector2) -> String:
 			var distance_to_target: float = global_position.distance_to(target_position)
 			var preferred: float = max(float(agent_program.duelist_preferred_distance), 80.0)
 			var band: float = max(float(agent_program.duelist_distance_band), 12.0)
-			if _wall_blocks_segment(global_position, target_position):
+			if not _has_clear_player_line_of_sight():
 				return AgentBossProgram.SPECIAL_REPOSITION_APPROACH
 			if distance_to_target < preferred - band:
 				return AgentBossProgram.SPECIAL_REPOSITION_RETREAT
@@ -3094,7 +3135,7 @@ func _emit_agent_single_special_shot(to_target: Vector2, attack_verb: String) ->
 	var shot_origin: Vector2 = _get_agent_projectile_spawn_origin(shot_direction, radius, 3.0)
 	if shot_origin == Vector2.INF:
 		return
-	if _wall_blocks_segment(global_position, target_position):
+	if not _has_clear_player_line_of_sight():
 		return
 	if attack_verb == AgentBossProgram.SPECIAL_ATTACK_ROCKET:
 		var target_position_at_launch: Vector2 = target_position
@@ -3399,7 +3440,7 @@ func _emit_agent_standard_projectile(shot_direction: Vector2, shot_speed: float,
 	var shot_origin: Vector2 = global_position + normalized_direction * (body_radius + shot_radius + 5.0)
 	if not ArenaGeometry.contains_point(shot_origin, arena_bounds, arena_shape):
 		return false
-	if _wall_blocks_segment(global_position, target_position) or _wall_blocks_segment(global_position, shot_origin):
+	if not _has_clear_player_line_of_sight() or _wall_blocks_segment(global_position, shot_origin):
 		return false
 	var shot_config: Dictionary = {
 		"speed": max(shot_speed, 1.0),
@@ -3494,7 +3535,7 @@ func _update_boss_special(delta: float, to_target: Vector2) -> bool:
 	_boss_special_timer = max(_boss_special_timer - delta, 0.0)
 	if _boss_special_timer > 0.0 or to_target.length_squared() <= 4.0:
 		return false
-	if _wall_blocks_segment(global_position, target_position):
+	if not _has_clear_player_line_of_sight():
 		return false
 	_boss_special_kind = "minigun" if _boss_special_sequence_index % 2 == 0 else "rocket"
 	_boss_special_telegraph_duration = max(boss_special_telegraph_seconds, 0.1)
@@ -3854,7 +3895,7 @@ func _get_path_steering_target(final_target: Vector2) -> Vector2:
 		return _cached_steering_target
 	var blocking_wall := _get_blocking_wall_rect(global_position, final_target, clearance)
 	if blocking_wall.size == Vector2.ZERO:
-		_store_path_cache(final_target, final_target)
+		_store_path_cache(final_target, final_target, false)
 		return final_target
 	var expanded_wall := blocking_wall.grow(body_radius + 28.0)
 	var candidates := [
@@ -3878,25 +3919,33 @@ func _get_path_steering_target(final_target: Vector2) -> Vector2:
 		if score < best_score:
 			best_score = score
 			best_target = candidate
-	_store_path_cache(final_target, best_target)
+	_store_path_cache(final_target, best_target, true)
 	return best_target
 
 
 func _can_reuse_path_cache(final_target: Vector2) -> bool:
 	if _cached_steering_target == Vector2.INF or _path_repath_remaining <= 0.0:
 		return false
-	if final_target.distance_squared_to(_path_cache_target_position) > PATH_CACHE_TARGET_MOVE_SQUARED:
+	if _path_cache_is_detour and global_position.distance_squared_to(_cached_steering_target) <= PATH_DETOUR_REACHED_SQUARED:
 		return false
-	if global_position.distance_squared_to(_path_cache_enemy_position) > PATH_CACHE_SELF_MOVE_SQUARED:
+	var target_move_limit: float = PATH_DETOUR_TARGET_MOVE_SQUARED if _path_cache_is_detour else PATH_CACHE_TARGET_MOVE_SQUARED
+	var self_move_limit: float = PATH_DETOUR_SELF_MOVE_SQUARED if _path_cache_is_detour else PATH_CACHE_SELF_MOVE_SQUARED
+	if final_target.distance_squared_to(_path_cache_target_position) > target_move_limit:
+		return false
+	if global_position.distance_squared_to(_path_cache_enemy_position) > self_move_limit:
 		return false
 	return true
 
 
-func _store_path_cache(final_target: Vector2, steering_target: Vector2) -> void:
+func _store_path_cache(final_target: Vector2, steering_target: Vector2, is_detour: bool) -> void:
 	_cached_steering_target = steering_target
 	_path_cache_target_position = final_target
 	_path_cache_enemy_position = global_position
-	_path_repath_remaining = _path_repath_interval
+	_path_cache_is_detour = is_detour
+	if is_detour:
+		_path_repath_remaining = PATH_DETOUR_REPATH_BASE_SECONDS + float(get_instance_id() % 7) * PATH_DETOUR_REPATH_STAGGER_SECONDS
+	else:
+		_path_repath_remaining = _path_repath_interval
 
 
 func _get_blocking_wall_rect(from_position: Vector2, to_position: Vector2, margin: float) -> Rect2:
