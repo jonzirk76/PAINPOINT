@@ -101,7 +101,10 @@ func reset_run(generation_floor: int = 1, generation_seed: int = 0) -> void:
 func reset_encounter_test(generation_floor: int, generation_seed: int, preferred_room_kind: String, forced_profiles: Array[Resource], test_options: Dictionary = {}) -> void:
 	floor_number = max(generation_floor, 1)
 	run_seed = max(generation_seed, 0)
-	_generate_layout()
+	if bool(test_options.get("compact_layout", false)):
+		_generate_compact_encounter_test_layout(preferred_room_kind)
+	else:
+		_generate_layout()
 	var test_room_id := _get_encounter_test_room_id(preferred_room_kind)
 	if test_room_id.is_empty():
 		test_room_id = _get_encounter_test_room_id("combat")
@@ -111,6 +114,32 @@ func reset_encounter_test(generation_floor: int, generation_seed: int, preferred
 	current_room_id = test_room_id
 	_reveal_room("start")
 	_reveal_room(current_room_id)
+	room_changed.emit(current_room_id)
+
+
+func _generate_compact_encounter_test_layout(preferred_room_kind: String) -> void:
+	_clear_full_floor_geometry_cache()
+	_rooms.clear()
+	_room_order.clear()
+	_occupied_cells.clear()
+	_large_room_count = 0
+	_crossroads_placed = false
+	current_room_id = ""
+	floor_cat_room_id = ""
+	_floor_cat_room_position = Vector2.ZERO
+	_floor_cat_seed = 0
+	floor_generation_seed = _compute_floor_generation_seed()
+	var piece: RoomPieceDefinition = CHALLENGE_PIECE
+	match preferred_room_kind:
+		"boss":
+			piece = BOSS_PIECE
+		"combat":
+			piece = CROSSROADS_PIECE
+	_place_room("test", piece, Vector2i.ZERO)
+	_generate_room_interiors()
+	current_room_id = "test"
+	_reveal_room(current_room_id)
+	dungeon_generated.emit(_rooms.size())
 	room_changed.emit(current_room_id)
 
 

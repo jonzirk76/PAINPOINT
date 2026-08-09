@@ -49,7 +49,8 @@ var _backgrounds: Array[Dictionary] = [
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	focus_mode = Control.FOCUS_ALL
 	z_index = 100
 	_rng.randomize()
 	_resolve_background_textures()
@@ -74,6 +75,7 @@ func begin_loading(_title: String = "LOADING", message: String = "", initial_pro
 		_displayed_progress = 0.0
 		_select_random_background()
 	visible = true
+	grab_focus()
 	set_process(true)
 	_update_continue_prompt()
 	queue_redraw()
@@ -91,6 +93,7 @@ func finish_loading(message: String = "READY", _wait_for_continue: bool = false)
 	_continue_enabled = true
 	_glow_time = 0.0
 	visible = true
+	grab_focus()
 	set_process(true)
 	_update_continue_prompt()
 
@@ -102,12 +105,14 @@ func show_continue(message: String = "PRESS A TO CONTINUE") -> void:
 	_continue_enabled = true
 	_glow_time = 0.0
 	visible = true
+	grab_focus()
 	set_process(true)
 	_update_continue_prompt()
 
 
 func hide_loading() -> void:
 	_continue_enabled = false
+	release_focus()
 	visible = false
 	_clear_loading_crackle()
 	_clear_ready_glow()
@@ -131,17 +136,34 @@ func _process(delta: float) -> void:
 		set_process(false)
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	if not visible or not _continue_enabled:
+func _gui_input(event: InputEvent) -> void:
+	if not visible or not _is_continue_input(event):
 		return
-	if event is InputEventJoypadButton and event.pressed and event.button_index == JOY_BUTTON_A:
-		accept_event()
-		hide_loading()
-		continue_requested.emit()
-	elif event is InputEventKey and event.pressed and not event.echo and (event.keycode == KEY_ENTER or event.keycode == KEY_SPACE):
-		accept_event()
-		hide_loading()
-		continue_requested.emit()
+	accept_event()
+	if _continue_enabled:
+		_accept_continue()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not visible or not _continue_enabled or not _is_continue_input(event):
+		return
+	accept_event()
+	_accept_continue()
+
+
+func _is_continue_input(event: InputEvent) -> bool:
+	if event is InputEventJoypadButton:
+		return event.pressed and event.button_index == JOY_BUTTON_A
+	if event is InputEventKey:
+		return event.pressed and not event.echo and (event.keycode == KEY_ENTER or event.keycode == KEY_SPACE)
+	return false
+
+
+func _accept_continue() -> void:
+	if not _continue_enabled:
+		return
+	hide_loading()
+	continue_requested.emit()
 
 
 func _draw() -> void:

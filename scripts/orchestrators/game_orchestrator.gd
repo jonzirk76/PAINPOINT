@@ -82,6 +82,7 @@ const GENERATED_ENCOUNTER_TESTS := [
 		"room_kind": "challenge",
 		"profiles": [],
 		"options": {
+			"compact_layout": true,
 			"spawner_count": 1,
 			"spawner_profile": ENCOUNTER_TEST_COMMISSAR,
 			"spawner_warmup_seconds": 0.7,
@@ -2241,7 +2242,7 @@ func _start_dungeon_run(start_floor: int = 1, run_seed_override: int = 0, debug_
 		_debug_sandbox_panel.set_generation_values(_main_loop_floor, _run_seed)
 	_update_debug_sandbox_status()
 	if _debug_sandbox_active and _debug_sandbox_panel != null:
-		_debug_sandbox_panel.visible = true
+		_debug_sandbox_panel.visible = not _loading_screen_is_visible()
 
 
 func _start_generated_encounter_test(test_index: int, preserve_debug_sandbox: bool = false) -> void:
@@ -2325,7 +2326,7 @@ func _start_generated_encounter_test(test_index: int, preserve_debug_sandbox: bo
 		_debug_sandbox_active = true
 		_debug_sandbox_panel.set_generation_values(_main_loop_floor, _run_seed)
 		_update_debug_sandbox_status()
-		_debug_sandbox_panel.visible = true
+		_debug_sandbox_panel.visible = not _loading_screen_is_visible()
 
 
 func _start_main_loop_run() -> void:
@@ -5473,6 +5474,8 @@ func _clear_minimap() -> void:
 func _begin_loading_screen(title: String, message: String, progress: float = 0.0) -> void:
 	if player_manager != null and player_manager.has_method("set_spawn_feedback_deferred"):
 		player_manager.call("set_spawn_feedback_deferred", true)
+	if _debug_sandbox_panel != null:
+		_debug_sandbox_panel.visible = false
 	if loading_screen != null and loading_screen.has_method("begin_loading"):
 		loading_screen.call("begin_loading", title, message, progress)
 
@@ -5520,6 +5523,9 @@ func _on_loading_continue_requested() -> void:
 		_start_pending_agent_boss_presentation()
 		_play_loading_completion_feedback()
 		_update_hud()
+	if _debug_sandbox_active and _debug_sandbox_panel != null:
+		_debug_sandbox_panel.visible = true
+		_update_debug_sandbox_status()
 
 
 func _queue_loading_floor_start_feedback() -> void:
