@@ -821,6 +821,10 @@ func _apply_crowd_separation() -> void:
 func _apply_crowd_separation_pair(first_index: int, second_index: int, valid_enemies: Array, pushes: Array[Vector2]) -> void:
 	var first = valid_enemies[first_index]
 	var second = valid_enemies[second_index]
+	var first_weight: float = max(float(first.crowd_weight), 0.0)
+	var second_weight: float = max(float(second.crowd_weight), 0.0)
+	if first_weight <= 0.0 and second_weight <= 0.0:
+		return
 	var separation: Vector2 = first.global_position - second.global_position
 	var desired_distance: float = float(first.body_radius) + float(second.body_radius) + crowd_separation_padding
 	var distance_squared: float = separation.length_squared()
@@ -832,8 +836,6 @@ func _apply_crowd_separation_pair(first_index: int, second_index: int, valid_ene
 		distance = sqrt(distance_squared)
 		direction = separation / distance
 	var strength: float = (1.0 - clamp(distance / desired_distance, 0.0, 1.0)) * crowd_separation_force
-	var first_weight: float = max(float(first.crowd_weight), 0.0)
-	var second_weight: float = max(float(second.crowd_weight), 0.0)
 	pushes[first_index] += direction * strength * _get_crowd_weight_response(first_weight, second_weight)
 	pushes[second_index] -= direction * strength * _get_crowd_weight_response(second_weight, first_weight)
 

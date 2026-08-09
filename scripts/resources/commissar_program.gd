@@ -18,9 +18,9 @@ class_name CommissarProgram
 ## [Description] Controls the warning time before a Commissar charge begins.
 @export var charge_telegraph_seconds: float = 0.62
 ## [Description] Controls the Commissar's movement speed during its pushing charge.
-@export var charge_speed: float = 420.0
+@export var charge_speed: float = 820.0
 ## [Description] Controls the longest time a Commissar charge may remain active.
-@export var charge_duration: float = 0.62
+@export var charge_duration: float = 0.46
 ## [Description] Controls how strongly a successful Commissar charge pushes the player.
 @export var charge_push_force: float = 520.0
 ## [Description] Controls the knockback carried by the Commissar's heavy ranged shot.

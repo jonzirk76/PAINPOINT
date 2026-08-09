@@ -1482,7 +1482,7 @@ func _update_repair_drone(delta: float, to_target: Vector2) -> Vector2:
 		if repair_distance <= repair_radius and not _wall_blocks_segment(global_position, _repair_target.global_position):
 			_try_emit_repair_pulse()
 			if to_target.length() < preferred_distance * 0.72:
-				return _get_slippery_escape_velocity(to_target, speed)
+				return _get_repair_drone_local_escape_velocity(to_target, speed)
 			return to_repair_target.orthogonal().normalized() * _strafe_sign * strafe_speed
 		var steering_target := _get_path_steering_target(_repair_target.global_position)
 		var to_steering := steering_target - global_position
@@ -1490,7 +1490,7 @@ func _update_repair_drone(delta: float, to_target: Vector2) -> Vector2:
 		if to_steering.length_squared() > 4.0:
 			repair_velocity = to_steering.normalized() * speed
 		if to_target.length() < preferred_distance * 0.62:
-			repair_velocity += _get_slippery_escape_velocity(to_target, speed * 0.85)
+			repair_velocity += _get_repair_drone_local_escape_velocity(to_target, speed * 0.85)
 		return repair_velocity.limit_length(speed)
 	if is_orphaned_horde_enemy():
 		return _get_panicked_repair_drone_velocity(to_target)
@@ -1502,10 +1502,18 @@ func _update_repair_drone(delta: float, to_target: Vector2) -> Vector2:
 			if to_steering.length_squared() > 4.0:
 				var ordered_velocity: Vector2 = to_steering.normalized() * speed
 				if to_target.length() < preferred_distance * 0.62:
-					ordered_velocity += _get_slippery_escape_velocity(to_target, speed * 0.7)
+					ordered_velocity += _get_repair_drone_local_escape_velocity(to_target, speed * 0.7)
 				return ordered_velocity.limit_length(speed)
 	_try_emit_shot(to_target)
 	return _get_slippery_ranged_velocity(to_target, speed)
+
+
+func _get_repair_drone_local_escape_velocity(to_target: Vector2, movement_speed: float) -> Vector2:
+	if to_target.length_squared() <= 4.0 or movement_speed <= 0.0:
+		return Vector2.ZERO
+	var away_from_player: Vector2 = -to_target.normalized()
+	var lateral_bias: Vector2 = away_from_player.orthogonal() * _strafe_sign * 0.24
+	return (away_from_player + lateral_bias).normalized() * movement_speed
 
 
 func _get_panicked_repair_drone_velocity(to_target: Vector2) -> Vector2:
