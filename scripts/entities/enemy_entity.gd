@@ -48,6 +48,7 @@ const BEHAVIOR_SHOOTER := "shooter"
 const BEHAVIOR_CHASER := "chaser"
 const BEHAVIOR_COMMISSAR := "commissar"
 const MIN_KNOCKBACK_WEIGHT := 0.5
+const COMMISSAR_MAGNUM_FLASH_SECONDS := 0.14
 
 enum HordeCommandState {
 	INDEPENDENT,
@@ -248,6 +249,8 @@ var _commissar_reposition_target: Vector2 = Vector2.INF
 var _commissar_execution_target: Node2D = null
 var _commissar_execution_remaining: float = 0.0
 var _commissar_execution_duration: float = 0.0
+var _commissar_magnum_flash_remaining: float = 0.0
+var _commissar_magnum_target_position: Vector2 = Vector2.INF
 
 
 func _init() -> void:
@@ -348,6 +351,8 @@ func initialize(profile) -> void:
 	_commissar_execution_target = null
 	_commissar_execution_remaining = 0.0
 	_commissar_execution_duration = 0.0
+	_commissar_magnum_flash_remaining = 0.0
+	_commissar_magnum_target_position = Vector2.INF
 	if behavior_kind == BEHAVIOR_BOSS:
 		_boss_special_timer = boss_special_cooldown * 0.55
 		_boss_special_sequence_index = 0
@@ -384,6 +389,9 @@ func _physics_process(delta: float) -> void:
 		_shot_cooldown_remaining = max(_shot_cooldown_remaining - delta, 0.0)
 	if _path_repath_remaining > 0.0:
 		_path_repath_remaining = max(_path_repath_remaining - delta, 0.0)
+	if _commissar_magnum_flash_remaining > 0.0:
+		_commissar_magnum_flash_remaining = max(_commissar_magnum_flash_remaining - delta, 0.0)
+		queue_redraw()
 	if _is_dying:
 		_death_elapsed += delta
 		velocity = _knockback_velocity
@@ -841,8 +849,8 @@ func _draw() -> void:
 		_draw_commissar_charge_telegraph()
 	elif _boss_special_telegraph_remaining > 0.0:
 		_draw_boss_special_telegraph()
-	if behavior_kind == BEHAVIOR_COMMISSAR and _commissar_execution_target != null:
-		_draw_commissar_execution_telegraph()
+	if behavior_kind == BEHAVIOR_COMMISSAR and _commissar_magnum_flash_remaining > 0.0:
+		_draw_commissar_magnum_shot()
 	if _is_agent_boss() and _agent_stream_remaining > 0.0:
 		_draw_agent_special_stream()
 	elif _boss_minigun_remaining > 0.0:
@@ -948,25 +956,34 @@ func _draw_commissar_charge_telegraph() -> void:
 	draw_arc(Vector2.ZERO, body_radius + 10.0 + telegraph_ratio * 7.0, direction.angle() - 0.45, direction.angle() + 0.45, 16, color, 4.0)
 
 
-func _draw_commissar_execution_telegraph() -> void:
-	if not is_instance_valid(_commissar_execution_target):
+func _draw_commissar_magnum_shot() -> void:
+	if _commissar_magnum_target_position == Vector2.INF:
 		return
-	var target_offset: Vector2 = to_local(_commissar_execution_target.global_position)
-	var progress: float = 1.0 - clampf(_commissar_execution_remaining / maxf(_commissar_execution_duration, 0.001), 0.0, 1.0)
-	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.04)
-	var line_color: Color = Color(1.0, 0.16 + pulse * 0.12, 0.08, 0.48 + progress * 0.4)
-	draw_dashed_line(Vector2.ZERO, target_offset, line_color, 4.0, 10.0 - progress * 4.0)
-	draw_arc(target_offset, 16.0 + progress * 10.0, 0.0, TAU, 30, line_color, 4.0)
+	var target_offset: Vector2 = to_local(_commissar_magnum_target_position)
+	var shot_direction: Vector2 = target_offset.normalized()
+	if shot_direction.length_squared() <= 0.001:
+		shot_direction = Vector2.RIGHT
+	var muzzle_position: Vector2 = shot_direction * (body_radius + 7.0)
+	var flash_ratio: float = clampf(_commissar_magnum_flash_remaining / COMMISSAR_MAGNUM_FLASH_SECONDS, 0.0, 1.0)
+	draw_line(muzzle_position, target_offset, Color(1.0, 0.28, 0.05, flash_ratio * 0.78), 8.0)
+	draw_line(muzzle_position, target_offset, Color(1.0, 0.96, 0.68, flash_ratio), 2.5)
+	draw_circle(muzzle_position, 11.0 * flash_ratio, Color(1.0, 0.72, 0.16, flash_ratio * 0.72))
+	draw_arc(target_offset, 9.0 + (1.0 - flash_ratio) * 18.0, 0.0, TAU, 24, Color(1.0, 0.54, 0.12, flash_ratio), 3.5)
 
 
 func _draw_repair_drone_panic_state() -> void:
 	var pulse: float = 0.5 + 0.5 * sin(float(Time.get_ticks_msec()) * 0.055)
 	var panic_color: Color = Color(1.0, 0.18, 0.12, 0.78 + pulse * 0.2) if is_rogue_horde_enemy() else Color(0.58, 0.84, 1.0, 0.58 + pulse * 0.24)
 	var marker_position: Vector2 = Vector2(0.0, -body_radius - 15.0 - pulse * 3.0)
-	draw_line(marker_position + Vector2(0.0, -7.0), marker_position + Vector2(0.0, 2.0), panic_color, 3.5)
-	draw_circle(marker_position + Vector2(0.0, 7.0), 2.2, panic_color)
 	if is_rogue_horde_enemy():
+		for marker_index in range(3):
+			var marker_x: float = float(marker_index - 1) * 10.0
+			draw_line(marker_position + Vector2(marker_x, -7.0), marker_position + Vector2(marker_x, 2.0), panic_color, 3.5)
+			draw_circle(marker_position + Vector2(marker_x, 7.0), 2.2, panic_color)
 		draw_arc(Vector2.ZERO, body_radius + 6.0 + pulse * 2.0, -PI * 0.15, PI * 1.15, 28, panic_color, 2.5)
+	else:
+		draw_line(marker_position + Vector2(0.0, -7.0), marker_position + Vector2(0.0, 2.0), panic_color, 3.5)
+		draw_circle(marker_position + Vector2(0.0, 7.0), 2.2, panic_color)
 
 
 func _get_closed_points(points: PackedVector2Array) -> PackedVector2Array:
@@ -1865,6 +1882,8 @@ func _update_commissar_execution(delta: float, _to_target: Vector2) -> Vector2:
 	_commissar_execution_remaining = max(_commissar_execution_remaining - delta, 0.0)
 	if _commissar_execution_remaining <= 0.0:
 		var completed_target := _commissar_execution_target
+		_commissar_magnum_target_position = completed_target.global_position
+		_commissar_magnum_flash_remaining = COMMISSAR_MAGNUM_FLASH_SECONDS
 		_clear_commissar_execution()
 		commissar_execution_ready.emit(self, completed_target)
 	queue_redraw()

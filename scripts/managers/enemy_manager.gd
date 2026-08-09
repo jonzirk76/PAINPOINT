@@ -11,6 +11,7 @@ signal enemy_count_changed(count: int)
 signal horde_enemy_count_changed(count: int)
 signal player_contact_requested(enemy, player, damage: int)
 signal player_pushback_requested(direction: Vector2, force: float)
+signal commissar_magnum_fired(origin: Vector2, direction: Vector2)
 signal hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: Dictionary)
 signal repair_requested(enemy, repair_target, amount: int)
 
@@ -459,6 +460,11 @@ func _on_commissar_execution_ready(commissar, target) -> void:
 	_commissar_rogue_by_general_id.erase(int(general.general_id))
 	_rogue_escape_remaining_by_id.erase(int(repair_drone.get_instance_id()))
 	_panicked_repair_drones_by_id.erase(int(repair_drone.get_instance_id()))
+	var shot_direction: Vector2 = (repair_drone.global_position - general.global_position).normalized()
+	if shot_direction.length_squared() <= 0.001:
+		shot_direction = Vector2.RIGHT
+	var shot_origin: Vector2 = general.global_position + shot_direction * (float(general.body_radius) + 7.0)
+	commissar_magnum_fired.emit(shot_origin, shot_direction)
 	repair_drone.execute_for_cowardice()
 
 
