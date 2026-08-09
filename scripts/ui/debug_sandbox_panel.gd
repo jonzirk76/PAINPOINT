@@ -35,7 +35,8 @@ func _ready() -> void:
 	visible = false
 	set_anchors_preset(Control.PRESET_TOP_LEFT)
 	position = Vector2(18.0, 82.0)
-	custom_minimum_size = Vector2(360.0, 0.0)
+	var available_height: float = max(get_viewport_rect().size.y - position.y - 18.0, 320.0)
+	custom_minimum_size = Vector2(400.0, min(available_height, 620.0))
 	_build_ui()
 
 
@@ -63,9 +64,16 @@ func set_freeze_enabled(value: bool) -> void:
 
 
 func _build_ui() -> void:
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	add_child(scroll)
 	var root := VBoxContainer.new()
 	root.add_theme_constant_override("separation", 6)
-	add_child(root)
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(root)
 	var title := Label.new()
 	title.text = "DEVELOPER SANDBOX  [F3]"
 	title.add_theme_font_size_override("font_size", 18)
