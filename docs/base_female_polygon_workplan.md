@@ -1,7 +1,14 @@
 # Base Female Polygon Model Workplan
 
-Status: deferred until the next weekly usage reset  
+Status: in progress on `Female-Rig-&-Volette-Skinning`
+
 Prepared: 2026-08-07
+
+The accepted male resource identities were checkpointed before female source
+creation. The independent female canonical scenes, symmetry parts, active arm,
+rig/skin resources, and native runtime slice are now scaffolded. Each female
+authoring scene includes the female turnaround as a hidden, scaled reference,
+and the review workbench uses cropped overlays from the same source image.
 
 ## Objective
 

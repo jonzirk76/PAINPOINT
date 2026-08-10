@@ -1,0 +1,8 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/neutral_polygon_8_way.gd" id="1_directional"]
+[ext_resource type="Resource" path="res://resources/characters/base_female_polygon_skin.tres" id="2_skin"]
+
+[node name="BaseFemalePolygon8Way" type="Node2D"]
+script = ExtResource("1_directional")
+character_skin_source = ExtResource("2_skin")

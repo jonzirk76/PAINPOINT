@@ -12,11 +12,13 @@ enum Direction {
 	SOUTH_EAST,
 }
 
-const SOUTH_SCENE := preload("res://scenes/characters/neutral_polygon_base/neutral_polygon_south.tscn")
-const SOUTH_WEST_SCENE := preload("res://scenes/characters/neutral_polygon_base/neutral_polygon_south_west.tscn")
-const WEST_SCENE := preload("res://scenes/characters/neutral_polygon_base/neutral_polygon_west.tscn")
-const NORTH_EAST_SCENE := preload("res://scenes/characters/neutral_polygon_base/neutral_polygon_north_east.tscn")
-const NORTH_SCENE := preload("res://scenes/characters/neutral_polygon_base/neutral_polygon_north.tscn")
+const DEFAULT_SKIN_SOURCE := preload("res://resources/characters/neutral_polygon_skin.tres")
+
+## [Description] Supplies the five canonical polygon scenes used by this authoring preview.
+@export var character_skin_source: PolygonCharacterSkinSource = DEFAULT_SKIN_SOURCE:
+	set(value):
+		character_skin_source = value
+		_rebuild_view()
 
 ## Selects one of five editable polygon projections or a mirrored derivative.
 @export_enum("South", "South West", "West", "North West", "North", "North East", "East", "South East")
@@ -41,7 +43,9 @@ func _rebuild_view() -> void:
 		_active_view.queue_free()
 		_active_view = null
 	var selection := _canonical_selection(direction)
-	var scene: PackedScene = selection["scene"]
+	var scene: PackedScene = selection.get("scene") as PackedScene
+	if scene == null:
+		return
 	_active_view = scene.instantiate()
 	_active_view.name = "ActivePolygonView"
 	if selection["mirror"]:
@@ -85,20 +89,6 @@ func _get_active_animation_player() -> AnimationPlayer:
 
 
 func _canonical_selection(value: int) -> Dictionary:
-	match value:
-		Direction.SOUTH_WEST:
-			return {"scene": SOUTH_WEST_SCENE, "mirror": false}
-		Direction.WEST:
-			return {"scene": WEST_SCENE, "mirror": false}
-		Direction.NORTH_WEST:
-			return {"scene": NORTH_EAST_SCENE, "mirror": true}
-		Direction.NORTH:
-			return {"scene": NORTH_SCENE, "mirror": false}
-		Direction.NORTH_EAST:
-			return {"scene": NORTH_EAST_SCENE, "mirror": false}
-		Direction.EAST:
-			return {"scene": WEST_SCENE, "mirror": true}
-		Direction.SOUTH_EAST:
-			return {"scene": SOUTH_WEST_SCENE, "mirror": true}
-		_:
-			return {"scene": SOUTH_SCENE, "mirror": false}
+	if character_skin_source == null or not character_skin_source.is_valid():
+		return {"scene": null, "mirror": false}
+	return character_skin_source.get_selection(value)
