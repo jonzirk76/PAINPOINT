@@ -544,30 +544,30 @@ func _test_player_shoot_pose_relaxes_to_movement(failures: Array[String]) -> voi
 	player.global_position = Vector2(20.0, -12.0)
 	player.play_shoot_pose(Vector2.RIGHT)
 	var right_origin: Vector2 = player.get_fire_origin()
-	var expected_right_origin := player.global_position + Vector2(player.muzzle_forward_offset, player.muzzle_side_offset)
+	var expected_right_origin: Vector2 = player.global_position + Vector2(player.muzzle_forward_offset, player.muzzle_side_offset)
 	if right_origin.distance_to(expected_right_origin) > 0.001:
 		failures.append("Player fire origin should line up with the right-facing gun muzzle.")
 	var projectile_forward_offset: float = sqrt(player.body_radius * player.body_radius - player.muzzle_side_offset * player.muzzle_side_offset)
 	var right_projectile_origin: Vector2 = player.get_projectile_origin(Vector2.RIGHT)
-	var expected_right_projectile_origin := player.global_position + Vector2(projectile_forward_offset, player.muzzle_side_offset)
+	var expected_right_projectile_origin: Vector2 = player.global_position + Vector2(projectile_forward_offset, player.muzzle_side_offset)
 	if right_projectile_origin.distance_to(expected_right_projectile_origin) > 0.001:
 		failures.append("Player projectile origin should start on the collision edge behind the right-facing muzzle.")
 	player.play_shoot_pose(Vector2.LEFT)
 	var left_origin: Vector2 = player.get_fire_origin()
-	var expected_left_origin := player.global_position + Vector2(-player.muzzle_forward_offset, player.muzzle_side_offset)
+	var expected_left_origin: Vector2 = player.global_position + Vector2(-player.muzzle_forward_offset, player.muzzle_side_offset)
 	if left_origin.distance_to(expected_left_origin) > 0.001:
 		failures.append("Player fire origin should line up with the mirrored left-facing gun muzzle.")
 	var left_projectile_origin: Vector2 = player.get_projectile_origin(Vector2.LEFT)
-	var expected_left_projectile_origin := player.global_position + Vector2(-projectile_forward_offset, player.muzzle_side_offset)
+	var expected_left_projectile_origin: Vector2 = player.global_position + Vector2(-projectile_forward_offset, player.muzzle_side_offset)
 	if left_projectile_origin.distance_to(expected_left_projectile_origin) > 0.001:
 		failures.append("Player projectile origin should start on the collision edge behind the left-facing muzzle.")
 	player.play_shoot_pose(Vector2.UP)
 	var up_origin: Vector2 = player.get_fire_origin()
-	var expected_up_origin := player.global_position + Vector2(player.muzzle_side_offset, -player.muzzle_forward_offset)
+	var expected_up_origin: Vector2 = player.global_position + Vector2(player.muzzle_side_offset, -player.muzzle_forward_offset)
 	if up_origin.distance_to(expected_up_origin) > 0.001:
 		failures.append("Player fire origin should rotate with the gun barrel.")
 	var up_projectile_origin: Vector2 = player.get_projectile_origin(Vector2.UP)
-	var expected_up_projectile_origin := player.global_position + Vector2(player.muzzle_side_offset, -projectile_forward_offset)
+	var expected_up_projectile_origin: Vector2 = player.global_position + Vector2(player.muzzle_side_offset, -projectile_forward_offset)
 	if up_projectile_origin.distance_to(expected_up_projectile_origin) > 0.001:
 		failures.append("Player projectile origin should start on the collision edge behind the upward muzzle.")
 	player.free()
@@ -1396,7 +1396,7 @@ func _test_ammo_type_balance(failures: Array[String]) -> void:
 	manager.activate_upgrade(chain)
 	modifiers = manager.get_modifiers()
 	packet = projectile_manager._create_damage_packet(modifiers, Vector2.ZERO, Vector2.RIGHT)
-	var chain_charge_valid := packet.lightning_charge_damage_multiplier >= 2.0
+	var chain_charge_valid: bool = packet.lightning_charge_damage_multiplier >= 2.0
 	chain_charge_valid = chain_charge_valid and packet.lightning_charge_required_stacks >= 2
 	chain_charge_valid = chain_charge_valid and packet.lightning_charge_max_stacks >= packet.lightning_charge_required_stacks
 	chain_charge_valid = chain_charge_valid and packet.lightning_charge_duration_seconds > 0.0
@@ -2824,7 +2824,7 @@ func _test_room_piece_resources(failures: Array[String]) -> void:
 			failures.append("Room piece boss spawn position is outside its playable shape: %s" % path)
 		if piece.room_kind == "combat":
 			combat_piece_count += 1
-			var cell_count := piece.footprint_cells.size()
+			var cell_count: int = piece.footprint_cells.size()
 			if cell_count == 1 and int(level.max_active_enemies) < 20:
 				failures.append("One-cell combat room pieces should still support a small encounter: %s" % path)
 			elif cell_count >= 4 and int(level.max_active_enemies) < 30:
@@ -2894,8 +2894,8 @@ func _validate_room_piece_geometry_rules(failures: Array[String]) -> void:
 	var east_opening_body_tiles: Array[Rect2] = builder.build_wall_body_tile_rects(east_opening_top_tiles, corner_cells, multi_open_edges)
 	if not _rect_list_has_rect(east_opening_body_tiles, east_opening_blocked_body):
 		failures.append("Side-facing gate openings should keep a wall body frame at the top of the four-tile opening.")
-	var east_opening := builder.get_opening_rect(corner_cells, Vector2i.ZERO, "east")
-	var east_wall_top_opening := builder.get_wall_top_opening_rect(corner_cells, Vector2i.ZERO, "east")
+	var east_opening: Rect2 = builder.get_opening_rect(corner_cells, Vector2i.ZERO, "east")
+	var east_wall_top_opening: Rect2 = builder.get_wall_top_opening_rect(corner_cells, Vector2i.ZERO, "east")
 	if abs(east_wall_top_opening.size.y - (east_opening.size.y - builder.WALL_TILE_SIZE)) > 0.5:
 		failures.append("Side-facing wall-top openings should leave the lowest opening tile as a passable wall top.")
 	var east_low_wall_top := Rect2(
@@ -2904,10 +2904,10 @@ func _validate_room_piece_geometry_rules(failures: Array[String]) -> void:
 	)
 	if not _rect_list_has_rect(multi_open_tiles, east_low_wall_top):
 		failures.append("Side-facing gate construction should draw the lowest opening tile as a wall top.")
-	var east_gate_passage := builder.get_gate_passage_rect(corner_cells, Vector2i.ZERO, "east")
+	var east_gate_passage: Rect2 = builder.get_gate_passage_rect(corner_cells, Vector2i.ZERO, "east")
 	if abs(east_gate_passage.position.y - (east_opening.position.y + builder.WALL_TILE_SIZE)) > 0.5 or abs(east_gate_passage.size.y - (east_opening.size.y - builder.WALL_TILE_SIZE)) > 0.5:
 		failures.append("Side-facing gate marker/passability should use the lower three tiles of the four-tile gate span.")
-	var north_opening_top_source := builder.get_opening_rect(corner_cells, Vector2i.ZERO, "north")
+	var north_opening_top_source: Rect2 = builder.get_opening_rect(corner_cells, Vector2i.ZERO, "north")
 	var north_opening_blocked_body := Rect2(north_opening_top_source.position + Vector2(0.0, builder.WALL_TILE_SIZE), north_opening_top_source.size)
 	var north_opening_top_tiles: Array[Rect2] = [north_opening_top_source]
 	var north_opening_body_tiles: Array[Rect2] = builder.build_wall_body_tile_rects(north_opening_top_tiles, corner_cells, multi_open_edges)
@@ -2916,11 +2916,11 @@ func _validate_room_piece_geometry_rules(failures: Array[String]) -> void:
 	var north_gate_rect: Rect2 = builder.get_wall_body_opening_rect(corner_cells, Vector2i.ZERO, "north")
 	if abs(north_gate_rect.position.y - (north_opening_top_source.position.y + builder.WALL_TILE_SIZE)) > 0.5:
 		failures.append("North-facing gate visuals should align with RPG-style wall body tiles.")
-	var north_gate_visual := builder.get_gate_visual_rect(corner_cells, Vector2i.ZERO, "north")
+	var north_gate_visual: Rect2 = builder.get_gate_visual_rect(corner_cells, Vector2i.ZERO, "north")
 	if abs(north_gate_visual.position.y - north_opening_top_source.position.y) > 0.5 or abs(north_gate_visual.size.y - builder.WALL_TILE_SIZE * 2.0) > 0.5:
 		failures.append("North-facing locked gates should draw both a gate top and one body row.")
-	var south_gate_visual := builder.get_gate_visual_rect(corner_cells, Vector2i.ZERO, "south")
-	var south_opening := builder.get_opening_rect(corner_cells, Vector2i.ZERO, "south")
+	var south_gate_visual: Rect2 = builder.get_gate_visual_rect(corner_cells, Vector2i.ZERO, "south")
+	var south_opening: Rect2 = builder.get_opening_rect(corner_cells, Vector2i.ZERO, "south")
 	if south_gate_visual != south_opening:
 		failures.append("South-facing locked gates should draw only the gate top row.")
 	var stacked_floor_cells: Array[Vector2i] = [Vector2i.ZERO, Vector2i(0, 1)]
