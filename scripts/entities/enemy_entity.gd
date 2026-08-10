@@ -36,6 +36,11 @@ const PLAYER_LOS_BLOCKED_CACHE_SECONDS := 0.2
 const PLAYER_LOS_CACHE_STAGGER_SECONDS := 0.01
 const PLAYER_LOS_TARGET_MOVE_SQUARED := 28.0 * 28.0
 const PLAYER_LOS_SELF_MOVE_SQUARED := 24.0 * 24.0
+const RETREAT_LANE_CACHE_SECONDS := 0.2
+const RETREAT_LANE_CACHE_STAGGER_SECONDS := 0.015
+const RETREAT_LANE_TARGET_MOVE_SQUARED := 32.0 * 32.0
+const RETREAT_LANE_SELF_MOVE_SQUARED := 28.0 * 28.0
+const RETREAT_LANE_DISTANCE_CHANGE := 36.0
 const ENEMY_COLLISION_LAYER := 2
 const AGENT_BOSS_COLLISION_LAYER := 128
 const STANDARD_ENEMY_COLLISION_MASK := 97
@@ -198,6 +203,12 @@ var _player_los_cache_remaining: float = 0.0
 var _player_los_cache_target_position: Vector2 = Vector2.INF
 var _player_los_cache_enemy_position: Vector2 = Vector2.INF
 var _player_los_cache_clear: bool = false
+var _retreat_lane_cache_remaining: float = 0.0
+var _retreat_lane_cache_target_position: Vector2 = Vector2.INF
+var _retreat_lane_cache_enemy_position: Vector2 = Vector2.INF
+var _retreat_lane_cache_input_direction: Vector2 = Vector2.ZERO
+var _retreat_lane_cache_distance: float = 0.0
+var _retreat_lane_cache_direction: Vector2 = Vector2.ZERO
 var _agent_rng := RandomNumberGenerator.new()
 var _agent_action_kind: String = ""
 var _agent_action_remaining: float = 0.0
@@ -404,6 +415,8 @@ func _physics_process(delta: float) -> void:
 		_path_repath_remaining = max(_path_repath_remaining - delta, 0.0)
 	if _player_los_cache_remaining > 0.0:
 		_player_los_cache_remaining = max(_player_los_cache_remaining - delta, 0.0)
+	if _retreat_lane_cache_remaining > 0.0:
+		_retreat_lane_cache_remaining = max(_retreat_lane_cache_remaining - delta, 0.0)
 	if _is_dying:
 		_death_elapsed += delta
 		velocity = _knockback_velocity
@@ -595,6 +608,7 @@ func set_arena_definition(bounds: Rect2, shape: int, walls: Array = [], voids: A
 	_rebuild_path_blocker_cache()
 	_invalidate_path_cache()
 	_invalidate_player_los_cache()
+	_invalidate_retreat_lane_cache()
 	global_position = _constrain_to_playable(global_position)
 
 
@@ -820,6 +834,15 @@ func _invalidate_player_los_cache() -> void:
 	_player_los_cache_target_position = Vector2.INF
 	_player_los_cache_enemy_position = Vector2.INF
 	_player_los_cache_clear = false
+
+
+func _invalidate_retreat_lane_cache() -> void:
+	_retreat_lane_cache_remaining = 0.0
+	_retreat_lane_cache_target_position = Vector2.INF
+	_retreat_lane_cache_enemy_position = Vector2.INF
+	_retreat_lane_cache_input_direction = Vector2.ZERO
+	_retreat_lane_cache_distance = 0.0
+	_retreat_lane_cache_direction = Vector2.ZERO
 
 
 func is_birth_animation_active() -> bool:
@@ -2801,14 +2824,33 @@ func _get_agent_normal_personality_direction(to_target: Vector2) -> Vector2:
 
 
 func _get_retreat_or_strafe_direction(target_direction: Vector2, distance: float) -> Vector2:
-	if _agent_direction_has_lane(-target_direction, distance):
-		return -target_direction
-	var side_direction: Vector2 = target_direction.orthogonal() * _agent_zigzag_sign
-	if _agent_direction_has_lane(side_direction, distance):
-		return side_direction
-	if _agent_direction_has_lane(-side_direction, distance):
-		return -side_direction
-	return target_direction
+	var normalized_target_direction: Vector2 = target_direction.normalized()
+	if normalized_target_direction.length_squared() <= 0.001:
+		return Vector2.ZERO
+	if (
+		_retreat_lane_cache_remaining > 0.0
+		and target_position.distance_squared_to(_retreat_lane_cache_target_position) <= RETREAT_LANE_TARGET_MOVE_SQUARED
+		and global_position.distance_squared_to(_retreat_lane_cache_enemy_position) <= RETREAT_LANE_SELF_MOVE_SQUARED
+		and absf(distance - _retreat_lane_cache_distance) <= RETREAT_LANE_DISTANCE_CHANGE
+		and normalized_target_direction.dot(_retreat_lane_cache_input_direction) >= 0.92
+	):
+		return _retreat_lane_cache_direction
+	var selected_direction: Vector2 = normalized_target_direction
+	if _agent_direction_has_lane(-normalized_target_direction, distance):
+		selected_direction = -normalized_target_direction
+	else:
+		var side_direction: Vector2 = normalized_target_direction.orthogonal() * _agent_zigzag_sign
+		if _agent_direction_has_lane(side_direction, distance):
+			selected_direction = side_direction
+		elif _agent_direction_has_lane(-side_direction, distance):
+			selected_direction = -side_direction
+	_retreat_lane_cache_target_position = target_position
+	_retreat_lane_cache_enemy_position = global_position
+	_retreat_lane_cache_input_direction = normalized_target_direction
+	_retreat_lane_cache_distance = distance
+	_retreat_lane_cache_direction = selected_direction
+	_retreat_lane_cache_remaining = RETREAT_LANE_CACHE_SECONDS + float(get_instance_id() % 5) * RETREAT_LANE_CACHE_STAGGER_SECONDS
+	return selected_direction
 
 
 func _get_duelist_personality_direction(target_direction: Vector2) -> Vector2:

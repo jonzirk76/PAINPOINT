@@ -23,6 +23,8 @@ signal repair_requested(enemy, repair_target, amount: int)
 @export var boss_projectile_shield_after_spawn_seconds: float = 1.15
 @export var crowd_separation_force: float = 115.0
 @export var crowd_separation_padding: float = 10.0
+## [Description] Limits meaningful separation neighbors per enemy in dense crowds; zero evaluates every overlapping pair.
+@export_range(0, 32, 1) var crowd_separation_max_neighbors: int = 8
 ## [Description] Controls how often legion controllers rebuild strategic movement orders; enemies follow cached orders between updates.
 @export_range(0.02, 0.5, 0.01) var tactical_refresh_interval: float = 0.1
 ## [Description] Controls how often repair drones reconsider their target instead of rescanning the horde every physics frame.
@@ -833,10 +835,12 @@ func _apply_crowd_separation() -> void:
 		return
 	var valid_enemies: Array = []
 	var pushes: Array[Vector2] = []
+	var neighbor_counts: Array[int] = []
 	for enemy in _enemies:
 		if is_instance_valid(enemy) and enemy.has_method("apply_crowd_separation"):
 			valid_enemies.append(enemy)
 			pushes.append(Vector2.ZERO)
+			neighbor_counts.append(0)
 	if valid_enemies.size() < 2:
 		return
 	var bucket_size := _get_crowd_separation_bucket_size(valid_enemies)
@@ -847,6 +851,7 @@ func _apply_crowd_separation() -> void:
 		var bucket: Array = buckets.get(key, [])
 		bucket.append(index)
 		buckets[key] = bucket
+	var neighbor_limit: int = max(crowd_separation_max_neighbors, 0)
 	for first_index in range(valid_enemies.size()):
 		var first = valid_enemies[first_index]
 		var base_cell := _crowd_bucket_cell(first.global_position, bucket_size)
@@ -855,34 +860,53 @@ func _apply_crowd_separation() -> void:
 				var key := Vector2i(base_cell.x + offset_x, base_cell.y + offset_y)
 				var bucket: Array = buckets.get(key, [])
 				for second_index in bucket:
-					if int(second_index) <= first_index:
+					var resolved_second_index: int = int(second_index)
+					if resolved_second_index <= first_index:
 						continue
-					_apply_crowd_separation_pair(first_index, int(second_index), valid_enemies, pushes)
+					var allow_first_push: bool = neighbor_limit == 0 or neighbor_counts[first_index] < neighbor_limit
+					var allow_second_push: bool = neighbor_limit == 0 or neighbor_counts[resolved_second_index] < neighbor_limit
+					if not allow_first_push and not allow_second_push:
+						continue
+					var response_mask: int = _apply_crowd_separation_pair(first_index, resolved_second_index, valid_enemies, pushes, allow_first_push, allow_second_push)
+					if (response_mask & 1) != 0:
+						neighbor_counts[first_index] += 1
+					if (response_mask & 2) != 0:
+						neighbor_counts[resolved_second_index] += 1
 	for index in range(valid_enemies.size()):
 		if pushes[index].length_squared() > 0.001:
 			valid_enemies[index].apply_crowd_separation(pushes[index])
 
 
-func _apply_crowd_separation_pair(first_index: int, second_index: int, valid_enemies: Array, pushes: Array[Vector2]) -> void:
+func _apply_crowd_separation_pair(first_index: int, second_index: int, valid_enemies: Array, pushes: Array[Vector2], allow_first_push: bool, allow_second_push: bool) -> int:
 	var first = valid_enemies[first_index]
 	var second = valid_enemies[second_index]
 	var first_weight: float = max(float(first.crowd_weight), 0.0)
 	var second_weight: float = max(float(second.crowd_weight), 0.0)
 	if first_weight <= 0.0 and second_weight <= 0.0:
-		return
+		return 0
 	var separation: Vector2 = first.global_position - second.global_position
 	var desired_distance: float = float(first.body_radius) + float(second.body_radius) + crowd_separation_padding
 	var distance_squared: float = separation.length_squared()
 	if distance_squared > desired_distance * desired_distance:
-		return
+		return 0
 	var direction: Vector2 = Vector2.RIGHT.rotated(float((first.get_instance_id() + second.get_instance_id()) % 628) * 0.01)
 	var distance: float = 0.0
 	if distance_squared > 0.001:
 		distance = sqrt(distance_squared)
 		direction = separation / distance
 	var strength: float = (1.0 - clamp(distance / desired_distance, 0.0, 1.0)) * crowd_separation_force
-	pushes[first_index] += direction * strength * _get_crowd_weight_response(first_weight, second_weight)
-	pushes[second_index] -= direction * strength * _get_crowd_weight_response(second_weight, first_weight)
+	if strength <= 0.0:
+		return 0
+	var response_mask: int = 0
+	var first_response: float = _get_crowd_weight_response(first_weight, second_weight)
+	if allow_first_push and first_response > 0.0:
+		pushes[first_index] += direction * strength * first_response
+		response_mask |= 1
+	var second_response: float = _get_crowd_weight_response(second_weight, first_weight)
+	if allow_second_push and second_response > 0.0:
+		pushes[second_index] -= direction * strength * second_response
+		response_mask |= 2
+	return response_mask
 
 
 func _get_crowd_weight_response(receiver_weight: float, source_weight: float) -> float:
@@ -897,7 +921,7 @@ func _get_crowd_separation_bucket_size(valid_enemies: Array) -> float:
 	var largest_body_radius := 0.0
 	for enemy in valid_enemies:
 		largest_body_radius = max(largest_body_radius, float(enemy.body_radius))
-	return max(96.0, largest_body_radius * 2.0 + crowd_separation_padding + 16.0)
+	return max(64.0, largest_body_radius * 2.0 + crowd_separation_padding + 4.0)
 
 
 func _crowd_bucket_cell(position: Vector2, bucket_size: float) -> Vector2i:
