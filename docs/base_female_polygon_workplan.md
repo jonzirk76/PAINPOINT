@@ -9,6 +9,9 @@ creation. The independent female canonical scenes, symmetry parts, active arm,
 rig/skin resources, and native runtime slice are now scaffolded. Each female
 authoring scene includes the female turnaround as a hidden, scaled reference,
 and the review workbench uses cropped overlays from the same source image.
+The first South-view silhouette pass narrows the shoulder/ribcage transition,
+expands the hips and upper thighs, and tapers the upper arms while retaining the
+checkpointed male head projection and every distal foot/contact transform.
 
 ## Objective
 

@@ -263,6 +263,8 @@ _data = {
 [node name="BaseFemalePolygonSouth" type="Node2D" unique_id=1727007131]
 metadata/canonical_direction = "south"
 metadata/reference_texture = "res://art/concept_art/female_character_template.png"
+metadata/shared_head_projection = "base_male_south"
+metadata/locked_foot_contacts = true
 
 [node name="Skeleton2D" type="Skeleton2D" parent="." unique_id=428800336]
 position = Vector2(-200.5, -480)
@@ -272,26 +274,22 @@ position = Vector2(200.33333, 299.66666)
 rest = Transform2D(1, 0, 0, 1, 200.33333, 299.66666)
 
 [node name="AuthoredHipsHalf" parent="Skeleton2D/Hips" unique_id=1026780417 instance=ExtResource("1_hips_half")]
-polygon = PackedVector2Array(-56.83333, 7.3333435, -9.833328, 47.333344, 0.16667175, 47.333344, 0, -9.6666565, -53.83333, -9.6666565)
 
 [node name="HipsMirrorAxis" type="Node2D" parent="Skeleton2D/Hips" unique_id=333109028]
 scale = Vector2(-1, 1)
 
 [node name="MirroredHipsHalf" parent="Skeleton2D/Hips/HipsMirrorAxis" unique_id=811820004 instance=ExtResource("1_hips_half")]
-polygon = PackedVector2Array(-56.83333, 7.3333435, -9.833328, 47.333344, 0.16667175, 47.333344, 0, -9.6666565, -53.83333, -9.6666565)
 
 [node name="Torso" type="Bone2D" parent="Skeleton2D/Hips" unique_id=1988226583]
 z_index = 10
 rest = Transform2D(1, 0, 0, 1, 0, 0)
 
 [node name="AuthoredTorsoHalf" parent="Skeleton2D/Hips/Torso" unique_id=844426500 instance=ExtResource("2_torso_half")]
-polygon = PackedVector2Array(-81.83333, -78.66666, -84.83333, -70.66666, -69.83333, -59.666656, -56.33333, -31.666656, -52.83333, -19.666656, -53.83333, -8.6666565, -54.83333, -4.6666565, 0, 10.870805, 0, -95.66666, -56.83333, -96.66666, -63.83333, -93.66666, -73.83333, -88.66666)
 
 [node name="TorsoMirrorAxis" type="Node2D" parent="Skeleton2D/Hips/Torso" unique_id=1472444672]
 scale = Vector2(-1, 1)
 
 [node name="MirroredTorsoHalf" parent="Skeleton2D/Hips/Torso/TorsoMirrorAxis" unique_id=1896094446 instance=ExtResource("2_torso_half")]
-polygon = PackedVector2Array(-81.83333, -78.66666, -84.83333, -70.66666, -69.83333, -59.666656, -56.33333, -31.666656, -52.83333, -19.666656, -53.83333, -8.6666565, -54.83333, -4.6666565, 0, 10.870805, 0, -95.66666, -56.83333, -96.66666, -63.83333, -93.66666, -73.83333, -88.66666)
 
 [node name="Head" type="Bone2D" parent="Skeleton2D/Hips/Torso" unique_id=1375361548]
 z_index = 20

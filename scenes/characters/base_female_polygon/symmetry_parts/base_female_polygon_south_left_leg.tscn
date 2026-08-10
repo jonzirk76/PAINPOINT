@@ -9,7 +9,7 @@ metadata/symmetry_source = "left"
 [node name="Thigh" type="Polygon2D" parent="." unique_id=482248955]
 color = Color(0.84705883, 0.6862745, 0.627451, 1)
 antialiased = true
-polygon = PackedVector2Array(-27, -9, -26, 13, -24, 28, -23, 36, -10, 46, 6, 43, 14, 37, 21, 23, 26, 10, 26, -4, -24, -30)
+polygon = PackedVector2Array(-31, -10, -32, 8, -30, 24, -27, 36, -12, 48, 7, 46, 17, 39, 25, 25, 31, 10, 31, -5, -27, -31)
 metadata/editable_polygon_base = true
 
 [node name="Shin" type="Bone2D" parent="." unique_id=1454775245]

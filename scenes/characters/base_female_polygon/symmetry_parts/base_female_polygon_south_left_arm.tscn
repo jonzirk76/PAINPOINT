@@ -9,7 +9,7 @@ metadata/symmetry_source = "left"
 [node name="UpperArm" type="Polygon2D" parent="." unique_id=1374433589]
 color = Color(0.84705883, 0.6862745, 0.627451, 1)
 antialiased = true
-polygon = PackedVector2Array(-19, -9, -30, 16, -27.5, 25, -15, 32, 0, 31, 16.5, 6, 19, -7, 4, -24, -13, -26)
+polygon = PackedVector2Array(-16, -9, -25, 14, -24, 24, -13, 31, 0, 30, 14, 7, 16, -6, 4, -21, -11, -23)
 metadata/editable_polygon_base = true
 
 [node name="Forearm" type="Bone2D" parent="." unique_id=1550157558]
