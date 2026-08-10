@@ -1,0 +1,713 @@
+[gd_scene format=3]
+
+[node name="BoxProof04Dramatic" type="Node2D" unique_id=1915824296]
+
+[node name="Background" type="Polygon2D" parent="." unique_id=1508846727]
+color = Color(0.0627451, 0.09019608, 0.13333334, 1)
+polygon = PackedVector2Array(0, 0, 1280, 0, 1280, 720, 0, 720)
+
+[node name="Title" type="Label" parent="." unique_id=1824109288]
+offset_left = 30.0
+offset_top = 18.0
+offset_right = 30.0
+offset_bottom = 18.0
+theme_override_font_sizes/font_size = 28
+theme_override_colors/font_color = Color(0.9411765, 0.95686275, 0.98039216, 1)
+text = "04  Dramatic — score 61.57 (review)"
+
+[node name="Instructions" type="Label" parent="." unique_id=1276655779]
+offset_left = 30.0
+offset_top = 57.0
+offset_right = 30.0
+offset_bottom = 57.0
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.68235296, 0.73333335, 0.8156863, 1)
+text = "LEFT: shaded attempted Polygon2D faces.  RIGHT: exact target rays meet the diamond; bright attempted extensions reveal drift."
+
+[node name="AttemptedForm" type="Node2D" parent="." unique_id=50039073]
+position = Vector2(28, 96)
+
+[node name="PanelFill" type="Polygon2D" parent="AttemptedForm" unique_id=1883233842]
+color = Color(0.09411765, 0.13725491, 0.2, 1)
+polygon = PackedVector2Array(0, 0, 610, 0, 610, 548, 0, 548)
+
+[node name="PanelBorder" type="Line2D" parent="AttemptedForm" unique_id=1960300348]
+points = PackedVector2Array(0, 0, 610, 0, 610, 548, 0, 548, 0, 0)
+width = 1.2
+default_color = Color(0.20784314, 0.26666668, 0.3529412, 1)
+antialiased = true
+
+[node name="PanelTitle" type="Label" parent="AttemptedForm" unique_id=1355932037]
+offset_left = 16.0
+offset_top = 12.0
+offset_right = 16.0
+offset_bottom = 12.0
+theme_override_font_sizes/font_size = 19
+theme_override_colors/font_color = Color(0.9098039, 0.92941177, 0.9607843, 1)
+text = "ATTEMPTED FORM"
+
+[node name="PolygonBox" type="Node2D" parent="AttemptedForm" unique_id=863347918]
+position = Vector2(305, 282)
+scale = Vector2(1.65, 1.65)
+
+[node name="FaceZNear" type="Polygon2D" parent="AttemptedForm/PolygonBox" unique_id=1308444429]
+color = Color(0.5411765, 0.33333334, 0.21960784, 1)
+polygon = PackedVector2Array(78.57996, 61.775578, 115.52348, -0.4013102, 70.13517, -91.46523, -3.0238874, -99.52564)
+
+[node name="FaceZNearOutline" type="Line2D" parent="AttemptedForm/PolygonBox" unique_id=1835330494]
+points = PackedVector2Array(78.57996, 61.775578, 115.52348, -0.4013102, 70.13517, -91.46523, -3.0238874, -99.52564, 78.57996, 61.775578)
+width = 1.6
+default_color = Color(0.94, 0.97, 1, 0.62)
+antialiased = true
+
+[node name="FaceXFar" type="Polygon2D" parent="AttemptedForm/PolygonBox" unique_id=1240742464]
+color = Color(0.6784314, 0.4392157, 0.28235295, 1)
+polygon = PackedVector2Array(-79.391785, 110.93937, 78.57996, 61.775578, -3.0238874, -99.52564, -141.73866, -2.098528)
+
+[node name="FaceXFarOutline" type="Line2D" parent="AttemptedForm/PolygonBox" unique_id=1990265997]
+points = PackedVector2Array(-79.391785, 110.93937, 78.57996, 61.775578, -3.0238874, -99.52564, -141.73866, -2.098528, -79.391785, 110.93937)
+width = 1.6
+default_color = Color(0.94, 0.97, 1, 0.62)
+antialiased = true
+
+[node name="ExactWhiteCage" type="Node2D" parent="AttemptedForm/PolygonBox" unique_id=485138043]
+
+[node name="XExact01" type="Line2D" parent="AttemptedForm/PolygonBox/ExactWhiteCage" unique_id=695705906]
+points = PackedVector2Array(-90.298096, 117.2658, 1.6818311, 50.0635)
+width = 1.2
+default_color = Color(0.95, 0.97, 1, 0.3)
+joint_mode = 2
+antialiased = true
+
+[node name="XExact02" type="Line2D" parent="AttemptedForm/PolygonBox/ExactWhiteCage" unique_id=1133558318]
+points = PackedVector2Array(-147.81615, 2.9653444, -37.80406, -27.333693)
+width = 1.2
+default_color = Color(0.95, 0.97, 1, 0.3)
+joint_mode = 2
+antialiased = true
+
+[node name="XExact03" type="Line2D" parent="AttemptedForm/PolygonBox/ExactWhiteCage" unique_id=1905450080]
+points = PackedVector2Array(73.10894, 52.860382, 119.965546, -2.4066327)
+width = 1.2
+default_color = Color(0.95, 0.97, 1, 0.3)
+joint_mode = 2
+antialiased = true
+
+[node name="XExact04" type="Line2D" parent="AttemptedForm/PolygonBox/ExactWhiteCage" unique_id=2108336567]
+points = PackedVector2Array(-3.2119853, -95.612, 72.45318, -94.09146)
+width = 1.2
+default_color = Color(0.95, 0.97, 1, 0.3)
+joint_mode = 2
+antialiased = true
+
+[node name="YExact01" type="Line2D" parent="AttemptedForm/PolygonBox/ExactWhiteCage" unique_id=1944574653]
+points = PackedVector2Array(-90.298096, 117.2658, -147.81615, 2.9653444)
+width = 1.2
+default_color = Color(0.95, 0.97, 1, 0.3)
+joint_mode = 2
+antialiased = true
+
+[node name="YExact02" type="Line2D" parent="AttemptedForm/PolygonBox/ExactWhiteCage" unique_id=89945445]
+points = PackedVector2Array(1.6818311, 50.0635, -37.80406, -27.333693)
+width = 1.2
+default_color = Color(0.95, 0.97, 1, 0.3)
+joint_mode = 2
+antialiased = true
+
+[node name="YExact03" type="Line2D" parent="AttemptedForm/PolygonBox/ExactWhiteCage" unique_id=1770348615]
+points = PackedVector2Array(73.10894, 52.860382, -3.2119853, -95.612)
+width = 1.2
+default_color = Color(0.95, 0.97, 1, 0.3)
+joint_mode = 2
+antialiased = true
+
+[node name="YExact04" type="Line2D" parent="AttemptedForm/PolygonBox/ExactWhiteCage" unique_id=1740652696]
+points = PackedVector2Array(119.965546, -2.4066327, 72.45318, -94.09146)
+width = 1.2
+default_color = Color(0.95, 0.97, 1, 0.3)
+joint_mode = 2
+antialiased = true
+
+[node name="ZExact01" type="Line2D" parent="AttemptedForm/PolygonBox/ExactWhiteCage" unique_id=1555440277]
+points = PackedVector2Array(-90.298096, 117.2658, 73.10894, 52.860382)
+width = 1.2
+default_color = Color(0.95, 0.97, 1, 0.3)
+joint_mode = 2
+antialiased = true
+
+[node name="ZExact02" type="Line2D" parent="AttemptedForm/PolygonBox/ExactWhiteCage" unique_id=115642186]
+points = PackedVector2Array(1.6818311, 50.0635, 119.965546, -2.4066327)
+width = 1.2
+default_color = Color(0.95, 0.97, 1, 0.3)
+joint_mode = 2
+antialiased = true
+
+[node name="ZExact03" type="Line2D" parent="AttemptedForm/PolygonBox/ExactWhiteCage" unique_id=1193878651]
+points = PackedVector2Array(-147.81615, 2.9653444, -3.2119853, -95.612)
+width = 1.2
+default_color = Color(0.95, 0.97, 1, 0.3)
+joint_mode = 2
+antialiased = true
+
+[node name="ZExact04" type="Line2D" parent="AttemptedForm/PolygonBox/ExactWhiteCage" unique_id=1615209739]
+points = PackedVector2Array(-37.80406, -27.333693, 72.45318, -94.09146)
+width = 1.2
+default_color = Color(0.95, 0.97, 1, 0.3)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptedAxisCage" type="Node2D" parent="AttemptedForm/PolygonBox" unique_id=1627058579]
+
+[node name="XAttempt01" type="Line2D" parent="AttemptedForm/PolygonBox/AttemptedAxisCage" unique_id=1897036824]
+points = PackedVector2Array(-79.391785, 110.93937, 6.561695, 39.150787)
+width = 2.4
+default_color = Color(0.9372549, 0.41568628, 0.4117647, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="XAttempt02" type="Line2D" parent="AttemptedForm/PolygonBox/AttemptedAxisCage" unique_id=502356788]
+points = PackedVector2Array(-141.73866, -2.098528, -33.017952, -32.72896)
+width = 2.4
+default_color = Color(0.9372549, 0.41568628, 0.4117647, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="XAttempt03" type="Line2D" parent="AttemptedForm/PolygonBox/AttemptedAxisCage" unique_id=900051782]
+points = PackedVector2Array(78.57996, 61.775578, 115.52348, -0.4013102)
+width = 2.4
+default_color = Color(0.9372549, 0.41568628, 0.4117647, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="XAttempt04" type="Line2D" parent="AttemptedForm/PolygonBox/AttemptedAxisCage" unique_id=739787546]
+points = PackedVector2Array(-3.0238874, -99.52564, 70.13517, -91.46523)
+width = 2.4
+default_color = Color(0.9372549, 0.41568628, 0.4117647, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="YAttempt01" type="Line2D" parent="AttemptedForm/PolygonBox/AttemptedAxisCage" unique_id=183091108]
+points = PackedVector2Array(-79.391785, 110.93937, -141.73866, -2.098528)
+width = 2.4
+default_color = Color(0.4, 0.78431374, 0.5411765, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="YAttempt02" type="Line2D" parent="AttemptedForm/PolygonBox/AttemptedAxisCage" unique_id=619134580]
+points = PackedVector2Array(6.561695, 39.150787, -33.017952, -32.72896)
+width = 2.4
+default_color = Color(0.4, 0.78431374, 0.5411765, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="YAttempt03" type="Line2D" parent="AttemptedForm/PolygonBox/AttemptedAxisCage" unique_id=1121279214]
+points = PackedVector2Array(78.57996, 61.775578, -3.0238874, -99.52564)
+width = 2.4
+default_color = Color(0.4, 0.78431374, 0.5411765, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="YAttempt04" type="Line2D" parent="AttemptedForm/PolygonBox/AttemptedAxisCage" unique_id=1280542732]
+points = PackedVector2Array(115.52348, -0.4013102, 70.13517, -91.46523)
+width = 2.4
+default_color = Color(0.4, 0.78431374, 0.5411765, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="ZAttempt01" type="Line2D" parent="AttemptedForm/PolygonBox/AttemptedAxisCage" unique_id=287469514]
+points = PackedVector2Array(-79.391785, 110.93937, 78.57996, 61.775578)
+width = 2.4
+default_color = Color(0.38431373, 0.65882355, 0.9372549, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="ZAttempt02" type="Line2D" parent="AttemptedForm/PolygonBox/AttemptedAxisCage" unique_id=1198889010]
+points = PackedVector2Array(6.561695, 39.150787, 115.52348, -0.4013102)
+width = 2.4
+default_color = Color(0.38431373, 0.65882355, 0.9372549, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="ZAttempt03" type="Line2D" parent="AttemptedForm/PolygonBox/AttemptedAxisCage" unique_id=1038705658]
+points = PackedVector2Array(-141.73866, -2.098528, -3.0238874, -99.52564)
+width = 2.4
+default_color = Color(0.38431373, 0.65882355, 0.9372549, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="ZAttempt04" type="Line2D" parent="AttemptedForm/PolygonBox/AttemptedAxisCage" unique_id=104601979]
+points = PackedVector2Array(-33.017952, -32.72896, 70.13517, -91.46523)
+width = 2.4
+default_color = Color(0.38431373, 0.65882355, 0.9372549, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="Corner01" type="Polygon2D" parent="AttemptedForm/PolygonBox/AttemptedAxisCage" unique_id=393821313]
+position = Vector2(-79.391785, 110.93937)
+polygon = PackedVector2Array(0, -2.7, 2.7, 0, 0, 2.7, -2.7, 0)
+
+[node name="Corner02" type="Polygon2D" parent="AttemptedForm/PolygonBox/AttemptedAxisCage" unique_id=480207049]
+position = Vector2(6.561695, 39.150787)
+polygon = PackedVector2Array(0, -2.7, 2.7, 0, 0, 2.7, -2.7, 0)
+
+[node name="Corner03" type="Polygon2D" parent="AttemptedForm/PolygonBox/AttemptedAxisCage" unique_id=962060615]
+position = Vector2(-141.73866, -2.098528)
+polygon = PackedVector2Array(0, -2.7, 2.7, 0, 0, 2.7, -2.7, 0)
+
+[node name="Corner04" type="Polygon2D" parent="AttemptedForm/PolygonBox/AttemptedAxisCage" unique_id=1499121356]
+position = Vector2(-33.017952, -32.72896)
+polygon = PackedVector2Array(0, -2.7, 2.7, 0, 0, 2.7, -2.7, 0)
+
+[node name="Corner05" type="Polygon2D" parent="AttemptedForm/PolygonBox/AttemptedAxisCage" unique_id=2057224864]
+position = Vector2(78.57996, 61.775578)
+polygon = PackedVector2Array(0, -2.7, 2.7, 0, 0, 2.7, -2.7, 0)
+
+[node name="Corner06" type="Polygon2D" parent="AttemptedForm/PolygonBox/AttemptedAxisCage" unique_id=834184971]
+position = Vector2(115.52348, -0.4013102)
+polygon = PackedVector2Array(0, -2.7, 2.7, 0, 0, 2.7, -2.7, 0)
+
+[node name="Corner07" type="Polygon2D" parent="AttemptedForm/PolygonBox/AttemptedAxisCage" unique_id=865198917]
+position = Vector2(-3.0238874, -99.52564)
+polygon = PackedVector2Array(0, -2.7, 2.7, 0, 0, 2.7, -2.7, 0)
+
+[node name="Corner08" type="Polygon2D" parent="AttemptedForm/PolygonBox/AttemptedAxisCage" unique_id=722099366]
+position = Vector2(70.13517, -91.46523)
+polygon = PackedVector2Array(0, -2.7, 2.7, 0, 0, 2.7, -2.7, 0)
+
+[node name="XLegendKey" type="Polygon2D" parent="AttemptedForm" unique_id=239417604]
+position = Vector2(18, 478)
+color = Color(0.9372549, 0.41568628, 0.4117647, 1)
+polygon = PackedVector2Array(0, 0, 20, 0, 20, 4, 0, 4)
+
+[node name="XLegend" type="Label" parent="AttemptedForm" unique_id=496318133]
+offset_left = 44.0
+offset_top = 469.0
+offset_right = 44.0
+offset_bottom = 469.0
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7882353, 0.827451, 0.88235295, 1)
+text = "X edges"
+
+[node name="YLegendKey" type="Polygon2D" parent="AttemptedForm" unique_id=761753922]
+position = Vector2(146, 478)
+color = Color(0.4, 0.78431374, 0.5411765, 1)
+polygon = PackedVector2Array(0, 0, 20, 0, 20, 4, 0, 4)
+
+[node name="YLegend" type="Label" parent="AttemptedForm" unique_id=532585023]
+offset_left = 172.0
+offset_top = 469.0
+offset_right = 172.0
+offset_bottom = 469.0
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7882353, 0.827451, 0.88235295, 1)
+text = "Y edges"
+
+[node name="ZLegendKey" type="Polygon2D" parent="AttemptedForm" unique_id=2014780685]
+position = Vector2(274, 478)
+color = Color(0.38431373, 0.65882355, 0.9372549, 1)
+polygon = PackedVector2Array(0, 0, 20, 0, 20, 4, 0, 4)
+
+[node name="ZLegend" type="Label" parent="AttemptedForm" unique_id=1521860402]
+offset_left = 300.0
+offset_top = 469.0
+offset_right = 300.0
+offset_bottom = 469.0
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.7882353, 0.827451, 0.88235295, 1)
+text = "Z edges"
+
+[node name="XVanishingPointProof" type="Node2D" parent="." unique_id=351621398]
+position = Vector2(660, 96)
+
+[node name="PanelFill" type="Polygon2D" parent="XVanishingPointProof" unique_id=993353769]
+color = Color(0.08235294, 0.12156863, 0.1764706, 1)
+polygon = PackedVector2Array(0, 0, 592, 0, 592, 170, 0, 170)
+
+[node name="PanelBorder" type="Line2D" parent="XVanishingPointProof" unique_id=1980732565]
+points = PackedVector2Array(0, 0, 592, 0, 592, 170, 0, 170, 0, 0)
+width = 1.2
+default_color = Color(0.20784314, 0.26666668, 0.3529412, 1)
+antialiased = true
+
+[node name="AxisTitle" type="Label" parent="XVanishingPointProof" unique_id=1390978298]
+offset_left = 14.0
+offset_top = 9.0
+offset_right = 14.0
+offset_bottom = 9.0
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.9372549, 0.41568628, 0.4117647, 1)
+text = "X VANISHING POINT PROOF — mean attempt error 4.69°"
+
+[node name="ExactTargetRays" type="Node2D" parent="XVanishingPointProof" unique_id=201008629]
+
+[node name="TargetRay01" type="Line2D" parent="XVanishingPointProof/ExactTargetRays" unique_id=204315459]
+points = PackedVector2Array(238.06761, 152, 383.11316, 46.02692)
+width = 1.2
+default_color = Color(0.88, 0.92, 0.98, 0.28)
+joint_mode = 2
+antialiased = true
+
+[node name="TargetRay02" type="Line2D" parent="XVanishingPointProof/ExactTargetRays" unique_id=1153635235]
+points = PackedVector2Array(208.8868, 94.01157, 383.11316, 46.02692)
+width = 1.2
+default_color = Color(0.88, 0.92, 0.98, 0.28)
+joint_mode = 2
+antialiased = true
+
+[node name="TargetRay03" type="Line2D" parent="XVanishingPointProof/ExactTargetRays" unique_id=749001021]
+points = PackedVector2Array(320.96945, 119.32499, 383.11316, 46.02692)
+width = 1.2
+default_color = Color(0.88, 0.92, 0.98, 0.28)
+joint_mode = 2
+antialiased = true
+
+[node name="TargetRay04" type="Line2D" parent="XVanishingPointProof/ExactTargetRays" unique_id=1052030168]
+points = PackedVector2Array(282.2493, 44.000008, 383.11316, 46.02692)
+width = 1.2
+default_color = Color(0.88, 0.92, 0.98, 0.28)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptedExtensions" type="Node2D" parent="XVanishingPointProof" unique_id=954681733]
+
+[node name="AttemptExtension01" type="Line2D" parent="XVanishingPointProof/AttemptedExtensions" unique_id=77052047]
+points = PackedVector2Array(243.60075, 148.79039, 376.25165, 38)
+width = 1.8
+default_color = Color(0.9372549, 0.41568628, 0.4117647, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptEdge01" type="Line2D" parent="XVanishingPointProof/AttemptedExtensions" unique_id=1075952053]
+z_index = 2
+points = PackedVector2Array(243.60075, 148.79039, 287.20782, 112.36965)
+width = 3.0
+default_color = Color(0.94980395, 0.532549, 0.5294118, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptExtension02" type="Line2D" parent="XVanishingPointProof/AttemptedExtensions" unique_id=2003099194]
+points = PackedVector2Array(211.97011, 91.442505, 401.66077, 38)
+width = 1.8
+default_color = Color(0.9372549, 0.41568628, 0.4117647, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptEdge02" type="Line2D" parent="XVanishingPointProof/AttemptedExtensions" unique_id=367975706]
+z_index = 2
+points = PackedVector2Array(211.97011, 91.442505, 267.12775, 75.902664)
+width = 3.0
+default_color = Color(0.94980395, 0.532549, 0.5294118, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptExtension03" type="Line2D" parent="XVanishingPointProof/AttemptedExtensions" unique_id=2127042321]
+points = PackedVector2Array(323.7451, 123.84796, 374.7532, 38)
+width = 1.8
+default_color = Color(0.9372549, 0.41568628, 0.4117647, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptEdge03" type="Line2D" parent="XVanishingPointProof/AttemptedExtensions" unique_id=1198628233]
+z_index = 2
+points = PackedVector2Array(323.7451, 123.84796, 342.48776, 92.30356)
+width = 3.0
+default_color = Color(0.94980395, 0.532549, 0.5294118, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptExtension04" type="Line2D" parent="XVanishingPointProof/AttemptedExtensions" unique_id=815917415]
+points = PackedVector2Array(282.34473, 42.014484, 576, 74.36842)
+width = 1.8
+default_color = Color(0.9372549, 0.41568628, 0.4117647, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptEdge04" type="Line2D" parent="XVanishingPointProof/AttemptedExtensions" unique_id=28303132]
+z_index = 2
+points = PackedVector2Array(282.34473, 42.014484, 319.46075, 46.1038)
+width = 3.0
+default_color = Color(0.94980395, 0.532549, 0.5294118, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="IntendedVanishingPoint" type="Polygon2D" parent="XVanishingPointProof" unique_id=1721195140]
+z_index = 4
+position = Vector2(383.11316, 46.02692)
+color = Color(1, 0.9529412, 0.65882355, 1)
+polygon = PackedVector2Array(0, -7, 7, 0, 0, 7, -7, 0)
+
+[node name="VanishingPointLabel" type="Label" parent="XVanishingPointProof" unique_id=587811048]
+offset_left = 393.11316
+offset_top = 35.02692
+offset_right = 393.11316
+offset_bottom = 35.02692
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(1, 0.9529412, 0.65882355, 1)
+text = "VP"
+
+[node name="YVanishingPointProof" type="Node2D" parent="." unique_id=1153786436]
+position = Vector2(660, 278)
+
+[node name="PanelFill" type="Polygon2D" parent="YVanishingPointProof" unique_id=726632288]
+color = Color(0.08235294, 0.12156863, 0.1764706, 1)
+polygon = PackedVector2Array(0, 0, 592, 0, 592, 170, 0, 170)
+
+[node name="PanelBorder" type="Line2D" parent="YVanishingPointProof" unique_id=351810120]
+points = PackedVector2Array(0, 0, 592, 0, 592, 170, 0, 170, 0, 0)
+width = 1.2
+default_color = Color(0.20784314, 0.26666668, 0.3529412, 1)
+antialiased = true
+
+[node name="AxisTitle" type="Label" parent="YVanishingPointProof" unique_id=412677372]
+offset_left = 14.0
+offset_top = 9.0
+offset_right = 14.0
+offset_bottom = 9.0
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.4, 0.78431374, 0.5411765, 1)
+text = "Y VANISHING POINT PROOF — mean attempt error 1.31°"
+
+[node name="ExactTargetRays" type="Node2D" parent="YVanishingPointProof" unique_id=1021052885]
+
+[node name="TargetRay01" type="Line2D" parent="YVanishingPointProof/ExactTargetRays" unique_id=1056546237]
+points = PackedVector2Array(322.54843, 152, 268.20087, 43.999992)
+width = 1.2
+default_color = Color(0.88, 0.92, 0.98, 0.28)
+joint_mode = 2
+antialiased = true
+
+[node name="TargetRay02" type="Line2D" parent="YVanishingPointProof/ExactTargetRays" unique_id=783935848]
+points = PackedVector2Array(323.09555, 151.60027, 268.20087, 43.999992)
+width = 1.2
+default_color = Color(0.88, 0.92, 0.98, 0.28)
+joint_mode = 2
+antialiased = true
+
+[node name="TargetRay03" type="Line2D" parent="YVanishingPointProof/ExactTargetRays" unique_id=1717767471]
+points = PackedVector2Array(323.52042, 151.6169, 268.20087, 43.999992)
+width = 1.2
+default_color = Color(0.88, 0.92, 0.98, 0.28)
+joint_mode = 2
+antialiased = true
+
+[node name="TargetRay04" type="Line2D" parent="YVanishingPointProof/ExactTargetRays" unique_id=16977773]
+points = PackedVector2Array(323.79913, 151.28816, 268.20087, 43.999992)
+width = 1.2
+default_color = Color(0.88, 0.92, 0.98, 0.28)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptedExtensions" type="Node2D" parent="YVanishingPointProof" unique_id=1634373388]
+
+[node name="AttemptExtension01" type="Line2D" parent="YVanishingPointProof/AttemptedExtensions" unique_id=2081869136]
+points = PackedVector2Array(322.6133, 151.96237, 259.75232, 38)
+width = 1.8
+default_color = Color(0.4, 0.78431374, 0.5411765, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptEdge01" type="Line2D" parent="YVanishingPointProof/AttemptedExtensions" unique_id=1815440044]
+z_index = 2
+points = PackedVector2Array(322.6133, 151.96237, 322.24243, 151.29)
+width = 3.0
+default_color = Color(0.52, 0.827451, 0.6329412, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptExtension02" type="Line2D" parent="YVanishingPointProof/AttemptedExtensions" unique_id=1169371177]
+points = PackedVector2Array(323.12457, 151.53535, 260.60538, 38)
+width = 1.8
+default_color = Color(0.4, 0.78431374, 0.5411765, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptEdge02" type="Line2D" parent="YVanishingPointProof/AttemptedExtensions" unique_id=1565322125]
+z_index = 2
+points = PackedVector2Array(323.12457, 151.53535, 322.88913, 151.10779)
+width = 3.0
+default_color = Color(0.52, 0.827451, 0.6329412, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptExtension03" type="Line2D" parent="YVanishingPointProof/AttemptedExtensions" unique_id=994781682]
+points = PackedVector2Array(323.55295, 151.66994, 266.04822, 38)
+width = 1.8
+default_color = Color(0.4, 0.78431374, 0.5411765, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptEdge03" type="Line2D" parent="YVanishingPointProof/AttemptedExtensions" unique_id=593311550]
+z_index = 2
+points = PackedVector2Array(323.55295, 151.66994, 323.06757, 150.71048)
+width = 3.0
+default_color = Color(0.52, 0.827451, 0.6329412, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptExtension04" type="Line2D" parent="YVanishingPointProof/AttemptedExtensions" unique_id=2134324785]
+points = PackedVector2Array(323.7727, 151.3001, 267.2998, 38)
+width = 1.8
+default_color = Color(0.4, 0.78431374, 0.5411765, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptEdge04" type="Line2D" parent="YVanishingPointProof/AttemptedExtensions" unique_id=1016024670]
+z_index = 2
+points = PackedVector2Array(323.7727, 151.3001, 323.50272, 150.75842)
+width = 3.0
+default_color = Color(0.52, 0.827451, 0.6329412, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="IntendedVanishingPoint" type="Polygon2D" parent="YVanishingPointProof" unique_id=464443372]
+z_index = 4
+position = Vector2(268.20087, 43.999992)
+color = Color(1, 0.9529412, 0.65882355, 1)
+polygon = PackedVector2Array(0, -7, 7, 0, 0, 7, -7, 0)
+
+[node name="VanishingPointLabel" type="Label" parent="YVanishingPointProof" unique_id=328411250]
+offset_left = 278.20087
+offset_top = 32.999992
+offset_right = 278.20087
+offset_bottom = 32.999992
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(1, 0.9529412, 0.65882355, 1)
+text = "VP"
+
+[node name="ZVanishingPointProof" type="Node2D" parent="." unique_id=1845603458]
+position = Vector2(660, 460)
+
+[node name="PanelFill" type="Polygon2D" parent="ZVanishingPointProof" unique_id=288074619]
+color = Color(0.08235294, 0.12156863, 0.1764706, 1)
+polygon = PackedVector2Array(0, 0, 592, 0, 592, 170, 0, 170)
+
+[node name="PanelBorder" type="Line2D" parent="ZVanishingPointProof" unique_id=101887042]
+points = PackedVector2Array(0, 0, 592, 0, 592, 170, 0, 170, 0, 0)
+width = 1.2
+default_color = Color(0.20784314, 0.26666668, 0.3529412, 1)
+antialiased = true
+
+[node name="AxisTitle" type="Label" parent="ZVanishingPointProof" unique_id=2072268803]
+offset_left = 14.0
+offset_top = 9.0
+offset_right = 14.0
+offset_bottom = 9.0
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.38431373, 0.65882355, 0.9372549, 1)
+text = "Z VANISHING POINT PROOF — mean attempt error 2.63°"
+
+[node name="ExactTargetRays" type="Node2D" parent="ZVanishingPointProof" unique_id=1106380491]
+
+[node name="TargetRay01" type="Line2D" parent="ZVanishingPointProof/ExactTargetRays" unique_id=1245488919]
+points = PackedVector2Array(337.27902, 98.31544, 201.07254, 152)
+width = 1.2
+default_color = Color(0.88, 0.92, 0.98, 0.28)
+joint_mode = 2
+antialiased = true
+
+[node name="TargetRay02" type="Line2D" parent="ZVanishingPointProof/ExactTargetRays" unique_id=1928054498]
+points = PackedVector2Array(360.74756, 81.16887, 201.07254, 152)
+width = 1.2
+default_color = Color(0.88, 0.92, 0.98, 0.28)
+joint_mode = 2
+antialiased = true
+
+[node name="TargetRay03" type="Line2D" parent="ZVanishingPointProof/ExactTargetRays" unique_id=1965128128]
+points = PackedVector2Array(322.6034, 69.15185, 201.07254, 152)
+width = 1.2
+default_color = Color(0.88, 0.92, 0.98, 0.28)
+joint_mode = 2
+antialiased = true
+
+[node name="TargetRay04" type="Line2D" parent="ZVanishingPointProof/ExactTargetRays" unique_id=1379341248]
+points = PackedVector2Array(350.6728, 61.4211, 201.07254, 152)
+width = 1.2
+default_color = Color(0.88, 0.92, 0.98, 0.28)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptedExtensions" type="Node2D" parent="ZVanishingPointProof" unique_id=1782595009]
+
+[node name="AttemptExtension01" type="Line2D" parent="ZVanishingPointProof/AttemptedExtensions" unique_id=522314651]
+points = PackedVector2Array(340.06177, 96.701256, 528.67896, 38)
+width = 1.8
+default_color = Color(0.38431373, 0.65882355, 0.9372549, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptEdge01" type="Line2D" parent="ZVanishingPointProof/AttemptedExtensions" unique_id=92325353]
+z_index = 2
+points = PackedVector2Array(340.06177, 96.701256, 380.368, 84.15719)
+width = 3.0
+default_color = Color(0.507451, 0.7270588, 0.94980395, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptExtension02" type="Line2D" parent="ZVanishingPointProof/AttemptedExtensions" unique_id=369250973]
+points = PackedVector2Array(361.99265, 78.384514, 473.2477, 38)
+width = 1.8
+default_color = Color(0.38431373, 0.65882355, 0.9372549, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptEdge02" type="Line2D" parent="ZVanishingPointProof/AttemptedExtensions" unique_id=225865223]
+z_index = 2
+points = PackedVector2Array(361.99265, 78.384514, 389.7941, 68.292854)
+width = 3.0
+default_color = Color(0.507451, 0.7270588, 0.94980395, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptExtension03" type="Line2D" parent="ZVanishingPointProof/AttemptedExtensions" unique_id=2145721657]
+points = PackedVector2Array(324.15405, 67.85981, 366.66785, 38)
+width = 1.8
+default_color = Color(0.38431373, 0.65882355, 0.9372549, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptEdge03" type="Line2D" parent="ZVanishingPointProof/AttemptedExtensions" unique_id=1251826569]
+z_index = 2
+points = PackedVector2Array(324.15405, 67.85981, 359.5469, 43.001434)
+width = 3.0
+default_color = Color(0.507451, 0.7270588, 0.94980395, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptExtension04" type="Line2D" parent="ZVanishingPointProof/AttemptedExtensions" unique_id=1936845869]
+points = PackedVector2Array(351.89398, 60.044506, 390.6087, 38)
+width = 1.8
+default_color = Color(0.38431373, 0.65882355, 0.9372549, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="AttemptEdge04" type="Line2D" parent="ZVanishingPointProof/AttemptedExtensions" unique_id=2011203954]
+z_index = 2
+points = PackedVector2Array(351.89398, 60.044506, 378.21332, 45.058037)
+width = 3.0
+default_color = Color(0.507451, 0.7270588, 0.94980395, 1)
+joint_mode = 2
+antialiased = true
+
+[node name="IntendedVanishingPoint" type="Polygon2D" parent="ZVanishingPointProof" unique_id=1362039881]
+z_index = 4
+position = Vector2(201.07254, 152)
+color = Color(1, 0.9529412, 0.65882355, 1)
+polygon = PackedVector2Array(0, -7, 7, 0, 0, 7, -7, 0)
+
+[node name="VanishingPointLabel" type="Label" parent="ZVanishingPointProof" unique_id=133981068]
+offset_left = 211.07254
+offset_top = 141.0
+offset_right = 211.07254
+offset_bottom = 141.0
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(1, 0.9529412, 0.65882355, 1)
+text = "VP"
+
+[node name="Metrics" type="Label" parent="." unique_id=129536687]
+offset_left = 32.0
+offset_top = 665.0
+offset_right = 32.0
+offset_bottom = 665.0
+theme_override_font_sizes/font_size = 17
+theme_override_colors/font_color = Color(0.78039217, 0.81960785, 0.8745098, 1)
+text = "corner RMSE 8.49 px   convergence 2.88°   valid faces 6/6   area error 9.7%"

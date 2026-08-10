@@ -1,6 +1,8 @@
 extends Node
 class_name PlayerManager
 
+const WALL_OCCLUSION_LAYERS := preload("res://scripts/arena/wall_occlusion_layers.gd")
+
 signal player_spawned(player)
 signal player_health_changed(old_value: int, new_value: int)
 signal player_invulnerability_changed(remaining: float, duration: float)
@@ -65,6 +67,8 @@ var _wall_rects: Array[Rect2] = []
 var _level_wall_rects: Array[Rect2] = []
 var _void_rects: Array[Rect2] = []
 var _playable_rects: Array[Rect2] = []
+var _debug_invincible: bool = false
+var _debug_always_max_charge: bool = false
 
 
 func initialize(context: Dictionary) -> void:
@@ -75,6 +79,7 @@ func reset_run() -> void:
 	if player != null and is_instance_valid(player):
 		player.queue_free()
 	player = player_scene.instantiate()
+	WALL_OCCLUSION_LAYERS.mark_entity_tree(player)
 	player.global_position = spawn_position
 	player.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
 	player.health_changed.connect(_on_player_health_changed)
@@ -93,7 +98,7 @@ func reset_run() -> void:
 	_last_parry_chain_count = -1
 	_last_parry_chain_grace_remaining = -1.0
 	_context_speed_multiplier = 1.0
-	_super_meter = 0.0
+	_super_meter = get_super_meter_max() if _debug_always_max_charge else 0.0
 	_super_is_charging = false
 	_super_charge_elapsed = 0.0
 	_last_super_ready = false
@@ -308,7 +313,7 @@ func request_super_charge_start() -> void:
 func request_super_charge_release(direction: Vector2) -> void:
 	if not _super_is_charging or not _has_player():
 		return
-	var charge_ratio: float = clamp(get_super_charge_ratio(), 0.08, 1.0)
+	var charge_ratio: float = 1.0 if _debug_always_max_charge else clamp(get_super_charge_ratio(), 0.08, 1.0)
 	var shot_direction := direction
 	if shot_direction.length_squared() <= 0.001:
 		shot_direction = player.aim_direction
@@ -317,7 +322,7 @@ func request_super_charge_release(direction: Vector2) -> void:
 	shot_direction = shot_direction.normalized()
 	_super_is_charging = false
 	_super_charge_elapsed = 0.0
-	_super_meter = 0.0
+	_super_meter = get_super_meter_max() if _debug_always_max_charge else 0.0
 	if player.has_method("set_super_charge_state"):
 		player.set_super_charge_state(false, 0.0)
 	if player.has_method("play_shoot_pose"):
@@ -328,7 +333,7 @@ func request_super_charge_release(direction: Vector2) -> void:
 
 
 func apply_damage(amount: int) -> void:
-	if not enabled or not _has_player() or _damage_cooldown_remaining > 0.0:
+	if _debug_invincible or not enabled or not _has_player() or _damage_cooldown_remaining > 0.0:
 		return
 	var old_health: int = player.health
 	player.take_damage(amount)
@@ -378,6 +383,11 @@ func set_arena_bounds(bounds: Rect2) -> void:
 func set_arena_definition(level_definition) -> void:
 	if level_definition == null:
 		return
+	if _has_player():
+		WALL_OCCLUSION_LAYERS.set_candidate_room_id(
+			player,
+			String(level_definition.get_meta("active_room_id", ""))
+		)
 	_arena_bounds = level_definition.arena_bounds
 	_arena_shape = int(level_definition.arena_shape)
 	_level_wall_rects = _get_level_collision_rects(level_definition, "active_room_wall_rects", level_definition.wall_rects)
@@ -497,7 +507,20 @@ func get_super_meter_max() -> float:
 func get_super_charge_ratio() -> float:
 	if not _super_is_charging:
 		return 0.0
+	if _debug_always_max_charge:
+		return 1.0
 	return clamp(_super_charge_elapsed / max(super_charge_seconds, 0.01), 0.0, 1.0)
+
+
+func set_debug_invincible(value: bool) -> void:
+	_debug_invincible = value
+
+
+func set_debug_always_max_charge(value: bool) -> void:
+	_debug_always_max_charge = value
+	if value:
+		_super_meter = get_super_meter_max()
+	_sync_super_meter_state()
 
 
 func _has_player() -> bool:

@@ -18,6 +18,8 @@ const ENCOUNTER_TEST_POWER_ARMOR_ROCKET := preload("res://resources/enemies/powe
 const ENCOUNTER_TEST_POWER_ARMOR_GRENADE := preload("res://resources/enemies/power_armor_grenade.tres")
 const ENCOUNTER_TEST_CYBER_SOLDIER := preload("res://resources/enemies/cyber_soldier.tres")
 const ENCOUNTER_TEST_CYBER_SOLDIER_TELEPORT := preload("res://resources/enemies/cyber_soldier_teleport.tres")
+const ENCOUNTER_TEST_COMMISSAR := preload("res://resources/spawners/commissar_spawner.tres")
+const COMMISSAR_ENCOUNTER_TEST_INDEX := 4
 const GENERATED_ENCOUNTER_TESTS := [
 	{
 		"label": "Generated Agent Intro Test",
@@ -71,12 +73,46 @@ const GENERATED_ENCOUNTER_TESTS := [
 			"disable_initial_spawns": true,
 			"extra_enemy_slots": 1
 		}
+	},
+	{
+		"label": "Generated Commissar Test",
+		"summary": "tier-one Commissar + repair corps",
+		"floor": 7,
+		"seed": 47707,
+		"room_kind": "challenge",
+		"profiles": [],
+		"options": {
+			"compact_layout": true,
+			"spawner_count": 1,
+			"spawner_profile": ENCOUNTER_TEST_COMMISSAR,
+			"spawner_warmup_seconds": 0.7,
+			"disable_initial_spawns": true,
+			"passive_spawners": false,
+			"max_active_enemies": 11
+		}
 	}
 ]
 const CAT_DEBUG_LEVEL_IDS := ["cat_behavior_test", "cat_peaceful_test"]
 const FLOOR_EXIT_PORTAL_SCENE := preload("res://scenes/entities/floor_exit_portal_entity.tscn")
 const AGENT_BOSS_GENERATOR := preload("res://scripts/resources/agent_boss_generator.gd")
+const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_builder.gd")
+const WALL_OCCLUSION_LAYERS := preload("res://scripts/arena/wall_occlusion_layers.gd")
 const BOLD_PIXELS_FONT := preload("res://art/fonts/BoldPixels.ttf")
+const DEBUG_SANDBOX_PANEL := preload("res://scripts/ui/debug_sandbox_panel.gd")
+const DEBUG_OVERDRIVE_EFFECTS := {
+	"spread_shot": preload("res://resources/upgrades/spread_shot.tres"),
+	"piercing_shot": preload("res://resources/upgrades/piercing_shot.tres"),
+	"chain_lightning": preload("res://resources/upgrades/chain_lightning.tres"),
+	"fire_burst": preload("res://resources/upgrades/fire_burst.tres"),
+	"water_swell": preload("res://resources/upgrades/water_swell.tres")
+}
+const DEBUG_PERMANENT_UPGRADES := {
+	"faster_reflexes": preload("res://resources/permanent_upgrades/faster_reflexes.tres"),
+	"runner_legs": preload("res://resources/permanent_upgrades/runner_legs.tres"),
+	"heavy_tears": preload("res://resources/permanent_upgrades/heavy_tears.tres"),
+	"fat_tears": preload("res://resources/permanent_upgrades/fat_tears.tres"),
+	"overdrive_capacity": preload("res://resources/permanent_upgrades/overdrive_capacity.tres")
+}
 const LOADING_PROGRESS_FLOOR_LAYOUT_START := 0.08
 const LOADING_PROGRESS_FLOOR_LAYOUT_DONE := 0.18
 const LOADING_PROGRESS_ROOM_GEOMETRY := 0.28
@@ -153,6 +189,10 @@ const BOSS_REWARD_CHOICE_CLEARANCE := 30.0
 @export var cleared_floor_speed_multiplier: float = 1.45
 ## Delays dungeon combat-room clear resolution so floor-map rebuilds happen after the last death animation.
 @export var room_clear_resolution_delay_seconds: float = 0.38
+## [Description] Limits how many queued runtime reinforcements may be materialized during one rendered frame.
+@export_range(1, 8, 1) var runtime_spawn_max_per_frame: int = 2
+## [Description] Stops runtime reinforcement materialization for the frame after this approximate main-thread time budget is spent.
+@export_range(0.1, 8.0, 0.1) var runtime_spawn_budget_ms: float = 1.5
 ## Optional NobodyWho GGUF path, HuggingFace reference, or URL used for generated agent intro taunts.
 @export var agent_taunt_llm_model_path: String = ""
 ## Allows generated taunts to use the smallest cached NobodyWho GGUF model when no explicit model path is set.
@@ -193,6 +233,12 @@ var _selected_level_index: int = 0
 var _level_select_page: String = "main"
 var _level_select_option_index: int = 0
 var _current_level = null
+var _spawn_generation: int = 0
+var _pending_enemy_spawn_proposals: Array[Dictionary] = []
+var _spawn_queue_peak_depth: int = 0
+var _spawn_budget_last_count: int = 0
+var _spawn_budget_last_ms: float = 0.0
+var _spawn_budget_peak_ms: float = 0.0
 var _is_dungeon_run: bool = false
 var _is_main_loop_run: bool = false
 var _active_generated_encounter_test_index: int = -1
@@ -268,6 +314,15 @@ var _agent_debug_panel: ColorRect = null
 var _agent_debug_label: Label = null
 var _cat_debug_panel: ColorRect = null
 var _cat_debug_label: Label = null
+var _debug_sandbox_panel: DebugSandboxPanel = null
+var _debug_sandbox_active: bool = false
+var _debug_world_frozen: bool = false
+var _debug_invincible: bool = false
+var _debug_max_charge: bool = false
+var _debug_max_overdrive: bool = false
+var _debug_overdrive_effects: Dictionary = {}
+var _debug_permanent_upgrades: Dictionary = {}
+var _debug_status_refresh_remaining: float = 0.0
 var _boss_health_panel: Control = null
 var _boss_health_label: Label = null
 var _boss_health_bar_back: ColorRect = null
@@ -331,6 +386,7 @@ const LEVEL_SELECT_ACTION_DUNGEON := "dungeon"
 const LEVEL_SELECT_ACTION_GENERATED_TEST := "generated_test"
 const LEVEL_SELECT_ACTION_LEVEL := "level"
 const LEVEL_SELECT_ACTION_MAIN_LOOP := "main_loop"
+const LEVEL_SELECT_ACTION_DEBUG_SANDBOX := "debug_sandbox"
 const MAIN_LEVEL_SELECT_OPTIONS := [
 	{"action": LEVEL_SELECT_ACTION_MAIN_LOOP},
 	{"action": LEVEL_SELECT_ACTION_GENERATED_TEST, "index": GENERATED_TEST_AGENT_BOSS_INDEX},
@@ -338,6 +394,7 @@ const MAIN_LEVEL_SELECT_OPTIONS := [
 ]
 const ARCHIVE_LEVEL_SELECT_OPTIONS := [
 	{"action": LEVEL_SELECT_ACTION_BACK},
+	{"action": LEVEL_SELECT_ACTION_DEBUG_SANDBOX},
 	{"action": LEVEL_SELECT_ACTION_GENERATED_TEST, "index": GENERATED_TEST_CYBER_INDEX},
 	{"action": LEVEL_SELECT_ACTION_GENERATED_TEST, "index": GENERATED_TEST_ARMOR_INDEX},
 	{"action": LEVEL_SELECT_ACTION_GENERATED_TEST, "index": GENERATED_TEST_DRONE_INDEX},
@@ -400,6 +457,7 @@ func _ready() -> void:
 	_super_crackle_rng.randomize()
 	_capture_hud_authoring_state()
 	_ensure_agent_debug_panel()
+	_ensure_debug_sandbox_panel()
 	_ensure_boss_health_hud()
 	_ensure_agent_dialogue_box()
 	_configure_pause_process_modes()
@@ -414,6 +472,11 @@ func _exit_tree() -> void:
 
 
 func _process(delta: float) -> void:
+	if _debug_sandbox_active and _debug_sandbox_panel != null and _debug_sandbox_panel.visible:
+		_debug_status_refresh_remaining -= delta
+		if _debug_status_refresh_remaining <= 0.0:
+			_debug_status_refresh_remaining = 0.25
+			_update_debug_sandbox_status()
 	if _status == "BOSS_CLEARING":
 		_update_boss_clear_transition(delta)
 	_update_perfect_parry_slowmo()
@@ -443,6 +506,7 @@ func _process(delta: float) -> void:
 	if _update_boss_health_feedback(delta):
 		_update_boss_health_panel()
 	if _is_gameplay_running():
+		_process_pending_enemy_spawns()
 		_update_room_clear_resolution(delta)
 		_update_camera(delta)
 		_update_cat_debug_panel()
@@ -469,6 +533,7 @@ func _connect_manager_signals() -> void:
 	_connect_once(input_manager, &"super_charge_pressed", _on_input_super_charge_pressed)
 	_connect_once(input_manager, &"super_charge_released", _on_input_super_charge_released)
 	_connect_once(input_manager, &"overdrive_changed", _on_input_overdrive_changed)
+	_connect_once(input_manager, &"debug_menu_requested", _on_debug_menu_requested)
 
 	_connect_once(player_manager, &"player_health_changed", _on_player_health_changed)
 	_connect_once(player_manager, &"player_invulnerability_changed", _on_player_invulnerability_changed)
@@ -482,21 +547,24 @@ func _connect_manager_signals() -> void:
 
 	_connect_once(projectile_manager, &"projectile_hit", _on_projectile_hit)
 	_connect_once(projectile_manager, &"projectile_expired", _on_projectile_expired)
+	_connect_once(projectile_manager, &"execution_projectile_arrived", _on_execution_projectile_arrived)
 	_connect_once(combat_manager, &"damage_resolved", _on_damage_resolved)
 	_connect_once(combat_manager, &"player_damage_resolved", _on_player_damage_resolved)
 	_connect_once(combat_manager, &"chain_requested", _on_chain_requested)
 	_connect_once(combat_manager, &"explosion_requested", _on_explosion_requested)
 
 	_connect_once(enemy_manager, &"enemy_defeated", _on_enemy_defeated)
+	_connect_once(enemy_manager, &"general_defeated", _on_general_defeated)
 	_connect_once(enemy_manager, &"enemy_health_changed", _on_enemy_health_changed)
-	_connect_once(enemy_manager, &"enemy_count_changed", spawner_manager.set_enemy_count)
+	_connect_once(enemy_manager, &"horde_enemy_count_changed", spawner_manager.set_enemy_count)
 	_connect_once(enemy_manager, &"enemy_count_changed", _on_enemy_count_changed)
 	_connect_once(enemy_manager, &"player_contact_requested", _on_player_contact_requested)
+	_connect_once(enemy_manager, &"player_pushback_requested", _on_player_pushback_requested)
 	_connect_once(enemy_manager, &"hostile_shot_requested", _on_hostile_shot_requested)
 	_connect_once(enemy_manager, &"repair_requested", _on_enemy_repair_requested)
 
-	_connect_once(spawner_manager, &"spawn_requested", _on_spawn_requested)
-	_connect_once(spawner_manager, &"spawner_destroyed", _on_spawner_destroyed)
+	_connect_once(spawner_manager, &"spawn_proposed", _on_spawn_proposed)
+	_connect_once(spawner_manager, &"general_spawn_requested", _on_general_spawn_requested)
 	_connect_once(spawner_manager, &"spawner_count_changed", _on_spawner_count_changed)
 	_connect_once(spawner_manager, &"hostile_shot_requested", _on_hostile_shot_requested)
 	_connect_once(destructible_manager, &"prop_destroyed", _on_destructible_prop_destroyed)
@@ -520,6 +588,17 @@ func _connect_once(source: Object, signal_name: StringName, target: Callable) ->
 func _initialize_managers() -> void:
 	_capture_hud_authoring_state()
 	var depth_sort_layer: Node2D = $World/DepthSortLayer
+	var projectile_layer: Node2D = $World/ProjectileLayer
+	var effect_layer: Node2D = $World/EffectLayer
+	var door_mat_layer := Node2D.new()
+	door_mat_layer.name = "DoorMatLayer"
+	$World.add_child(door_mat_layer)
+	$World.move_child(door_mat_layer, $World/Arena.get_index() + 1)
+	WALL_OCCLUSION_LAYERS.open_visibility_path(depth_sort_layer)
+	WALL_OCCLUSION_LAYERS.open_visibility_path(projectile_layer)
+	WALL_OCCLUSION_LAYERS.open_visibility_path(effect_layer)
+	WALL_OCCLUSION_LAYERS.open_visibility_path(door_mat_layer)
+	$UI.layer = 2
 	input_manager.initialize({
 		"aim_origin_provider": Callable(player_manager, "get_player_position")
 	})
@@ -527,16 +606,14 @@ func _initialize_managers() -> void:
 		"player_layer": depth_sort_layer
 	})
 	projectile_manager.initialize({
-		"projectile_layer": $World/ProjectileLayer
+		"projectile_layer": projectile_layer
 	})
 	enemy_manager.initialize({
 		"enemy_layer": depth_sort_layer,
 		"player_position_provider": Callable(player_manager, "get_player_position"),
-		"player_ref_provider": Callable(self, "_get_player_ref"),
-		"spawner_repair_targets_provider": Callable(spawner_manager, "get_repairable_spawners")
+		"player_ref_provider": Callable(self, "_get_player_ref")
 	})
 	spawner_manager.initialize({
-		"spawner_layer": depth_sort_layer,
 		"player_position_provider": Callable(player_manager, "get_player_position")
 	})
 	item_manager.initialize({
@@ -549,17 +626,19 @@ func _initialize_managers() -> void:
 		"fauna_layer": depth_sort_layer,
 		"player_position_provider": Callable(player_manager, "get_player_position"),
 		"enemy_positions_provider": Callable(enemy_manager, "get_enemy_positions"),
-		"spawner_positions_provider": Callable(spawner_manager, "get_spawner_positions"),
+		"spawner_positions_provider": Callable(enemy_manager, "get_general_positions"),
 		"player_projectile_positions_provider": Callable(projectile_manager, "get_player_projectile_positions")
 	})
 	upgrade_manager.initialize({})
 	combat_manager.initialize({})
 	effects_manager.initialize({
-		"effect_layer": $World/EffectLayer
+		"effect_layer": effect_layer,
+		"perspective_room_id_provider": Callable(self, "_get_perspective_room_id")
 	})
 	dungeon_manager.initialize({})
 	room_manager.initialize({
-		"door_layer": depth_sort_layer
+		"door_layer": depth_sort_layer,
+		"door_mat_layer": door_mat_layer
 	})
 	audio_manager.initialize({})
 
@@ -570,6 +649,25 @@ func _configure_pause_process_modes() -> void:
 	$UI.process_mode = Node.PROCESS_MODE_ALWAYS
 	input_manager.process_mode = Node.PROCESS_MODE_ALWAYS
 	pause_panel.process_mode = Node.PROCESS_MODE_WHEN_PAUSED
+
+
+func _ensure_debug_sandbox_panel() -> void:
+	if _debug_sandbox_panel != null and is_instance_valid(_debug_sandbox_panel):
+		return
+	var ui_layer: CanvasLayer = get_node_or_null("UI") as CanvasLayer
+	if ui_layer == null:
+		return
+	_debug_sandbox_panel = DEBUG_SANDBOX_PANEL.new()
+	_debug_sandbox_panel.name = "DebugSandboxPanel"
+	ui_layer.add_child(_debug_sandbox_panel)
+	_connect_once(_debug_sandbox_panel, &"generation_requested", _on_debug_generation_requested)
+	_connect_once(_debug_sandbox_panel, &"commissar_test_requested", _on_debug_commissar_test_requested)
+	_connect_once(_debug_sandbox_panel, &"freeze_changed", _on_debug_freeze_changed)
+	_connect_once(_debug_sandbox_panel, &"invincibility_changed", _on_debug_invincibility_changed)
+	_connect_once(_debug_sandbox_panel, &"max_charge_changed", _on_debug_max_charge_changed)
+	_connect_once(_debug_sandbox_panel, &"max_overdrive_changed", _on_debug_max_overdrive_changed)
+	_connect_once(_debug_sandbox_panel, &"overdrive_effect_changed", _on_debug_overdrive_effect_changed)
+	_connect_once(_debug_sandbox_panel, &"permanent_stat_changed", _on_debug_permanent_stat_changed)
 
 
 func _capture_hud_authoring_state() -> void:
@@ -1993,6 +2091,7 @@ func _start_selected_level() -> void:
 
 
 func _start_level(level_definition) -> void:
+	_disable_debug_sandbox()
 	_set_tree_paused(false)
 	_begin_loading_screen("LOADING", "Preparing arena", 0.05)
 	_is_dungeon_run = false
@@ -2001,6 +2100,7 @@ func _start_level(level_definition) -> void:
 	_set_room_entry_transition_active(false)
 	_set_cleared_floor_map_active(false)
 	_current_level = level_definition
+	_advance_spawn_context(level_definition)
 	_score = 0
 	_run_seed = 0
 	_paused_previous_status = ""
@@ -2072,17 +2172,19 @@ func _start_level(level_definition) -> void:
 	_finish_loading_screen()
 
 
-func _start_dungeon_run() -> void:
+func _start_dungeon_run(start_floor: int = 1, run_seed_override: int = 0, debug_sandbox: bool = false) -> void:
 	_set_tree_paused(false)
+	_debug_world_frozen = false
 	_begin_loading_screen("LOADING FLOOR", "Generating floor layout", 0.05)
 	_is_dungeon_run = true
 	_is_main_loop_run = false
+	_debug_sandbox_active = debug_sandbox
 	_active_generated_encounter_test_index = -1
 	_set_room_entry_transition_active(false)
 	_set_cleared_floor_map_active(false)
 	_score = 0
-	_main_loop_floor = 1
-	_run_seed = _generate_run_seed()
+	_main_loop_floor = max(start_floor, 1)
+	_run_seed = run_seed_override if run_seed_override > 0 else _generate_run_seed()
 	_paused_previous_status = ""
 	_reset_run_tally()
 	_status = "STARTING"
@@ -2126,6 +2228,7 @@ func _start_dungeon_run() -> void:
 	item_manager.clear_pickups()
 	item_manager.clear_floor_persistent_pickups()
 	upgrade_manager.reset_run()
+	_apply_debug_cheats()
 	combat_manager.reset_run()
 	effects_manager.reset_run()
 	room_manager.reset_run()
@@ -2136,11 +2239,18 @@ func _start_dungeon_run() -> void:
 	_queue_loading_floor_start_feedback()
 	_on_upgrade_changed(upgrade_manager.get_modifiers(), upgrade_manager.get_active_effects())
 	_update_hud()
+	if _debug_sandbox_active and _debug_sandbox_panel != null:
+		_debug_sandbox_panel.set_generation_values(_main_loop_floor, _run_seed)
+	_update_debug_sandbox_status()
+	if _debug_sandbox_active and _debug_sandbox_panel != null:
+		_debug_sandbox_panel.visible = not _loading_screen_is_visible()
 
 
-func _start_generated_encounter_test(test_index: int) -> void:
+func _start_generated_encounter_test(test_index: int, preserve_debug_sandbox: bool = false) -> void:
 	if test_index < 0 or test_index >= GENERATED_ENCOUNTER_TESTS.size():
 		return
+	if not preserve_debug_sandbox:
+		_disable_debug_sandbox()
 	var test_config: Dictionary = GENERATED_ENCOUNTER_TESTS[test_index]
 	_set_tree_paused(false)
 	_begin_loading_screen("LOADING TEST ROOM", "Generating floor layout", 0.05)
@@ -2202,6 +2312,7 @@ func _start_generated_encounter_test(test_index: int) -> void:
 	item_manager.clear_pickups()
 	item_manager.clear_floor_persistent_pickups()
 	upgrade_manager.reset_run()
+	_apply_debug_cheats()
 	combat_manager.reset_run()
 	effects_manager.reset_run()
 	room_manager.reset_run()
@@ -2212,9 +2323,15 @@ func _start_generated_encounter_test(test_index: int) -> void:
 	_queue_loading_floor_start_feedback()
 	_on_upgrade_changed(upgrade_manager.get_modifiers(), upgrade_manager.get_active_effects())
 	_update_hud()
+	if preserve_debug_sandbox and _debug_sandbox_panel != null:
+		_debug_sandbox_active = true
+		_debug_sandbox_panel.set_generation_values(_main_loop_floor, _run_seed)
+		_update_debug_sandbox_status()
+		_debug_sandbox_panel.visible = not _loading_screen_is_visible()
 
 
 func _start_main_loop_run() -> void:
+	_disable_debug_sandbox()
 	_set_tree_paused(false)
 	_begin_loading_screen("LOADING FLOOR", "Generating floor layout", 0.05)
 	_is_dungeon_run = true
@@ -2314,6 +2431,7 @@ func _advance_main_loop_floor() -> void:
 
 
 func _enter_level_select() -> void:
+	_disable_debug_sandbox()
 	_set_tree_paused(false)
 	_status = "LEVEL_SELECT"
 	_current_level = null
@@ -2362,6 +2480,7 @@ func _enter_level_select() -> void:
 
 func _clear_gameplay() -> void:
 	_clear_pending_room_clear_resolution()
+	_reset_pending_enemy_spawns()
 	_clear_floor_exit_portal()
 	_set_agent_debug_panel_visible(false)
 	_set_cat_debug_panel_visible(false)
@@ -2466,6 +2585,154 @@ func _set_tree_paused(value: bool) -> void:
 		get_tree().paused = value
 
 
+func _on_debug_menu_requested() -> void:
+	if not _debug_sandbox_active or _debug_sandbox_panel == null:
+		return
+	_debug_sandbox_panel.toggle_visible()
+	_update_debug_sandbox_status()
+
+
+func _on_debug_generation_requested(floor_number: int, run_seed: int) -> void:
+	if not _debug_sandbox_active or _loading_transition_pending:
+		return
+	_loading_transition_pending = true
+	_on_debug_freeze_changed(false)
+	await _show_loading_before_work(
+		"LOADING SANDBOX",
+		"Generating floor %d" % max(floor_number, 1),
+		0.05
+	)
+	_start_dungeon_run(floor_number, run_seed, true)
+	_loading_transition_pending = false
+
+
+func _on_debug_commissar_test_requested() -> void:
+	if not _debug_sandbox_active or _loading_transition_pending:
+		return
+	_loading_transition_pending = true
+	_on_debug_freeze_changed(false)
+	await _show_loading_before_work("LOADING SANDBOX", "Building Commissar test corps", 0.05)
+	_start_generated_encounter_test(COMMISSAR_ENCOUNTER_TEST_INDEX, true)
+	_loading_transition_pending = false
+
+
+func _start_debug_sandbox() -> void:
+	if _loading_transition_pending:
+		return
+	_loading_transition_pending = true
+	await _show_loading_before_work("LOADING SANDBOX", "Generating selected floor", 0.05)
+	_start_dungeon_run(1, _generate_run_seed(), true)
+	_loading_transition_pending = false
+
+
+func _on_debug_freeze_changed(value: bool) -> void:
+	if not _debug_sandbox_active:
+		return
+	_debug_world_frozen = value
+	var player = _get_player_ref()
+	if player != null and is_instance_valid(player):
+		player.process_mode = Node.PROCESS_MODE_ALWAYS if value else Node.PROCESS_MODE_INHERIT
+	_set_tree_paused(value)
+	if _debug_sandbox_panel != null:
+		_debug_sandbox_panel.set_freeze_enabled(value)
+	_update_debug_sandbox_status()
+
+
+func _on_debug_invincibility_changed(value: bool) -> void:
+	if not _debug_sandbox_active:
+		return
+	_debug_invincible = value
+	player_manager.set_debug_invincible(value)
+	_update_debug_sandbox_status()
+
+
+func _on_debug_max_charge_changed(value: bool) -> void:
+	if not _debug_sandbox_active:
+		return
+	_debug_max_charge = value
+	player_manager.set_debug_always_max_charge(value)
+	_update_debug_sandbox_status()
+
+
+func _on_debug_max_overdrive_changed(value: bool) -> void:
+	if not _debug_sandbox_active:
+		return
+	_debug_max_overdrive = value
+	upgrade_manager.set_debug_max_overdrive(value)
+	_update_debug_sandbox_status()
+
+
+func _on_debug_overdrive_effect_changed(effect_id: String, stacks: int) -> void:
+	if not _debug_sandbox_active or not DEBUG_OVERDRIVE_EFFECTS.has(effect_id):
+		return
+	_debug_overdrive_effects[effect_id] = max(stacks, 0)
+	upgrade_manager.set_debug_overdrive_effect_stacks(DEBUG_OVERDRIVE_EFFECTS[effect_id], stacks)
+
+
+func _on_debug_permanent_stat_changed(stat_id: String, stacks: int) -> void:
+	if not _debug_sandbox_active or not DEBUG_PERMANENT_UPGRADES.has(stat_id):
+		return
+	_debug_permanent_upgrades[stat_id] = max(stacks, 0)
+	upgrade_manager.set_debug_permanent_upgrade_stacks(DEBUG_PERMANENT_UPGRADES[stat_id], stacks)
+
+
+func _apply_debug_cheats() -> void:
+	player_manager.set_debug_invincible(_debug_sandbox_active and _debug_invincible)
+	player_manager.set_debug_always_max_charge(_debug_sandbox_active and _debug_max_charge)
+	upgrade_manager.set_debug_max_overdrive(_debug_sandbox_active and _debug_max_overdrive)
+	if not _debug_sandbox_active:
+		return
+	for effect_id in _debug_overdrive_effects:
+		if int(_debug_overdrive_effects[effect_id]) > 0 and DEBUG_OVERDRIVE_EFFECTS.has(effect_id):
+			upgrade_manager.set_debug_overdrive_effect_stacks(DEBUG_OVERDRIVE_EFFECTS[effect_id], int(_debug_overdrive_effects[effect_id]))
+	for stat_id in _debug_permanent_upgrades:
+		if int(_debug_permanent_upgrades[stat_id]) > 0 and DEBUG_PERMANENT_UPGRADES.has(stat_id):
+			upgrade_manager.set_debug_permanent_upgrade_stacks(DEBUG_PERMANENT_UPGRADES[stat_id], int(_debug_permanent_upgrades[stat_id]))
+
+
+func _disable_debug_sandbox() -> void:
+	_debug_sandbox_active = false
+	_debug_world_frozen = false
+	var player = _get_player_ref()
+	if player != null and is_instance_valid(player):
+		player.process_mode = Node.PROCESS_MODE_INHERIT
+	player_manager.set_debug_invincible(false)
+	player_manager.set_debug_always_max_charge(false)
+	upgrade_manager.set_debug_max_overdrive(false)
+	if _debug_sandbox_panel != null:
+		_debug_sandbox_panel.set_freeze_enabled(false)
+		_debug_sandbox_panel.visible = false
+
+
+func _update_debug_sandbox_status() -> void:
+	if _debug_sandbox_panel == null or not _debug_sandbox_active:
+		return
+	var performance: Dictionary = enemy_manager.get_performance_snapshot()
+	_debug_sandbox_panel.set_status(
+		("Floor %d  Seed %d\nRoom %s (%s)\nEnemies %d  Generals %d  Legions %d%s"
+		+ "\nSpawn queue %d (peak %d)  Last %d / %.2f ms  Peak %.2f ms"
+		+ "\nTactics %.2f / %.2f ms  Crowd %.2f / %.2f ms") % [
+			_main_loop_floor,
+			_run_seed,
+			String(dungeon_manager.current_room_id),
+			dungeon_manager.get_current_room_kind(),
+			enemy_manager.get_enemy_count(),
+			enemy_manager.get_general_count(),
+			enemy_manager.get_legion_controller_count(),
+			"  [FROZEN]" if _debug_world_frozen else "",
+			_pending_enemy_spawn_proposals.size(),
+			_spawn_queue_peak_depth,
+			_spawn_budget_last_count,
+			_spawn_budget_last_ms,
+			_spawn_budget_peak_ms,
+			float(performance.get("tactics_last_ms", 0.0)),
+			float(performance.get("tactics_peak_ms", 0.0)),
+			float(performance.get("crowd_last_ms", 0.0)),
+			float(performance.get("crowd_peak_ms", 0.0))
+		]
+	)
+
+
 func _reset_overdrive_hud_state() -> void:
 	_last_overdrive_ammo = upgrade_manager.get_overdrive_ammo() if upgrade_manager != null else 40
 	_last_overdrive_max_ammo = upgrade_manager.get_overdrive_max_ammo() if upgrade_manager != null else 40
@@ -2518,8 +2785,17 @@ func _is_gameplay_input_allowed() -> bool:
 	return _is_gameplay_running() and not _tree_pause_requested and not _agent_taunt_active and not _loading_overlay_blocks_game_input()
 
 
+func _is_player_movement_input_allowed() -> bool:
+	return _is_gameplay_input_allowed() or (
+		_debug_sandbox_active
+		and _debug_world_frozen
+		and _is_gameplay_running()
+		and not _loading_overlay_blocks_game_input()
+	)
+
+
 func _on_move_changed(move_vector: Vector2) -> void:
-	if not _is_gameplay_input_allowed():
+	if not _is_player_movement_input_allowed():
 		return
 	player_manager.set_move_vector(move_vector)
 
@@ -2673,7 +2949,6 @@ func _detonate_hostile_rocket(origin: Vector2, projectile_radius: float, packet,
 	explosion_packet.knockback = max(float(packet.knockback) * 0.65, 120.0)
 	var excluded: Array[Node] = []
 	var candidates = enemy_manager.get_nearby_enemies(origin, explosion_radius, excluded)
-	candidates.append_array(spawner_manager.get_nearby_spawners(origin, explosion_radius, excluded))
 	candidates.append_array(destructible_manager.get_nearby_destructibles(origin, explosion_radius, excluded))
 	for target in candidates:
 		explosion_packet.knockback_direction = (target.global_position - origin).normalized()
@@ -2689,8 +2964,6 @@ func _apply_damage_to_target(target: Node, packet) -> bool:
 		return false
 	if target.is_in_group("enemies"):
 		return bool(enemy_manager.apply_damage(target, packet))
-	elif target.is_in_group("spawners"):
-		return bool(spawner_manager.apply_damage(target, packet))
 	elif target.is_in_group("destructible_props"):
 		return bool(destructible_manager.apply_damage(target, packet))
 	return false
@@ -2717,7 +2990,6 @@ func _on_chain_requested(origin_target: Node, packet) -> void:
 	var excluded: Array[Node] = [origin_target]
 	excluded.append_array(packet.hit_targets)
 	var candidates = enemy_manager.get_nearby_enemies(origin_target.global_position, packet.chain_radius, excluded)
-	candidates.append_array(spawner_manager.get_nearby_spawners(origin_target.global_position, packet.chain_radius, excluded))
 	if candidates.is_empty():
 		var overload_packet = packet.copy_for_chain()
 		overload_packet.chain_count = 0
@@ -2747,7 +3019,6 @@ func _on_explosion_requested(origin: Vector2, packet) -> void:
 	explosion_packet.source_position = origin
 	var excluded: Array[Node] = []
 	var candidates = enemy_manager.get_nearby_enemies(origin, packet.explosion_radius, excluded)
-	candidates.append_array(spawner_manager.get_nearby_spawners(origin, packet.explosion_radius, excluded))
 	candidates.append_array(destructible_manager.get_nearby_destructibles(origin, packet.explosion_radius, excluded))
 	for target in candidates:
 		explosion_packet.knockback_direction = (target.global_position - origin).normalized()
@@ -2758,12 +3029,102 @@ func _on_player_contact_requested(enemy, player, damage: int) -> void:
 	combat_manager.resolve_contact_damage(enemy, player, damage)
 
 
+func _on_player_pushback_requested(direction: Vector2, force: float) -> void:
+	player_manager.apply_pushback(direction, force)
+
+
+func _on_execution_projectile_arrived(target: Node) -> void:
+	audio_manager.play_bullet_impact()
+	enemy_manager.resolve_commissar_execution_projectile(target)
+
+
 func _on_player_damage_resolved(amount: int) -> void:
 	player_manager.apply_damage(amount)
 
 
-func _on_spawn_requested(spawn_position: Vector2, profile) -> void:
-	enemy_manager.spawn_enemy(profile, spawn_position, {"birth": true})
+func _on_spawn_proposed(proposal: Dictionary) -> void:
+	if not _spawn_proposal_matches_current_room(proposal):
+		return
+	var spawn_flags: Dictionary = proposal.get("spawn_flags", {})
+	if bool(spawn_flags.get("inactive", false)) or bool(spawn_flags.get("allow_when_disabled", false)):
+		_materialize_enemy_spawn_proposal(proposal)
+		return
+	var reserved_enemy_count: int = enemy_manager.get_horde_enemy_count() + _pending_enemy_spawn_proposals.size()
+	if reserved_enemy_count >= max(int(spawner_manager.max_active_enemies), 0):
+		return
+	_pending_enemy_spawn_proposals.append(proposal.duplicate())
+	_spawn_queue_peak_depth = max(_spawn_queue_peak_depth, _pending_enemy_spawn_proposals.size())
+	_clear_pending_room_clear_resolution()
+
+
+func _process_pending_enemy_spawns() -> void:
+	if _pending_enemy_spawn_proposals.is_empty() or _tree_pause_requested or _is_loading_room or not enemy_manager.enabled:
+		return
+	var frame_started_usec: int = Time.get_ticks_usec()
+	var materialized_count: int = 0
+	var max_count: int = max(runtime_spawn_max_per_frame, 1)
+	var budget_usec: int = maxi(roundi(max(runtime_spawn_budget_ms, 0.1) * 1000.0), 100)
+	while not _pending_enemy_spawn_proposals.is_empty() and materialized_count < max_count:
+		var proposal: Dictionary = _pending_enemy_spawn_proposals.pop_front()
+		if _spawn_proposal_matches_current_room(proposal):
+			_materialize_enemy_spawn_proposal(proposal)
+			materialized_count += 1
+		if materialized_count > 0 and Time.get_ticks_usec() - frame_started_usec >= budget_usec:
+			break
+	_spawn_budget_last_count = materialized_count
+	_spawn_budget_last_ms = float(Time.get_ticks_usec() - frame_started_usec) / 1000.0
+	_spawn_budget_peak_ms = max(_spawn_budget_peak_ms, _spawn_budget_last_ms)
+	if _pending_enemy_spawn_proposals.is_empty():
+		_check_level_clear()
+
+
+func _materialize_enemy_spawn_proposal(proposal: Dictionary) -> void:
+	if not _spawn_proposal_matches_current_room(proposal):
+		return
+	var spawn_position: Vector2 = proposal.get("position", Vector2.INF)
+	var profile = proposal.get("profile", null)
+	var spawn_flags: Dictionary = proposal.get("spawn_flags", {"birth": true})
+	var result: Dictionary = enemy_manager.try_spawn_enemy(profile, spawn_position, spawn_flags)
+	if not bool(result.get("ok", false)):
+		spawner_manager.request_spawn_reroll(proposal)
+
+
+func _on_general_spawn_requested(profile, spawn_position: Vector2, spawn_flags: Dictionary) -> void:
+	var result: Dictionary = enemy_manager.try_spawn_enemy(profile, spawn_position, spawn_flags)
+	if not bool(result.get("ok", false)):
+		return
+	var general: EnemyEntity = result.get("enemy", null) as EnemyEntity
+	if general == null or not general.is_general():
+		return
+	spawner_manager.register_general(general)
+
+
+func _spawn_proposal_matches_current_room(proposal: Dictionary) -> bool:
+	if int(proposal.get("generation", -1)) != _spawn_generation:
+		return false
+	var expected_room_id := _get_spawn_room_id(_current_level)
+	return String(proposal.get("room_id", "")) == expected_room_id
+
+
+func _advance_spawn_context(level_definition) -> void:
+	_spawn_generation += 1
+	_reset_pending_enemy_spawns()
+	spawner_manager.set_spawn_context(_get_spawn_room_id(level_definition), _spawn_generation)
+
+
+func _reset_pending_enemy_spawns() -> void:
+	_pending_enemy_spawn_proposals.clear()
+	_spawn_queue_peak_depth = 0
+	_spawn_budget_last_count = 0
+	_spawn_budget_last_ms = 0.0
+	_spawn_budget_peak_ms = 0.0
+
+
+func _get_spawn_room_id(level_definition) -> String:
+	if level_definition == null:
+		return ""
+	var fallback_id := String(level_definition.id)
+	return String(level_definition.get_meta("active_room_id", fallback_id))
 
 
 func _on_enemy_repair_requested(_enemy, repair_target, amount: int) -> void:
@@ -2896,6 +3257,10 @@ func _get_opening_encounter_positions(level_definition, count: int) -> Array[Vec
 func _opening_encounter_position_is_clear(candidate_position: Vector2, anchor: Vector2, min_distance: float, selected_positions: Array[Vector2], level_definition) -> bool:
 	if not _position_is_inside_room_playable_area(candidate_position, level_definition, 24.0):
 		return false
+	var spatial_domain = _get_level_spatial_domain(level_definition)
+	if spatial_domain != null and spatial_domain.has_method("contains_spawn_position"):
+		if not bool(spatial_domain.contains_spawn_position(candidate_position, 24.0)):
+			return false
 	if candidate_position.distance_squared_to(anchor) < min_distance * min_distance:
 		return false
 	if not _position_is_clear_of_room_walls(candidate_position, level_definition):
@@ -3013,11 +3378,11 @@ func _on_enemy_health_changed(enemy, _old_value: int, new_value: int) -> void:
 	_update_boss_health_panel()
 
 
-func _on_spawner_destroyed(_spawner, score_value: int) -> void:
-	if _spawner != null and is_instance_valid(_spawner):
-		var explosion_radius: float = max(float(_spawner.body_radius) * 4.8, 150.0)
-		effects_manager.play_spawner_explosion(_spawner.global_position, explosion_radius)
-		item_manager.drop_spawner_reward(_spawner.global_position)
+func _on_general_defeated(general, score_value: int) -> void:
+	if general != null and is_instance_valid(general):
+		var explosion_radius: float = max(float(general.body_radius) * 4.8, 150.0)
+		effects_manager.play_spawner_explosion(general.global_position, explosion_radius)
+		item_manager.drop_spawner_reward(general.global_position)
 	_run_spawner_kills += 1
 	_score += score_value
 	_update_hud()
@@ -3222,7 +3587,7 @@ func _on_restart_requested() -> void:
 			_start_main_loop_run()
 		elif _is_dungeon_run and _active_generated_encounter_test_index >= 0:
 			await _show_loading_before_work("LOADING TEST ROOM", "Generating floor layout", 0.05)
-			_start_generated_encounter_test(_active_generated_encounter_test_index)
+			_start_generated_encounter_test(_active_generated_encounter_test_index, _debug_sandbox_active)
 		elif _is_dungeon_run:
 			await _show_loading_before_work("LOADING FLOOR", "Generating floor layout", 0.05)
 			_start_dungeon_run()
@@ -3319,6 +3684,12 @@ func _get_player_ref():
 	return player_manager.player
 
 
+func _get_perspective_room_id() -> String:
+	if not _is_dungeon_run or dungeon_manager == null:
+		return ""
+	return String(dungeon_manager.current_room_id)
+
+
 func _on_room_door_entered(direction: String, target_room_id: String = "") -> void:
 	if not _is_dungeon_run or _status != "DUNGEON":
 		return
@@ -3394,6 +3765,7 @@ func _load_room_entry_transition(player_position: Vector2) -> bool:
 		return false
 	_is_loading_room = true
 	_current_level = level_definition
+	_advance_spawn_context(level_definition)
 	_entry_transition_player_target_position = _get_room_entry_transition_player_target_position(level_definition)
 	if _entry_transition_player_target_position != Vector2.INF:
 		_entry_transition_floor_entry_position = _entry_transition_player_target_position
@@ -3448,9 +3820,11 @@ func _load_room_entry_transition(player_position: Vector2) -> bool:
 func _preload_pending_initial_spawner_enemies() -> void:
 	var spawn_requests: Array[Dictionary] = spawner_manager.consume_initial_spawn_requests()
 	for spawn_request in spawn_requests:
-		var spawn_position: Vector2 = spawn_request.get("position", Vector2.ZERO)
-		var profile: Resource = spawn_request.get("profile", null) as Resource
-		enemy_manager.spawn_enemy(profile, spawn_position, {"inactive": true, "allow_when_disabled": true})
+		var spawn_flags: Dictionary = spawn_request.get("spawn_flags", {}).duplicate()
+		spawn_flags["inactive"] = true
+		spawn_flags["allow_when_disabled"] = true
+		spawn_request["spawn_flags"] = spawn_flags
+		_on_spawn_proposed(spawn_request)
 
 
 func _preload_pending_initial_spawner_enemies_with_loading(progress_start: float, progress_end: float) -> void:
@@ -3462,9 +3836,11 @@ func _preload_pending_initial_spawner_enemies_with_loading(progress_start: float
 	_set_loading_progress(progress_start, "Loading enemies 0/%d" % enemy_total)
 	for spawn_index: int in range(enemy_total):
 		var spawn_request: Dictionary = spawn_requests[spawn_index]
-		var spawn_position: Vector2 = spawn_request.get("position", Vector2.ZERO)
-		var profile: Resource = spawn_request.get("profile", null) as Resource
-		enemy_manager.spawn_enemy(profile, spawn_position, {"inactive": true, "allow_when_disabled": true})
+		var spawn_flags: Dictionary = spawn_request.get("spawn_flags", {}).duplicate()
+		spawn_flags["inactive"] = true
+		spawn_flags["allow_when_disabled"] = true
+		spawn_request["spawn_flags"] = spawn_flags
+		_on_spawn_proposed(spawn_request)
 		var loaded_count: int = spawn_index + 1
 		var progress_ratio: float = float(loaded_count) / float(enemy_total)
 		_set_loading_progress(
@@ -3518,6 +3894,7 @@ func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = 
 		preserved_camera_position = gameplay_camera.global_position
 	_is_loading_room = true
 	_current_level = level_definition
+	_advance_spawn_context(level_definition)
 	_clear_floor_exit_portal(true)
 	if arena_view != null:
 		arena_view.configure(level_definition)
@@ -3539,7 +3916,12 @@ func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = 
 		item_manager.rehydrate_floor_permanent_pickups()
 	if not preserve_pickups:
 		effects_manager.reset_run()
-	room_manager.load_room(level_definition, dungeon_manager.get_full_floor_traversal_door_infos(), true)
+	room_manager.load_room(
+		level_definition,
+		dungeon_manager.get_full_floor_traversal_door_infos(),
+		true,
+		dungeon_manager.get_full_floor_welcome_mat_infos()
+	)
 	room_manager.set_doors_unlocked(true)
 	_set_cleared_floor_map_active(true)
 	player_manager.set_player_position(player_position)
@@ -3557,6 +3939,9 @@ func _load_cleared_floor_map(player_position: Vector2, preserve_pickups: bool = 
 
 func _on_pause_requested() -> void:
 	if _loading_overlay_blocks_game_input():
+		return
+	if _debug_sandbox_active and _debug_world_frozen:
+		_on_debug_freeze_changed(false)
 		return
 	if _agent_intro_blocks_pause_input() and not _is_user_pause_menu_active():
 		return
@@ -4425,6 +4810,8 @@ func _level_clear_conditions_met() -> bool:
 		return false
 	if _is_cleared_floor_map_active:
 		return false
+	if not _pending_enemy_spawn_proposals.is_empty():
+		return false
 	if spawner_manager.get_spawner_count() > 0 or enemy_manager.get_enemy_count() > 0:
 		return false
 	return true
@@ -4619,6 +5006,8 @@ func _activate_level_select_option() -> void:
 		LEVEL_SELECT_ACTION_MAIN_LOOP:
 			_selected_level_index = LEVELS.size() + 1
 			_start_selected_level()
+		LEVEL_SELECT_ACTION_DEBUG_SANDBOX:
+			_start_debug_sandbox()
 		LEVEL_SELECT_ACTION_GENERATED_TEST:
 			_selected_level_index = LEVELS.size() + 2 + int(option.get("index", 0))
 			_start_selected_level()
@@ -4649,6 +5038,8 @@ func _get_level_select_option_label(option: Dictionary) -> String:
 			return "Missing Level  [unavailable]"
 		LEVEL_SELECT_ACTION_MAIN_LOOP:
 			return "Main Game Loop Test  [floor loop + tally]"
+		LEVEL_SELECT_ACTION_DEBUG_SANDBOX:
+			return "Developer Sandbox  [floor depth + cheats]"
 	return "Back"
 
 
@@ -4664,6 +5055,7 @@ func _load_dungeon_current_room(entry_direction: String, reset_player: bool, ove
 	if should_update_loading_screen:
 		_set_loading_progress(max(float(loading_screen.get("progress")), LOADING_PROGRESS_ROOM_GEOMETRY), "Building room geometry")
 	_current_level = level_definition
+	_advance_spawn_context(level_definition)
 	_is_loading_room = true
 	_set_all_enabled(false)
 	_clear_floor_exit_portal(true)
@@ -4888,6 +5280,15 @@ func _get_level_collision_rects(level_definition, meta_key: String, fallback: Ar
 	return rects
 
 
+func _get_level_spatial_domain(level_definition):
+	if level_definition == null:
+		return null
+	var active_domain = level_definition.get("active_room_spatial_domain")
+	if active_domain != null:
+		return active_domain
+	return level_definition.get("room_spatial_domain")
+
+
 func _rect_has_point_inclusive(rect: Rect2, point: Vector2) -> bool:
 	var end: Vector2 = rect.position + rect.size
 	return point.x >= rect.position.x - 0.001 and point.x <= end.x + 0.001 and point.y >= rect.position.y - 0.001 and point.y <= end.y + 0.001
@@ -5079,6 +5480,8 @@ func _clear_minimap() -> void:
 func _begin_loading_screen(title: String, message: String, progress: float = 0.0) -> void:
 	if player_manager != null and player_manager.has_method("set_spawn_feedback_deferred"):
 		player_manager.call("set_spawn_feedback_deferred", true)
+	if _debug_sandbox_panel != null:
+		_debug_sandbox_panel.visible = false
 	if loading_screen != null and loading_screen.has_method("begin_loading"):
 		loading_screen.call("begin_loading", title, message, progress)
 
@@ -5126,6 +5529,9 @@ func _on_loading_continue_requested() -> void:
 		_start_pending_agent_boss_presentation()
 		_play_loading_completion_feedback()
 		_update_hud()
+	if _debug_sandbox_active and _debug_sandbox_panel != null:
+		_debug_sandbox_panel.visible = true
+		_update_debug_sandbox_status()
 
 
 func _queue_loading_floor_start_feedback() -> void:
@@ -5254,11 +5660,25 @@ func _get_current_camera_bounds(level_definition) -> Rect2:
 		if _is_cleared_floor_map_active:
 			var visible_bounds: Rect2 = dungeon_manager.get_full_floor_visible_bounds(dungeon_manager.current_room_id)
 			if visible_bounds.size != Vector2.ZERO:
-				return visible_bounds
+				return _get_wall_aware_camera_bounds(level_definition, visible_bounds)
 		var active_bounds: Rect2 = dungeon_manager.get_full_floor_room_bounds(dungeon_manager.current_room_id)
 		if active_bounds.size != Vector2.ZERO:
-			return active_bounds
-	return level_definition.arena_bounds
+			return _get_wall_aware_camera_bounds(level_definition, active_bounds)
+	return _get_wall_aware_camera_bounds(level_definition, level_definition.arena_bounds)
+
+
+func _get_wall_aware_camera_bounds(level_definition, base_bounds: Rect2) -> Rect2:
+	if level_definition == null or base_bounds.size == Vector2.ZERO:
+		return base_bounds
+	var wall_height_tiles: int = max(int(level_definition.get_meta(
+		"wall_height_tiles",
+		ROOM_GEOMETRY_BUILDER.DEFAULT_WALL_HEIGHT_TILES
+	)), 1)
+	if wall_height_tiles <= 1:
+		return base_bounds
+	var top_margin: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE * float(wall_height_tiles)
+	var bottom_margin: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
+	return base_bounds.grow_individual(0.0, top_margin, 0.0, bottom_margin)
 
 
 func _activate_boss_exit_portal(boss_position: Vector2, boss_radius: float) -> void:

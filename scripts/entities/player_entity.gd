@@ -175,6 +175,14 @@ func get_fire_origin() -> Vector2:
 	return _constrain_to_playable(desired_origin, 2.0)
 
 
+func get_perspective_world_rect() -> Rect2:
+	var visual_extent: float = max(body_radius * 3.0, body_radius + 28.0)
+	return Rect2(
+		global_position - Vector2(visual_extent, visual_extent),
+		Vector2.ONE * visual_extent * 2.0
+	)
+
+
 func get_projectile_origin(shot_direction: Vector2 = Vector2.ZERO) -> Vector2:
 	var direction := shot_direction.normalized() if shot_direction.length_squared() > 0.001 else _get_muzzle_direction()
 	var side_offset_limit: float = max(body_radius - 0.5, 0.0)

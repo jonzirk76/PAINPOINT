@@ -1,6 +1,8 @@
 extends Node
 class_name DestructibleManager
 
+const WALL_OCCLUSION_LAYERS := preload("res://scripts/arena/wall_occlusion_layers.gd")
+
 signal prop_destroyed(prop, score_value: int, drop_kind: String)
 
 @export var destructible_scene: PackedScene = preload("res://scenes/entities/destructible_prop_entity.tscn")
@@ -82,6 +84,10 @@ func _spawn_destructible(placement):
 	var prop = destructible_scene.instantiate()
 	prop.initialize(placement)
 	prop.health_depleted.connect(_on_prop_health_depleted)
+	WALL_OCCLUSION_LAYERS.mark_entity_tree(
+		prop,
+		String(placement.get_meta("source_room_id", ""))
+	)
 	_destructibles.append(prop)
 	_add_child_safely(_get_destructible_parent(), prop)
 	return prop

@@ -1,6 +1,8 @@
 extends Node
 class_name FaunaManager
 
+const WALL_OCCLUSION_LAYERS := preload("res://scripts/arena/wall_occlusion_layers.gd")
+
 signal cat_meowed(pitch_center: float, pitch_variation: float)
 
 const CAT_TEXTURES := [
@@ -85,6 +87,7 @@ var _has_cat_activity_bounds: bool = false
 var _cat_visibility_bounds: Rect2 = Rect2()
 var _has_cat_visibility_bounds: bool = false
 var _cat_texture_rng := RandomNumberGenerator.new()
+var _perspective_room_id: String = ""
 var _last_player_position: Vector2 = Vector2.INF
 var _has_last_player_position: bool = false
 
@@ -122,6 +125,7 @@ func set_enabled(value: bool) -> void:
 func set_arena_definition(level_definition) -> void:
 	if level_definition == null:
 		return
+	_perspective_room_id = String(level_definition.get_meta("active_room_id", ""))
 	_arena_bounds = level_definition.arena_bounds
 	_arena_shape = int(level_definition.arena_shape)
 	_level_wall_rects = level_definition.wall_rects
@@ -179,6 +183,7 @@ func spawn_cat(spawn_position: Vector2, movement_seed: int = 0):
 		cat.set_cat_texture(_pick_cat_texture())
 	if cat.has_method("initialize"):
 		cat.initialize(spawn_position, cat_seed)
+	WALL_OCCLUSION_LAYERS.mark_entity_tree(cat, _perspective_room_id)
 	_sync_cat_simulation_state()
 	_add_child_safely(_get_fauna_parent(), cat)
 	return cat

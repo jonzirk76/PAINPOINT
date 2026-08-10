@@ -8,16 +8,20 @@ const BEHAVIOR_REPAIR_DRONE := "repair_drone"
 const BEHAVIOR_SHIELD_DRONE := "shield_drone"
 const BEHAVIOR_POWER_ARMOR := "power_armor"
 const BEHAVIOR_CYBER_SOLDIER := "cyber_soldier"
+const BEHAVIOR_COMMISSAR := "commissar"
 
-@export_enum("chaser", "shooter", "boss", "repair_drone", "shield_drone", "power_armor", "cyber_soldier") var behavior_kind: String = BEHAVIOR_CHASER
+@export_enum("chaser", "shooter", "boss", "repair_drone", "shield_drone", "power_armor", "cyber_soldier", "commissar") var behavior_kind: String = BEHAVIOR_CHASER
 @export var max_health: int = 3
 @export var speed: float = 85.0
+## [Description] Multiplies movement speed after this enemy survives the loss of its general.
+@export_range(1.0, 3.0, 0.05) var orphaned_speed_multiplier: float = 1.25
 @export var contact_damage: int = 1
 @export var contact_radius: float = 34.0
 @export var contact_cooldown: float = 0.7
 @export var score_value: int = 10
 @export var body_radius: float = 18.0
-@export var knockback_multiplier: float = 1.0
+## Controls this enemy's influence in soft crowd separation; heavier enemies displace lighter enemies, while zero-weight enemies cannot push others.
+@export_range(0.0, 100.0, 0.1) var crowd_weight: float = 1.0
 @export var body_color: Color = Color(1.0, 0.27, 0.22)
 @export var accent_color: Color = Color(1.0, 0.72, 0.18)
 @export var preferred_distance: float = 280.0
@@ -29,6 +33,8 @@ const BEHAVIOR_CYBER_SOLDIER := "cyber_soldier"
 @export var projectile_radius: float = 7.0
 @export var shot_projectile_count: int = 1
 @export var shot_spread_degrees: float = 0.0
+## Gives this enemy a general's reinforcement-spawning capability when assigned.
+@export var spawn_profile: EnemySpawnProfile = null
 ## Controls how far repair drones can restore allied enemies.
 @export var repair_radius: float = 220.0
 ## Controls how much health one repair pulse restores.
@@ -37,6 +43,8 @@ const BEHAVIOR_CYBER_SOLDIER := "cyber_soldier"
 @export var repair_cooldown: float = 1.25
 ## Controls the health ratio below which repair drones consider an ally worth repairing.
 @export_range(0.0, 1.0, 0.01) var repair_target_health_ratio: float = 0.92
+## [Description] Limits how many repair drones may target this enemy simultaneously; zero allows unlimited repairers.
+@export_range(0, 12, 1) var max_simultaneous_repairers: int = 2
 ## Controls the cooldown between non-boss special attack or reposition phases.
 @export var special_cooldown: float = 3.0
 ## Controls the warning duration before non-boss special attacks fire.
@@ -61,3 +69,5 @@ const BEHAVIOR_CYBER_SOLDIER := "cyber_soldier"
 @export var special_autocannon_shot_interval: float = 0.28
 ## Enables procedural agent boss behavior when this profile is spawned as a boss.
 @export var agent_program: AgentBossProgram = null
+## [Description] Configures tiered veteran, discipline, and support-corps abilities for Commissar enemies.
+@export var commissar_program: CommissarProgram = null

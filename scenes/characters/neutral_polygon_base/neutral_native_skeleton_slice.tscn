@@ -1,0 +1,41 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/native_humanoid_skeleton_runtime.gd" id="1_runtime"]
+[ext_resource type="Resource" path="res://resources/characters/neutral_humanoid_rig.tres" id="2_rig"]
+[ext_resource type="Resource" path="res://resources/characters/neutral_polygon_skin.tres" id="3_skin"]
+
+[node name="NeutralNativeSkeletonSlice" type="Node2D"]
+script = ExtResource("1_runtime")
+animation_rig_source = ExtResource("2_rig")
+character_skin_source = ExtResource("3_skin")
+
+[node name="ProjectionRoot" type="Node2D" parent="."]
+
+[node name="MotionOffset" type="Node2D" parent="ProjectionRoot"]
+
+[node name="Skeleton2D" type="Skeleton2D" parent="ProjectionRoot/MotionOffset"]
+
+[node name="Hips" type="Bone2D" parent="ProjectionRoot/MotionOffset/Skeleton2D"]
+rest = Transform2D(1, 0, 0, 1, 0, 0)
+
+[node name="Torso" type="Bone2D" parent="ProjectionRoot/MotionOffset/Skeleton2D/Hips"]
+rest = Transform2D(1, 0, 0, 1, 0, 0)
+
+[node name="Head" type="Bone2D" parent="ProjectionRoot/MotionOffset/Skeleton2D/Hips/Torso"]
+rest = Transform2D(1, 0, 0, 1, 0, 0)
+
+[node name="FarArm" type="Bone2D" parent="ProjectionRoot/MotionOffset/Skeleton2D/Hips/Torso"]
+rest = Transform2D(1, 0, 0, 1, 0, 0)
+
+[node name="NearArm" type="Bone2D" parent="ProjectionRoot/MotionOffset/Skeleton2D/Hips/Torso"]
+rest = Transform2D(1, 0, 0, 1, 0, 0)
+
+[node name="FarLeg" type="Bone2D" parent="ProjectionRoot/MotionOffset/Skeleton2D/Hips"]
+rest = Transform2D(1, 0, 0, 1, 0, 0)
+
+[node name="NearLeg" type="Bone2D" parent="ProjectionRoot/MotionOffset/Skeleton2D/Hips"]
+rest = Transform2D(1, 0, 0, 1, 0, 0)
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="ProjectionRoot"]
+
+[node name="AnimationTree" type="AnimationTree" parent="ProjectionRoot"]

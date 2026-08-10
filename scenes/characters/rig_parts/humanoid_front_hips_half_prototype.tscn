@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[node name="HipsHalf" type="Node2D"]
+
+[node name="PelvisHalf" type="Polygon2D" parent="."]
+color = Color(0.027451, 0.082353, 0.211765, 1)
+polygon = PackedVector2Array(0, 29, -20, 29, -40, 42, -41, 55, -10, 70, 0, 70)

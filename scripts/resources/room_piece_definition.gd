@@ -28,6 +28,8 @@ const CONNECTOR_FALLBACKS := {
 @export var arena_bounds: Rect2 = Rect2(Vector2(-600.0, -330.0), Vector2(1200.0, 660.0))
 @export var arena_shape: int = 0
 @export var wall_rects: Array[Rect2] = []
+## [Description] Number of 40 px visual wall-body tiers drawn beneath each wall top; collision remains one tier deep.
+@export_range(1, 8, 1) var wall_height_tiles: int = 3
 @export var spawner_placements: Array[Resource] = []
 ## Weighted non-spawner enemy entries copied to generated level definitions for this room piece.
 @export var encounter_table: Array[Resource] = []
@@ -52,10 +54,12 @@ func create_level_definition():
 	level.encounter_table = encounter_table.duplicate()
 	level.encounter_budget = encounter_budget
 	level.destructible_prop_placements = destructible_prop_placements.duplicate()
-	var wall_top_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_tile_rects(footprint_cells)
-	wall_top_tiles.append_array(ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(wall_rects))
-	var wall_body_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(wall_top_tiles, footprint_cells)
-	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(wall_body_tiles)
+	var wall_floor_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_tile_rects(footprint_cells)
+	wall_floor_tiles.append_array(ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(wall_rects))
+	var wall_body_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(wall_floor_tiles, footprint_cells, {}, wall_height_tiles)
+	var wall_top_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_top_visual_tile_rects(wall_floor_tiles, wall_height_tiles)
+	var wall_collision_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_collision_tile_rects(wall_floor_tiles, footprint_cells)
+	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(wall_collision_tiles)
 	var empty_voids: Array[Rect2] = []
 	level.void_rects = empty_voids
 	level.max_active_enemies = max_active_enemies
@@ -63,10 +67,12 @@ func create_level_definition():
 	level.generate_agent_boss = generate_agent_boss
 	level.boss_spawn_position = boss_spawn_position
 	level.set_meta("footprint_cells", footprint_cells.duplicate())
+	level.set_meta("wall_height_tiles", wall_height_tiles)
 	level.set_meta("connection_edges", {})
 	level.set_meta("wall_top_tile_rects", wall_top_tiles)
 	level.set_meta("wall_body_tile_rects", wall_body_tiles)
-	level.set_meta("wall_tile_rects", wall_top_tiles)
+	level.set_meta("wall_floor_tile_rects", wall_floor_tiles)
+	level.set_meta("wall_tile_rects", wall_floor_tiles)
 	level.set_meta("void_tile_rects", empty_voids)
 	return level
 

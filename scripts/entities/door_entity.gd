@@ -4,7 +4,6 @@ class_name DoorEntity
 signal entered(door)
 
 @export var door_size: Vector2 = Vector2(88.0, 28.0)
-
 const DOOR_GATE_TOP_VISUAL_SCRIPT := preload("res://scripts/entities/door_gate_top_visual.gd")
 const ROOM_GEOMETRY_BUILDER := preload("res://scripts/resources/room_geometry_builder.gd")
 const ARM_DELAY_SECONDS := 0.12
@@ -22,6 +21,9 @@ var visual_size: Vector2 = Vector2.ZERO
 var visual_offset: Vector2 = Vector2.ZERO
 var passage_size: Vector2 = Vector2.ZERO
 var passage_offset: Vector2 = Vector2.ZERO
+var floor_marker_offset: Vector2 = Vector2.ZERO
+var has_floor_marker_offset: bool = false
+var wall_height_tiles: int = ROOM_GEOMETRY_BUILDER.DEFAULT_WALL_HEIGHT_TILES
 var _collision_shape: CollisionShape2D = null
 var _gate_body: StaticBody2D = null
 var _gate_collision_shape: CollisionShape2D = null
@@ -75,10 +77,24 @@ func set_visual_rect(center_position: Vector2, size: Vector2) -> void:
 	queue_redraw()
 
 
+func set_wall_height_tiles(value: int) -> void:
+	wall_height_tiles = max(value, 1)
+	_add_or_update_gate_collision()
+	_sync_gate_top_visual()
+	_sync_gate_body_visual()
+	queue_redraw()
+
+
 func set_passage_rect(center_position: Vector2, size: Vector2) -> void:
 	var snapped_center := Vector2(round(center_position.x), round(center_position.y))
 	passage_offset = snapped_center - global_position
 	passage_size = Vector2(round(size.x), round(size.y))
+	queue_redraw()
+
+
+func set_floor_marker_world_position(marker_position: Vector2) -> void:
+	floor_marker_offset = marker_position - global_position
+	has_floor_marker_offset = true
 	queue_redraw()
 
 
@@ -235,42 +251,28 @@ func _get_visual_fill_rect() -> Rect2:
 
 
 func _get_gate_top_rects(rect: Rect2) -> Array[Rect2]:
-	match direction:
-		"north":
-			var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
-			return _rect_to_gate_tiles(Rect2(rect.position, Vector2(rect.size.x, min(rect.size.y, tile_size))))
-		"south":
-			return _rect_to_gate_tiles(rect)
-		"east", "west":
-			var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
-			var top_height: float = max(rect.size.y - tile_size, 0.0)
-			return _rect_to_gate_tiles(Rect2(rect.position, Vector2(rect.size.x, top_height)))
-	return []
+	var floor_tiles := _rect_to_gate_tiles(rect)
+	return ROOM_GEOMETRY_BUILDER.build_wall_top_visual_tile_rects(floor_tiles, wall_height_tiles)
 
 
 func _get_gate_body_rects(rect: Rect2) -> Array[Rect2]:
 	var rects: Array[Rect2] = []
-	match direction:
-		"south":
-			return rects
 	var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
-	for top_rect in _get_gate_top_rects(rect):
-		rects.append(Rect2(top_rect.position + Vector2(0.0, tile_size), top_rect.size))
+	for floor_rect in _rect_to_gate_tiles(rect):
+		for height_index in range(wall_height_tiles):
+			rects.append(Rect2(
+				floor_rect.position - Vector2(0.0, tile_size * float(height_index)),
+				floor_rect.size
+			))
 	return rects
 
 
 func _get_gate_body_overlay_rects(rect: Rect2) -> Array[Rect2]:
-	if direction == "south":
-		return _get_gate_blocker_rects(rect)
 	return []
 
 
 func _get_gate_blocker_rects(rect: Rect2) -> Array[Rect2]:
-	match direction:
-		"south":
-			var tile_size: float = ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE
-			return _rect_to_gate_tiles(Rect2(rect.position + Vector2(0.0, tile_size), rect.size))
-	return _get_gate_body_rects(rect)
+	return _rect_to_gate_tiles(rect)
 
 
 func _get_gate_blocker_fill_rect(rect: Rect2) -> Rect2:
@@ -344,6 +346,8 @@ func _get_passage_draw_rect(fallback_rect: Rect2) -> Rect2:
 
 
 func _get_floor_marker_center(rect: Rect2) -> Vector2:
+	if has_floor_marker_offset:
+		return floor_marker_offset
 	return rect.get_center() + _get_floor_marker_offset()
 
 

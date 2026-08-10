@@ -1,0 +1,65 @@
+[gd_resource type="Resource" script_class="CharacterVisualSet" load_steps=2 format=3 uid="uid://bxs2spfqiuohy"]
+
+[ext_resource type="Script" uid="uid://blcney1y4otn7" path="res://scripts/resources/character_visual_set.gd" id="1_71ije"]
+
+[resource]
+script = ExtResource("1_71ije")
+character_id = "velora"
+hair_module_paths = {
+"back/hair_back_mass": "res://art/generated/characters/velora/base/velora_back_hair_back_mass.svg",
+"back/hair_bangs": "res://art/generated/characters/velora/base/velora_back_hair_bangs.svg",
+"back/hair_ponytail": "res://art/generated/characters/velora/base/velora_back_hair_ponytail.svg",
+"back/hair_side_lock_left": "res://art/generated/characters/velora/base/velora_back_hair_side_lock_left.svg",
+"back/hair_side_lock_right": "res://art/generated/characters/velora/base/velora_back_hair_side_lock_right.svg",
+"back/hair_top_loop": "res://art/generated/characters/velora/base/velora_back_hair_top_loop.svg",
+"front/hair_back_mass": "res://art/generated/characters/velora/base/velora_front_hair_back_mass.svg",
+"front/hair_bangs": "res://art/generated/characters/velora/base/velora_front_hair_bangs.svg",
+"front/hair_ponytail": "res://art/generated/characters/velora/base/velora_front_hair_ponytail.svg",
+"front/hair_side_lock_left": "res://art/generated/characters/velora/base/velora_front_hair_side_lock_left.svg",
+"front/hair_side_lock_right": "res://art/generated/characters/velora/base/velora_front_hair_side_lock_right.svg",
+"front/hair_top_loop": "res://art/generated/characters/velora/base/velora_front_hair_top_loop.svg",
+"hair_back_mass": "res://art/generated/characters/velora/base/velora_front_hair_back_mass.svg",
+"hair_bangs": "res://art/generated/characters/velora/base/velora_front_hair_bangs.svg",
+"hair_ponytail": "res://art/generated/characters/velora/base/velora_front_hair_ponytail.svg",
+"hair_side_lock_left": "res://art/generated/characters/velora/base/velora_front_hair_side_lock_left.svg",
+"hair_side_lock_right": "res://art/generated/characters/velora/base/velora_front_hair_side_lock_right.svg",
+"hair_top_loop": "res://art/generated/characters/velora/base/velora_front_hair_top_loop.svg",
+"side/hair_back_mass": "res://art/generated/characters/velora/base/velora_side_hair_back_mass.svg",
+"side/hair_bangs": "res://art/generated/characters/velora/base/velora_side_hair_bangs.svg",
+"side/hair_ponytail": "res://art/generated/characters/velora/base/velora_side_hair_ponytail.svg",
+"side/hair_side_lock_left": "res://art/generated/characters/velora/base/velora_side_hair_side_lock_left.svg",
+"side/hair_side_lock_right": "res://art/generated/characters/velora/base/velora_side_hair_side_lock_right.svg",
+"side/hair_top_loop": "res://art/generated/characters/velora/base/velora_side_hair_top_loop.svg"
+}
+head_module_paths = {
+"back/head_base": "res://art/generated/characters/velora/base/velora_back_head_base.svg",
+"front/head_base": "res://art/generated/characters/velora/base/velora_front_head_base.svg",
+"head_base": "res://art/generated/characters/velora/base/velora_front_head_base.svg",
+"side/head_base": "res://art/generated/characters/velora/base/velora_side_head_base.svg"
+}
+animation_tags = {
+"back/hair_back_mass": "hair_bounce_heavy",
+"back/hair_bangs": "hair_bounce_light",
+"back/hair_ponytail": "hair_bounce_heavy",
+"back/hair_side_lock_left": "hair_bounce_light",
+"back/hair_side_lock_right": "hair_bounce_light",
+"back/hair_top_loop": "hair_bounce_light",
+"front/hair_back_mass": "hair_bounce_heavy",
+"front/hair_bangs": "hair_bounce_light",
+"front/hair_ponytail": "hair_bounce_heavy",
+"front/hair_side_lock_left": "hair_bounce_light",
+"front/hair_side_lock_right": "hair_bounce_light",
+"front/hair_top_loop": "hair_bounce_light",
+"hair_back_mass": "hair_bounce_heavy",
+"hair_bangs": "hair_bounce_light",
+"hair_ponytail": "hair_bounce_heavy",
+"hair_side_lock_left": "hair_bounce_light",
+"hair_side_lock_right": "hair_bounce_light",
+"hair_top_loop": "hair_bounce_light",
+"side/hair_back_mass": "hair_bounce_heavy",
+"side/hair_bangs": "hair_bounce_light",
+"side/hair_ponytail": "hair_bounce_heavy",
+"side/hair_side_lock_left": "hair_bounce_light",
+"side/hair_side_lock_right": "hair_bounce_light",
+"side/hair_top_loop": "hair_bounce_light"
+}

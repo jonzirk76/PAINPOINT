@@ -1,0 +1,51 @@
+[gd_scene format=3 uid="uid://bxprn84hmcoqt"]
+
+[node name="WarehouseFloorTileSource" type="Node2D" unique_id=349717566]
+metadata/canonical_size = Vector2(40, 40)
+metadata/runtime_source = true
+
+[node name="Base" type="Polygon2D" parent="." unique_id=992169039]
+color = Color(0.20392157, 0.21568628, 0.22745098, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+metadata/runtime_layer = "base"
+
+[node name="Panels" type="Node2D" parent="." unique_id=2017074494]
+
+[node name="TopLeft" type="Polygon2D" parent="Panels" unique_id=1596439041]
+position = Vector2(0.33333468, 0.3333323)
+scale = Vector2(0.9916666, 0.9916666)
+color = Color(0.35686275, 0.3529412, 0.34509805, 1)
+polygon = PackedVector2Array(0, 0, 40, 0, 40, 40, 0, 40)
+metadata/palette_role = "floor"
+metadata/runtime_layer = "panel"
+
+[node name="ChipPresets" type="Node2D" parent="." unique_id=574802165]
+
+[node name="HorizontalLeft" type="Polygon2D" parent="ChipPresets" unique_id=1572357158]
+position = Vector2(11, -20)
+color = Color(0.21568628, 0.22352941, 0.23137255, 1)
+polygon = PackedVector2Array(5.666664, 20.333332, 4.3333282, 21.666664, 3.3333282, 20.333332)
+metadata/palette_role = "floor_worn"
+metadata/runtime_layer = "chip"
+
+[node name="VerticalLower" type="Polygon2D" parent="ChipPresets" unique_id=1200381]
+position = Vector2(-1, 10)
+color = Color(0.21568628, 0.22352941, 0.23137255, 1)
+polygon = PackedVector2Array(20, 30, 19, 29, 23, 30)
+metadata/palette_role = "floor_worn"
+metadata/runtime_layer = "chip"
+
+[node name="Center" type="Polygon2D" parent="ChipPresets" unique_id=916825691]
+position = Vector2(20, -11)
+color = Color(0.21568628, 0.22352941, 0.23137255, 1)
+polygon = PackedVector2Array(20, 22, 18, 20.333332, 20, 20)
+metadata/palette_role = "floor_worn"
+metadata/runtime_layer = "chip"
+
+[node name="VerticalUpper" type="Polygon2D" parent="ChipPresets" unique_id=2018754869]
+position = Vector2(-20, 0)
+color = Color(0.21568628, 0.22352941, 0.23137255, 1)
+polygon = PackedVector2Array(20.333328, 8, 20.333328, 10, 21.333328, 9.333332)
+metadata/palette_role = "floor_worn"
+metadata/runtime_layer = "chip"

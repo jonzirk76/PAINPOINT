@@ -11,7 +11,7 @@ Entities emit upward:
 - `PlayerEntity`: `health_changed`, `health_depleted`
 - `EnemyEntity`: `health_changed`, `health_depleted`
 - `ProjectileEntity`: `hit_detected`, `expired`
-- `EnemySpawnerEntity`: `spawn_ready`
+- General-role `EnemyEntity`: `spawn_ready`
 - `PickupEntity`: `collected`, `expired`
 - `DoorEntity`: `entered`
 
@@ -20,7 +20,7 @@ Managers translate entity signals into manager-level events:
 - `ProjectileManager.projectile_hit`
 - `EnemyManager.enemy_defeated`
 - `EnemyManager.player_contact_requested`
-- `SpawnerManager.spawn_requested`
+- `SpawnerManager.spawn_proposed`
 - `ItemManager.pickup_collected`
 - `UpgradeManager.upgrade_changed`
 - `PlayerManager.shoot_requested`
@@ -33,8 +33,8 @@ The orchestrator receives those signals and decides which manager command runs n
 - `InputManager`: polls controller, keyboard, and mouse fallback; emits movement, aim-state, overdrive-held, and menu events.
 - `PlayerManager`: owns the player, movement commands, aim direction, weapon cooldown, parry cooldown, player health, and player-side hit invulnerability.
 - `ProjectileManager`: owns projectiles, applies upgrade-derived projectile spawning, handles hostile projectile absorption, and stamps damage packets with knockback source/direction, projectile size, growth, explosion, and chain fields.
-- `EnemyManager`: owns enemies, target updates, contact checks, enemy damage application, and non-damaging parry pushback.
-- `SpawnerManager`: owns respawner entities and gates spawn requests by current enemy count.
+- `EnemyManager`: owns all enemies, including generals; owns per-general `LegionTacticsController` instances; applies tactical movement intents, target updates, contact checks, enemy damage, and non-damaging parry pushback.
+- `SpawnerManager`: coordinates general reinforcement timing, opening waves, and validated spawn proposals. It keeps non-owning general references during the migration away from the historical spawner subsystem; all gameplay bodies are owned by `EnemyManager`.
 - `ItemManager`: owns pickups and pickup spawn timing.
 - `UpgradeManager`: owns shared overdrive ammo, stackable run-long overdrive effects, permanent attribute stacks, and combines active modifiers.
 - `CombatManager`: resolves hit/contact events into damage events and chain-lightning requests.
@@ -43,13 +43,17 @@ The orchestrator receives those signals and decides which manager command runs n
 - `RoomManager`: owns generated door entities for the currently loaded dungeon room.
 - `FaunaManager`: owns non-combat background fauna such as cats, feeds them read-only combat danger points through injected providers, and keeps them off combat collision layers.
 
+Enemy-to-enemy overlap uses soft separation rather than hard body collision. Each `EnemyProfile.crowd_weight` controls how much influence that enemy has in the pair: equal weights separate normally, heavier enemies displace lighter enemies more, and a zero-weight enemy yields without pushing the other enemy. Attack packets own raw knockback force; `EnemyEntity` divides that force by its weight to determine movement, with a minimum effective weight of `0.5` so zero-weight support enemies remain strongly movable rather than producing infinite response. Parry pushback follows the same rule.
+
+Weight progression is role-driven: repair drones are weightless, runners and drones are lighter than standard infantry, cyber soldiers are slightly heavier, tanks and power armor are substantially heavier, generals are anchors, and bosses are heaviest.
+
 ## Level Flow
 
 The game starts in `LEVEL_SELECT`. `GameOrchestrator` owns the selected level index, displays levels in increasing difficulty, and starts the selected `LevelDefinition` only after player confirmation.
 
 Level definitions configure arena bounds, arena shape, floor number, spawner positions, opening non-spawner encounter tables, spawner health, spawn interval, and max active enemies. `ArenaView`, `PlayerManager`, `EnemyManager`, and `SpawnerManager` consume those values through orchestrator commands.
 
-A level is won only when `SpawnerManager.get_spawner_count()` and `EnemyManager.get_enemy_count()` both reach zero. The win state disables gameplay managers and shows a return-to-level-select prompt.
+A level is won only when `EnemyManager.get_enemy_count()` reaches zero. The temporary `SpawnerManager` general count remains part of the clear check during the migration so queued reinforcement state cannot clear a room early.
 
 ## Dungeon Prototype Flow
 
@@ -60,6 +64,8 @@ Room pieces define footprint cells, connector directions, arena geometry, intern
 Dungeon layout is recipe-driven rather than a single fixed prototype. `GameOrchestrator` creates one run seed when a dungeon or main-loop run starts, preserves it across floor advances, and passes it into `DungeonManager.reset_run(floor, run_seed)`. `DungeonManager` combines the run seed and floor number into the floor generation seed, builds a guaranteed start-to-boss path, attaches guaranteed treasure and challenge branches, then fills optional side branches from the combat room-piece pool. Later floors increase the required boss-path length, total room target, active enemy budget, and extra typed spawner pressure applied to eligible room `LevelDefinition` instances. `SpawnerManager` also scales owned spawner intervals from slow floor-one timing toward faster later-floor timing so enemy pressure starts low and ramps with the run.
 
 Dungeon gameplay runs inside a generated full-floor arena. `DungeonManager` builds the full floor geometry in one shared coordinate space, including fog metadata for rooms that should not be visible yet. The orchestrator uses camera bounds, fog, door gates, and manager enable/reset calls to preserve the old active-room combat feel while allowing seamless traversal through cleared rooms. Combat contents are still instantiated only for the active uncleared room; remaining destructible props from visible cleared rooms persist in the traversal environment, while inactive rooms exist as geometry under fog until the player commits through a door.
+
+Room spatial validity is floor-derived rather than reconstructed by gameplay managers. `RoomInteriorGenerator` preserves the main reachable 40 px component produced by room validation in an immutable `RoomSpatialDomain`, together with the room footprint, static wall/void blockers, layout-reserved prop footprints, and semantic doorway transition regions. `LevelDefinition` carries that explicit runtime spatial contract; `DungeonManager` owns the room-local instance and translates it into full-floor coordinates for the active room. `EnemyManager` and `SpawnerManager` query the injected domain for spawn validation and constraint; they add only runtime gate blockers. This same walkable/reachable domain is the intended source for future tactical movement targets, so spawning and tactics cannot develop separate interpretations of the floor.
 
 Dungeon visibility is a separate boundary from room generation and arena rendering. `DungeonManager` owns whether each room is active, visible but inactive, or hidden, and exposes fog rectangles plus inactive-room dim rectangles on generated full-floor `LevelDefinition` instances. `ArenaView` renders those overlays without deciding room state. Managers decide which entities are active and whether owned entities should render; background fauna can keep simulating inside the visible dungeon envelope while hidden outside the active room.
 
@@ -75,9 +81,17 @@ The dungeon minimap is UI-only rendering of `DungeonManager` state. `DungeonMana
 
 Each generated dungeon floor also chooses one start or combat room as the cat room from the floor seed. `DungeonManager` stores only the chosen room and room-local spawn point; `GameOrchestrator` turns that into a full-floor position when the room is loaded and commands `FaunaManager` to spawn the single floor cat. The cat is background fauna: it avoids player/enemy/spawner danger points but does not participate in combat damage or objective counts.
 
+### Squid As An Emergent Penetration Checker
+
+The squid-shaped fast enemy was not assigned or scripted as a penetration checker. That role emerged because its small body and high spawn count produce many ordinary interactions with room edges and doorways; its speed, tactical movement, crowd separation, and knockback response broaden that incidental coverage. It has therefore become the project's live canary for leaks in generated-floor domains, transition lanes, facade depth handling, and movement constraints. A squid appearing outside the validated playable domain is a spatial-system defect, not an accepted fast-enemy ability.
+
+The squid is not necessarily the fast enemy's final production presentation. When the fast enemy receives its eventual visual/gameplay upgrade, preserve the existing squid identity by promoting it into `FaunaManager` as non-combat fauna similar to the cat, while the combat role receives its upgraded presentation. The fauna squid should retain ordinary autonomous roaming, and a sandbox may use multiple instances when deliberate regression coverage is useful, but it should not gain artificial penetration-seeking behavior. Keep the fauna version off combat collision layers and out of enemy/objective counts.
+
 ## Performance Follow-Ups
 
 If combat-room end hitches or dungeon traversal rebuild costs come up again, revisit full-floor `LevelDefinition` generation. The current implementation rebuilds a composed full-floor level when room state changes; caching stable full-floor geometry or incrementally updating room-state overlays, destructible placements, fog, doors, and active-room contents could reduce end-of-combat spikes more than timing deferrals alone.
+
+Opening-wave enemies are instantiated hidden and inactive during the room loading transition. Runtime general reinforcements follow a different path: `SpawnerManager` proposes complete batches, `GameOrchestrator` reserves those proposals in a room-generation-scoped queue, and the orchestrator materializes the queue under configurable per-frame count and time budgets. Pending proposals count against the horde cap and block room-clear resolution. This smooths burst construction without changing manager ownership or introducing reusable entities with stale combat state. Only add an `EnemyManager`-owned prepared reserve if the sandbox telemetry still identifies enemy construction as a meaningful peak after spawn budgeting.
 
 ## HUD And Pause Flow
 
@@ -89,11 +103,15 @@ Pause input flows through `InputManager.pause_requested` into `GameOrchestrator`
 
 The project uses a 1280x720 logical viewport and scales canvas items into a larger 2560x1440 desktop window. Keep this separation: gameplay distances, arena bounds, UI offsets, and hitboxes stay authored in the logical 720p space, while Godot stretch settings make the game visually comfortable on 3840x2160 displays.
 
+## Developer Sandbox
+
+The Archive contains a `Developer Sandbox` dungeon entry for testing floor-scaled systems without playing through earlier floors. `DebugSandboxPanel` owns its controls and emits commands upward; `GameOrchestrator` resolves resource IDs and routes commands to the owning managers. The panel can regenerate a selected floor and seed, load the fixed tier-one Commissar support-corps encounter, freeze the world while leaving the player entity movable, enable player invincibility, keep charge shots and overdrive resources full, and deterministically set exact stack counts for overdrive effects or permanent attributes. The Commissar shortcut uses a compact one-room validated dungeon layout while retaining its configured gameplay floor, avoiding full-floor generation work that does not contribute to the encounter test. Its status readout also reports current/peak runtime spawn-queue depth, last/peak spawn-budget time, and last/peak legion-tactics and crowd-separation time for the current room. Debug overrides are cleared whenever normal gameplay or level select is entered.
+
 ## Data Flow Examples
 
 Aim-change shooting:
 
-1. `InputManager` sees a right-stick, arrow-key, or mouse aim state change.
+1. `InputManager` sees a right-stick, arrow-key, numpad, or mouse aim state change.
 2. It emits `aim_fire_requested(direction)`.
 3. `GameOrchestrator` calls `PlayerManager.request_fire(direction)`.
 4. `PlayerManager` enforces cooldown and emits `shoot_requested(origin, direction)`.
@@ -109,12 +127,12 @@ Projectile hit:
 6. When a chain target is selected, `GameOrchestrator` commands `EffectsManager.play_chain_lightning(...)` before resolving the chained hit.
 7. `EnemyEntity` applies local knockback, hit flash, and death animation without calling upward dependencies.
 
-Spawner hit:
+General hit:
 
-1. `ProjectileEntity` can hit bodies in the `spawners` group.
-2. `GameOrchestrator` routes resolved damage to `SpawnerManager.apply_damage(...)`.
-3. `EnemySpawnerEntity` emits `health_depleted` when destroyed.
-4. `SpawnerManager` removes it from active spawners and emits `spawner_destroyed`.
+1. `ProjectileEntity` hits the general through the ordinary `enemies` group.
+2. `GameOrchestrator` routes resolved damage to `EnemyManager.apply_damage(...)`.
+3. The general-role `EnemyEntity` emits `health_depleted` when destroyed.
+4. `EnemyManager` removes it from active enemies, frees its legion controller, and emits `general_defeated`.
 5. `GameOrchestrator` updates score and rechecks level clear conditions.
 
 Pickup:
@@ -151,14 +169,30 @@ Combat reward drops:
 3. `ItemManager.pickup_collected` flows to `GameOrchestrator`, which routes heal pickups to `PlayerManager.apply_healing(...)` and upgrade pickups to `UpgradeManager.activate_pickup(...)`.
 4. Challenge room and floor-end rewards spawn three optional overdrive effect choices. Non-spread overdrive effects can also raise the shared overdrive capacity. Treasure rooms spawn three optional rolled permanent stat choices, including overdrive capacity.
 5. `UpgradeManager` stacks run-long attributes for fire-rate cooldown reduction, movement speed, bullet damage, projectile size, and overdrive capacity. Permanent upgrade state sums rolled `total_amount` values by stack key so small chest variants can contribute to the same run-long stat as treasure-room variants.
-6. `SpawnerManager.spawner_destroyed` is routed by `GameOrchestrator` to `ItemManager.drop_spawner_reward(...)`, which always drops one reward: usually an overdrive ammo cache, with a chance for a full heal instead.
+6. `EnemyManager.general_defeated` is routed by `GameOrchestrator` to `ItemManager.drop_spawner_reward(...)`, which always drops one reward: usually an overdrive ammo cache, with a chance for a full heal instead.
 
 Opening suppression:
 
-1. `SpawnerManager.reset_run(...)` creates room spawners and marks an opening wave as pending.
+1. `SpawnerManager.reset_run(...)` requests room generals through `GameOrchestrator`; `EnemyManager` creates and owns them as ordinary `EnemyEntity` instances with an `EnemySpawnProfile`.
 2. When `GameOrchestrator` enables the room, `SpawnerManager` emits initial `spawn_requested` events for each spawner, respecting `max_active_enemies`.
 3. `GameOrchestrator` routes those requests to `EnemyManager.spawn_enemy(...)`, so spawners never directly create enemies.
 4. Generated combat and challenge rooms can also carry an `EncounterEntry` table. `GameOrchestrator` rolls that table from the run seed, floor number, and room id, then spawns one-time non-spawner enemies through `EnemyManager`.
+5. During live combat, reinforcement proposals are queued by `GameOrchestrator` and materialized across frames. Loading-time inactive proposals bypass that queue because their construction is already hidden behind the room transition.
+
+Legion tactics:
+
+1. A general's `EnemySpawnProfile` selects a tactics kind and the general receives a stable legion identity from `EnemyManager`.
+2. `EnemyManager` creates one `LegionTacticsController` for the general and connects the general's upward `spawn_ready` signal.
+3. Spawn proposals stamp the legion and general identities onto every reinforcement.
+4. `EnemyManager` gives each controller a shared battlefield snapshot containing its members, player position, arena center, and the legion's position in the active-legion ordering.
+5. Controllers return advisory movement positions. `EnemyManager` applies them to owned enemies while their normal player target remains unchanged for aiming and attacks.
+6. Controllers coordinate fan-out sectors through the shared active-legion ordering; they never call one another.
+7. Horde command is an explicit state independent of enemy archetype: `INDEPENDENT`, `COORDINATED`, `ORPHANED`, or `ROGUE`. When a general dies or otherwise disappears, `EnemyManager` removes its controller and commands every surviving member into `ORPHANED`, which clears legion identity and tactical destinations and invalidates tactical path caches. Ordinary orphans pursue the player through the shared obstacle-aware path resolver without formations, interception orders, or reassignment to another general. They also gain the movement multiplier configured by `EnemyProfile.orphaned_speed_multiplier` (1.25 by default), making general death a transition from coordinated pressure to faster aggression. Repair drones interpret the same state as panic: they opportunistically repair any nearby injured ally, flee while idle, and eventually retreat so abandoned support units cannot prevent room clear. `ROGUE` is the Commissar-selected repair-drone flight state. Keeping command state orthogonal to `behavior_kind` allows future states to produce different responses in different horde archetypes without duplicating their base behavior implementations.
+8. General doctrines adapt by role: stationary players invite a fan-out, active movement draws a concentrated push, and sufficiently fast outward movement near the arena edge triggers interception. Basic infantry use balanced thresholds, fast legions intercept early and switch quickly, shooter legions favor concentrated pressure, and tank legions change slowly and intercept only decisive escapes. Thresholds live in each general's `EnemySpawnProfile`.
+9. Basic melee infantry use higher movement speed than their original zombie-pressure tuning so they can reach and maintain tactical formation targets.
+10. The tier-one Commissar is a repair-corps general configured by `CommissarProgram`: its controller keeps repair drones in a support ring, while the entity owns heavy ranged fire, reactive shielding/repositioning, and a telegraphed pushing charge. `EnemyManager` owns discipline cadence, chooses a repair drone to enter `ROGUE`, resolves the Commissar's upward execution signals, and removes executions or retreats without combat rewards. The rogue itself carries the execution telegraph by breaking formation and displaying `!!!`; after the panic window, the Commissar fires a sharply homing version of its usual heavy bullet so the execution reads as exceptional aim instead of a separate weapon. `ProjectileManager` owns that bullet's flight and signals its arrival upward, while `GameOrchestrator` routes the hit back to `EnemyManager`; the drone remains alive and fleeing until the bullet reaches it. Because the execution round retains the usual hostile-shot collision rules, the player can parry it or intercept it at the cost of taking the hit.
+11. Obstacle checks use short movement-aware caches local to each enemy. Clear player sight lines refresh quickly, while blocked sight lines persist briefly so ranged legions do not rescan the same wall every physics frame when their shot cooldown is ready. Direct movement retains the responsive path-cache cadence; an already selected wall-corner detour is cached longer and invalidates when the enemy reaches that corner or either endpoint moves materially. Close-range retreating units also retain a valid escape-lane choice briefly instead of testing three constrained directions every frame. Per-entity stagger keeps large legions from rebuilding these caches on the same frame. Dense crowd separation caps meaningful neighbors per enemy after spatial bucketing; this bounds expensive overlap responses that would otherwise be discarded by the existing final-velocity limit, while zero-weight support units still yield without pushing heavier allies.
+12. Repair capacity belongs to the repair target's `EnemyProfile`. `EnemyManager` reserves target slots while assigning repair drones, so excess support units choose another eligible ally or return to formation instead of emitting ineffective repair beams. `max_simultaneous_repairers` defaults to two; zero restores unlimited stacking for experiments or later enemy variants.
 
 Player down/restart:
 

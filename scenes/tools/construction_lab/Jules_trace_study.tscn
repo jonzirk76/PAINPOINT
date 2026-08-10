@@ -1,0 +1,14 @@
+[gd_scene format=3 uid="uid://cm0fokj60q2s6"]
+
+[ext_resource type="Texture2D" uid="uid://dtto1ddkut7ut" path="res://art/concept_art/jules_sheet.png" id="1_dlvny"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_n1jx6"]
+atlas = ExtResource("1_dlvny")
+region = Rect2(251, 637, 149, 165)
+
+[node name="JulesTraceStudy" type="Node2D" unique_id=463000190]
+
+[node name="JulesSheet" type="Sprite2D" parent="." unique_id=1874037130]
+position = Vector2(1823.7434, 1966.8768)
+scale = Vector2(23.184656, 23.184658)
+texture = SubResource("AtlasTexture_n1jx6")

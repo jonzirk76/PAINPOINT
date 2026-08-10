@@ -1,0 +1,308 @@
+[gd_scene format=3 uid="uid://c5mlln4xgedpk"]
+
+[ext_resource type="PackedScene" path="res://scenes/ui/volette_portrait_detail_overlay.tscn" id="1_lesjc"]
+[ext_resource type="Texture2D" uid="uid://dmmnsmupy476b" path="res://art/concept_art/portraitcropped2.png" id="2_ah3tl"]
+
+[node name="VolettePortraitExperiments" type="Node2D" unique_id=132356348]
+
+[node name="Artwork" type="Node2D" parent="." unique_id=1454536280]
+position = Vector2(27, 15)
+
+[node name="HairBack" type="Polygon2D" parent="Artwork" unique_id=499401078]
+visible = false
+position = Vector2(-23, 7)
+color = Color(0.23529412, 0.15686275, 0.43529412, 1)
+antialiased = true
+polygon = PackedVector2Array(37, -23, 55, -32, 81, -27, 93, -10, 96, 16, 78, 48, 41, 88, 12, 103, 27, 64, 15, 16, 25, -6)
+
+[node name="Shading" type="Polygon2D" parent="Artwork/HairBack" unique_id=1453496093]
+visible = false
+position = Vector2(-1, 1)
+color = Color(0.1254902, 0.08235294, 0.23529412, 1)
+polygon = PackedVector2Array(20, 39, 12, 48, 1, 40, -3, 66, 1, 61, 2, 66, -3, 75, -3, 77, 0, 74, 0, 79, -4, 89, 2, 82, 6, 73, 7, 75, -8, 110, -12, 114, -16, 137, 137, 137, 126, 125, 122, 114, 119, 102, 120, 94, 125, 86, 127, 70, 120, 56, 114, 45, 114, 55, 32, 54, 18, 52)
+metadata/_edit_lock_ = true
+
+[node name="HairBackShort" type="Polygon2D" parent="Artwork" unique_id=1198795291]
+position = Vector2(-23, 7)
+color = Color(0.23529412, 0.15686275, 0.43529412, 1)
+antialiased = true
+polygon = PackedVector2Array(42, -15, 54, -22, 89, -23, 106, -18, 125, -9, 133, 3, 141, 25, 144, 65, 137, 104, 124, 96, 111, 87, 89, 82, 64, 82, 41, 88, 24, 101, 15, 72, 14, 35, 19, 14, 29, -3)
+
+[node name="Shading" type="Polygon2D" parent="Artwork/HairBackShort" unique_id=273633209]
+visible = false
+position = Vector2(-1, 1)
+color = Color(0.1254902, 0.08235294, 0.23529412, 1)
+polygon = PackedVector2Array(20, 39, 12, 48, 1, 40, -3, 66, 1, 61, 2, 66, -3, 75, -3, 77, 0, 74, 0, 79, -4, 89, 2, 82, 6, 73, 7, 75, -8, 110, -12, 114, -16, 137, 137, 137, 126, 125, 122, 114, 119, 102, 120, 94, 125, 86, 127, 70, 120, 56, 114, 45, 114, 55, 32, 54, 18, 52)
+metadata/_edit_lock_ = true
+
+[node name="Shoulders" type="Polygon2D" parent="Artwork" unique_id=1167149186]
+color = Color(0.06666667, 0.08235294, 0.14901961, 1)
+polygon = PackedVector2Array(-5, 138, -4, 128, 34, 109, 64, 129, 76, 116, 105, 126, 134, 138)
+metadata/_edit_lock_ = true
+
+[node name="RightJacketAccent" type="Polygon2D" parent="Artwork" unique_id=1345994710]
+color = Color(0.02745098, 0.29803923, 0.6039216, 1)
+polygon = PackedVector2Array(68, 104, 91, 109, 112, 124, 102, 139, 91, 138, 86, 129, 74, 122)
+metadata/_edit_lock_ = true
+
+[node name="InnerJacket" type="Polygon2D" parent="Artwork/RightJacketAccent" unique_id=190237957]
+color = Color(0.003921569, 0.06666667, 0.2509804, 1)
+polygon = PackedVector2Array(68, 105, 90, 111, 110, 125, 102, 139, 91, 138, 86, 129, 74, 122)
+metadata/_edit_lock_ = true
+
+[node name="Neck" type="Polygon2D" parent="Artwork" unique_id=2119077328]
+color = Color(0.7882353, 0.5529412, 0.50980395, 1)
+polygon = PackedVector2Array(39, 91, 69, 109, 71, 123, 63, 127, 33, 115)
+metadata/_edit_lock_ = true
+
+[node name="HeadShadow" type="Polygon2D" parent="Artwork" unique_id=916523381]
+color = Color(0, 0, 0, 1)
+polygon = PackedVector2Array(55, 105, 69, 110, 69, 112, 64, 115, 49, 104, 42, 97, 36, 90)
+metadata/_edit_lock_ = true
+
+[node name="RightSideHair" type="Polygon2D" parent="Artwork" unique_id=1467456630]
+position = Vector2(-1, 1)
+color = Color(0.23529412, 0.15686275, 0.43529412, 1)
+polygon = PackedVector2Array(113, 65, 112, 83, 111, 104, 108, 113, 95, 127, 101, 115, 102, 105, 101, 108, 99, 110, 97, 111, 98, 109, 100, 105, 102, 100, 102, 93, 101, 87, 106, 67)
+metadata/_edit_lock_ = true
+
+[node name="Shading" type="Polygon2D" parent="Artwork/RightSideHair" unique_id=1546453821]
+position = Vector2(93, 40)
+color = Color(0.1254902, 0.08235294, 0.23529412, 1)
+polygon = PackedVector2Array(20, 39, 8, 46, 9, 53, 8, 62, 19, 52)
+
+[node name="ScalpHair" type="Polygon2D" parent="Artwork" unique_id=758260058]
+color = Color(0.23529412, 0.15686275, 0.43529412, 1)
+antialiased = true
+polygon = PackedVector2Array(38, 96, 24, 79, 10, 52, 5, 27, 12, 9, 30, -9, 58, -16, 95, -6, 107, 13, 110, 31, 114, 49, 112, 68, 105, 78)
+metadata/_edit_lock_ = true
+
+[node name="Shading" type="Polygon2D" parent="Artwork/ScalpHair" unique_id=1272277784]
+position = Vector2(-1, 1)
+color = Color(0.1254902, 0.08235294, 0.23529412, 1)
+polygon = PackedVector2Array(21, 37, 26, 23, 18, 40, 12, 48, 6, 53, -3, 57, 0, 58, 13, 56, 18, 52)
+metadata/_edit_lock_ = true
+
+[node name="Face" type="Polygon2D" parent="Artwork" unique_id=1865285026]
+color = Color(0.8980392, 0.70980394, 0.627451, 1)
+antialiased = true
+polygon = PackedVector2Array(28, 43, 43, 25, 65, 17, 88, 22, 106, 39, 111, 62, 98, 91, 94, 97, 81, 105, 67, 112, 50, 102, 40, 94, 30, 82, 24, 61)
+metadata/_edit_lock_ = true
+
+[node name="LeftEar" type="Polygon2D" parent="Artwork" unique_id=1291366846]
+color = Color(0.84705883, 0.6392157, 0.56078434, 1)
+polygon = PackedVector2Array(11, 61, 15, 55, 18, 56, 22, 74, 20, 79, 13, 70)
+metadata/_edit_lock_ = true
+
+[node name="Shading" type="Polygon2D" parent="Artwork/LeftEar" unique_id=1138043399]
+color = Color(0.5176471, 0.3529412, 0.3254902, 1)
+polygon = PackedVector2Array(14, 60, 15, 58, 17, 58, 20, 69, 21, 73, 20, 74, 19, 74, 14, 67, 13, 62)
+metadata/_edit_lock_ = true
+
+[node name="Detail" type="Polygon2D" parent="Artwork/LeftEar" unique_id=717403218]
+color = Color(0.84705883, 0.6392157, 0.56078434, 1)
+polygon = PackedVector2Array(14, 62, 15, 60, 16, 59, 17, 59, 20, 69, 20, 71, 20, 72, 19, 72, 16, 69, 18, 67, 18, 66, 17, 67, 15.828913, 68.24336, 15, 67, 16, 64, 16, 63, 15, 66, 14, 64)
+metadata/_edit_lock_ = true
+
+[node name="HighCollar" type="Polygon2D" parent="Artwork" unique_id=1742867155]
+color = Color(0.06666667, 0.08235294, 0.14901961, 1)
+polygon = PackedVector2Array(34, 106, 55, 115, 60, 116, 63, 131, 66, 116, 74, 111, 77, 131, 68, 135, 59, 136, 29, 127)
+metadata/_edit_lock_ = true
+
+[node name="LeftJacketAccent" type="Polygon2D" parent="Artwork" unique_id=1202286769]
+color = Color(0.02745098, 0.29803923, 0.6039216, 1)
+polygon = PackedVector2Array(0, 125, 4, 117, 3, 107, 16, 101, 36, 100, 37, 116, 26, 122, 36, 133, 38, 141)
+metadata/_edit_lock_ = true
+
+[node name="InnerJacket" type="Polygon2D" parent="Artwork/LeftJacketAccent" unique_id=1639377537]
+color = Color(0.003921569, 0.06666667, 0.2509804, 1)
+polygon = PackedVector2Array(8, 114, 6, 108, 17, 103, 36, 101, 37, 116, 36, 133, 38, 141)
+metadata/_edit_lock_ = true
+
+[node name="LeftSideHair" type="Polygon2D" parent="Artwork" unique_id=1430250703]
+color = Color(0.23529412, 0.15686275, 0.43529412, 1)
+polygon = PackedVector2Array(22, 53, 28, 43, 31, 56, 32, 81, 33, 100, 39, 124, 23, 101, 22, 73)
+metadata/_edit_lock_ = true
+
+[node name="NoseHighlight" type="Polygon2D" parent="Artwork" unique_id=1304848783]
+position = Vector2(3, 0)
+color = Color(0.94509804, 0.78431374, 0.7058824, 1)
+polygon = PackedVector2Array(71, 70, 72, 78, 74, 78, 73, 70)
+metadata/_edit_lock_ = true
+
+[node name="Nose" type="Polygon2D" parent="Artwork" unique_id=1488866408]
+position = Vector2(31.5, 53.450027)
+scale = Vector2(0.5, 0.44999966)
+color = Color(0.56078434, 0.30980393, 0.38039216, 1)
+polygon = PackedVector2Array(89, 67.888885, 93, 67.888885, 95, 72.33333, 85, 72.33333)
+metadata/_edit_lock_ = true
+
+[node name="Bangs" type="Polygon2D" parent="Artwork" unique_id=296070758]
+color = Color(0.23529412, 0.15686275, 0.43529412, 1)
+antialiased = true
+polygon = PackedVector2Array(6, 48, 3, 45, 6, 35, -1, 41, -9, 42, 0, 35, 7, 27, 11, 17, 19, 9, 31, -1, 47, -10, 70, -13, 95, -6, 113, 13, 117, 34, 127, 40, 134, 42, 129, 45, 123, 45, 111, 38, 96, 28, 83, 34, 73, 43, 68, 51, 64, 64, 65, 30, 55, 28, 46, 34, 38, 43, 35, 54, 33, 68, 38, 78, 40, 88, 31, 106, 34, 91, 31, 82, 24, 64, 24, 47, 17, 53, 12, 57, -1, 59, -9, 56, -5, 55)
+metadata/_edit_lock_ = true
+
+[node name="Shading" type="Polygon2D" parent="Artwork/Bangs" unique_id=1240239585]
+position = Vector2(-1, 1)
+color = Color(0.1254902, 0.08235294, 0.23529412, 1)
+polygon = PackedVector2Array(21, 37, 26, 23, 18, 40, 12, 48, 6, 53, -3, 57, 0, 58, 13, 56, 18, 52)
+metadata/_edit_lock_ = true
+
+[node name="HairHighlight" type="Polygon2D" parent="Artwork" unique_id=1424337013]
+color = Color(0.40392157, 0.3137255, 0.627451, 0)
+polygon = PackedVector2Array(29, -9, 31.13942, -2.8605766, 38, 4, 61, 15, 66, 12, 83, 18, 100, 14, 113, 3, 117, 8, 103, 21, 83, 27, 69, 22, 60, 23, 34, 11, 24.563446, 0.8894119, 24, -7)
+metadata/_edit_lock_ = true
+
+[node name="HairHighlightDecomp" type="Polygon2D" parent="Artwork/HairHighlight" unique_id=1749724337]
+color = Color(0.40392157, 0.3137255, 0.627451, 1)
+polygon = PackedVector2Array(113, 16, 109, 24, 109, 18, 108, 13, 105, 8, 103, 6, 105, 7, 108, 11, 109, 12, 111, 11)
+metadata/_edit_lock_ = true
+
+[node name="HairHighlightDecomp2" type="Polygon2D" parent="Artwork/HairHighlight" unique_id=1662848211]
+position = Vector2(-15, 3)
+color = Color(0.40392157, 0.3137255, 0.627451, 1)
+polygon = PackedVector2Array(123, 20, 121, 15, 121, 20, 118, 14, 116, 20, 116, 14, 118, 6, 121, 11)
+
+[node name="HairHighlightDecomp3" type="Polygon2D" parent="Artwork/HairHighlight" unique_id=1954614055]
+position = Vector2(-15, 3)
+color = Color(0.40392157, 0.3137255, 0.627451, 1)
+polygon = PackedVector2Array(110, 22, 102, 22, 99, 25, 98, 27, 95, 28, 97, 25, 97, 21, 94, 21, 92, 21, 90, 23, 87, 20, 82, 19, 83, 11, 86, 12, 91, 15, 96, 16, 99, 16, 103, 12, 105, 15, 107, 15, 108, 7, 110, 13, 111, 18)
+
+[node name="HairHighlightDecomp4" type="Polygon2D" parent="Artwork/HairHighlight" unique_id=1817365130]
+position = Vector2(-84, -8)
+color = Color(0.40392157, 0.3137255, 0.627451, 1)
+polygon = PackedVector2Array(124, 22, 120, 18, 117, 17, 115, 15, 112, 19, 108, 26, 110, 19, 114, 14, 118, 6, 121, 11, 127, 15, 133, 17, 135, 16, 137, 17, 137, 20, 144, 24, 149, 22, 144, 30, 140, 29, 138, 27, 134, 26, 129, 23)
+
+[node name="HairHighlightDecomp5" type="Polygon2D" parent="Artwork/HairHighlight" unique_id=1486156319]
+visible = false
+position = Vector2(-101, -14)
+color = Color(0.40392157, 0.3137255, 0.627451, 1)
+polygon = PackedVector2Array(122, 21, 121, 20, 125, 16, 120, 15, 116, 20, 112, 24, 114, 19, 108, 28, 112, 19, 116, 14, 123, 7, 124, 10, 128, 14, 125, 19)
+
+[node name="LeftBrow" type="Polygon2D" parent="Artwork" unique_id=1958804042]
+color = Color(0.15686275, 0.09803922, 0.25490198, 1)
+polygon = PackedVector2Array(34, 45, 45, 44, 59, 47, 68, 50, 67, 53, 58, 49, 45, 46, 34, 47)
+metadata/_edit_lock_ = true
+
+[node name="RightBrow" type="Polygon2D" parent="Artwork" unique_id=112601482]
+position = Vector2(-44, 0)
+scale = Vector2(1.55, 1)
+color = Color(0.15686275, 0.09803922, 0.25490198, 1)
+polygon = PackedVector2Array(84.516136, 52, 88.3871, 50, 93.54839, 50, 98.70969, 52, 99, 54, 93.54839, 52, 89.032265, 52, 84.516136, 54)
+metadata/_edit_lock_ = true
+
+[node name="LeftEyeWhite" type="Polygon2D" parent="Artwork" unique_id=104506976]
+color = Color(0.95686275, 0.90588236, 0.9254902, 1)
+polygon = PackedVector2Array(38, 62, 43, 58, 51, 58, 58, 61, 56, 71, 50, 74, 43, 71)
+metadata/_edit_lock_ = true
+
+[node name="LeftIris" type="Polygon2D" parent="Artwork" unique_id=617458071]
+color = Color(0.4627451, 0.29411766, 0.81960785, 1)
+polygon = PackedVector2Array(42, 58, 48, 57, 54, 59, 56, 60, 55, 66, 53, 72, 48, 75, 43, 71, 41, 65)
+metadata/_edit_lock_ = true
+
+[node name="LeftIrisShade" type="Polygon2D" parent="Artwork/LeftIris" unique_id=1660509396]
+color = Color(0.101960786, 0.015686275, 0.36078432, 1)
+polygon = PackedVector2Array(42, 58, 48, 57, 54, 59, 56, 60, 55, 66, 54, 68, 52, 66, 51, 62, 47, 61, 46, 63, 44, 65, 43, 70, 41, 65)
+metadata/_edit_lock_ = true
+
+[node name="LeftPupil" type="Polygon2D" parent="Artwork" unique_id=1255958208]
+color = Color(0.14117648, 0.08235294, 0.27450982, 1)
+polygon = PackedVector2Array(46, 61, 49, 60, 52, 61, 51, 70, 48, 72, 45, 69)
+metadata/_edit_lock_ = true
+
+[node name="LeftEyeHighlight" type="Polygon2D" parent="Artwork" unique_id=80848043]
+polygon = PackedVector2Array(44, 60, 47, 59, 49, 61, 48, 64, 45, 64)
+metadata/_edit_lock_ = true
+
+[node name="LeftEyeLash" type="Polygon2D" parent="Artwork" unique_id=523722058]
+color = Color(0.08627451, 0.05490196, 0.16470589, 1)
+polygon = PackedVector2Array(36, 64, 36, 61, 34, 60, 34, 57, 36, 58, 37, 57, 36, 56, 37, 55, 39, 56, 41, 54, 42, 53, 45, 54, 52, 54, 60, 58, 64, 63, 61, 64, 55, 60, 50, 58, 44, 58, 39, 62, 40, 69)
+metadata/_edit_lock_ = true
+
+[node name="RightEyeWhite" type="Polygon2D" parent="Artwork" unique_id=1930309450]
+position = Vector2(0, 2)
+color = Color(0.95686275, 0.90588236, 0.9254902, 1)
+polygon = PackedVector2Array(85, 65, 90, 60, 94, 59, 100, 60, 102, 63, 102, 66, 101, 69, 99, 72, 95, 74, 90, 75, 85, 73)
+
+[node name="RightIris" type="Polygon2D" parent="Artwork" unique_id=1753742893]
+position = Vector2(0, 2)
+color = Color(0.4627451, 0.29411766, 0.81960785, 1)
+polygon = PackedVector2Array(87, 61, 91, 58, 96, 60, 97, 66, 96, 72, 90, 76, 87, 74, 85, 69, 85, 65)
+metadata/_edit_lock_ = true
+
+[node name="RightIrisShade" type="Polygon2D" parent="Artwork/RightIris" unique_id=982454630]
+position = Vector2(0, 2)
+color = Color(0.14117648, 0.08235294, 0.27450982, 1)
+polygon = PackedVector2Array(86, 61, 91, 58, 96, 57, 97, 62, 97, 66, 96, 65, 94, 67, 93, 64, 91, 63, 88, 64, 87, 69, 86, 69, 85, 67, 85, 65, 85, 63)
+metadata/_edit_lock_ = true
+
+[node name="RightPupil" type="Polygon2D" parent="Artwork" unique_id=458467594]
+position = Vector2(-1, 3)
+color = Color(0.14117648, 0.08235294, 0.27450982, 1)
+polygon = PackedVector2Array(90, 61, 93, 61, 95, 62, 95, 66, 94, 71, 91, 73, 88, 68)
+metadata/_edit_lock_ = true
+
+[node name="RightEyeHighlight" type="Polygon2D" parent="Artwork" unique_id=1691442064]
+position = Vector2(0, 4)
+polygon = PackedVector2Array(87, 60, 90, 59, 92, 61, 91, 64, 88, 64)
+metadata/_edit_lock_ = true
+
+[node name="RightEyeLash" type="Polygon2D" parent="Artwork" unique_id=1476818175]
+position = Vector2(0, 2)
+color = Color(0.08627451, 0.05490196, 0.16470589, 1)
+polygon = PackedVector2Array(87, 60, 91, 58, 99, 56, 104, 58, 106, 60, 107, 62, 108, 63, 109, 63, 109, 66, 107, 64, 105, 66, 102, 70, 99, 72, 102, 66, 102, 63, 100, 61, 95, 60, 91, 61, 84, 66)
+metadata/_edit_lock_ = true
+
+[node name="Mouth" type="Polygon2D" parent="Artwork" unique_id=10798894]
+position = Vector2(31.5, 53.45003)
+scale = Vector2(0.5, 0.44999966)
+color = Color(0.56078434, 0.30980393, 0.38039216, 1)
+polygon = PackedVector2Array(63, 92.33333, 69, 92.33333, 77, 94, 71, 96.77779, 63, 96.77779)
+metadata/_edit_lock_ = true
+
+[node name="Mouth2" type="Polygon2D" parent="Artwork" unique_id=1127328283]
+position = Vector2(40, 54.000004)
+scale = Vector2(0.5, 0.44999966)
+color = Color(0.56078434, 0.30980393, 0.38039216, 1)
+polygon = PackedVector2Array(63, 92.33333, 69, 92.33333, 71, 96.77779, 63, 96.77779)
+metadata/_edit_lock_ = true
+
+[node name="LowerLip" type="Polygon2D" parent="Artwork" unique_id=90127232]
+color = Color(0.9098039, 0.69411767, 0.6745098, 1)
+polygon = PackedVector2Array(68, 99, 70, 99, 69, 101)
+metadata/_edit_lock_ = true
+
+[node name="LeftBlush" type="Polygon2D" parent="Artwork" unique_id=1399830650]
+position = Vector2(0, -4)
+color = Color(0.8980392, 0.6039216, 0.6039216, 0.4)
+polygon = PackedVector2Array(39, 79, 56, 80, 50, 88, 42, 87)
+metadata/_edit_lock_ = true
+
+[node name="RightBlush" type="Polygon2D" parent="Artwork" unique_id=74218162]
+position = Vector2(1, -2)
+color = Color(0.8980392, 0.6039216, 0.6039216, 0.4)
+polygon = PackedVector2Array(82, 82, 100, 78, 97, 86, 85, 88)
+metadata/_edit_lock_ = true
+
+[node name="CollarGem" type="Polygon2D" parent="Artwork" unique_id=1279713328]
+position = Vector2(-6, 19)
+color = Color(0.043137256, 0.3529412, 0.6431373, 1)
+polygon = PackedVector2Array(65, 116, 70, 113, 74, 115, 76, 120, 73, 125, 67, 122)
+metadata/_edit_lock_ = true
+
+[node name="DetailOverlay" parent="Artwork" unique_id=709839789 instance=ExtResource("1_lesjc")]
+visible = false
+
+[node name="ReferencePortrait" type="Sprite2D" parent="." unique_id=362677868]
+visible = false
+modulate = Color(1, 1, 1, 0.65882355)
+position = Vector2(90, 85)
+texture = ExtResource("2_ah3tl")
+metadata/_edit_lock_ = true
+
+[node name="ReferencePortrait2" type="Sprite2D" parent="." unique_id=1077723880]
+visible = false
+position = Vector2(254, 86)
+texture = ExtResource("2_ah3tl")

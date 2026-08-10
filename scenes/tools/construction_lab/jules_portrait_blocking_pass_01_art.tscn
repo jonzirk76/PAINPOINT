@@ -1,0 +1,381 @@
+[gd_scene format=3 uid="uid://b7hriko8c57n5"]
+
+[ext_resource type="Texture2D" uid="uid://dtto1ddkut7ut" path="res://art/concept_art/jules_sheet.png" id="1_sheet"]
+
+[sub_resource type="AtlasTexture" id="JulesFaceCrop"]
+atlas = ExtResource("1_sheet")
+region = Rect2(251, 637, 149, 165)
+
+[node name="JulesPortraitBlockingPass01Art" type="Node2D" unique_id=1454254465]
+
+[node name="Artwork" type="Node2D" parent="." unique_id=372260733]
+position = Vector2(28, 112)
+scale = Vector2(6, 6)
+
+[node name="LargeForms" type="Node2D" parent="Artwork" unique_id=523233810]
+
+[node name="BodyMass" type="Node2D" parent="Artwork/LargeForms" unique_id=1592295348]
+
+[node name="ClothingTraceSource" type="Sprite2D" parent="Artwork/LargeForms/BodyMass" unique_id=950330829]
+z_index = -100
+texture = SubResource("JulesFaceCrop")
+centered = false
+metadata/_edit_lock_ = true
+
+[node name="RightCoatTrace" type="Polygon2D" parent="Artwork/LargeForms/BodyMass/ClothingTraceSource" unique_id=292199062]
+z_index = 100
+color = Color(0.039215688, 0.039215688, 0.02745098, 1)
+antialiased = true
+polygon = PackedVector2Array(111, 116, 104, 123, 104, 128, 101, 125, 99, 125, 98, 131, 97, 131, 96, 143, 94, 143, 95, 147, 97, 147, 96, 162, 147, 162, 147, 117, 147, 105, 111, 104)
+metadata/raster_region_trace = {
+"recipe": {
+"cleanup_radius": 1,
+"include_alpha": true,
+"limit_polygon": PackedVector2Array(91, 103, 147, 105, 147, 164, 96, 164),
+"seed": Vector2i(126, 143),
+"tolerance": 0.08,
+"vertex_error": 2.5
+},
+"trace_id": "jules_clothes_right_coat",
+"version": 4
+}
+
+[node name="RaisedCollarTrace" type="Polygon2D" parent="Artwork/LargeForms/BodyMass/ClothingTraceSource" unique_id=344480843]
+color = Color(0.06666667, 0.07058824, 0.050980393, 1)
+antialiased = true
+polygon = PackedVector2Array(51, 120, 56.833332, 163.66667, 120, 162, 113, 117, 113, 113, 99, 125, 99, 126, 85, 129, 78.833336, 130.5, 71.00001, 131.5, 65.00001, 131)
+metadata/raster_region_trace = {
+"recipe": {
+"cleanup_radius": 1,
+"include_alpha": true,
+"limit_polygon": PackedVector2Array(45, 105, 111, 99, 120, 164, 41, 164),
+"seed": Vector2i(75, 137),
+"tolerance": 0.08,
+"vertex_error": 2.5
+},
+"trace_id": "jules_clothes_raised_collar",
+"version": 4
+}
+
+[node name="LeftCoatTrace" type="Polygon2D" parent="Artwork/LargeForms/BodyMass/ClothingTraceSource" unique_id=579201826]
+z_index = 102
+color = Color(0.2, 0.11372549, 0.007843138, 1)
+antialiased = true
+polygon = PackedVector2Array(47, 113, 16, 129, 15, 129, 17, 129, 20, 129, 18, 137, 18, 141, 25, 134, 29, 134, 27, 142, 27, 147, 19, 159, 25, 159, 36, 138, 36, 136, 53, 119, 54, 119, 52, 115, 52, 113, 47, 112)
+metadata/raster_region_trace = {
+"recipe": {
+"cleanup_radius": 1,
+"include_alpha": true,
+"limit_polygon": PackedVector2Array(4, 105, 76, 102, 76, 164, 4, 164),
+"seed": Vector2i(35, 135),
+"tolerance": 0.08,
+"vertex_error": 2.5
+},
+"trace_id": "jules_clothes_left_coat",
+"version": 4
+}
+
+[node name="OchreShoulderPanelTrace" type="Polygon2D" parent="Artwork/LargeForms/BodyMass/ClothingTraceSource" unique_id=1106326289]
+z_index = 103
+color = Color(0.44313726, 0.29411766, 0.105882354, 1)
+antialiased = true
+polygon = PackedVector2Array(17, 132, 14, 137, 11, 137, 11, 147, 10, 147, 17, 157, 17, 158, 22, 158, 27, 141, 28, 141, 28, 132, 27, 132, 21, 142, 18, 142, 20, 136, 20, 131, 17, 131)
+metadata/raster_region_trace = {
+"recipe": {
+"cleanup_radius": 1,
+"include_alpha": true,
+"limit_polygon": PackedVector2Array(4, 118, 48, 108, 62, 164, 4, 164),
+"seed": Vector2i(18, 145),
+"tolerance": 0.1,
+"vertex_error": 2.5
+},
+"trace_id": "jules_clothes_ochre_shoulder",
+"version": 4
+}
+
+[node name="Form07RearCollarEnvelope" type="Polygon2D" parent="Artwork/LargeForms/BodyMass" unique_id=834563498]
+position = Vector2(0.026771307, -2.4370012)
+scale = Vector2(1.0084542, 1.0147332)
+color = Color(0.105882354, 0.09803922, 0.08627451, 1)
+antialiased = true
+polygon = PackedVector2Array(9, 117.267075, 25.590218, 104.563126, 41.33333, 97.35094, 52.83333, 92.74224, 80.129135, 86.16748, 112.35668, 84.85351, 124.25608, 87.645706, 140.94829, 93.887085, 150.36865, 107.51957, 138.46924, 132.32085, 111.86087, 122.63027, 47.83333, 136.52484, 33.33333, 147.88199, 23.333332, 167.79813, 14.5, 159.8975, -3.1666665, 133.7267)
+
+[node name="Form03NeckEnvelope" type="Polygon2D" parent="Artwork/LargeForms/BodyMass" unique_id=1962602848]
+color = Color(0.35686275, 0.20784314, 0.11372549, 1)
+antialiased = true
+polygon = PackedVector2Array(57.666668, 108.5, 64, 117, 74, 123, 89.333336, 111.66667, 99.16667, 90.16667, 111.333336, 88.83333, 112.66667, 124.5, 93, 139, 84, 145, 72, 143, 62, 136, 59.666668, 128.16667)
+
+[node name="Form09NeckShadow" type="Polygon2D" parent="Artwork/LargeForms/BodyMass/Form03NeckEnvelope" unique_id=1890496180]
+color = Color(0.3019608, 0.18039216, 0.09411765, 1)
+antialiased = true
+polygon = PackedVector2Array(64.16667, 125.16667, 74.50001, 125.33333, 100.16667, 108.83333, 93.66667, 118.83333, 85.50001, 131.33333, 73.833336, 136.66667, 59.666668, 133.66667, 58.666668, 122.66667)
+
+[node name="Form02CoatShoulderEnvelope" type="Polygon2D" parent="Artwork/LargeForms/BodyMass" unique_id=691630373]
+color = Color(0.07058824, 0.0627451, 0.047058824, 1)
+antialiased = true
+polygon = PackedVector2Array(33, 145, 35.5, 138.83333, 43.833332, 127.16667, 55.166668, 118.5, 57.333332, 120.83333, 56.5, 126.33333, 61.333332, 130.83333, 68.833336, 133, 82.00001, 130, 98.16667, 123.33333, 111, 114, 113.833336, 107.66667, 111.833336, 105.33333, 114.66667, 106.83333, 119.66667, 125.83333, 152.33333, 138.83333, 149.83333, 165, 22.333332, 165.33333)
+
+[node name="ShirtDetailTraceSource" type="Sprite2D" parent="Artwork/LargeForms/BodyMass/Form02CoatShoulderEnvelope" unique_id=87679147]
+z_index = -100
+texture = SubResource("JulesFaceCrop")
+centered = false
+metadata/_edit_lock_ = true
+
+[node name="LeftShirtPlaneTrace" type="Polygon2D" parent="Artwork/LargeForms/BodyMass/Form02CoatShoulderEnvelope/ShirtDetailTraceSource" unique_id=814310627]
+z_index = 100
+color = Color(0.043137256, 0.043137256, 0.03529412, 1)
+antialiased = true
+polygon = PackedVector2Array(56.166668, 137.33333, 46, 125, 45, 125, 43, 162, 80, 162, 79, 131, 72.50001, 132.83333, 64.00001, 132, 60.333332, 128.16667, 58.833332, 125.16667, 58.666668, 122.83333, 57.166668, 128.5)
+metadata/raster_region_trace = {
+"recipe": {
+"cleanup_radius": 0,
+"include_alpha": true,
+"limit_polygon": PackedVector2Array(45, 123, 79, 124, 80, 164, 43, 164),
+"seed": Vector2i(62, 145),
+"tolerance": 0.07,
+"vertex_error": 2.5
+},
+"trace_id": "jules_shirt_left_plane",
+"version": 4
+}
+
+[node name="RightInnerCollarTrace" type="Polygon2D" parent="Artwork/LargeForms/BodyMass/Form02CoatShoulderEnvelope/ShirtDetailTraceSource" unique_id=886119947]
+z_index = 101
+color = Color(0.105882354, 0.105882354, 0.09019608, 1)
+antialiased = true
+polygon = PackedVector2Array(112, 106, 112, 113, 98.833336, 123.33333, 89, 127, 88, 127, 79, 133, 78, 133, 78, 135, 79, 145, 79, 158, 81, 159, 85, 159, 101, 151, 103, 151, 107, 146, 108, 146, 105, 145, 105, 144, 116, 136, 117, 136, 115, 136, 114, 136, 115, 120, 113, 120, 116, 108, 116, 107, 112, 105)
+metadata/raster_region_trace = {
+"recipe": {
+"cleanup_radius": 0,
+"include_alpha": true,
+"limit_polygon": PackedVector2Array(76, 112, 116, 103, 123, 164, 80, 164),
+"seed": Vector2i(98, 133),
+"tolerance": 0.06,
+"vertex_error": 2.5
+},
+"trace_id": "jules_shirt_right_inner_collar",
+"version": 4
+}
+
+[node name="CenterShirtPanelTrace" type="Polygon2D" parent="Artwork/LargeForms/BodyMass/Form02CoatShoulderEnvelope/ShirtDetailTraceSource" unique_id=1011574725]
+z_index = 102
+color = Color(0.11372549, 0.11764706, 0.10980392, 1)
+antialiased = true
+polygon = PackedVector2Array(86, 131, 82, 132, 80, 132, 82, 133, 82, 134, 76, 142, 74, 142, 73, 144, 73, 146, 77, 147, 72, 147, 72, 151, 78, 152, 79, 152, 73, 157, 73, 159, 89, 156, 90, 156, 88, 156, 85, 156, 87, 154, 87, 152, 84, 149, 84, 148, 85, 146, 87, 146, 86, 138, 86, 137, 92, 132, 92, 129, 86, 129)
+metadata/raster_region_trace = {
+"recipe": {
+"cleanup_radius": 0,
+"include_alpha": true,
+"limit_polygon": PackedVector2Array(58, 122, 92, 122, 99, 164, 53, 164),
+"seed": Vector2i(75, 150),
+"tolerance": 0.05,
+"vertex_error": 2.5
+},
+"trace_id": "jules_shirt_center_panel",
+"version": 4
+}
+
+[node name="ShirtClosureTrace" type="Polygon2D" parent="Artwork/LargeForms/BodyMass/Form02CoatShoulderEnvelope/ShirtDetailTraceSource" unique_id=477978724]
+z_index = 103
+color = Color(0.14117648, 0.08235294, 0.043137256, 1)
+antialiased = true
+polygon = PackedVector2Array(86, 151, 87, 151, 87, 152, 89, 152, 89, 153, 90, 153, 90, 150, 86, 150)
+metadata/raster_region_trace = {
+"recipe": {
+"cleanup_radius": 0,
+"include_alpha": true,
+"limit_polygon": PackedVector2Array(80, 128, 95, 128, 95, 164, 80, 164),
+"seed": Vector2i(87, 151),
+"tolerance": 0.04,
+"vertex_error": 1.5
+},
+"trace_id": "jules_shirt_closure",
+"version": 4
+}
+
+[node name="Form08FrontCollarEnvelope" type="Polygon2D" parent="Artwork/LargeForms/BodyMass" unique_id=343497818]
+color = Color(0.11372549, 0.105882354, 0.09411765, 1)
+antialiased = true
+polygon = PackedVector2Array(115.50001, 138.33333, 141.33333, 113.33333, 141.33333, 92.83333, 154.16667, 109.66667, 155.16667, 121.66667, 146.5, 139.5, 132, 153.83333, 113.333336, 171.33333, 96.333336, 169.16667, 101.833336, 158.16667)
+
+[node name="HeadMass" type="Node2D" parent="Artwork/LargeForms" unique_id=1724205233]
+
+[node name="Form14RearHairMass" type="Polygon2D" parent="Artwork/LargeForms/HeadMass" unique_id=1133609350]
+color = Color(0.078431375, 0.05490196, 0.03137255, 1)
+antialiased = true
+polygon = PackedVector2Array(15.166667, 46.333332, 10.166667, 44.166668, 17, 40, 31.12083, 23.055004, 24.333332, 24.666668, 18.666668, 22.5, 26, 19.666668, 40.833332, 7.5, 34.333332, 8.166666, 30, 6.5, 56.666668, 0.33333206, 71.333336, -2.666668, 88.833336, -3.500001, 111.16667, 0.5, 118.16667, 6, 125.50001, 7.5, 124.50001, 9.833332, 121.16667, 10.666666, 118.00001, 10.333332, 125.16668, 19.166668, 134.33333, 21.833332, 136.83333, 23.666668, 128.66667, 24.166668, 122.50001, 22.833332, 126.66668, 27, 127.50001, 30.833332, 132.33333, 34.666668, 136.5, 35.833332, 132.66667, 37.833332, 128.83333, 37, 129, 42.333332, 135.33333, 48.333332, 133.33333, 52.500004, 128.66667, 49.500004, 127.66668, 57.833332, 130.83333, 65.66667, 127.50001, 64.83333, 125.333336, 60.000004, 125.66668, 73.33333, 122.833336, 71.83333, 107.16667, 73, 98.00001, 34, 59, 31, 54, 48, 48, 64, 39.166668, 83, 37.166668, 82, 34.333332, 81.83333, 33.666668, 87.33333, 32.166668, 93.16667, 30.5, 93.33333, 30, 90.83333, 31, 87.16667, 31, 81.83333, 24.666668, 91.33333, 27.333332, 75.66667, 20.833332, 82, 22, 75.16667, 23.666668, 62.500004, 18.333332, 66, 12.333333, 67.16667, 17.833332, 59.000004, 22.558416, 42.73333)
+
+[node name="RearEarEnvelope" type="Polygon2D" parent="Artwork/LargeForms/HeadMass" unique_id=359506010]
+position = Vector2(-73.5, 5.166667)
+color = Color(0.40392157, 0.23921569, 0.12941177, 1)
+antialiased = true
+polygon = PackedVector2Array(108.16667, 66.5, 112.5, 68, 116.5, 79.166664, 116.5, 90, 112.5, 89.166664, 109, 82.5, 107.333336, 76, 105.66667, 67.666664)
+
+[node name="Form24RearEarInterior" type="Polygon2D" parent="Artwork/LargeForms/HeadMass/RearEarEnvelope" unique_id=871991153]
+color = Color(0.2509804, 0.13725491, 0.06666667, 1)
+antialiased = true
+polygon = PackedVector2Array(109, 70, 112.5, 71.5, 114.5, 77.5, 113.5, 83, 110.5, 80.5, 108.5, 75)
+
+[node name="Form04FaceEnvelope" type="Polygon2D" parent="Artwork/LargeForms/HeadMass" unique_id=2048152878]
+color = Color(0.39215687, 0.24705882, 0.13725491, 1)
+antialiased = true
+polygon = PackedVector2Array(38, 58, 42, 45, 51, 35, 63, 30, 77, 29, 91, 32, 103, 40, 108.00001, 51.333332, 107.50001, 61.500004, 105.16667, 91, 101.16667, 105.33333, 99.16667, 109.5, 73.66667, 128.16667, 63.500004, 128.5, 60.666668, 125.5, 55.666668, 117.16667, 45.333332, 104.16667, 40, 88, 38, 73)
+
+[node name="Pass02FacialSubforms" type="Node2D" parent="Artwork/LargeForms/HeadMass" unique_id=1266337780]
+
+[node name="Form10MuzzleMouthMass" type="Polygon2D" parent="Artwork/LargeForms/HeadMass/Pass02FacialSubforms" unique_id=1840983204]
+position = Vector2(-2.3333335, 12.666667)
+color = Color(0.40784314, 0.2509804, 0.13725491, 1)
+antialiased = true
+polygon = PackedVector2Array(58, 94, 68, 94.666664, 83.833336, 93.666664, 73.5, 101.333336, 63.83334, 100.666664)
+
+[node name="Form23LipSeparation" type="Polygon2D" parent="Artwork/LargeForms/HeadMass/Pass02FacialSubforms/Form10MuzzleMouthMass" unique_id=339760024]
+color = Color(0.105882354, 0.05490196, 0.02745098, 1)
+antialiased = true
+polygon = PackedVector2Array(68.833336, 95.5, 75.666664, 95.166664, 82.166664, 94.166664, 82.166664, 93.166664, 84.333336, 93.166664, 84.666664, 94.833336, 75.61365, 96.316315, 68.833336, 96.333336)
+
+[node name="Form23LipSeparation2" type="Polygon2D" parent="Artwork/LargeForms/HeadMass/Pass02FacialSubforms/Form10MuzzleMouthMass" unique_id=638233958]
+color = Color(0.105882354, 0.05490196, 0.02745098, 1)
+antialiased = true
+polygon = PackedVector2Array(59, 94.8, 67, 95.3, 67, 96.4, 59.5, 95.8)
+
+[node name="LowerLip" type="Polygon2D" parent="Artwork/LargeForms/HeadMass/Pass02FacialSubforms" unique_id=1294537427]
+position = Vector2(2.666667, 17.5)
+color = Color(0.105882354, 0.05490196, 0.02745098, 1)
+antialiased = true
+polygon = PackedVector2Array(59, 94.8, 60.237244, 94.877335, 62.83334, 95.66667, 66.666664, 95.66667, 68.5, 95.16667, 69.166664, 96, 65.833336, 97.16667, 61.83334, 96.83333, 59.5, 95.8)
+
+[node name="Form11NoseWedgeMass" type="Polygon2D" parent="Artwork/LargeForms/HeadMass/Pass02FacialSubforms" unique_id=1354770062]
+position = Vector2(-8, 9.5)
+color = Color(0.3372549, 0.20392157, 0.10980392, 1)
+antialiased = true
+polygon = PackedVector2Array(78.833336, 86.16667, 72.333336, 90.83333, 68, 90.5, 65, 86)
+
+[node name="NoseHole" type="Polygon2D" parent="Artwork/LargeForms/HeadMass/Pass02FacialSubforms/Form11NoseWedgeMass" unique_id=369324121]
+position = Vector2(7.5, 4.3333325)
+color = Color(0.09019608, 0.0627451, 0.03529412, 1)
+antialiased = true
+polygon = PackedVector2Array(66.333336, 85.16667, 65.333336, 85, 65.16667, 84.5, 66.16667, 83.5, 67.333336, 83.333336, 68.333336, 83.333336, 68.16667, 84.5, 67.333336, 84.833336)
+
+[node name="NoseShadow" type="Polygon2D" parent="Artwork/LargeForms/HeadMass/Pass02FacialSubforms/Form11NoseWedgeMass" unique_id=1460039717]
+position = Vector2(-8, 9.5)
+color = Color(0.09019608, 0.0627451, 0.03529412, 1)
+antialiased = true
+polygon = PackedVector2Array(79.333336, 81.33333, 77.833336, 81.5, 73.66667, 78.33333, 73.333336, 76.5, 74.333336, 77.83333, 77.16667, 80.16667)
+
+[node name="Form12FarEyeSocketMass" type="Polygon2D" parent="Artwork/LargeForms/HeadMass/Pass02FacialSubforms" unique_id=816275099]
+color = Color(0.39215687, 0.24705882, 0.13725491, 1)
+antialiased = true
+polygon = PackedVector2Array(46.333332, 65.66667, 55.333332, 68.66667, 59, 75.16667, 56.833332, 78.5, 47.333332, 79.66667, 41, 74.16667, 40.166668, 64.33333)
+
+[node name="Form17FarEyeOpening" type="Polygon2D" parent="Artwork/LargeForms/HeadMass/Pass02FacialSubforms/Form12FarEyeSocketMass" unique_id=1987578495]
+position = Vector2(-0.5, 5.666667)
+color = Color(0.8039216, 0.7411765, 0.6039216, 1)
+antialiased = true
+polygon = PackedVector2Array(44.166668, 71, 43.666668, 69.333336, 45.166668, 68.166664, 49, 68.8, 53, 69.5, 57.666668, 71.333336, 57.166668, 73, 53.333332, 72.833336, 50.5, 73, 48.166668, 73.666664, 46, 72.333336)
+
+[node name="Form19FarIris" type="Polygon2D" parent="Artwork/LargeForms/HeadMass/Pass02FacialSubforms/Form12FarEyeSocketMass/Form17FarEyeOpening" unique_id=777982757]
+color = Color(0.21176471, 0.13725491, 0.07058824, 1)
+antialiased = true
+polygon = PackedVector2Array(47.833332, 68.5, 52.166668, 69.166664, 55.333332, 70.333336, 54.666668, 71.333336, 53.4, 72.4, 51.833332, 73.166664, 50.333332, 72.833336, 48.166668, 71)
+
+[node name="Form21FarPupil" type="Polygon2D" parent="Artwork/LargeForms/HeadMass/Pass02FacialSubforms/Form12FarEyeSocketMass/Form17FarEyeOpening/Form19FarIris" unique_id=764908901]
+color = Color(0.03529412, 0.023529412, 0.015686275, 1)
+antialiased = true
+polygon = PackedVector2Array(52, 69.333336, 53.166668, 69.5, 52.833332, 70.5, 51.666668, 70.666664, 51, 70.166664, 50.833332, 69.166664)
+
+[node name="EyeLash" type="Polygon2D" parent="Artwork/LargeForms/HeadMass/Pass02FacialSubforms/Form12FarEyeSocketMass" unique_id=1509412857]
+color = Color(0.09019608, 0.0627451, 0.03529412, 1)
+antialiased = true
+polygon = PackedVector2Array(41.333332, 72.83333, 44.166668, 71.5, 48.333332, 71.66667, 52, 72.83333, 56.166668, 74.66667, 57.666668, 77.16667, 52.833332, 75.16667, 44.833332, 73.83333, 43.166668, 75.16667, 43.833332, 77, 44.833332, 77.66667, 43.166668, 77.33333, 41.5, 75.5)
+
+[node name="EyeBrow" type="Polygon2D" parent="Artwork/LargeForms/HeadMass/Pass02FacialSubforms/Form12FarEyeSocketMass" unique_id=1249012905]
+color = Color(0.09019608, 0.0627451, 0.03529412, 1)
+antialiased = true
+polygon = PackedVector2Array(46.333332, 65.66667, 56, 68.33333, 56.666668, 68.83333, 59, 75.16667, 54.5, 72.5, 39.666668, 68.66667, 40.166668, 64.33333)
+
+[node name="Form13NearEyeSocketMass" type="Polygon2D" parent="Artwork/LargeForms/HeadMass/Pass02FacialSubforms" unique_id=2071553855]
+color = Color(0.39215687, 0.24705882, 0.13725491, 1)
+antialiased = true
+polygon = PackedVector2Array(67.66667, 70.66667, 68.00001, 67.83333, 86.833336, 61.333332, 90.50001, 61.500004, 95.333336, 64.33333, 94.66667, 70.5, 90.00001, 76, 81.333336, 77.33333, 76.50001, 76)
+
+[node name="Form18NearEyeOpening" type="Polygon2D" parent="Artwork/LargeForms/HeadMass/Pass02FacialSubforms/Form13NearEyeSocketMass" unique_id=863275692]
+position = Vector2(-1.3333334, 5.666667)
+color = Color(0.81960785, 0.75686276, 0.6156863, 1)
+antialiased = true
+polygon = PackedVector2Array(77.5, 68.5, 82, 66.5, 87, 66, 93, 65.666664, 93, 67.5, 90, 70, 87.833336, 69.666664, 85.333336, 70.166664, 82.166664, 71.333336, 79.666664, 70.666664)
+
+[node name="Form20NearIris" type="Polygon2D" parent="Artwork/LargeForms/HeadMass/Pass02FacialSubforms/Form13NearEyeSocketMass/Form18NearEyeOpening" unique_id=729369535]
+position = Vector2(-1.5, -1.6666667)
+color = Color(0.21176471, 0.13725491, 0.07058824, 1)
+antialiased = true
+polygon = PackedVector2Array(88.5, 67.66667, 91.833336, 67.5, 91.833336, 69.16667, 89.333336, 71.33333, 86.833336, 71.5, 84.666664, 70.5, 83.5, 67.83333)
+
+[node name="Form22NearPupil" type="Polygon2D" parent="Artwork/LargeForms/HeadMass/Pass02FacialSubforms/Form13NearEyeSocketMass/Form18NearEyeOpening/Form20NearIris" unique_id=964562041]
+position = Vector2(-0.33333334, 0.33333334)
+color = Color(0.03529412, 0.023529412, 0.015686275, 1)
+antialiased = true
+polygon = PackedVector2Array(87.7, 67.2, 89.16667, 67.333336, 89, 68.5, 87.9, 69.1, 86.833336, 68.66667, 86.66667, 67.5)
+
+[node name="Eyebrow" type="Polygon2D" parent="Artwork/LargeForms/HeadMass/Pass02FacialSubforms/Form13NearEyeSocketMass" unique_id=492055877]
+color = Color(0.09019608, 0.0627451, 0.03529412, 1)
+antialiased = true
+polygon = PackedVector2Array(67.66667, 70.66667, 68.00001, 67.83333, 76.66667, 64.16667, 86.833336, 61.333332, 90.50001, 61.500004, 95.333336, 64.16667, 92.833336, 65.33333, 90.833336, 65, 87.16667, 65.16667, 78.50001, 68.16667, 70.00001, 71.66667)
+
+[node name="Eyelash" type="Polygon2D" parent="Artwork/LargeForms/HeadMass/Pass02FacialSubforms/Form13NearEyeSocketMass" unique_id=2094975899]
+color = Color(0.09019608, 0.0627451, 0.03529412, 1)
+antialiased = true
+polygon = PackedVector2Array(77.50001, 71.83333, 82.00001, 69.83333, 92.00001, 69.66667, 95.833336, 70.5, 92.333336, 73.83333, 90.333336, 75.33333, 88.50001, 75.83333, 91.833336, 72.66667, 91.333336, 71.5, 81.00001, 72, 74.50001, 75)
+
+[node name="HairMass" type="Node2D" parent="Artwork" unique_id=632891473]
+
+[node name="Form06HairCapEnvelope" type="Polygon2D" parent="Artwork/HairMass" unique_id=1932727742]
+visible = false
+color = Color(0.0627451, 0.047058824, 0.03137255, 1)
+antialiased = true
+polygon = PackedVector2Array(5, 46, 19.5, 22.666668, 34.5, 8.5, 53.333332, 0, 70.833336, -3.166668, 90.16667, -4.000001, 109.333336, 0.83333206, 124.00001, 9.666666, 134.83333, 22.166668, 138, 34.5, 137.16667, 53.833332, 132, 67, 124, 77, 111, 84, 105.00001, 78.5, 94.50001, 70.83333, 81.00001, 63.833332, 68.00001, 78.16667, 45.166668, 70.66667, 38.5, 83.33333, 32, 92.33333, 20.666668, 80.33333, 14.333333, 66.66667)
+metadata/_edit_lock_ = true
+
+[node name="Pass02FrontHairSubforms" type="Node2D" parent="Artwork/HairMass" unique_id=1730378157]
+
+[node name="Form15CenterFrontHairMass" type="Polygon2D" parent="Artwork/HairMass/Pass02FrontHairSubforms" unique_id=406275127]
+color = Color(0.09019608, 0.0627451, 0.03529412, 1)
+antialiased = true
+polygon = PackedVector2Array(54, 5, 68, -1, 81, 1, 85, 8, 93.00001, 28.166668, 97.50001, 55.500004, 97.333336, 64.16667, 94.16667, 73.33333, 94.00001, 62.833332, 92.833336, 61.166668, 83.50001, 38.333332, 83.333336, 44.666668, 82.50001, 58.500004, 80.333336, 65.33333, 80.333336, 58.000004, 79.00001, 58.000004, 75.16667, 40.333332, 70.16667, 41.666668, 65.333336, 62.166668, 67.833336, 78.83333, 56.5, 63.166668, 54.666668, 43.5, 44.333332, 72.16667, 42.333332, 54.000004, 41.166668, 55.000004, 37.666668, 72, 40.666668, 82.66667, 34.333332, 69.5, 35, 54.666668, 37.833332, 38.666668)
+
+[node name="Form16NearFrontHairMass" type="Polygon2D" parent="Artwork/HairMass/Pass02FrontHairSubforms" unique_id=1406254913]
+color = Color(0.07450981, 0.050980393, 0.02745098, 1)
+antialiased = true
+polygon = PackedVector2Array(80, 1, 97.00001, 23.666668, 105.333336, 36, 110.16667, 49.333332, 110, 63, 105.66667, 79, 102.66667, 66.16667, 96.50001, 51.000004, 89.66667, 35.833332)
+
+[node name="Form05EarEnvelope" type="Polygon2D" parent="Artwork/HairMass" unique_id=42120773]
+color = Color(0.40392157, 0.23921569, 0.12941177, 1)
+antialiased = true
+polygon = PackedVector2Array(114.16667, 62.166668, 116.333336, 62.166668, 119.66667, 65, 121.00001, 76.33333, 119.833336, 80.5, 112.333336, 91.5, 109.333336, 92.83333, 105.16667, 90.83333, 105.16667, 78, 108.00001, 67.83333)
+
+[node name="Form25NearEarInterior" type="Polygon2D" parent="Artwork/HairMass/Form05EarEnvelope" unique_id=924150394]
+color = Color(0.2509804, 0.13725491, 0.06666667, 1)
+antialiased = true
+polygon = PackedVector2Array(113, 67, 117, 66, 119, 70, 118, 77, 114, 84, 111, 88, 112, 79, 115, 74, 114, 70)
+
+[node name="Stud" type="Polygon2D" parent="Artwork/HairMass/Form05EarEnvelope" unique_id=1013009873]
+position = Vector2(2.1666667, 0.5000003)
+color = Color(0.7882353, 0.7294118, 0.5254902, 1)
+antialiased = true
+polygon = PackedVector2Array(109.333336, 88.16667, 109, 90, 107.166664, 89.66667, 107.333336, 87.83333)
+
+[node name="OverlayReference" type="Sprite2D" parent="." unique_id=1072990802]
+z_index = -100
+position = Vector2(28, 112)
+scale = Vector2(6, 6)
+texture = SubResource("JulesFaceCrop")
+centered = false
+metadata/_edit_lock_ = true
+
+[node name="ColorReference" type="Sprite2D" parent="." unique_id=123137482]
+z_index = -100
+position = Vector2(966, 112)
+scale = Vector2(6, 6)
+texture = SubResource("JulesFaceCrop")
+centered = false
+metadata/_edit_lock_ = true

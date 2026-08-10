@@ -1,0 +1,65 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/characters/volette_native_cutout_diagonal.tscn" id="1_cutout"]
+[ext_resource type="Texture2D" path="res://art/characters/player_body.svg" id="2_player"]
+
+[node name="VoletteNativeCutoutSpikeWorkbench" type="Node2D"]
+
+[node name="Background" type="Polygon2D" parent="."]
+z_index = -100
+color = Color(0.075, 0.082, 0.095, 1)
+polygon = PackedVector2Array(0, 0, 1280, 0, 1280, 720, 0, 720)
+
+[node name="AuthoringPanel" type="Polygon2D" parent="."]
+z_index = -90
+color = Color(0.14, 0.15, 0.17, 1)
+polygon = PackedVector2Array(35, 55, 805, 55, 805, 665, 35, 665)
+
+[node name="GameScalePanel" type="Polygon2D" parent="."]
+z_index = -90
+color = Color(0.035, 0.04, 0.048, 1)
+polygon = PackedVector2Array(835, 55, 1245, 55, 1245, 665, 835, 665)
+
+[node name="Title" type="Label" parent="."]
+position = Vector2(35, 15)
+text = "NATIVE CUTOUT SPIKE — bottom-left authored projection"
+
+[node name="AuthoringLabel" type="Label" parent="."]
+position = Vector2(55, 75)
+text = "Skeleton2D / Bone2D rigs at authoring scale"
+
+[node name="GameScaleLabel" type="Label" parent="."]
+position = Vector2(855, 75)
+text = "Approx. 80 px gameplay scale"
+
+[node name="BottomLeftRig" parent="." instance=ExtResource("1_cutout")]
+position = Vector2(280, 405)
+
+[node name="BottomRightMirror" parent="." instance=ExtResource("1_cutout")]
+position = Vector2(640, 405)
+scale = Vector2(-1, 1)
+
+[node name="CurrentPlayerLabel" type="Label" parent="."]
+position = Vector2(875, 145)
+text = "Current player SVG"
+
+[node name="CurrentPlayerSprite" type="Sprite2D" parent="."]
+position = Vector2(1035, 235)
+scale = Vector2(0.625, 0.625)
+texture = ExtResource("2_player")
+
+[node name="CutoutLabel" type="Label" parent="."]
+position = Vector2(875, 325)
+text = "Native cutout + mirror"
+
+[node name="GameScaleBottomLeft" parent="." instance=ExtResource("1_cutout")]
+position = Vector2(980, 555)
+scale = Vector2(0.34, 0.34)
+
+[node name="GameScaleBottomRight" parent="." instance=ExtResource("1_cutout")]
+position = Vector2(1110, 555)
+scale = Vector2(-0.34, 0.34)
+
+[node name="Instructions" type="Label" parent="."]
+position = Vector2(55, 625)
+text = "Run this scene to view the authored walk. Select a Bone2D to inspect its socket; edit child Polygon2D nodes for silhouette changes."

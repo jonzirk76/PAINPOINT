@@ -6,7 +6,9 @@ const CELL_TILE_COLUMNS := 32
 const CELL_TILE_ROWS := 18
 const WALL_TILE_SIZE: float = CELL_SIZE.x / float(CELL_TILE_COLUMNS)
 const WALL_THICKNESS := WALL_TILE_SIZE
+const DEFAULT_WALL_HEIGHT_TILES := 3
 const OPENING_WIDTH := WALL_TILE_SIZE * 4.0
+const DOOR_SPAWN_CLEAR_DEPTH_TILES := DEFAULT_WALL_HEIGHT_TILES + 1
 const TRIGGER_DEPTH := WALL_TILE_SIZE * 2.0
 const ENTRY_MARGIN := 96.0
 
@@ -78,7 +80,7 @@ static func get_cell_rect(cells: Array[Vector2i], local_cell: Vector2i) -> Rect2
 
 static func build_wall_rects(cells: Array[Vector2i], connection_edges: Dictionary = {}) -> Array[Rect2]:
 	var wall_top_tiles := build_wall_tile_rects(cells, connection_edges)
-	return merge_wall_tiles(build_wall_body_tile_rects(wall_top_tiles, cells, connection_edges))
+	return merge_wall_tiles(build_wall_collision_tile_rects(wall_top_tiles, cells, connection_edges))
 
 
 static func get_exposed_edges(cells: Array[Vector2i], facing_direction: String = "") -> Array[Dictionary]:
@@ -116,18 +118,55 @@ static func build_wall_tile_rects(cells: Array[Vector2i], connection_edges: Dict
 	return walls
 
 
-static func build_wall_body_tile_rects(wall_top_tiles: Array[Rect2], cells: Array[Vector2i], connection_edges: Dictionary = {}) -> Array[Rect2]:
+static func build_wall_body_tile_rects(
+	wall_floor_tiles: Array[Rect2],
+	cells: Array[Vector2i],
+	connection_edges: Dictionary = {},
+	wall_height_tiles: int = DEFAULT_WALL_HEIGHT_TILES
+) -> Array[Rect2]:
 	var body_tiles: Array[Rect2] = []
 	var body_lookup := {}
 	var body_opening_rects := _get_wall_body_connection_opening_rects(cells, connection_edges)
-	for wall_top in wall_top_tiles:
-		var body_tile := Rect2(wall_top.position + Vector2(0.0, WALL_TILE_SIZE), wall_top.size)
-		if not _rect_fits_wall_body_envelope(cells, body_tile):
+	for wall_floor in wall_floor_tiles:
+		if not _rect_fits_wall_floor_envelope(cells, wall_floor):
 			continue
-		if _tile_is_inside_any_opening(body_tile, body_opening_rects):
+		if _tile_is_inside_any_opening(wall_floor, body_opening_rects):
 			continue
-		_append_unique_wall_tile(body_tiles, body_lookup, body_tile)
+		for height_index in range(max(wall_height_tiles, 1)):
+			var body_tile := Rect2(
+				wall_floor.position - Vector2(0.0, WALL_TILE_SIZE * float(height_index)),
+				wall_floor.size
+			)
+			_append_unique_wall_tile(body_tiles, body_lookup, body_tile)
 	return body_tiles
+
+
+static func build_wall_collision_tile_rects(
+	wall_floor_tiles: Array[Rect2],
+	cells: Array[Vector2i],
+	connection_edges: Dictionary = {}
+) -> Array[Rect2]:
+	var collision_tiles: Array[Rect2] = []
+	var collision_lookup := {}
+	var body_opening_rects := _get_wall_body_connection_opening_rects(cells, connection_edges)
+	for wall_floor in wall_floor_tiles:
+		if not _rect_fits_wall_floor_envelope(cells, wall_floor):
+			continue
+		if _tile_is_inside_any_opening(wall_floor, body_opening_rects):
+			continue
+		_append_unique_wall_tile(collision_tiles, collision_lookup, wall_floor)
+	return collision_tiles
+
+
+static func build_wall_top_visual_tile_rects(
+	wall_floor_tiles: Array[Rect2],
+	wall_height_tiles: int = DEFAULT_WALL_HEIGHT_TILES
+) -> Array[Rect2]:
+	var top_tiles: Array[Rect2] = []
+	var height_offset := Vector2(0.0, WALL_TILE_SIZE * float(max(wall_height_tiles, 1)))
+	for wall_floor in wall_floor_tiles:
+		top_tiles.append(Rect2(wall_floor.position - height_offset, wall_floor.size))
+	return top_tiles
 
 
 static func get_wall_body_opening_rect(cells: Array[Vector2i], local_cell: Vector2i, direction: String) -> Rect2:
@@ -151,12 +190,7 @@ static func get_wall_top_opening_rect(cells: Array[Vector2i], local_cell: Vector
 
 
 static func get_gate_visual_rect(cells: Array[Vector2i], local_cell: Vector2i, direction: String) -> Rect2:
-	var opening := get_opening_rect(cells, local_cell, direction)
-	if opening.size == Vector2.ZERO:
-		return opening
-	if direction == "north":
-		return Rect2(opening.position, Vector2(opening.size.x, opening.size.y + WALL_TILE_SIZE))
-	return opening
+	return get_opening_rect(cells, local_cell, direction)
 
 
 static func get_gate_passage_rect(cells: Array[Vector2i], local_cell: Vector2i, direction: String) -> Rect2:
@@ -296,8 +330,10 @@ static func get_spawn_position(cells: Array[Vector2i]) -> Vector2:
 static func get_door_clear_rect(cells: Array[Vector2i], local_cell: Vector2i, direction: String) -> Rect2:
 	var cell_rect := get_cell_rect(cells, local_cell)
 	var opening := get_opening_rect(cells, local_cell, direction)
-	var clear_width: float = max(OPENING_WIDTH - WALL_TILE_SIZE, WALL_TILE_SIZE * 2.0)
-	var clear_depth: float = WALL_TILE_SIZE * 3.0
+	# Cover the complete doorway silhouette, including the raised wall facade, and
+	# reserve one additional floor tile so birth visuals cannot appear behind it.
+	var clear_width: float = OPENING_WIDTH
+	var clear_depth: float = WALL_TILE_SIZE * float(DOOR_SPAWN_CLEAR_DEPTH_TILES)
 	var center := opening.get_center()
 	match direction:
 		"north":
@@ -425,7 +461,7 @@ static func _get_wall_body_connection_opening_rects(cells: Array[Vector2i], conn
 	return opening_rects
 
 
-static func _rect_fits_wall_body_envelope(cells: Array[Vector2i], rect: Rect2) -> bool:
+static func _rect_fits_wall_floor_envelope(cells: Array[Vector2i], rect: Rect2) -> bool:
 	if cells.is_empty() or rect.size.x <= 0.0 or rect.size.y <= 0.0:
 		return false
 	var inset: float = min(1.0, min(rect.size.x, rect.size.y) * 0.25)
@@ -437,7 +473,7 @@ static func _rect_fits_wall_body_envelope(cells: Array[Vector2i], rect: Rect2) -
 		rect.get_center()
 	]
 	for point in points:
-		if not _point_is_in_footprint(cells, point - Vector2(0.0, WALL_TILE_SIZE)):
+		if not _point_is_in_footprint(cells, point):
 			return false
 	return true
 

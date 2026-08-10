@@ -20,10 +20,10 @@
 [ext_resource type="Script" uid="uid://ckhvmsa01m725" path="res://scripts/managers/fauna_manager.gd" id="17"]
 [ext_resource type="Shader" uid="uid://b176a8d5tdc54" path="res://scenes/circular_portrait_mask.gdshader" id="18_0ld40"]
 [ext_resource type="Script" uid="uid://bbyh4kn6adeog" path="res://scenes/character_portrait.gd" id="18_dp3eg"]
-[ext_resource type="Texture2D" uid="uid://dmmnsmupy476b" path="res://art/concept_art/portraitcropped2.png" id="18_gqmmt"]
+[ext_resource type="PackedScene" uid="uid://djcun5pkcb1jv" path="res://scenes/ui/volette_portrait.tscn" id="18_volette"]
 [ext_resource type="Texture2D" uid="uid://cjvw5hc5udne8" path="res://art/character_UI.png" id="20_gqmmt"]
 [ext_resource type="PackedScene" uid="uid://cprl8lufwm42b" path="res://scenes/ui/loading_screen.tscn" id="21_loading"]
-[ext_resource type="Script" path="res://scripts/ui/parry_portrait_meter.gd" id="22_parry"]
+[ext_resource type="Script" uid="uid://h6hyjqs103f8" path="res://scripts/ui/parry_portrait_meter.gd" id="22_parry"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_jscy8"]
 font = ExtResource("16_yc10j")
@@ -211,17 +211,32 @@ offset_right = 73.5
 offset_bottom = 73.75
 metadata/_edit_use_anchors_ = true
 
-[node name="CharacterPortrait" type="TextureRect" parent="UI/CombatPanel/CircularPortraitMask" unique_id=229267787]
+[node name="CharacterPortrait" type="SubViewportContainer" parent="UI/CombatPanel/CircularPortraitMask" unique_id=229267787]
 material = SubResource("ShaderMaterial_0ld40")
-layout_mode = 0
-offset_left = -6.0
-offset_top = -5.0
-offset_right = 68.0
-offset_bottom = 70.5
-scale = Vector2(0.55, 0.55)
-texture = ExtResource("18_gqmmt")
+layout_mode = 1
+anchors_preset = -1
+anchor_left = -0.15178572
+anchor_top = -0.15178572
+anchor_right = 0.49107143
+anchor_bottom = 0.49107143
+offset_right = 277.0
+offset_bottom = 277.0
+scale = Vector2(0.25, 0.25)
+mouse_filter = 2
+stretch = true
 script = ExtResource("18_dp3eg")
 metadata/_edit_use_anchors_ = true
+
+[node name="PortraitViewport" type="SubViewport" parent="UI/CombatPanel/CircularPortraitMask/CharacterPortrait" unique_id=572976164]
+transparent_bg = true
+handle_input_locally = false
+gui_disable_input = true
+size = Vector2i(313, 313)
+render_target_update_mode = 4
+
+[node name="VolettePortrait" parent="UI/CombatPanel/CircularPortraitMask/CharacterPortrait/PortraitViewport" unique_id=473125932 instance=ExtResource("18_volette")]
+position = Vector2(-20, -0.25000095)
+scale = Vector2(2, 2)
 
 [node name="ParryPortraitMeter" type="Control" parent="UI/CombatPanel" unique_id=1643672674]
 z_index = 4

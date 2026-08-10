@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_FILE="${SMOKE_LOG_FILE:-/tmp/shooty-smoke.log}"
 MAX_LINES="${SMOKE_MAX_LINES:-200}"
 FILTERED_LOG="${TMPDIR:-/tmp}/shooty-smoke-filtered.$$"
+GODOT_BIN="${GODOT_BIN:-godot4}"
 
 cleanup() {
 	rm -f "$FILTERED_LOG"
@@ -12,9 +13,10 @@ cleanup() {
 trap cleanup EXIT
 
 echo "Running Godot smoke tests..."
+echo "Godot binary: $GODOT_BIN"
 echo "Full log: $LOG_FILE"
 
-godot4 --headless --path "$ROOT_DIR" --script "$ROOT_DIR/tests/smoke_tests.gd" >"$LOG_FILE" 2>&1
+"$GODOT_BIN" --headless --path "$ROOT_DIR" --script "$ROOT_DIR/tests/smoke_tests.gd" >"$LOG_FILE" 2>&1
 status=$?
 
 if [ "$status" -eq 0 ]; then

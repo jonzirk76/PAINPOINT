@@ -1,12 +1,15 @@
 extends Node
 class_name SpawnerManager
 
+const WALL_OCCLUSION_LAYERS := preload("res://scripts/arena/wall_occlusion_layers.gd")
+
 signal spawn_requested(spawn_position: Vector2, profile)
+signal spawn_proposed(proposal: Dictionary)
+signal general_spawn_requested(profile, spawn_position: Vector2, spawn_flags: Dictionary)
 signal spawner_count_changed(count: int)
 signal spawner_destroyed(spawner, score_value: int)
 signal hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: Dictionary)
 
-@export var spawner_scene: PackedScene = preload("res://scenes/entities/enemy_spawner_entity.tscn")
 @export var default_enemy_profile: Resource = preload("res://resources/enemies/basic_enemy.tres")
 @export var default_spawner_profile: Resource = preload("res://resources/spawners/basic_spawner.tres")
 @export var max_active_enemies: int = 18
@@ -32,7 +35,6 @@ signal hostile_shot_requested(origin: Vector2, direction: Vector2, shot_config: 
 const SPAWNER_PLACEMENT_SCRIPT := preload("res://scripts/resources/spawner_placement.gd")
 
 var enabled: bool = false
-var _spawner_layer: Node = null
 var _spawners: Array = []
 var _current_enemy_count: int = 0
 var _level_definition = null
@@ -42,15 +44,25 @@ var _wall_rects: Array[Rect2] = []
 var _level_wall_rects: Array[Rect2] = []
 var _void_rects: Array[Rect2] = []
 var _playable_rects: Array[Rect2] = []
+var _spawn_exclusion_rects: Array[Rect2] = []
+var _room_spatial_domain = null
+var _dynamic_wall_rects: Array[Rect2] = []
 var _player_provider: Callable
 var _initial_spawns_pending: bool = false
 var _initial_spawn_delay_remaining: float = 0.0
 var _preloaded_initial_spawn_activation_pending: bool = false
+var _perspective_room_id: String = ""
+var _spawn_room_id: String = ""
+var _spawn_generation: int = 0
 
 
 func initialize(context: Dictionary) -> void:
-	_spawner_layer = context.get("spawner_layer", null)
 	_player_provider = context.get("player_position_provider", Callable())
+
+
+func set_spawn_context(room_id: String, generation: int) -> void:
+	_spawn_room_id = room_id
+	_spawn_generation = generation
 
 
 func reset_run(level_definition = null) -> void:
@@ -68,9 +80,6 @@ func reset_run(level_definition = null) -> void:
 
 
 func clear_spawners() -> void:
-	for spawner in _spawners:
-		if is_instance_valid(spawner):
-			spawner.queue_free()
 	_spawners.clear()
 	_initial_spawns_pending = false
 	_initial_spawn_delay_remaining = 0.0
@@ -81,8 +90,8 @@ func clear_spawners() -> void:
 func set_enabled(value: bool) -> void:
 	enabled = value
 	for spawner in _spawners:
-		if is_instance_valid(spawner):
-			spawner.set_enabled(value)
+		if is_instance_valid(spawner) and spawner.has_method("set_spawn_enabled"):
+			spawner.set_spawn_enabled(value)
 	if enabled and _preloaded_initial_spawn_activation_pending:
 		_activate_preloaded_initial_spawn_sequence()
 	elif enabled and _initial_spawns_pending:
@@ -95,7 +104,7 @@ func set_enemy_count(count: int) -> void:
 
 func prepare_spawners_for_preload() -> void:
 	for spawner_node in _spawners:
-		var spawner: EnemySpawnerEntity = spawner_node as EnemySpawnerEntity
+		var spawner: EnemyEntity = spawner_node as EnemyEntity
 		if spawner == null or not is_instance_valid(spawner):
 			continue
 		var birth_duration: float = max(spawner_birth_animation_seconds, 0.08)
@@ -104,14 +113,14 @@ func prepare_spawners_for_preload() -> void:
 		spawner.velocity = Vector2.ZERO
 		spawner.set_meta("preloaded_hidden", true)
 		spawner.set_meta("preloaded_birth_duration", birth_duration)
-		spawner.set_enabled(false)
+		spawner.set_spawn_enabled(false)
 		spawner.set_process(false)
 		spawner.set_physics_process(false)
 
 
 func set_spawners_active(value: bool, materialize_preloaded: bool = false) -> void:
 	for spawner_node in _spawners:
-		var spawner: EnemySpawnerEntity = spawner_node as EnemySpawnerEntity
+		var spawner: EnemyEntity = spawner_node as EnemyEntity
 		if spawner == null or not is_instance_valid(spawner):
 			continue
 		if value:
@@ -139,10 +148,10 @@ func consume_initial_spawn_requests() -> Array[Dictionary]:
 		return requests
 	var projected_enemy_count: int = _current_enemy_count
 	for spawner_index in range(_spawners.size()):
-		var spawner: EnemySpawnerEntity = _spawners[spawner_index] as EnemySpawnerEntity
+		var spawner: EnemyEntity = _spawners[spawner_index] as EnemyEntity
 		if spawner == null or not is_instance_valid(spawner):
 			continue
-		var profile: Resource = spawner.enemy_profile if spawner.enemy_profile != null else default_enemy_profile
+		var profile: Resource = _get_spawned_enemy_profile(spawner)
 		var spawn_count: int = _get_initial_spawn_batch_count(spawner)
 		for spawn_index in range(spawn_count):
 			if projected_enemy_count >= max_active_enemies:
@@ -151,7 +160,17 @@ func consume_initial_spawn_requests() -> Array[Dictionary]:
 				_preloaded_initial_spawn_activation_pending = not requests.is_empty()
 				return requests
 			var spawn_position: Vector2 = _get_initial_spawn_position(spawner, spawner_index, spawn_index, spawn_count)
-			requests.append({"position": spawn_position, "profile": profile})
+			if spawn_position == Vector2.INF:
+				continue
+			requests.append(_build_spawn_proposal(
+				spawn_position,
+				profile,
+				spawner,
+				spawner_index,
+				spawn_index,
+				spawn_count,
+				true
+			))
 			projected_enemy_count += 1
 	_initial_spawns_pending = false
 	_initial_spawn_delay_remaining = 0.0
@@ -162,32 +181,25 @@ func consume_initial_spawn_requests() -> Array[Dictionary]:
 func set_arena_definition(level_definition) -> void:
 	if level_definition == null:
 		return
+	_perspective_room_id = String(level_definition.get_meta("active_room_id", ""))
 	_arena_bounds = level_definition.arena_bounds
 	_arena_shape = int(level_definition.arena_shape)
 	_level_wall_rects = _get_level_collision_rects(level_definition, "active_room_wall_rects", level_definition.wall_rects)
 	_wall_rects = _level_wall_rects.duplicate()
 	_void_rects = _get_level_collision_rects(level_definition, "active_room_void_rects", level_definition.void_rects)
 	_playable_rects = _get_playable_rects(level_definition)
-	for spawner in _spawners:
-		if is_instance_valid(spawner) and spawner.has_method("set_arena_definition"):
-			spawner.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
+	_spawn_exclusion_rects = _get_level_collision_rects(level_definition, "active_room_spawn_exclusion_rects", [])
+	_room_spatial_domain = _get_level_spatial_domain(level_definition)
+	_dynamic_wall_rects.clear()
 
 
 func set_dynamic_wall_rects(extra_wall_rects: Array[Rect2]) -> void:
+	_dynamic_wall_rects = extra_wall_rects.duplicate()
 	_wall_rects = _level_wall_rects.duplicate()
 	_wall_rects.append_array(extra_wall_rects)
-	for spawner in _spawners:
-		if is_instance_valid(spawner) and spawner.has_method("set_arena_definition"):
-			spawner.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
 
 
 func _process(delta: float) -> void:
-	var player_position := _get_player_position()
-	for spawner in _spawners:
-		if is_instance_valid(spawner):
-			spawner.set_target_position(player_position)
-	if enabled:
-		_apply_spawner_separation()
 	if not enabled or not _initial_spawns_pending:
 		return
 	_initial_spawn_delay_remaining = max(_initial_spawn_delay_remaining - delta, 0.0)
@@ -204,49 +216,56 @@ func _spawn_spawner(placement, index: int) -> void:
 		profile = placement.profile if placement.profile != null else default_spawner_profile
 		spawn_position = placement.position
 		warmup = placement.warmup_seconds
-	var spawner = spawner_scene.instantiate()
-	spawner.warmup_seconds = warmup
-	if profile != null and spawner.has_method("initialize_from_profile"):
-		spawner.initialize_from_profile(profile)
-		spawner.spawn_interval = _scale_spawn_interval_for_floor(float(spawner.spawn_interval))
-	else:
-		spawner.initialize(_get_spawner_health(), _get_spawn_interval(), _get_spawner_radius())
-	spawner.global_position = _constrain_spawn_position(spawn_position, float(spawner.body_radius))
-	spawner.set_arena_definition(_arena_bounds, _arena_shape, _wall_rects, _void_rects, _playable_rects)
-	spawner.spawn_ready.connect(_on_spawner_spawn_ready)
-	spawner.health_depleted.connect(_on_spawner_health_depleted)
-	spawner.shot_ready.connect(_on_spawner_shot_ready)
-	if spawner_birth_animation_seconds > 0.0 and spawner.has_method("play_birth_animation"):
-		spawner.play_birth_animation(spawner_birth_animation_seconds)
-	_spawners.append(spawner)
-	_add_child_safely(_get_spawner_parent(), spawner)
+	var radius: float = float(profile.body_radius) if profile != null and profile.get("body_radius") != null else _get_spawner_radius()
+	var final_position: Vector2 = _constrain_spawn_position(spawn_position, radius)
+	general_spawn_requested.emit(profile, final_position, {
+		"allow_when_disabled": true,
+		"birth": spawner_birth_animation_seconds > 0.0,
+		"birth_duration": spawner_birth_animation_seconds,
+		"general": true,
+		"legion_id": index + 1,
+		"warmup_seconds": warmup,
+		"scaled_spawn_interval": _scale_spawn_interval_for_floor(_get_profile_spawn_interval(profile))
+	})
+
+
+func register_general(general: EnemyEntity) -> void:
+	if general == null or not is_instance_valid(general) or not general.is_general() or _spawners.has(general):
+		return
+	var warmup_seconds: float = float(general.get_meta("general_warmup_seconds", general.spawn_profile.warmup_seconds))
+	var scaled_interval: float = float(general.get_meta("general_scaled_spawn_interval", general.spawn_profile.spawn_interval))
+	general.spawn_profile = general.spawn_profile.duplicate() as EnemySpawnProfile
+	general.spawn_profile.warmup_seconds = warmup_seconds
+	general.spawn_profile.spawn_interval = scaled_interval
+	general.delay_next_spawn_until(warmup_seconds)
+	general.spawn_ready.connect(_on_spawner_spawn_ready)
+	general.health_depleted.connect(_on_spawner_health_depleted)
+	_spawners.append(general)
 
 
 func _on_spawner_spawn_ready(_spawner, _spawn_position: Vector2) -> void:
 	if not enabled or _current_enemy_count >= max_active_enemies:
 		return
-	var profile = _spawner.enemy_profile if _spawner != null and _spawner.enemy_profile != null else default_enemy_profile
+	var profile: Resource = _get_spawned_enemy_profile(_spawner as EnemyEntity)
 	var batch_count := _get_spawner_spawn_batch_count(_spawner)
 	var projected_enemy_count := _current_enemy_count
 	for spawn_index in range(batch_count):
 		if projected_enemy_count >= max_active_enemies:
 			return
 		var batch_position := _get_spawn_position_around_spawner(_spawner, spawn_index, batch_count)
+		if batch_position == Vector2.INF:
+			continue
+		spawn_proposed.emit(_build_spawn_proposal(
+			batch_position,
+			profile,
+			_spawner,
+			_spawners.find(_spawner),
+			spawn_index,
+			batch_count,
+			false
+		))
 		spawn_requested.emit(batch_position, profile)
 		projected_enemy_count += 1
-
-
-func _get_spawner_parent() -> Node:
-	return _spawner_layer if _spawner_layer != null else self
-
-
-func _add_child_safely(parent: Node, child: Node) -> void:
-	if parent == null or child == null or child.get_parent() != null:
-		return
-	if parent.is_inside_tree() and Engine.is_in_physics_frame():
-		parent.call_deferred("add_child", child)
-		return
-	parent.add_child(child)
 
 
 func _begin_initial_spawn_sequence() -> void:
@@ -258,11 +277,11 @@ func _begin_initial_spawn_sequence() -> void:
 	for spawner in _spawners:
 		if not is_instance_valid(spawner):
 			continue
-		var shield_after_spawn: float = float(spawner.projectile_shield_after_spawn_seconds)
+		var shield_after_spawn: float = float(spawner.spawn_profile.projectile_shield_after_spawn_seconds)
 		if spawner.has_method("activate_projectile_shield"):
 			spawner.activate_projectile_shield(_initial_spawn_delay_remaining + shield_after_spawn)
 		if spawner.has_method("delay_next_spawn_until"):
-			spawner.delay_next_spawn_until(_initial_spawn_delay_remaining + float(spawner.spawn_interval))
+			spawner.delay_next_spawn_until(_initial_spawn_delay_remaining + float(spawner.spawn_profile.spawn_interval))
 	if _initial_spawn_delay_remaining <= 0.0:
 		_initial_spawns_pending = false
 		_emit_initial_spawn_requests()
@@ -271,14 +290,14 @@ func _begin_initial_spawn_sequence() -> void:
 func _activate_preloaded_initial_spawn_sequence() -> void:
 	_preloaded_initial_spawn_activation_pending = false
 	for spawner_node in _spawners:
-		var spawner: EnemySpawnerEntity = spawner_node as EnemySpawnerEntity
+		var spawner: EnemyEntity = spawner_node as EnemyEntity
 		if spawner == null or not is_instance_valid(spawner):
 			continue
-		var shield_after_spawn: float = float(spawner.projectile_shield_after_spawn_seconds)
+		var shield_after_spawn: float = float(spawner.spawn_profile.projectile_shield_after_spawn_seconds)
 		if spawner.has_method("activate_projectile_shield"):
 			spawner.activate_projectile_shield(shield_after_spawn)
 		if spawner.has_method("delay_next_spawn_until"):
-			spawner.delay_next_spawn_until(float(spawner.spawn_interval))
+			spawner.delay_next_spawn_until(float(spawner.spawn_profile.spawn_interval))
 
 
 func _emit_initial_spawn_requests() -> void:
@@ -289,14 +308,91 @@ func _emit_initial_spawn_requests() -> void:
 		var spawner = _spawners[spawner_index]
 		if not is_instance_valid(spawner):
 			continue
-		var profile = spawner.enemy_profile if spawner.enemy_profile != null else default_enemy_profile
+		var profile: Resource = _get_spawned_enemy_profile(spawner as EnemyEntity)
 		var spawn_count := _get_initial_spawn_batch_count(spawner)
 		for spawn_index in range(spawn_count):
 			if projected_enemy_count >= max_active_enemies:
 				return
 			var spawn_position := _get_initial_spawn_position(spawner, spawner_index, spawn_index, spawn_count)
+			if spawn_position == Vector2.INF:
+				continue
+			spawn_proposed.emit(_build_spawn_proposal(
+				spawn_position,
+				profile,
+				spawner,
+				spawner_index,
+				spawn_index,
+				spawn_count,
+				true
+			))
 			spawn_requested.emit(spawn_position, profile)
 			projected_enemy_count += 1
+
+
+func request_spawn_reroll(proposal: Dictionary) -> void:
+	if String(proposal.get("room_id", "")) != _spawn_room_id:
+		return
+	if int(proposal.get("generation", -1)) != _spawn_generation:
+		return
+	var retry_count: int = int(proposal.get("retry_count", 0)) + 1
+	if retry_count > 3:
+		return
+	var spawner = proposal.get("source_spawner", null)
+	if spawner == null or not is_instance_valid(spawner):
+		return
+	var spawn_index: int = int(proposal.get("spawn_index", 0))
+	var spawn_count: int = max(int(proposal.get("spawn_count", 1)), 1)
+	var initial_horde: bool = bool(proposal.get("initial_horde", false))
+	var base_distance: float = max(
+		float(spawner.body_radius) + (46.0 if initial_horde else 36.0),
+		64.0 if initial_horde else 54.0
+	)
+	var fan_degrees: float = initial_spawn_player_bias_fan_degrees if initial_horde else spawn_player_bias_fan_degrees
+	var phase: float = float(proposal.get("spawner_index", 0)) * 0.09 + float(retry_count) * 0.47
+	var position: Vector2 = _get_biased_spawn_position(
+		spawner,
+		spawn_index,
+		spawn_count,
+		base_distance,
+		deg_to_rad(fan_degrees),
+		phase
+	)
+	if position == Vector2.INF:
+		return
+	var rerolled: Dictionary = proposal.duplicate()
+	rerolled["position"] = position
+	rerolled["retry_count"] = retry_count
+	spawn_proposed.emit(rerolled)
+
+
+func _build_spawn_proposal(
+	position: Vector2,
+	profile,
+	spawner,
+	spawner_index: int,
+	spawn_index: int,
+	spawn_count: int,
+	initial_horde: bool
+) -> Dictionary:
+	var legion_id: int = int(spawner.legion_id) if spawner != null and is_instance_valid(spawner) else 0
+	var general_id: int = int(spawner.general_id) if spawner != null and is_instance_valid(spawner) else 0
+	return {
+		"position": position,
+		"profile": profile,
+		"source_spawner": spawner,
+		"spawner_index": spawner_index,
+		"spawn_index": spawn_index,
+		"spawn_count": spawn_count,
+		"initial_horde": initial_horde,
+		"room_id": _spawn_room_id,
+		"generation": _spawn_generation,
+		"retry_count": 0,
+		"spawn_flags": {
+			"birth": true,
+			"legion_id": legion_id,
+			"general_id": general_id
+		}
+	}
 
 
 func apply_damage(target: Node, packet) -> bool:
@@ -370,9 +466,7 @@ func _on_spawner_health_depleted(spawner) -> void:
 	if not _spawners.has(spawner):
 		return
 	_spawners.erase(spawner)
-	spawner_destroyed.emit(spawner, spawner.score_value)
 	spawner_count_changed.emit(_spawners.size())
-	spawner.queue_free()
 
 
 func _on_spawner_shot_ready(_spawner, origin: Vector2, direction: Vector2, shot_config: Dictionary) -> void:
@@ -389,10 +483,20 @@ func _get_spawner_placements() -> Array:
 	for index in range(positions.size()):
 		var placement = SPAWNER_PLACEMENT_SCRIPT.new()
 		placement.position = positions[index]
-		placement.profile = default_spawner_profile
+		placement.profile = _build_legacy_default_general_profile()
 		placement.warmup_seconds = 1.0 + float(index) * 0.55
 		placements.append(placement)
 	return placements
+
+
+func _build_legacy_default_general_profile() -> Resource:
+	var profile: Resource = default_spawner_profile.duplicate(true)
+	profile.set("max_health", _get_spawner_health())
+	profile.set("body_radius", _get_spawner_radius())
+	var spawn_profile: EnemySpawnProfile = profile.get("spawn_profile") as EnemySpawnProfile
+	if spawn_profile != null:
+		spawn_profile.spawn_interval = float(_level_definition.spawn_interval) if _level_definition != null else default_spawn_interval
+	return profile
 
 
 func _get_spawner_positions() -> Array[Vector2]:
@@ -446,8 +550,8 @@ func _get_spawner_radius() -> float:
 
 
 func _get_spawner_spawn_batch_count(spawner) -> int:
-	if spawner != null and is_instance_valid(spawner):
-		return max(int(spawner.spawn_batch_count), 1)
+	if spawner != null and is_instance_valid(spawner) and spawner.spawn_profile != null:
+		return max(int(spawner.spawn_profile.spawn_batch_count), 1)
 	return 1
 
 
@@ -466,9 +570,21 @@ func _get_initial_spawn_batch_multiplier() -> int:
 func _get_initial_spawn_shield_delay() -> float:
 	var delay := 0.0
 	for spawner in _spawners:
-		if is_instance_valid(spawner):
-			delay = max(delay, float(spawner.projectile_shield_lead_seconds))
+		if is_instance_valid(spawner) and spawner.spawn_profile != null:
+			delay = max(delay, float(spawner.spawn_profile.projectile_shield_lead_seconds))
 	return delay
+
+
+func _get_spawned_enemy_profile(spawner: EnemyEntity) -> Resource:
+	if spawner != null and is_instance_valid(spawner) and spawner.spawn_profile != null and spawner.spawn_profile.enemy_profile != null:
+		return spawner.spawn_profile.enemy_profile
+	return default_enemy_profile
+
+
+func _get_profile_spawn_interval(profile) -> float:
+	if profile != null and profile.get("spawn_profile") != null and profile.spawn_profile != null:
+		return float(profile.spawn_profile.spawn_interval)
+	return _get_spawn_interval()
 
 
 func _get_initial_spawn_position(spawner, spawner_index: int, spawn_index: int, spawn_count: int) -> Vector2:
@@ -499,9 +615,12 @@ func _get_biased_spawn_position(spawner, spawn_index: int, spawn_count: int, bas
 		var distance: float = max(base_distance + radial_stagger + floor(float(attempt) / 4.0) * 18.0, float(spawner.body_radius) + 28.0)
 		var angle: float = bias_direction.angle() + fan_offset + side_step
 		var candidate: Vector2 = _constrain_spawn_position(spawner.global_position + Vector2.RIGHT.rotated(angle) * distance, 24.0)
-		if _position_is_clear_of_walls(candidate):
+		if _spawn_position_is_valid(candidate, 24.0):
 			return candidate
-	return _constrain_spawn_position(spawner.global_position, 24.0)
+	var fallback_origin: Vector2 = spawner.global_position + Vector2.RIGHT.rotated(
+		bias_direction.angle() + fan_offset
+	) * base_distance
+	return _find_safe_interior_spawn_position(fallback_origin, 24.0)
 
 
 func _get_spawn_bias_direction(spawner) -> Vector2:
@@ -526,22 +645,65 @@ func _get_spawn_radial_stagger(spawn_index: int, spawn_count: int) -> float:
 	return (float(spawn_index % 3) - 1.0) * 10.0
 
 
-func _position_is_clear_of_walls(position: Vector2) -> bool:
+func _spawn_position_is_valid(position: Vector2, clearance: float) -> bool:
+	if position == Vector2.INF:
+		return false
+	if _room_spatial_domain != null and _room_spatial_domain.has_method("contains_spawn_position"):
+		return bool(_room_spatial_domain.contains_spawn_position(position, clearance, _dynamic_wall_rects))
+	var reconstrained: Vector2 = _constrain_spawn_position(position, clearance)
+	if reconstrained.distance_squared_to(position) > 0.25:
+		return false
+	return _position_is_clear_of_walls(position, clearance)
+
+
+func _find_safe_interior_spawn_position(origin: Vector2, clearance: float) -> Vector2:
+	var candidates: Array[Vector2] = []
+	var search_rects: Array[Rect2] = _playable_rects.duplicate()
+	if search_rects.is_empty():
+		search_rects.append(_arena_bounds)
+	for playable_rect in search_rects:
+		var safe_rect: Rect2 = playable_rect.grow(-clearance)
+		if safe_rect.size.x <= 1.0 or safe_rect.size.y <= 1.0:
+			continue
+		for y_ratio in [0.2, 0.5, 0.8]:
+			for x_ratio in [0.2, 0.5, 0.8]:
+				candidates.append(Vector2(
+					lerp(safe_rect.position.x, safe_rect.end.x, float(x_ratio)),
+					lerp(safe_rect.position.y, safe_rect.end.y, float(y_ratio))
+				))
+	candidates.sort_custom(func(a: Vector2, b: Vector2) -> bool:
+		return a.distance_squared_to(origin) < b.distance_squared_to(origin)
+	)
+	for candidate in candidates:
+		if _spawn_position_is_valid(candidate, clearance):
+			return candidate
+	return Vector2.INF
+
+
+func _position_is_clear_of_walls(position: Vector2, clearance: float = 24.0) -> bool:
 	if _level_definition == null:
 		return true
+	if _room_spatial_domain != null and _room_spatial_domain.has_method("contains_spawn_position"):
+		return bool(_room_spatial_domain.contains_spawn_position(position, clearance, _dynamic_wall_rects))
 	for wall_rect in _wall_rects:
-		if wall_rect.grow(24.0).has_point(position):
+		if wall_rect.grow(clearance).has_point(position):
 			return false
 	for void_rect in _void_rects:
-		if void_rect.grow(24.0).has_point(position):
+		if void_rect.grow(clearance).has_point(position):
+			return false
+	for exclusion_rect in _spawn_exclusion_rects:
+		if exclusion_rect.grow(clearance).has_point(position):
 			return false
 	return true
 
 
 func _constrain_spawn_position(position: Vector2, clearance: float) -> Vector2:
+	if _room_spatial_domain != null and _room_spatial_domain.has_method("constrain_spawn_position"):
+		return _room_spatial_domain.constrain_spawn_position(position, clearance, _dynamic_wall_rects)
 	var blockers: Array[Rect2] = []
 	blockers.append_array(_wall_rects)
 	blockers.append_array(_void_rects)
+	blockers.append_array(_spawn_exclusion_rects)
 	return ArenaGeometry.constrain_point_to_playable_regions(position, _arena_bounds, _arena_shape, _playable_rects, blockers, clearance)
 
 
@@ -556,6 +718,14 @@ func _get_playable_rects(level_definition) -> Array[Rect2]:
 				if active_rect is Rect2:
 					rects.append(active_rect)
 			if not rects.is_empty():
+				return rects
+	if level_definition.has_meta("active_room_id") and level_definition.has_meta("active_room_bounds"):
+		var active_room_id := String(level_definition.get_meta("active_room_id", ""))
+		var active_room_bounds_value: Variant = level_definition.get_meta("active_room_bounds")
+		if not active_room_id.is_empty() and active_room_bounds_value is Rect2:
+			var active_room_bounds: Rect2 = active_room_bounds_value
+			if active_room_bounds.size != Vector2.ZERO:
+				rects.append(active_room_bounds)
 				return rects
 	if not level_definition.has_meta("footprint_cells"):
 		return rects
@@ -575,6 +745,15 @@ func _get_level_collision_rects(level_definition, meta_key: String, fallback: Ar
 				return rects
 	rects.append_array(fallback)
 	return rects
+
+
+func _get_level_spatial_domain(level_definition):
+	if level_definition == null:
+		return null
+	var active_domain = level_definition.get("active_room_spatial_domain")
+	if active_domain != null:
+		return active_domain
+	return level_definition.get("room_spatial_domain")
 
 
 func _apply_spawner_separation() -> void:

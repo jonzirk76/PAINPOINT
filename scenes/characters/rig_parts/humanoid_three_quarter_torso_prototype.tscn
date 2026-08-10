@@ -1,0 +1,12 @@
+[gd_scene format=3]
+
+[node name="Torso" type="Node2D"]
+
+[node name="BodyMass" type="Polygon2D" parent="."]
+color = Color(0.019608, 0.188235, 0.501961, 1)
+polygon = PackedVector2Array(-5, -20, -22, -18, -34, -10, -33, 35, -15, 49, 8, 52, 30, 46, 47, 38, 54, 14, 38, -8, 18, -17)
+
+[node name="Armor" type="Polygon2D" parent="."]
+z_index = 1
+color = Color(0.070588, 0.086275, 0.145098, 1)
+polygon = PackedVector2Array(-3, -16, -25, -16, -32, 1, -20, 18, 2, 27, 25, 25, 43, 12, 34, -7, 17, -15)

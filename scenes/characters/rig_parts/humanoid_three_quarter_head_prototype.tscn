@@ -1,0 +1,13 @@
+[gd_scene format=3]
+
+[node name="Head" type="Node2D"]
+
+[node name="Neck" type="Polygon2D" parent="."]
+z_index = -1
+position = Vector2(2, -15)
+color = Color(0.827451, 0.682353, 0.619608, 1)
+polygon = PackedVector2Array(-8, -6, 10, -6, 11, 8, -9, 8)
+
+[node name="HeadMass" type="Polygon2D" parent="."]
+color = Color(0.839216, 0.678431, 0.607843, 1)
+polygon = PackedVector2Array(8, -102, -13, -100, -28, -90, -36, -73, -37, -52, -30, -30, -20, -10, -8, 1, 8, 6, 25, 2, 38, -8, 50, -20, 58, -45, 56, -70, 42, -90, 25, -100)

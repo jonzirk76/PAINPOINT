@@ -184,6 +184,14 @@ func _draw() -> void:
 		draw_arc(Vector2.ZERO, body_radius + 10.0 + pulse * 4.0, 0.0, TAU, 28, Color(1.0, 1.0, 1.0, 0.72), 3.5)
 
 
+func get_perspective_world_rect() -> Rect2:
+	var visual_extent: float = body_radius + 15.0
+	return Rect2(
+		global_position - Vector2(visual_extent, visual_extent),
+		Vector2.ONE * visual_extent * 2.0
+	)
+
+
 func _add_collision() -> void:
 	if _collision_shape != null:
 		_sync_collision_radius()

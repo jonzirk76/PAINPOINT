@@ -101,7 +101,10 @@ func reset_run(generation_floor: int = 1, generation_seed: int = 0) -> void:
 func reset_encounter_test(generation_floor: int, generation_seed: int, preferred_room_kind: String, forced_profiles: Array[Resource], test_options: Dictionary = {}) -> void:
 	floor_number = max(generation_floor, 1)
 	run_seed = max(generation_seed, 0)
-	_generate_layout()
+	if bool(test_options.get("compact_layout", false)):
+		_generate_compact_encounter_test_layout(preferred_room_kind)
+	else:
+		_generate_layout()
 	var test_room_id := _get_encounter_test_room_id(preferred_room_kind)
 	if test_room_id.is_empty():
 		test_room_id = _get_encounter_test_room_id("combat")
@@ -111,6 +114,32 @@ func reset_encounter_test(generation_floor: int, generation_seed: int, preferred
 	current_room_id = test_room_id
 	_reveal_room("start")
 	_reveal_room(current_room_id)
+	room_changed.emit(current_room_id)
+
+
+func _generate_compact_encounter_test_layout(preferred_room_kind: String) -> void:
+	_clear_full_floor_geometry_cache()
+	_rooms.clear()
+	_room_order.clear()
+	_occupied_cells.clear()
+	_large_room_count = 0
+	_crossroads_placed = false
+	current_room_id = ""
+	floor_cat_room_id = ""
+	_floor_cat_room_position = Vector2.ZERO
+	_floor_cat_seed = 0
+	floor_generation_seed = _compute_floor_generation_seed()
+	var piece: RoomPieceDefinition = CHALLENGE_PIECE
+	match preferred_room_kind:
+		"boss":
+			piece = BOSS_PIECE
+		"combat":
+			piece = CROSSROADS_PIECE
+	_place_room("test", piece, Vector2i.ZERO)
+	_generate_room_interiors()
+	current_room_id = "test"
+	_reveal_room(current_room_id)
+	dungeon_generated.emit(_rooms.size())
 	room_changed.emit(current_room_id)
 
 
@@ -141,14 +170,20 @@ func get_current_level_definition():
 	if state.is_empty():
 		return null
 	if state.has("level_definition") and state["level_definition"] != null:
-		return state["level_definition"]
+		var cached_level = state["level_definition"]
+		cached_level.set_meta("active_room_id", current_room_id)
+		return cached_level
 	var piece = state["piece"]
 	var level = piece.create_level_definition()
 	level.id = String(state["id"])
 	level.display_name = "%s - %s" % [piece.display_name, String(state["id"]).capitalize()]
 	level.difficulty_label = "Floor %d %s" % [floor_number, piece.room_kind.capitalize()]
 	level.floor_number = max(floor_number, 1)
+	level.set_meta("floor_visual_seed", floor_generation_seed)
+	level.set_meta("active_room_id", current_room_id)
 	_apply_floor_scaling(level, String(piece.room_kind))
+	_apply_room_geometry(level, piece, state.get("connection_edges", {}))
+	_interior_generator.attach_spatial_domain(level)
 	return level
 
 
@@ -174,6 +209,10 @@ func get_full_floor_level_definition(active_room_id: String = "", include_active
 		level.set_meta("active_room_bounds", overlay.get("active_room_bounds", Rect2()))
 		if overlay.has("active_room_playable_rects"):
 			level.set_meta("active_room_playable_rects", Array(overlay.get("active_room_playable_rects", [])).duplicate())
+		var active_domain = _get_full_floor_room_spatial_domain(active_room_id)
+		if active_domain != null:
+			level.active_room_spatial_domain = active_domain
+			level.set_meta("active_room_spawn_exclusion_rects", active_domain.get_transition_regions())
 	_apply_visible_floor_destructible_prop_placements(level, active_room_id, room_ids, include_active_contents)
 	if include_active_contents:
 		_apply_active_room_contents_to_full_floor_level(level, active_room_id, room_ids)
@@ -295,10 +334,25 @@ func get_current_door_infos() -> Array:
 				"trigger_rect": ROOM_GEOMETRY_BUILDER.get_trigger_rect(state["piece"].footprint_cells, source_cell, direction),
 				"opening_rect": ROOM_GEOMETRY_BUILDER.get_gate_visual_rect(state["piece"].footprint_cells, source_cell, direction),
 				"passage_rect": ROOM_GEOMETRY_BUILDER.get_gate_passage_rect(state["piece"].footprint_cells, source_cell, direction),
+				"wall_height_tiles": max(int(state["piece"].wall_height_tiles), 1),
 				"source_cell": source_cell,
 				"target_cell": edge.get("target_cell", Vector2i.ZERO)
 			})
 	return door_infos
+
+
+func _get_full_floor_room_spatial_domain(room_id: String):
+	if room_id.is_empty() or not _ensure_full_floor_geometry_cache() or not _rooms.has(room_id):
+		return null
+	var state: Dictionary = _rooms[room_id]
+	var level: LevelDefinition = state.get("level_definition", null) as LevelDefinition
+	if level == null or level.room_spatial_domain == null:
+		return null
+	var domain = level.room_spatial_domain
+	if domain == null or not domain.has_method("translated"):
+		return null
+	var offset: Vector2 = _full_floor_room_offsets_cache.get(room_id, Vector2.ZERO)
+	return domain.translated(offset)
 
 
 func get_current_entry_position(entry_direction: String) -> Vector2:
@@ -492,6 +546,7 @@ func _build_floor_level_definition_from_geometry(cleared_room_ids: Array[String]
 	level.display_name = display_name
 	level.difficulty_label = difficulty_label
 	level.floor_number = max(floor_number, 1)
+	level.set_meta("floor_visual_seed", floor_generation_seed)
 	level.arena_shape = 0
 	level.arena_bounds = ROOM_GEOMETRY_BUILDER.get_bounds(floor_cells)
 	level.use_default_spawners = false
@@ -502,14 +557,19 @@ func _build_floor_level_definition_from_geometry(cleared_room_ids: Array[String]
 	level.spawner_placements = empty_spawners
 	level.destructible_prop_placements = empty_props
 	level.void_rects = empty_voids
-	var wall_top_tiles: Array[Rect2] = _get_cleared_floor_wall_top_tiles(cleared_room_ids, min_world_cell, floor_cells)
-	var wall_body_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(wall_top_tiles, floor_cells)
-	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(wall_body_tiles)
+	var wall_floor_tiles: Array[Rect2] = _get_cleared_floor_wall_top_tiles(cleared_room_ids, min_world_cell, floor_cells)
+	var wall_height_tiles := _get_floor_wall_height_tiles(cleared_room_ids)
+	var wall_body_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(wall_floor_tiles, floor_cells, {}, wall_height_tiles)
+	var wall_top_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_top_visual_tile_rects(wall_floor_tiles, wall_height_tiles)
+	var wall_collision_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_collision_tile_rects(wall_floor_tiles, floor_cells)
+	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(wall_collision_tiles)
 	level.set_meta("footprint_cells", floor_cells.duplicate())
+	level.set_meta("wall_height_tiles", wall_height_tiles)
 	level.set_meta("connection_edges", {})
 	level.set_meta("wall_top_tile_rects", wall_top_tiles)
 	level.set_meta("wall_body_tile_rects", wall_body_tiles)
-	level.set_meta("wall_tile_rects", wall_top_tiles)
+	level.set_meta("wall_floor_tile_rects", wall_floor_tiles)
+	level.set_meta("wall_tile_rects", wall_floor_tiles)
 	level.set_meta("void_tile_rects", empty_voids)
 	return level
 
@@ -553,6 +613,7 @@ func get_full_floor_traversal_door_infos() -> Array:
 				"trigger_rect": _translated_rect(trigger_rect, offset),
 				"opening_rect": _translated_rect(opening_rect, offset),
 				"passage_rect": _translated_rect(passage_rect, offset),
+				"wall_height_tiles": max(int(piece.wall_height_tiles), 1),
 				"source_room_id": room_id,
 				"full_floor_transition": true
 			})
@@ -562,6 +623,39 @@ func get_full_floor_traversal_door_infos() -> Array:
 			stored_infos.append(Dictionary(door_info).duplicate())
 		_full_floor_traversal_door_infos_cache[cache_key] = stored_infos
 	return door_infos
+
+
+func get_full_floor_welcome_mat_infos() -> Array:
+	var mat_infos: Array = []
+	if not _ensure_full_floor_geometry_cache():
+		return mat_infos
+	for room_id in _get_full_floor_visible_room_ids(current_room_id):
+		if room_id.is_empty() or not _rooms.has(room_id):
+			continue
+		var state: Dictionary = _rooms[room_id]
+		var piece: RoomPieceDefinition = state.get("piece", null) as RoomPieceDefinition
+		if piece == null:
+			continue
+		var connections: Dictionary = state.get("connections", {})
+		var connection_edges: Dictionary = state.get("connection_edges", {})
+		var offset: Vector2 = _get_cached_full_floor_room_offset(room_id)
+		for direction in CARDINAL_DIRECTIONS:
+			if not connections.has(direction):
+				continue
+			var edge: Dictionary = connection_edges.get(direction, {})
+			var source_cell: Vector2i = edge.get("source_cell", Vector2i.ZERO)
+			var opening_rect := ROOM_GEOMETRY_BUILDER.get_gate_visual_rect(
+				piece.footprint_cells,
+				source_cell,
+				direction
+			)
+			mat_infos.append({
+				"direction": direction,
+				"opening_rect": _translated_rect(opening_rect, offset),
+				"source_room_id": room_id,
+				"room_center": get_full_floor_room_bounds(room_id).get_center()
+			})
+	return mat_infos
 
 
 func get_full_floor_position_for_room_position(room_id: String, room_position: Vector2) -> Vector2:
@@ -712,7 +806,24 @@ func get_room_ids() -> Array[String]:
 
 func _get_cleared_floor_wall_tiles(cleared_room_ids: Array[String], min_world_cell: Vector2i, floor_cells: Array[Vector2i]) -> Array[Rect2]:
 	var wall_top_tiles: Array[Rect2] = _get_cleared_floor_wall_top_tiles(cleared_room_ids, min_world_cell, floor_cells)
-	return ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(wall_top_tiles, floor_cells)
+	return ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(
+		wall_top_tiles,
+		floor_cells,
+		{},
+		_get_floor_wall_height_tiles(cleared_room_ids)
+	)
+
+
+func _get_floor_wall_height_tiles(room_ids: Array[String]) -> int:
+	var resolved_height := 1
+	for room_id in room_ids:
+		if room_id.is_empty() or not _rooms.has(room_id):
+			continue
+		var state: Dictionary = _rooms[room_id]
+		var piece: RoomPieceDefinition = state.get("piece", null) as RoomPieceDefinition
+		if piece != null:
+			resolved_height = max(resolved_height, int(piece.wall_height_tiles))
+	return resolved_height
 
 
 func _get_cleared_floor_wall_top_tiles(cleared_room_ids: Array[String], min_world_cell: Vector2i, floor_cells: Array[Vector2i]) -> Array[Rect2]:
@@ -762,8 +873,8 @@ func _get_room_wall_tiles(state: Dictionary) -> Array[Rect2]:
 func _get_room_wall_top_tiles(state: Dictionary) -> Array[Rect2]:
 	var wall_top_tiles: Array[Rect2] = []
 	var room_level: LevelDefinition = state.get("level_definition", null) as LevelDefinition
-	if room_level != null and room_level.has_meta("wall_top_tile_rects"):
-		for rect in room_level.get_meta("wall_top_tile_rects"):
+	if room_level != null and room_level.has_meta("wall_floor_tile_rects"):
+		for rect in room_level.get_meta("wall_floor_tile_rects"):
 			if rect is Rect2:
 				wall_top_tiles.append(rect)
 		return wall_top_tiles
@@ -791,7 +902,12 @@ func _get_room_shell_body_tiles(state: Dictionary) -> Array[Rect2]:
 		var empty_tiles: Array[Rect2] = []
 		return empty_tiles
 	var wall_top_tiles := ROOM_GEOMETRY_BUILDER.build_wall_tile_rects(piece.footprint_cells, connection_edges)
-	return ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(wall_top_tiles, piece.footprint_cells, connection_edges)
+	return ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(
+		wall_top_tiles,
+		piece.footprint_cells,
+		connection_edges,
+		max(int(piece.wall_height_tiles), 1)
+	)
 
 
 func _get_full_floor_room_ids() -> Array[String]:
@@ -971,17 +1087,64 @@ func _get_full_floor_fog_rects(active_room_id: String, room_ids: Array[String]) 
 	if floor_cells.is_empty():
 		return fog_rects
 	var min_world_cell: Vector2i = _full_floor_min_world_cell_cache if use_full_floor_cache else _get_cleared_floor_min_world_cell(room_ids)
-	var visible_cell_lookup: Dictionary = _get_full_floor_visible_cell_lookup(active_room_id, room_ids, min_world_cell)
-	var min_floor_cell: Vector2i = ROOM_GEOMETRY_BUILDER.get_min_cell(floor_cells)
-	var max_floor_cell: Vector2i = ROOM_GEOMETRY_BUILDER.get_max_cell(floor_cells)
-	var fog_padding_cells := 1
-	for y: int in range(min_floor_cell.y - fog_padding_cells, max_floor_cell.y + fog_padding_cells + 1):
-		for x: int in range(min_floor_cell.x - fog_padding_cells, max_floor_cell.x + fog_padding_cells + 1):
-			var floor_cell := Vector2i(x, y)
-			if visible_cell_lookup.has(_cell_key(floor_cell)):
-				continue
-			fog_rects.append(ROOM_GEOMETRY_BUILDER.get_cell_rect(floor_cells, floor_cell))
+	for room_id: String in room_ids:
+		if _room_is_visible_on_full_floor(room_id, active_room_id) or not _rooms.has(room_id):
+			continue
+		var state: Dictionary = _rooms[room_id]
+		var piece: RoomPieceDefinition = state.get("piece", null) as RoomPieceDefinition
+		if piece == null:
+			continue
+		var offset: Vector2 = _get_cached_full_floor_room_offset(room_id) if use_full_floor_cache else _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
+		for local_cell: Vector2i in piece.footprint_cells:
+			var room_envelope_rect := ROOM_GEOMETRY_BUILDER.get_cell_rect(piece.footprint_cells, local_cell)
+			fog_rects.append(_raise_fog_rect(
+				_translated_rect(room_envelope_rect, offset),
+				max(int(piece.wall_height_tiles), 1)
+			))
+	fog_rects.append_array(_get_full_floor_outer_envelope_fog_rects(floor_cells, room_ids))
 	return fog_rects
+
+
+func _get_full_floor_outer_envelope_fog_rects(
+	floor_cells: Array[Vector2i],
+	room_ids: Array[String]
+) -> Array[Rect2]:
+	var envelope_rects: Array[Rect2] = []
+	if floor_cells.is_empty():
+		return envelope_rects
+	var wall_height_tiles: int = _get_floor_wall_height_tiles(room_ids)
+	var exterior_cells: Dictionary = {}
+	for edge in ROOM_GEOMETRY_BUILDER.get_exposed_edges(floor_cells):
+		var cell: Vector2i = edge.get("cell", Vector2i.ZERO)
+		var direction := String(edge.get("direction", ""))
+		var direction_offset: Vector2i = ROOM_GEOMETRY_BUILDER.DIRECTION_OFFSETS.get(
+			direction,
+			Vector2i.ZERO
+		)
+		if direction_offset == Vector2i.ZERO:
+			continue
+		var exterior_cell: Vector2i = cell + direction_offset
+		var exterior_key := "%d:%d" % [exterior_cell.x, exterior_cell.y]
+		if exterior_cells.has(exterior_key):
+			continue
+		exterior_cells[exterior_key] = true
+		var source_cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(floor_cells, cell)
+		var exterior_rect := Rect2(
+			source_cell_rect.position + Vector2(direction_offset) * ROOM_GEOMETRY_BUILDER.CELL_SIZE,
+			ROOM_GEOMETRY_BUILDER.CELL_SIZE
+		)
+		envelope_rects.append(_raise_fog_rect(exterior_rect, wall_height_tiles))
+	return envelope_rects
+
+
+func _raise_fog_rect(rect: Rect2, wall_height_tiles: int) -> Rect2:
+	return Rect2(
+		rect.position + Vector2(
+			0.0,
+			-ROOM_GEOMETRY_BUILDER.WALL_TILE_SIZE * float(max(wall_height_tiles, 1))
+		),
+		rect.size
+	)
 
 
 func _get_full_floor_inactive_room_dim_rects(active_room_id: String, room_ids: Array[String]) -> Array[Rect2]:
@@ -1006,7 +1169,10 @@ func _get_full_floor_inactive_room_dim_rects(active_room_id: String, room_ids: A
 		var offset: Vector2 = _get_cached_full_floor_room_offset(room_id) if use_full_floor_cache else _get_room_to_cleared_floor_offset(state, min_world_cell, floor_cells)
 		for local_cell: Vector2i in piece.footprint_cells:
 			var cell_rect: Rect2 = ROOM_GEOMETRY_BUILDER.get_cell_rect(piece.footprint_cells, local_cell)
-			dim_rects.append(_translated_rect(cell_rect, offset))
+			dim_rects.append(_raise_fog_rect(
+				_translated_rect(cell_rect, offset),
+				max(int(piece.wall_height_tiles), 1)
+			))
 	return dim_rects
 
 
@@ -1241,16 +1407,20 @@ func _configure_encounter_test_room(room_id: String, forced_profiles: Array[Reso
 		level.encounter_budget = 0
 	if test_options.has("randomize_agent_boss_each_load"):
 		level.randomize_agent_boss_each_load = bool(test_options.get("randomize_agent_boss_each_load", false))
+	if test_options.has("max_active_enemies"):
+		level.max_active_enemies = max(int(test_options.get("max_active_enemies", level.max_active_enemies)), 1)
 	level.initial_spawn_batch_multiplier_override = 0 if bool(test_options.get("disable_initial_spawns", true)) else -1
 	var spawner_count: int = max(int(test_options.get("spawner_count", 0)), 0)
-	level.spawner_placements = _build_encounter_test_spawner_placements(level, spawner_count, bool(test_options.get("passive_spawners", true)))
+	var spawner_profile: Resource = test_options.get("spawner_profile", null) as Resource
+	var spawner_warmup_seconds: float = float(test_options.get("spawner_warmup_seconds", -1.0))
+	level.spawner_placements = _build_encounter_test_spawner_placements(level, spawner_count, bool(test_options.get("passive_spawners", true)), spawner_profile, spawner_warmup_seconds)
 	var empty_positions: Array[Vector2] = []
 	level.spawner_positions = empty_positions
 	state["level_definition"] = level
 	_rooms[room_id] = state
 
 
-func _build_encounter_test_spawner_placements(level: LevelDefinition, spawner_count: int, passive_spawners: bool) -> Array[Resource]:
+func _build_encounter_test_spawner_placements(level: LevelDefinition, spawner_count: int, passive_spawners: bool, profile_override: Resource = null, warmup_override: float = -1.0) -> Array[Resource]:
 	var placements: Array[Resource] = []
 	if level == null or spawner_count <= 0:
 		return placements
@@ -1264,8 +1434,8 @@ func _build_encounter_test_spawner_placements(level: LevelDefinition, spawner_co
 	for index in range(spawner_count):
 		var placement = SPAWNER_PLACEMENT_SCRIPT.new()
 		placement.position = source_positions[index % source_positions.size()] if not source_positions.is_empty() else _get_encounter_test_spawner_fallback_position(level, index, spawner_count)
-		placement.profile = _make_encounter_test_spawner_profile(passive_spawners)
-		placement.warmup_seconds = 999.0 if passive_spawners else 2.8 + float(index) * 0.8
+		placement.profile = profile_override.duplicate(true) if profile_override != null else _make_encounter_test_spawner_profile(passive_spawners)
+		placement.warmup_seconds = warmup_override if warmup_override >= 0.0 else (999.0 if passive_spawners else 2.8 + float(index) * 0.8)
 		placements.append(placement)
 	return placements
 
@@ -1274,15 +1444,15 @@ func _make_encounter_test_spawner_profile(passive_spawner: bool) -> Resource:
 	var profile: Resource = BASIC_SPAWNER.duplicate(true)
 	if passive_spawner:
 		profile.set("max_health", max(int(profile.get("max_health")), 28))
-		profile.set("spawn_interval", 999.0)
-		profile.set("spawn_batch_count", 1)
-		profile.set("shoots_projectiles", false)
+		var spawn_profile: EnemySpawnProfile = profile.get("spawn_profile") as EnemySpawnProfile
+		if spawn_profile != null:
+			spawn_profile.spawn_interval = 999.0
+			spawn_profile.spawn_batch_count = 1
 		profile.set("special_attack_kind", "")
-		profile.set("move_speed", 0.0)
+		profile.set("speed", 0.0)
 		profile.set("strafe_speed", 0.0)
-		profile.set("knockback_multiplier", min(float(profile.get("knockback_multiplier")), 0.06))
-		profile.set("base_color", Color(0.22, 0.34, 0.4, 1.0))
-		profile.set("core_color", Color(0.28, 0.78, 0.92, 1.0))
+		profile.set("crowd_weight", max(float(profile.get("crowd_weight")), 20.0))
+		profile.set("body_color", Color(0.22, 0.34, 0.4, 1.0))
 		profile.set("accent_color", Color(0.62, 1.0, 0.72, 1.0))
 	return profile
 
@@ -1774,6 +1944,9 @@ func _generate_room_interiors() -> void:
 			level.floor_number = max(floor_number, 1)
 			_apply_floor_scaling(level, room_kind)
 			_apply_room_geometry(level, piece, state["connection_edges"])
+		if level.room_spatial_domain == null:
+			_interior_generator.attach_spatial_domain(level)
+		level.set_meta("floor_visual_seed", floor_generation_seed)
 		state["level_definition"] = level
 		_rooms[room_id] = state
 
@@ -1911,13 +2084,18 @@ func _apply_room_geometry(level, piece, connection_edges: Dictionary) -> void:
 	level.arena_bounds = ROOM_GEOMETRY_BUILDER.get_bounds(piece.footprint_cells)
 	level.set_meta("footprint_cells", piece.footprint_cells.duplicate())
 	level.set_meta("connection_edges", connection_edges.duplicate())
-	var wall_top_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_tile_rects(piece.footprint_cells, connection_edges)
-	wall_top_tiles.append_array(ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(piece.wall_rects))
-	var wall_body_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(wall_top_tiles, piece.footprint_cells, connection_edges)
-	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(wall_body_tiles)
+	var wall_floor_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_tile_rects(piece.footprint_cells, connection_edges)
+	wall_floor_tiles.append_array(ROOM_GEOMETRY_BUILDER.rects_to_wall_tiles(piece.wall_rects))
+	var wall_height_tiles: int = max(int(piece.wall_height_tiles), 1)
+	var wall_body_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_body_tile_rects(wall_floor_tiles, piece.footprint_cells, connection_edges, wall_height_tiles)
+	var wall_top_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_top_visual_tile_rects(wall_floor_tiles, wall_height_tiles)
+	var wall_collision_tiles: Array[Rect2] = ROOM_GEOMETRY_BUILDER.build_wall_collision_tile_rects(wall_floor_tiles, piece.footprint_cells, connection_edges)
+	level.wall_rects = ROOM_GEOMETRY_BUILDER.merge_wall_tiles(wall_collision_tiles)
 	level.set_meta("wall_top_tile_rects", wall_top_tiles)
 	level.set_meta("wall_body_tile_rects", wall_body_tiles)
-	level.set_meta("wall_tile_rects", wall_top_tiles)
+	level.set_meta("wall_floor_tile_rects", wall_floor_tiles)
+	level.set_meta("wall_tile_rects", wall_floor_tiles)
+	level.set_meta("wall_height_tiles", wall_height_tiles)
 
 
 func _get_extra_spawner_count(room_kind: String) -> int:

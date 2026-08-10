@@ -1,0 +1,44 @@
+[gd_resource type="Resource" script_class="EnemyProfile" load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/enemy_profile.gd" id="1_profile"]
+[ext_resource type="Script" path="res://scripts/resources/enemy_spawn_profile.gd" id="2_spawn"]
+[ext_resource type="Script" path="res://scripts/resources/commissar_program.gd" id="3_program"]
+[ext_resource type="Resource" path="res://resources/enemies/repair_drone.tres" id="4_drone"]
+
+[sub_resource type="Resource" id="CommissarProgram_tier_1"]
+script = ExtResource("3_program")
+
+[sub_resource type="Resource" id="EnemySpawnProfile_commissar"]
+script = ExtResource("2_spawn")
+enemy_profile = ExtResource("4_drone")
+spawn_interval = 2.4
+spawn_batch_count = 2
+warmup_seconds = 0.8
+projectile_shield_lead_seconds = 0.0
+projectile_shield_after_spawn_seconds = 0.0
+tactics_kind = "support_corps"
+visual_kind = "commissar"
+
+[resource]
+script = ExtResource("1_profile")
+behavior_kind = "commissar"
+max_health = 32
+speed = 72.0
+contact_damage = 0
+contact_radius = 0.0
+contact_cooldown = 0.65
+score_value = 180
+body_radius = 32.0
+crowd_weight = 10.0
+body_color = Color(0.12, 0.15, 0.2, 1)
+accent_color = Color(1, 0.66, 0.12, 1)
+preferred_distance = 350.0
+distance_band = 92.0
+strafe_speed = 44.0
+shot_cooldown = 1.85
+projectile_speed = 520.0
+projectile_damage = 2
+projectile_radius = 12.0
+max_simultaneous_repairers = 2
+spawn_profile = SubResource("EnemySpawnProfile_commissar")
+commissar_program = SubResource("CommissarProgram_tier_1")

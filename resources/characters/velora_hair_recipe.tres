@@ -1,0 +1,71 @@
+[gd_resource type="Resource" script_class="CharacterVisualRecipe" format=3 uid="uid://bldf4fay1xb74"]
+
+[ext_resource type="Script" uid="uid://c3ird06aum2cv" path="res://scripts/resources/character_visual_recipe.gd" id="1_1x4y5"]
+[ext_resource type="Script" uid="uid://b7t045r86swc7" path="res://scripts/resources/character_anchor_map.gd" id="1_smawk"]
+[ext_resource type="Script" uid="uid://dx6ngaw21k2se" path="res://scripts/resources/character_module_spec.gd" id="2_kfac1"]
+[ext_resource type="Script" uid="uid://dodgfqnjxjnd8" path="res://scripts/resources/character_palette.gd" id="3_avpx2"]
+
+[sub_resource type="Resource" id="Resource_bdr7j"]
+script = ExtResource("1_smawk")
+
+[sub_resource type="Resource" id="Resource_63ijp"]
+script = ExtResource("2_kfac1")
+role = "hair_back_mass"
+layer_order = 10
+anchor_name = "head_center"
+animation_tag = "hair_bounce_heavy"
+
+[sub_resource type="Resource" id="Resource_iv4bc"]
+script = ExtResource("2_kfac1")
+role = "hair_ponytail"
+layer_order = 20
+anchor_name = "ponytail_root"
+animation_tag = "hair_bounce_heavy"
+
+[sub_resource type="Resource" id="Resource_65f0i"]
+script = ExtResource("2_kfac1")
+role = "hair_side_lock_left"
+layer_order = 30
+anchor_name = "side_lock_left_root"
+animation_tag = "hair_bounce_light"
+
+[sub_resource type="Resource" id="Resource_02s4h"]
+script = ExtResource("2_kfac1")
+role = "hair_side_lock_right"
+layer_order = 31
+anchor_name = "side_lock_right_root"
+mirror_x = true
+animation_tag = "hair_bounce_light"
+
+[sub_resource type="Resource" id="Resource_nolhe"]
+script = ExtResource("2_kfac1")
+role = "hair_bangs"
+layer_order = 40
+anchor_name = "bangs_root"
+animation_tag = "hair_bounce_light"
+
+[sub_resource type="Resource" id="Resource_up6vd"]
+script = ExtResource("2_kfac1")
+role = "hair_top_loop"
+layer_order = 50
+anchor_name = "top_loop_root"
+animation_tag = "hair_bounce_light"
+
+[sub_resource type="Resource" id="Resource_bi7wg"]
+script = ExtResource("3_avpx2")
+
+[resource]
+script = ExtResource("1_1x4y5")
+hair_volume = 1.35
+hair_length = 1.55
+back_lock_count = 3
+bang_fringe_count = 8
+ponytail_lock_count = 1
+eye_width = 1.35
+eye_roundness = 0.0
+eye_angle_degrees = 18.0
+chin_length = 0.75
+chin_roundness = 1.0
+palette = SubResource("Resource_bi7wg")
+anchors = SubResource("Resource_bdr7j")
+hair_modules = Array[Resource]([SubResource("Resource_63ijp"), SubResource("Resource_iv4bc"), SubResource("Resource_65f0i"), SubResource("Resource_02s4h"), SubResource("Resource_nolhe"), SubResource("Resource_up6vd")])

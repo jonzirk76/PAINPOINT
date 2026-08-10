@@ -1,0 +1,100 @@
+[gd_scene load_steps=2 format=3 uid="uid://cejfgl8bo7fjw"]
+
+[ext_resource type="PackedScene" uid="uid://bb6yturq6oeje" path="res://scenes/tools/native_head_workbench.tscn" id="1_0wb51"]
+
+[node name="FrontView" type="Node2D"]
+scale = Vector2(0.2, 0.2)
+
+[node name="BackHair_Front" type="Node2D" parent="."]
+position = Vector2(-433, 5)
+
+[node name="BackHair_L" type="Polygon2D" parent="."]
+position = Vector2(-1095, -248)
+color = Color(0.16470589, 0.0627451, 0.29803923, 1)
+polygon = PackedVector2Array(2073, 1005, 2054, 1007, 2035, 1020, 2023, 1036, 2011, 1070, 1977, 1110, 1974, 1127, 1969, 1138, 1969, 1145, 1978, 1148, 1985, 1148, 1993, 1151, 2073, 1139)
+
+[node name="FrontBackHair" type="Polygon2D" parent="BackHair_L"]
+position = Vector2(-146.94019, -25.566162)
+scale = Vector2(1.0746269, 1.0220588)
+color = Color(0.29157248, 0.09197434, 0.5423048, 1)
+polygon = PackedVector2Array(2026.6943, 1027.8921, 2020, 1038, 2006, 1071, 1978, 1111, 1969, 1138, 1969, 1145, 1978, 1152, 2007, 1159, 2003, 1117, 2011, 1095, 2024, 1059, 2035.0693, 1018.1079)
+
+[node name="BackHair_R" type="Polygon2D" parent="."]
+position = Vector2(3051, -248)
+rotation = 3.1415927
+scale = Vector2(1, -1)
+color = Color(0.16470589, 0.0627451, 0.29803923, 1)
+polygon = PackedVector2Array(2073, 1005, 2054, 1007, 2035, 1020, 2023, 1036, 2011, 1070, 1977, 1110, 1974, 1127, 1969, 1138, 1969, 1145, 1978, 1148, 1985, 1148, 1993, 1151, 2073, 1139)
+
+[node name="FrontBackHair" type="Polygon2D" parent="BackHair_R"]
+position = Vector2(-146.94019, -25.566162)
+scale = Vector2(1.0746269, 1.0220588)
+color = Color(0.29157248, 0.09197434, 0.5423048, 1)
+polygon = PackedVector2Array(2026.6943, 1027.8921, 2020, 1038, 2006, 1071, 1978, 1111, 1969, 1138, 1969, 1145, 1978, 1152, 2007, 1159, 2003, 1117, 2011, 1095, 2024, 1059, 2035.0693, 1018.1079)
+
+[node name="Legs" type="Polygon2D" parent="."]
+position = Vector2(-1049, 5)
+
+[node name="LeftLeg" type="Polygon2D" parent="Legs"]
+position = Vector2(-1, -3)
+color = Color(0, 1, 1, 1)
+polygon = PackedVector2Array(1988, 920, 1999, 917, 2013, 921, 2023, 936, 2013, 945, 2003, 974, 1995, 979, 1986, 978, 1980, 968, 1985, 955)
+
+[node name="RightLeg" type="Polygon2D" parent="Legs"]
+position = Vector2(4056, -3)
+scale = Vector2(-1, 1)
+color = Color(0, 1, 1, 1)
+polygon = PackedVector2Array(1988, 920, 1999, 917, 2013, 921, 2023, 936, 2013, 945, 2003, 974, 1995, 979, 1986, 978, 1980, 968, 1985, 955)
+
+[node name="Hips" type="Polygon2D" parent="."]
+position = Vector2(-1668, 11)
+color = Color(0.09215703, 0.023533627, 0.61525565, 1)
+polygon = PackedVector2Array(2633, 880, 2666, 881, 2690, 893, 2687, 913, 2652, 931, 2631, 928, 2606, 909, 2607, 892)
+
+[node name="Body" type="Polygon2D" parent="."]
+position = Vector2(-1051, 11)
+color = Color(0, 0, 1, 1)
+polygon = PackedVector2Array(1985, 845, 1973, 852, 1955, 880, 1942, 910, 1960, 928, 1970, 920, 1972, 905, 1989, 885, 1998, 905, 2011, 911, 2048, 912, 2062, 903, 2070, 887, 2096, 922, 2111, 918, 2119, 907, 2099, 874, 2084, 852, 2074, 843, 2044, 838, 2015, 838)
+
+[node name="FrontHead" parent="." instance=ExtResource("1_0wb51")]
+offset_left = 698.0
+offset_top = 543.0
+offset_right = 1258.0
+offset_bottom = 1103.0
+view_direction = "front"
+preview_scale = 1.0
+show_hair = false
+head_width = 1.16
+chin_length = 1.3
+chin_roundness = 0.32
+ear_size = 0.71
+ear_spacing = -2.9000000000000004
+eye_y_offset = 9.0
+pupil_x_offset = -3.0
+mouth_y_offset = 14.8
+mouth_width = 5.0
+mouth_angle_degrees = 6.399999999999999
+show_anchors = false
+show_guides = false
+metadata/_edit_lock_ = true
+
+[node name="ScalpHair_Front" type="Node2D" parent="."]
+position = Vector2(-431, 5)
+
+[node name="ScalpHair_L" type="Polygon2D" parent="ScalpHair_Front"]
+position = Vector2(-185, 0)
+color = Color(0.29157248, 0.09197434, 0.5423048, 1)
+polygon = PackedVector2Array(1595, 750, 1578, 752, 1560, 762, 1551, 773, 1544, 791, 1541, 810, 1555, 837, 1564, 803, 1595, 802)
+
+[node name="ScalpHair_R" type="Polygon2D" parent="ScalpHair_Front"]
+position = Vector2(3005, 0)
+scale = Vector2(-1, 1)
+color = Color(0.29157248, 0.09197434, 0.5423048, 1)
+texture_scale = Vector2(1, -1)
+polygon = PackedVector2Array(1595, 750, 1578, 752, 1560, 762, 1551, 773, 1543, 791, 1541, 810, 1555, 837, 1564, 803, 1595, 802)
+
+[node name="Bang_Front" type="Polygon2D" parent="."]
+position = Vector2(-715, -36)
+color = Color(0.41960785, 0.16078432, 0.7607843, 1)
+polygon = PackedVector2Array(1693, 811, 1676, 811, 1656, 827, 1640, 853, 1648, 881, 1659, 895, 1671, 896, 1663, 888, 1660, 879, 1669, 875, 1676, 865, 1680, 879, 1691, 893, 1707, 878, 1713, 865, 1717, 873, 1727, 882, 1724, 890, 1719, 894, 1734, 891, 1742, 878, 1748, 851, 1733, 824, 1712, 809)
+metadata/_edit_lock_ = true

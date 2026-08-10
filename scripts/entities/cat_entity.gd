@@ -473,6 +473,14 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
+func get_perspective_world_rect() -> Rect2:
+	var visual_extent: float = max(16.0 * sprite_scale + 4.0, body_radius + 6.0)
+	return Rect2(
+		global_position - Vector2(visual_extent, visual_extent),
+		Vector2.ONE * visual_extent * 2.0
+	)
+
+
 func _configure_collision_identity() -> void:
 	_set_body_collision_property("collision_layer", 0)
 	_set_body_collision_property("collision_mask", COLLISION_MASK_WALLS_AND_VOID)
