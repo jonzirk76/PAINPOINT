@@ -103,23 +103,28 @@ height or vertical spacing.
 
 For each canonical female view:
 
-1. Match the male construction's head scale and pitch unless the female contour
-   requires a small local correction.
-2. Preserve the male view's head-to-feet envelope, neck height, torso depth,
-   hip elevation, foot baseline, and amount of limb overlap.
-3. Reshape individual forms inside that envelope rather than uniformly scaling
+1. Preserve the accepted male head geometry, head rest transform, and neck
+   attachment exactly. Character identity belongs in face, hair, clothing, and
+   other skin overlays rather than a second base skull projection.
+2. Preserve each male view's foot contact points, foot baseline, Skeleton2D
+   origin, and overall head-to-feet envelope. Female leg reshaping begins above
+   the locked ground contacts so turning cannot introduce foot sliding or
+   apparent character-scale changes.
+3. Preserve the male view's neck height, torso depth, hip elevation, and amount
+   of limb overlap.
+4. Reshape individual forms inside that envelope rather than uniformly scaling
    the mockup figure.
-4. Keep the frontal visible shoulder width and hip width approximately equal.
+5. Keep the frontal visible shoulder width and hip width approximately equal.
    The waist may narrow between them, but the shoulder socket span must not
    remain substantially wider than the hips as in the male base.
-5. Carry the shoulder/hip relationship through the turn as projected volumes:
+6. Carry the shoulder/hip relationship through the turn as projected volumes:
    the diagonal view uses depth overlap, and the profile shows the hip and chest
    depth appropriate to the same anatomy rather than forcing equal screen-X
    widths.
-6. Preserve the established top-down compression. Do not lengthen the torso,
+7. Preserve the established top-down compression. Do not lengthen the torso,
    thighs, or shins merely to match the mockup's more elevated camera.
-7. Keep hands and feet fully inside the male gameplay envelope so direction
-   changes do not produce apparent scale jumps.
+8. Keep hands fully inside the male gameplay envelope and leave the locked foot
+   contacts unchanged so direction changes do not produce apparent scale jumps.
 
 Primary silhouette changes expected to remain visible at gameplay scale:
 
@@ -194,7 +199,7 @@ texture at runtime.
 3. Add female rig and skin resources and a female native runtime scene/slice
    that injects those resources into the existing generic runtime.
 4. Fit South first, enforcing shoulders approximately equal to hips and the
-   male head-to-feet envelope.
+   locked male head/feet projection anchors.
 5. Fit North from the same width and symmetry contract.
 6. Fit South West and North East using the frontal volumes and mockup depth
    cues, not raw mockup height.
@@ -251,6 +256,8 @@ volume continuity, profile depth, and direction-switch scale stability.
   symmetry contract where applicable.
 - Female and male figures occupy the same established gameplay projection
   envelope.
+- Female canonical views retain the accepted male head geometry and directional
+  foot contacts exactly.
 - The female front view reads as shoulders and hips of approximately equal
   width, with that anatomy remaining coherent through diagonal and profile
   views.
