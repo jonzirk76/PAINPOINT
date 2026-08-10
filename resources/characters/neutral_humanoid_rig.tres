@@ -18,5 +18,5 @@ north = ExtResource("7_n")
 
 [resource]
 script = ExtResource("1_rig")
-rig_name = &"neutral_humanoid"
+rig_name = &"base_male_humanoid"
 directional_views = SubResource("DirectionalViews")

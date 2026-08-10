@@ -19,5 +19,6 @@ north = ExtResource("7_n")
 
 [resource]
 script = ExtResource("1_skin")
+skin_name = &"base_male_polygon"
 directional_views = SubResource("DirectionalViews")
 active_arm_scene = ExtResource("8_arm")
