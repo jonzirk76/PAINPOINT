@@ -1,6 +1,6 @@
 # Usage Policy Calibration
 
-This document is a living guide for estimating and improving Codex task cost in this repository. Codex cannot see the user's actual 5h or weekly token percentages, the selected reasoning level, or reset timing, so calibration depends on user-reported budget state and before/after usage changes.
+This document is a living guide for estimating and improving Codex task cost in this repository. Codex cannot see the user's actual weekly token percentage or selected reasoning level, so calibration depends on user-reported weekly usage changes.
 
 ## Goals
 
@@ -18,44 +18,16 @@ After each non-trivial handoff, ask the user for optional usage feedback in a sh
 Optional calibration:
 Time:
 Reasoning level:
-5h usage after:
-*5h reset time:
 Weekly usage after:
-*Weekly reset date/time:
 ```
 
-If the user provides the data, compare it against the agent's pre-task estimate and any known before-state data to infer whether the task was cheaper, as expected, or more expensive than expected. Do not ask the user to classify the task cost manually unless more context is needed. Do not imply that Codex can see or verify those percentages.
-
-The 5h budget resets more frequently than the weekly budget, so request the 5h reset time when possible. Request the weekly reset date/time too, because an early weekly reset can make the weekly percentage jump and invalidate normal task-cost inference. Prefix reset fields with `*` in the schema to remind the user to update them when needed. If a reset occurred between the before-state and after-state reports, do not treat the after-state percentage as a normal task-cost delta.
+If the user provides the data, compare it against the agent's pre-task estimate and any known weekly before-state data to infer whether the task was cheaper, as expected, or more expensive than expected. Do not ask the user to classify the task cost manually unless more context is needed. Do not imply that Codex can see or verify the percentage.
 
 ## Before-State Gating
 
-Before-state usage percentages are most valuable when collected before compute is spent. For potentially compute-heavy tasks, it is acceptable to pause before implementation and ask the user for current 5h and weekly percentages if they have not provided them.
+Before-state weekly usage is most valuable when collected before compute is spent. For potentially compute-heavy tasks, it is acceptable to pause before implementation and ask the user for the current weekly percentage if they have not provided it.
 
 Use this gate for tasks estimated High or Very High, tasks with High snowball risk, or tasks likely to involve repeated tests, broad searches, large logs, asset iteration, scene editing, or exploratory debugging. Continue once the user provides the before-state data or explicitly asks to proceed without calibration.
-
-## 5h Usage Blocks
-
-Treat the user-reported 5h reset time as the short-window block identifier. When the reset time is unchanged between before-state and after-state reports, estimate task cost from the 5h percentage drop inside that block.
-
-```text
-5h block id: reset time
-same-block task cost: before 5h percentage - after 5h percentage
-```
-
-If the reset time changes between reports, assume a new 5h block started. Do not compute a normal task-cost delta across that reset boundary.
-
-When possible, track calibration observations by:
-
-- 5h block id,
-- before 5h percentage,
-- after 5h percentage,
-- inferred percentage-point cost,
-- weekly percentage after,
-- reasoning level,
-- task type.
-
-This makes the reset time a useful organizing metric instead of only a warning that the percentages changed.
 
 ## Pre-Task Estimate Format
 
@@ -94,7 +66,7 @@ When snowball risk is high, suggest a cheaper first step: a design pass, a targe
 
 ## Budget State Guidance
 
-If the user reports the 5h budget is low, prefer:
+If the user reports the weekly budget is low, prefer:
 
 - planning,
 - code review,
@@ -105,7 +77,7 @@ If the user reports the 5h budget is low, prefer:
 - small isolated edits,
 - asking the user to run `./smoke_test.sh`.
 
-If the user reports the weekly budget is low, be even more conservative and explicitly avoid broad exploratory work unless the user overrides.
+Be conservative with broad exploratory work when weekly usage is low unless the user overrides.
 
 If the user is considering using the weekly reset, neutrally remind them that delaying the reset generally replenishes more total budget. Offer a smaller next step that preserves the reset.
 
@@ -247,11 +219,11 @@ Add concrete observations here when the user reports useful before/after data.
 | --- | --- | --- | --- |
 | Agent guardrail documentation edits | Low | Unknown | Doc-only changes were cheap enough to do directly; no tests needed. |
 | Usage calibration documentation edits | Low | Below 1% total reported change | Done at medium reasoning; confirms small doc/schema updates are negligible-cost tasks. |
-| Before-state gating documentation edit | Low | Before state: 5h 94%, weekly 3% | Weekly budget was very low, but the task was a small doc-only update and appropriate to proceed. |
-| Handoff schema reset-time edit | Low | After state: 5h 93%, weekly 3%, 5h reset 10:09 AM | User clarified that reset timing is needed because the 5h budget can reset between tasks. |
-| 5h usage block documentation edit | Low | Same-block 5h: 91% -> 90%, weekly 2% -> 2%, reset 10:09 AM | Done at medium reasoning; measured about 1 point of 5h usage and no weekly percentage movement. |
+| Before-state gating documentation edit | Low | Weekly 3% | Weekly budget was very low, but the task was a small doc-only update and appropriate to proceed. |
+| Legacy handoff schema edit | Low | Weekly 3% | Historical short-window reporting was removed after that limit stopped applying. |
+| Legacy usage-block documentation edit | Low | Weekly 2% -> 2% | Historical short-window reporting was removed; no weekly percentage movement was observed. |
 | Local-model delegation policy edit | Low | Weekly around 2%, meters unreliable | User requested handoff delegation suggestions and ready-to-copy Qwen prompts to reduce Codex token spend. |
-| Reset-aware schema update | Low | Time 4:03 AM, medium reasoning, after state: 5h 97%, weekly 99%, 5h reset 8:57, weekly reset Jul 17 | User reported the weekly reset may have applied early; schema now tracks report time and weekly reset date/time. |
+| Legacy reset-aware schema update | Low | Time 4:03 AM, medium reasoning, weekly 99% | Historical reset fields were later removed in favor of weekly-usage-only reporting. |
 | Delegated smoke-test policy edit | Low | Unknown | Added Qwen/local-model smoke-test runner guidance; local model may run and summarize tests, but not fix or rerun repeatedly. |
 | Parry chain feature overhaul | High | Unknown | Multi-system gameplay/UI/stat work; should remain high-cost unless scoped tightly. |
 | SVG/visual asset iteration | High to Very High | User reported it felt token-hungry | Prefer user/design-tool iteration, then Codex wiring. |
