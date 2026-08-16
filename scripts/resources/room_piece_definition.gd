@@ -43,7 +43,7 @@ const CONNECTOR_FALLBACKS := {
 @export var boss_spawn_position: Vector2 = Vector2.ZERO
 
 
-func create_level_definition():
+func create_level_definition() -> LevelDefinition:
 	var level = LEVEL_DEFINITION_SCRIPT.new()
 	level.id = id
 	level.display_name = display_name
