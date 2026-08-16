@@ -1,8 +1,10 @@
-# Local Model Overnight Queue
+# Local Model Maintenance Queue — Stage 1
 
-This pilot gives Aider and a local Ollama model five independent, narrowly
-specified edits. It never edits or merges `main`. Every task starts from the
-same base commit in its own Git branch and worktree.
+This is the Stage 1 implementation of the
+[`autonomous maintenance workplan`](../../docs/autonomous_maintenance_workplan.md).
+It gives Aider and a local Ollama model independent, narrowly specified edits.
+It never edits or merges `main`. Every task starts from the same base commit in
+its own Git branch and worktree.
 
 The runner accepts a candidate only when all static gates pass:
 
@@ -16,6 +18,10 @@ The runner accepts a candidate only when all static gates pass:
 Accepted candidates are committed to `local-model/<run-id>/<task-id>` branches.
 Nothing is merged automatically. Failed and interrupted worktrees are also
 left intact for review.
+
+Each new run snapshots its queue and task definitions under the ignored run
+directory. This preserves the exact plan used even after the tracked queue is
+changed for a later run.
 
 ## Before leaving it unattended
 
@@ -75,26 +81,65 @@ continues with the remaining tasks instead of overwriting uncertain work.
 
 ## Morning review
 
-Read the run summary:
+List runs and produce a metric report:
 
 ```bash
-column -ts $'\t' .local-model-runs/<run-id>/summary.tsv
+./tools/local_model_queue/maintenancectl.py runs
+./tools/local_model_queue/maintenancectl.py report <run-id>
 ```
 
-Inspect an accepted candidate:
+Inspect one candidate and its validation output:
 
 ```bash
-git show --stat local-model/<run-id>/<task-id>
-git show local-model/<run-id>/<task-id>
+./tools/local_model_queue/maintenancectl.py show <run-id> <task-id>
 ```
 
-After review, bring an accepted candidate onto the experiment branch with its
-commit hash:
+Record the user's final review decision and review time:
 
 ```bash
-git cherry-pick <candidate-commit>
+./tools/local_model_queue/maintenancectl.py review \
+  <run-id> <task-id> accept \
+  --minutes 2.5 \
+  --reason "Exact bounded refactor"
 ```
 
-Do not merge the candidate branches wholesale: all five branches share the
-same base and are intended to be reviewed and cherry-picked independently.
-No Godot or smoke tests are run by this pilot.
+Rejecting a candidate is equally explicit:
+
+```bash
+./tools/local_model_queue/maintenancectl.py review \
+  <run-id> <task-id> reject \
+  --minutes 1.0 \
+  --reason "Unrelated behavioral edit"
+```
+
+An accepted candidate can be integrated only from a clean non-`main` branch.
+The user must supply both `--apply` and the exact full candidate commit:
+
+```bash
+./tools/local_model_queue/maintenancectl.py integrate \
+  <run-id> <task-id> \
+  --confirm <full-candidate-commit> \
+  --apply
+```
+
+The command verifies the human accept record, run base, candidate parent,
+stored diff, current branch, and clean patch application before cherry-picking.
+It refuses direct Stage 1 integration into `main` or `master`.
+
+After separately authorized validation or user evaluation, record the outcome:
+
+```bash
+./tools/local_model_queue/maintenancectl.py outcome \
+  <run-id> <task-id> verified \
+  --reason "Targeted validation and review passed"
+```
+
+Check whether measured evidence is sufficient for a stage-promotion review:
+
+```bash
+./tools/local_model_queue/maintenancectl.py readiness
+```
+
+Do not merge candidate branches wholesale: tasks share a base and are intended
+to be reviewed and integrated independently. The queue and control CLI never
+run Godot or smoke tests automatically.

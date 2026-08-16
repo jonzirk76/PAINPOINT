@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "current_stage": 1,
+  "stage_name": "single_repo_quarantined_candidates",
+  "promotion_target": 2,
+  "promotion_requires_user_approval": true,
+  "protected_branches": [
+    "main",
+    "master"
+  ],
+  "thresholds": {
+    "completed_runs_min": 3,
+    "attempted_tasks_min": 15,
+    "task_classes_min": 2,
+    "candidate_pass_rate_min": 0.75,
+    "passed_candidate_review_coverage_min": 0.9,
+    "integration_outcome_coverage_min": 1.0,
+    "verified_integrations_min": 8,
+    "median_review_minutes_max": 5.0,
+    "escaped_defects_or_reverts_max": 0
+  }
+}

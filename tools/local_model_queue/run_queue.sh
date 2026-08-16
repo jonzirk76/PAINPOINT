@@ -5,6 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel)"
 QUEUE_FILE="$SCRIPT_DIR/queue.tsv"
+TASKS_ROOT="$SCRIPT_DIR/tasks"
 RUNS_ROOT="$REPO_ROOT/.local-model-runs"
 WORKTREES_ROOT="/tmp/shooty-local-model-worktrees"
 OLLAMA_MODEL_NAME="${OVERNIGHT_MODEL:-qwen2.5-coder:7b}"
@@ -96,9 +97,10 @@ if [[ "$DRY_RUN" == true ]]; then
 	echo "Ollama preflight: $OLLAMA_PREFLIGHT"
 	echo "Per-task timeout: ${TASK_TIMEOUT_MINUTES}m"
 	echo "Tasks:"
-	while IFS=$'\t' read -r task_id editable_file max_changed_lines commit_message; do
+	while IFS=$'\t' read -r task_id task_class editable_file max_changed_lines commit_message; do
 		[[ -z "$task_id" || "$task_id" == \#* ]] && continue
-		printf '  - %s | %s | max %s changed lines\n' "$task_id" "$editable_file" "$max_changed_lines"
+		printf '  - %s | %s | %s | max %s changed lines\n' \
+			"$task_id" "$task_class" "$editable_file" "$max_changed_lines"
 	done < "$QUEUE_FILE"
 	exit 0
 fi
@@ -116,28 +118,52 @@ if [[ -n "$RESUME_RUN_ID" ]]; then
 		exit 1
 	fi
 	BASE_COMMIT="$(<"$RUN_ROOT/base_commit.txt")"
+	if [[ -f "$RUN_ROOT/plan/queue.tsv" && -d "$RUN_ROOT/plan/tasks" ]]; then
+		QUEUE_FILE="$RUN_ROOT/plan/queue.tsv"
+		TASKS_ROOT="$RUN_ROOT/plan/tasks"
+	fi
 else
 	RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
 	RUN_ROOT="$RUNS_ROOT/$RUN_ID"
-	mkdir -p "$RUN_ROOT"
+	if [[ -e "$RUN_ROOT" ]]; then
+		echo "error: generated run ID already exists: $RUN_ID" >&2
+		exit 1
+	fi
+	mkdir -p "$RUN_ROOT/plan"
 	printf '%s\n' "$BASE_COMMIT" > "$RUN_ROOT/base_commit.txt"
-	printf 'task_id\tstatus\tbranch\tcommit\tworktree\tlog\n' > "$RUN_ROOT/summary.tsv"
+	printf '%s\n' "$AIDER_MODEL_NAME" > "$RUN_ROOT/model.txt"
+	printf '%s\n' "$TASK_TIMEOUT_MINUTES" > "$RUN_ROOT/task_timeout_minutes.txt"
+	date -u +%Y-%m-%dT%H:%M:%SZ > "$RUN_ROOT/run_started_at.txt"
+	cp "$QUEUE_FILE" "$RUN_ROOT/plan/queue.tsv"
+	cp -R "$TASKS_ROOT" "$RUN_ROOT/plan/tasks"
+	printf 'task_id\ttask_class\teditable_file\tstatus\tbranch\tcommit\tworktree\tlog\tstarted_at\tfinished_at\tduration_seconds\n' \
+		> "$RUN_ROOT/summary.tsv"
 fi
 
 mkdir -p "$WORKTREES_ROOT/$RUN_ID"
 
 record_result() {
 	local task_id="$1"
-	local status="$2"
-	local branch_name="$3"
-	local commit_hash="$4"
-	local worktree_path="$5"
-	local log_path="$6"
+	local task_class="$2"
+	local editable_file="$3"
+	local status="$4"
+	local branch_name="$5"
+	local commit_hash="$6"
+	local worktree_path="$7"
+	local log_path="$8"
 	local task_run_root="$RUN_ROOT/$task_id"
+	local finished_at
+	local finished_epoch
+	local duration_seconds
+
+	finished_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+	finished_epoch="$(date +%s)"
+	duration_seconds="$((finished_epoch - TASK_STARTED_EPOCH))"
 
 	printf '%s\n' "$status" > "$task_run_root/status.txt"
-	printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
-		"$task_id" "$status" "$branch_name" "$commit_hash" "$worktree_path" "$log_path" \
+	printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+		"$task_id" "$task_class" "$editable_file" "$status" "$branch_name" "$commit_hash" \
+		"$worktree_path" "$log_path" "$TASK_STARTED_AT" "$finished_at" "$duration_seconds" \
 		>> "$RUN_ROOT/summary.tsv"
 }
 
@@ -200,15 +226,17 @@ echo "Base commit: $BASE_COMMIT"
 echo "Aider model: $AIDER_MODEL_NAME"
 echo "Results: $RUN_ROOT"
 
-while IFS=$'\t' read -r task_id editable_file max_changed_lines commit_message; do
+while IFS=$'\t' read -r task_id task_class editable_file max_changed_lines commit_message; do
 	[[ -z "$task_id" || "$task_id" == \#* ]] && continue
 
-	TASK_DEFINITION_ROOT="$SCRIPT_DIR/tasks/$task_id"
+	TASK_DEFINITION_ROOT="$TASKS_ROOT/$task_id"
 	TASK_RUN_ROOT="$RUN_ROOT/$task_id"
 	WORKTREE_PATH="$WORKTREES_ROOT/$RUN_ID/$task_id"
 	BRANCH_NAME="local-model/$RUN_ID/$task_id"
 	LOG_PATH="$TASK_RUN_ROOT/aider.log"
 	mkdir -p "$TASK_RUN_ROOT"
+	TASK_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+	TASK_STARTED_EPOCH="$(date +%s)"
 
 	if [[ -f "$TASK_RUN_ROOT/status.txt" ]]; then
 		EXISTING_STATUS="$(<"$TASK_RUN_ROOT/status.txt")"
@@ -220,19 +248,19 @@ while IFS=$'\t' read -r task_id editable_file max_changed_lines commit_message; 
 
 	if [[ -e "$WORKTREE_PATH" ]] || git -C "$REPO_ROOT" show-ref --verify --quiet "refs/heads/$BRANCH_NAME"; then
 		echo "[$task_id] preserving an existing incomplete branch/worktree"
-		record_result "$task_id" "INTERRUPTED" "$BRANCH_NAME" "-" "$WORKTREE_PATH" "$LOG_PATH"
+		record_result "$task_id" "$task_class" "$editable_file" "INTERRUPTED" "$BRANCH_NAME" "-" "$WORKTREE_PATH" "$LOG_PATH"
 		continue
 	fi
 
 	if [[ ! -f "$TASK_DEFINITION_ROOT/prompt.md" || ! -f "$TASK_DEFINITION_ROOT/required_lines.txt" || ! -f "$TASK_DEFINITION_ROOT/forbidden_lines.txt" ]]; then
 		echo "[$task_id] task definition is incomplete" >&2
-		record_result "$task_id" "CONFIG_ERROR" "$BRANCH_NAME" "-" "$WORKTREE_PATH" "$LOG_PATH"
+		record_result "$task_id" "$task_class" "$editable_file" "CONFIG_ERROR" "$BRANCH_NAME" "-" "$WORKTREE_PATH" "$LOG_PATH"
 		continue
 	fi
 
 	if [[ ! -f "$REPO_ROOT/$editable_file" ]]; then
 		echo "[$task_id] editable file does not exist: $editable_file" >&2
-		record_result "$task_id" "CONFIG_ERROR" "$BRANCH_NAME" "-" "$WORKTREE_PATH" "$LOG_PATH"
+		record_result "$task_id" "$task_class" "$editable_file" "CONFIG_ERROR" "$BRANCH_NAME" "-" "$WORKTREE_PATH" "$LOG_PATH"
 		continue
 	fi
 
@@ -278,21 +306,21 @@ while IFS=$'\t' read -r task_id editable_file max_changed_lines commit_message; 
 
 	if (( AIDER_EXIT_CODE != 0 )); then
 		echo "[$task_id] Aider failed with exit code $AIDER_EXIT_CODE; preserving worktree"
-		record_result "$task_id" "AIDER_FAILED" "$BRANCH_NAME" "-" "$WORKTREE_PATH" "$LOG_PATH"
+		record_result "$task_id" "$task_class" "$editable_file" "AIDER_FAILED" "$BRANCH_NAME" "-" "$WORKTREE_PATH" "$LOG_PATH"
 		continue
 	fi
 
 	if ! validate_candidate "$WORKTREE_PATH" "$editable_file" "$max_changed_lines" "$TASK_DEFINITION_ROOT" \
 		> "$TASK_RUN_ROOT/validation.log" 2>&1; then
 		echo "[$task_id] static validation failed; preserving worktree"
-		record_result "$task_id" "VALIDATION_FAILED" "$BRANCH_NAME" "-" "$WORKTREE_PATH" "$LOG_PATH"
+		record_result "$task_id" "$task_class" "$editable_file" "VALIDATION_FAILED" "$BRANCH_NAME" "-" "$WORKTREE_PATH" "$LOG_PATH"
 		continue
 	fi
 
 	git -C "$WORKTREE_PATH" add -- "$editable_file"
 	git -C "$WORKTREE_PATH" commit -m "$commit_message" > "$TASK_RUN_ROOT/commit.log" 2>&1
 	CANDIDATE_COMMIT="$(git -C "$WORKTREE_PATH" rev-parse HEAD)"
-	record_result "$task_id" "PASS" "$BRANCH_NAME" "$CANDIDATE_COMMIT" "$WORKTREE_PATH" "$LOG_PATH"
+	record_result "$task_id" "$task_class" "$editable_file" "PASS" "$BRANCH_NAME" "$CANDIDATE_COMMIT" "$WORKTREE_PATH" "$LOG_PATH"
 	echo "[$task_id] accepted as candidate commit $CANDIDATE_COMMIT"
 done < "$QUEUE_FILE"
 

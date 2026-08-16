@@ -30,6 +30,14 @@ This project is a Godot 4.x GDScript top-down arena shooter. Keep the architectu
 - For visual/gameplay tuning, the user is the playtester. Adjust numbers after the user describes behavior.
 - If a task would be token-hungry for an agent but is straightforward for a human operator, give the user precise steps to do that part manually. The user can explicitly override this and ask the agent to do it anyway.
 
+## Autonomous Maintenance Control Plane
+
+- For autonomous-maintenance planning, fleet runs, candidate review, or promotion decisions, read `docs/autonomous_maintenance_workplan.md` and `tools/local_model_queue/stage.json` before acting.
+- Run `./tools/local_model_queue/maintenancectl.py readiness` after a maintenance run, recorded review, integration, or verified outcome. If it reports `READY_FOR_PROMOTION_REVIEW`, inform the user that the evidence gate has been reached and summarize qualitative risks.
+- Metrics trigger a promotion review only. Never change the active stage, expand worker authority, deploy a proposed work plan, or integrate a candidate without explicit user approval.
+- Keep the weaker cloud planning model proposal-only until the active workplan stage explicitly grants a mediated planning role. Deterministic tooling, not a model, owns scheduling, leases, permissions, retries, and validation.
+- Stage 1 candidates remain isolated branches. Agents may inspect and recommend them, but the user owns the terminal or future control-panel action that records acceptance and integrates a candidate.
+
 ## Shared Reasoning Budget Policy
 
 - Treat reasoning level as a shared cost-control responsibility between the user and the agent. Start with the lowest reasoning level that can safely handle the task, then escalate only when the task justifies it.
