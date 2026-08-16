@@ -112,11 +112,16 @@ Status: **active**
 - Candidate commits only after gates pass.
 - Terminal-based human review and integration.
 - File-backed run evidence, ready for later database import.
+- Versioned proposal directories selected only by an explicit user terminal
+  command.
 
 The weaker cloud planner has no execution authority in this stage. It may
 organize proposed `queue.tsv` rows and bounded task-definition files on the
 maintenance branch. The principal reviews novel task classes and validators,
-and the user deploys the reviewed plan by explicitly starting `run_queue.sh`.
+and the user deploys the reviewed plan with
+`run_queue.sh --plan <plan-id>`. Merely selecting `--dry-run` performs structural
+and exact-line preflight without starting a worker. The user starts execution by
+running the same command without `--dry-run`.
 Merely writing or committing plan data never starts a worker.
 
 ### Stage 1 promotion gate

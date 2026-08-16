@@ -36,6 +36,39 @@ ollama show qwen2.5-coder:7b
 The runner requires a clean tracked worktree so every candidate has an
 unambiguous base commit. Ignored run artifacts do not count as changes.
 
+## Versioned planner proposals
+
+A weaker planning model may organize a proposed plan under:
+
+```text
+tools/local_model_queue/proposals/<plan-id>/queue.tsv
+tools/local_model_queue/proposals/<plan-id>/tasks/<task-id>/prompt.md
+tools/local_model_queue/proposals/<plan-id>/tasks/<task-id>/required_lines.txt
+tools/local_model_queue/proposals/<plan-id>/tasks/<task-id>/forbidden_lines.txt
+```
+
+Writing or committing a proposal never starts a worker. Preview a selected plan
+with:
+
+```bash
+./tools/local_model_queue/run_queue.sh --plan <plan-id> --dry-run
+```
+
+The dry run validates task IDs, unique queue entries, repository-relative source
+paths, source files at the base commit, complete task-definition files, exact
+forbidden-line occurrence, absence of required replacement lines, and matching
+replacement/diff budgets. Both a normal TSV header and the original commented
+header are accepted.
+
+Only the user deploys a reviewed plan by omitting `--dry-run`:
+
+```bash
+./tools/local_model_queue/run_queue.sh --plan <plan-id>
+```
+
+The selected plan ID and complete plan snapshot are recorded with the run.
+Resuming a run always uses that snapshot, even if the tracked proposal changes.
+
 ## Run in tmux
 
 Use `tmux` so closing the terminal or losing the desktop session does not stop
@@ -43,7 +76,7 @@ the queue:
 
 ```bash
 tmux new-session -s shooty-qwen
-./tools/local_model_queue/run_queue.sh
+./tools/local_model_queue/run_queue.sh --plan <plan-id>
 ```
 
 Detach with `Ctrl-b`, then `d`. Reattach later with:

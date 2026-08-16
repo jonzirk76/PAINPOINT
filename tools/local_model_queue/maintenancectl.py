@@ -110,6 +110,8 @@ def read_queue(path: Path) -> dict[str, dict[str, str]]:
         if not raw_line or raw_line.startswith("#"):
             continue
         fields = raw_line.split("\t")
+        if fields[0] == "task_id":
+            continue
         if len(fields) == 5:
             task_id, task_class, editable_file, max_lines, commit_message = fields
         elif len(fields) == 4:

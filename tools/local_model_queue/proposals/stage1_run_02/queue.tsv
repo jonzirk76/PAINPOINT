@@ -1,0 +1,4 @@
+task_id	task_class	editable_file	max_changed_lines	candidate_commit_message
+01_type_damage_packet_copies	function_signature_typing	scripts/resources/damage_packet.gd	6	Local model candidate: type damage packet copy returns
+02_type_room_level_factory	function_signature_typing	scripts/resources/room_piece_definition.gd	2	Local model candidate: type room level factory return
+03_type_active_motion_profile	function_signature_typing	scripts/presentation/humanoid_body_rig.gd	2	Local model candidate: type active motion profile return

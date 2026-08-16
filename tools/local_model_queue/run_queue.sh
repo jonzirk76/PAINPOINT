@@ -4,8 +4,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel)"
-QUEUE_FILE="$SCRIPT_DIR/queue.tsv"
-TASKS_ROOT="$SCRIPT_DIR/tasks"
 RUNS_ROOT="$REPO_ROOT/.local-model-runs"
 WORKTREES_ROOT="/tmp/shooty-local-model-worktrees"
 OLLAMA_MODEL_NAME="${OVERNIGHT_MODEL:-qwen2.5-coder:7b}"
@@ -16,11 +14,17 @@ export OLLAMA_API_BASE
 
 DRY_RUN=false
 RESUME_RUN_ID=""
+REQUESTED_PLAN_ID=""
+PLAN_ID="active_queue"
+PLAN_ROOT="$SCRIPT_DIR"
+QUEUE_FILE="$PLAN_ROOT/queue.tsv"
+TASKS_ROOT="$PLAN_ROOT/tasks"
 
 usage() {
 	cat <<'EOF'
 Usage:
-  run_queue.sh [--dry-run]
+  run_queue.sh [--plan PLAN_ID] [--dry-run]
+  run_queue.sh [--plan PLAN_ID]
   run_queue.sh --resume RUN_ID
 
 Environment overrides:
@@ -44,6 +48,14 @@ while (( $# > 0 )); do
 			RESUME_RUN_ID="$2"
 			shift 2
 			;;
+		--plan)
+			if (( $# < 2 )); then
+				echo "error: --plan requires a plan ID" >&2
+				exit 2
+			fi
+			REQUESTED_PLAN_ID="$2"
+			shift 2
+			;;
 		-h|--help)
 			usage
 			exit 0
@@ -60,6 +72,116 @@ if [[ "$DRY_RUN" == true && -n "$RESUME_RUN_ID" ]]; then
 	echo "error: --dry-run and --resume cannot be combined" >&2
 	exit 2
 fi
+
+if [[ -n "$REQUESTED_PLAN_ID" && -n "$RESUME_RUN_ID" ]]; then
+	echo "error: --plan and --resume cannot be combined; resume uses the run's plan snapshot" >&2
+	exit 2
+fi
+
+if [[ -n "$REQUESTED_PLAN_ID" ]]; then
+	if [[ ! "$REQUESTED_PLAN_ID" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+		echo "error: plan ID contains unsupported characters: $REQUESTED_PLAN_ID" >&2
+		exit 2
+	fi
+	PLAN_ID="$REQUESTED_PLAN_ID"
+	PLAN_ROOT="$SCRIPT_DIR/proposals/$PLAN_ID"
+	QUEUE_FILE="$PLAN_ROOT/queue.tsv"
+	TASKS_ROOT="$PLAN_ROOT/tasks"
+fi
+
+validate_plan_definition() {
+	local base_commit="$1"
+	local task_id
+	local task_class
+	local editable_file
+	local max_changed_lines
+	local commit_message
+	local task_definition_root
+	local expected_line
+	local exact_count
+	local definition_file
+	local forbidden_count
+	local required_count
+	local expected_changed_lines
+	local task_count=0
+	declare -A seen_task_ids=()
+
+	if [[ ! -f "$QUEUE_FILE" || ! -d "$TASKS_ROOT" ]]; then
+		echo "error: plan '$PLAN_ID' is missing queue.tsv or tasks/ under $PLAN_ROOT" >&2
+		return 1
+	fi
+
+	while IFS=$'\t' read -r task_id task_class editable_file max_changed_lines commit_message; do
+		[[ -z "$task_id" || "$task_id" == \#* || "$task_id" == "task_id" ]] && continue
+		if [[ ! "$task_id" =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ ]]; then
+			echo "error: invalid task ID in plan '$PLAN_ID': $task_id" >&2
+			return 1
+		fi
+		if [[ -n "${seen_task_ids[$task_id]:-}" ]]; then
+			echo "error: duplicate task ID in plan '$PLAN_ID': $task_id" >&2
+			return 1
+		fi
+		seen_task_ids[$task_id]=1
+		if [[ -z "$task_class" || -z "$editable_file" || -z "$commit_message" ]]; then
+			echo "error: incomplete queue row for task '$task_id'" >&2
+			return 1
+		fi
+		if [[ ! "$max_changed_lines" =~ ^[1-9][0-9]*$ ]]; then
+			echo "error: invalid changed-line budget for task '$task_id': $max_changed_lines" >&2
+			return 1
+		fi
+		if [[ "$editable_file" == /* || "$editable_file" == *".."* ]]; then
+			echo "error: editable path must be repository-relative without '..': $editable_file" >&2
+			return 1
+		fi
+		if ! git -C "$REPO_ROOT" cat-file -e "$base_commit:$editable_file" 2>/dev/null; then
+			echo "error: editable file is absent from plan base $base_commit: $editable_file" >&2
+			return 1
+		fi
+
+		task_definition_root="$TASKS_ROOT/$task_id"
+		for definition_file in prompt.md required_lines.txt forbidden_lines.txt; do
+			if [[ ! -s "$task_definition_root/$definition_file" ]]; then
+				echo "error: task '$task_id' is missing non-empty $definition_file" >&2
+				return 1
+			fi
+		done
+
+		forbidden_count=0
+		while IFS= read -r expected_line || [[ -n "$expected_line" ]]; do
+			[[ -z "$expected_line" ]] && continue
+			forbidden_count="$((forbidden_count + 1))"
+			exact_count="$(git -C "$REPO_ROOT" show "$base_commit:$editable_file" | grep -Fxc -- "$expected_line" || true)"
+			if [[ "$exact_count" -ne 1 ]]; then
+				echo "error: task '$task_id' forbidden line must occur once at the plan base; found $exact_count: $expected_line" >&2
+				return 1
+			fi
+		done < "$task_definition_root/forbidden_lines.txt"
+
+		required_count=0
+		while IFS= read -r expected_line || [[ -n "$expected_line" ]]; do
+			[[ -z "$expected_line" ]] && continue
+			required_count="$((required_count + 1))"
+			exact_count="$(git -C "$REPO_ROOT" show "$base_commit:$editable_file" | grep -Fxc -- "$expected_line" || true)"
+			if [[ "$exact_count" -ne 0 ]]; then
+				echo "error: task '$task_id' required line already exists at the plan base: $expected_line" >&2
+				return 1
+			fi
+		done < "$task_definition_root/required_lines.txt"
+
+		expected_changed_lines="$((forbidden_count + required_count))"
+		if (( forbidden_count != required_count || max_changed_lines != expected_changed_lines )); then
+			echo "error: task '$task_id' must pair each forbidden line with one required line and budget their total; found $forbidden_count forbidden, $required_count required, budget $max_changed_lines" >&2
+			return 1
+		fi
+		task_count="$((task_count + 1))"
+	done < "$QUEUE_FILE"
+
+	if (( task_count == 0 )); then
+		echo "error: plan '$PLAN_ID' contains no tasks" >&2
+		return 1
+	fi
+}
 
 for command_name in git aider ollama timeout; do
 	if ! command -v "$command_name" >/dev/null 2>&1; then
@@ -85,6 +207,7 @@ fi
 BASE_COMMIT="$(git -C "$REPO_ROOT" rev-parse HEAD)"
 
 if [[ "$DRY_RUN" == true ]]; then
+	validate_plan_definition "$BASE_COMMIT"
 	if ollama show "$OLLAMA_MODEL_NAME" >/dev/null 2>&1; then
 		OLLAMA_PREFLIGHT="ready"
 	else
@@ -93,12 +216,14 @@ if [[ "$DRY_RUN" == true ]]; then
 	echo "Mode: dry run"
 	echo "Repository: $REPO_ROOT"
 	echo "Base commit: $BASE_COMMIT"
+	echo "Plan: $PLAN_ID"
+	echo "Plan root: $PLAN_ROOT"
 	echo "Aider model: $AIDER_MODEL_NAME"
 	echo "Ollama preflight: $OLLAMA_PREFLIGHT"
 	echo "Per-task timeout: ${TASK_TIMEOUT_MINUTES}m"
 	echo "Tasks:"
 	while IFS=$'\t' read -r task_id task_class editable_file max_changed_lines commit_message; do
-		[[ -z "$task_id" || "$task_id" == \#* ]] && continue
+		[[ -z "$task_id" || "$task_id" == \#* || "$task_id" == "task_id" ]] && continue
 		printf '  - %s | %s | %s | max %s changed lines\n' \
 			"$task_id" "$task_class" "$editable_file" "$max_changed_lines"
 	done < "$QUEUE_FILE"
@@ -119,10 +244,17 @@ if [[ -n "$RESUME_RUN_ID" ]]; then
 	fi
 	BASE_COMMIT="$(<"$RUN_ROOT/base_commit.txt")"
 	if [[ -f "$RUN_ROOT/plan/queue.tsv" && -d "$RUN_ROOT/plan/tasks" ]]; then
+		PLAN_ROOT="$RUN_ROOT/plan"
 		QUEUE_FILE="$RUN_ROOT/plan/queue.tsv"
 		TASKS_ROOT="$RUN_ROOT/plan/tasks"
+		PLAN_ID="snapshot:$RUN_ID"
+		if [[ -f "$RUN_ROOT/plan_id.txt" ]]; then
+			PLAN_ID="$(<"$RUN_ROOT/plan_id.txt")"
+		fi
 	fi
+	validate_plan_definition "$BASE_COMMIT"
 else
+	validate_plan_definition "$BASE_COMMIT"
 	RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
 	RUN_ROOT="$RUNS_ROOT/$RUN_ID"
 	if [[ -e "$RUN_ROOT" ]]; then
@@ -131,6 +263,7 @@ else
 	fi
 	mkdir -p "$RUN_ROOT/plan"
 	printf '%s\n' "$BASE_COMMIT" > "$RUN_ROOT/base_commit.txt"
+	printf '%s\n' "$PLAN_ID" > "$RUN_ROOT/plan_id.txt"
 	printf '%s\n' "$AIDER_MODEL_NAME" > "$RUN_ROOT/model.txt"
 	printf '%s\n' "$TASK_TIMEOUT_MINUTES" > "$RUN_ROOT/task_timeout_minutes.txt"
 	date -u +%Y-%m-%dT%H:%M:%SZ > "$RUN_ROOT/run_started_at.txt"
@@ -223,11 +356,12 @@ validate_candidate() {
 
 echo "Run ID: $RUN_ID"
 echo "Base commit: $BASE_COMMIT"
+echo "Plan: $PLAN_ID"
 echo "Aider model: $AIDER_MODEL_NAME"
 echo "Results: $RUN_ROOT"
 
 while IFS=$'\t' read -r task_id task_class editable_file max_changed_lines commit_message; do
-	[[ -z "$task_id" || "$task_id" == \#* ]] && continue
+	[[ -z "$task_id" || "$task_id" == \#* || "$task_id" == "task_id" ]] && continue
 
 	TASK_DEFINITION_ROOT="$TASKS_ROOT/$task_id"
 	TASK_RUN_ROOT="$RUN_ROOT/$task_id"

@@ -1,0 +1,3 @@
+func copy_for_chain():
+func copy_for_explosion():
+func copy_with_damage_bonus(bonus: int):
