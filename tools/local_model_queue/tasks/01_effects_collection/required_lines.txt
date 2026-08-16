@@ -1,0 +1,1 @@
+var _effects: Array[Node2D] = []

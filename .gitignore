@@ -38,6 +38,7 @@ art/generated/characters/velora/base/*
 # Logs and local diagnostics
 *.log
 /logs/
+/.local-model-runs/
 
 # Extra export/build artifacts
 /exports/
