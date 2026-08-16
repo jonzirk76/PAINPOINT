@@ -33,7 +33,7 @@ var projectile_kind: String = "normal"
 var hit_targets: Array[Node] = []
 
 
-func copy_for_chain():
+func copy_for_chain() -> DamagePacket:
 	var packet = preload("res://scripts/resources/damage_packet.gd").new()
 	packet.damage = damage
 	packet.pierce_count = 0
@@ -67,7 +67,7 @@ func copy_for_chain():
 	return packet
 
 
-func copy_for_explosion():
+func copy_for_explosion() -> DamagePacket:
 	var packet = preload("res://scripts/resources/damage_packet.gd").new()
 	packet.damage = max(roundi(float(damage) * explosion_damage_multiplier), 1)
 	packet.pierce_count = 0
@@ -100,7 +100,7 @@ func copy_for_explosion():
 	return packet
 
 
-func copy_with_damage_bonus(bonus: int):
+func copy_with_damage_bonus(bonus: int) -> DamagePacket:
 	var packet = preload("res://scripts/resources/damage_packet.gd").new()
 	packet.damage = max(damage + bonus, 0)
 	packet.pierce_count = pierce_count
