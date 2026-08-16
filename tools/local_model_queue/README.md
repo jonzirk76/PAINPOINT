@@ -9,6 +9,7 @@ its own Git branch and worktree.
 The runner accepts a candidate only when all static gates pass:
 
 - Aider exits successfully.
+- The editable source is within the configured worker-size ceiling.
 - Exactly the permitted file changed.
 - The required replacement line exists exactly.
 - The original line is gone.
@@ -19,9 +20,31 @@ Accepted candidates are committed to `local-model/<run-id>/<task-id>` branches.
 Nothing is merged automatically. Failed and interrupted worktrees are also
 left intact for review.
 
-Each new run snapshots its queue and task definitions under the ignored run
-directory. This preserves the exact plan used even after the tracked queue is
-changed for a later run.
+Each new run snapshots its queue, task definitions, edit format, request and
+task timeouts, and source-size ceiling under the ignored run directory. This
+preserves the exact plan and worker envelope used even after the tracked queue
+or defaults change for a later run.
+
+## Worker feasibility gate
+
+The current GTX 1080 / Qwen 2.5 Coder 7B worker uses streamed `udiff` edits and
+accepts source files no larger than 24,000 bytes by default. Aider includes the
+entire editable file in model context even when the repository map is disabled.
+Whole-file edit mode also requires the model to regenerate that complete file,
+which caused a 1,053-line task to exceed LiteLLM's 600-second request timeout.
+
+Planning managers must treat the worker envelope as an input constraint, not a
+post-run optimization. Before proposing a task, they must verify the source size
+at the intended base commit. Oversized work belongs in one of these lanes:
+
+- a deterministic exact-replacement tool when no model judgment is required;
+- a refactor proposal that first establishes a smaller ownership boundary;
+- a stronger worker profile with its own measured file/context ceiling; or
+- principal review when the change cannot be bounded cheaply.
+
+Do not raise the ceiling merely to make a proposal pass. Change it only after a
+measured calibration run establishes acceptable latency, candidate quality, and
+review cost for that model, hardware, edit format, and task class.
 
 ## Before leaving it unattended
 
@@ -92,12 +115,29 @@ OVERNIGHT_MODEL=qwen2.5-coder:7b-instruct-q5_K_M \
   ./tools/local_model_queue/run_queue.sh
 ```
 
-The default per-task timeout is 45 minutes. It can also be overridden:
+The default per-task timeout is 15 minutes. It can also be overridden:
 
 ```bash
-OVERNIGHT_TASK_TIMEOUT_MINUTES=60 \
+OVERNIGHT_TASK_TIMEOUT_MINUTES=20 \
   ./tools/local_model_queue/run_queue.sh
 ```
+
+The streamed edit format, API-request timeout, and source-size ceiling are also
+explicit worker settings:
+
+```bash
+OVERNIGHT_EDIT_FORMAT=udiff \
+OVERNIGHT_AIDER_API_TIMEOUT_SECONDS=300 \
+OVERNIGHT_MAX_SOURCE_BYTES=24000 \
+OVERNIGHT_REQUIRE_CANARY_PASS=true \
+  ./tools/local_model_queue/run_queue.sh --plan <plan-id> --dry-run
+```
+
+The outer task timeout remains the final unattended bound if Aider retries a
+failed API request. Streaming keeps an active response observable, while
+`udiff` avoids requiring the local model to reproduce an entire source file.
+The first queued task is a canary by default: if it does not pass every gate,
+the queue stops before starting larger tasks.
 
 ## Resume after an interruption
 
@@ -110,7 +150,11 @@ To continue the unstarted portion of an interrupted queue:
 
 Completed tasks are skipped. If a task had started but did not record a final
 result, its existing worktree is preserved and marked `INTERRUPTED`; the runner
-continues with the remaining tasks instead of overwriting uncertain work.
+continues with the remaining tasks instead of overwriting uncertain work. New
+runs also snapshot their worker settings, and resumes reuse those settings.
+Historical runs created before worker-setting snapshots use current defaults and
+may be rejected by newer safety gates; start a revised plan rather than weakening
+the gate.
 
 ## Morning review
 

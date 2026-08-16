@@ -1,0 +1,8 @@
+task_id	task_class	editable_file	max_changed_lines	candidate_commit_message
+11_type_destructible_spawn	function_return_typing	scripts/managers/destructible_manager.gd	2	Local model candidate: type destructible spawn return
+09_type_active_motion_profile	function_return_typing	scripts/presentation/humanoid_body_rig.gd	2	Local model candidate: type active motion profile return
+10_type_cat_spawn	function_return_typing	scripts/managers/fauna_manager.gd	2	Local model candidate: type cat spawn return
+06_type_damage_packet_factories	function_return_typing	scripts/managers/projectile_manager.gd	6	Local model candidate: type damage packet factory returns
+02_type_pickup_collection	collection_element_typing	scripts/managers/item_manager.gd	2	Local model candidate: type pickup collection
+04_type_door_gate_visual	node_reference_typing	scripts/entities/door_entity.gd	2	Local model candidate: type door gate visual reference
+03_type_minimap_visible_rooms	collection_element_typing	scripts/ui/dungeon_minimap.gd	2	Local model candidate: type minimap visible rooms

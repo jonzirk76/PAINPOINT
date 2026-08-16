@@ -124,6 +124,52 @@ and exact-line preflight without starting a worker. The user starts execution by
 running the same command without `--dry-run`.
 Merely writing or committing plan data never starts a worker.
 
+### Middle-manager worker-feasibility advisory
+
+A planning model must organize work for the measured worker that will actually
+execute it. A semantically safe task is not deployable when its file size,
+context requirement, output format, timeout, or hardware demand exceeds that
+worker's envelope.
+
+For every proposed local-model task, the middle manager must:
+
+1. Identify the exact model, quantization, edit format, hardware profile, and
+   base commit that the plan targets.
+2. Measure the editable file at that base commit and keep it within the active
+   `OVERNIGHT_MAX_SOURCE_BYTES` limit. File size is a conservative context-cost
+   proxy; line count alone is insufficient.
+3. Remember that `map-tokens: 0` disables the repository map but does not remove
+   the explicitly supplied editable file from the prompt.
+4. Prefer streamed diff/patch formats. Whole-file mode is permitted only for a
+   separately calibrated small-file task class because it requires complete
+   source regeneration.
+5. Keep both the API-request timeout and outer task timeout bounded. A retry of
+   the same oversized request is not progress.
+6. Route a fully specified exact replacement to deterministic tooling when no
+   model judgment remains. Local-model compute is reserved for transformations
+   that require bounded interpretation.
+7. Route oversized or cross-system work to decomposition, a stronger measured
+   worker profile, proposal-only reconnaissance, or the principal. Never raise
+   a resource ceiling simply to admit a prepared plan.
+8. Run the queue's dry-run validation and report task count, task classes, total
+   source bytes, largest source file, and any excluded tasks to the principal.
+9. Put the smallest representative task first as a canary for the selected
+   model/edit-format combination. Keep `OVERNIGHT_REQUIRE_CANARY_PASS=true` so a
+   new worker envelope fails cheaply before consuming time on larger tasks.
+
+The current provisional worker envelope is:
+
+```text
+qwen2.5-coder:7b on GTX 1080 8 GB
++ Aider streamed udiff
++ one explicitly supplied file
++ maximum source size 24,000 bytes
++ API request timeout 300 seconds
++ outer task timeout 15 minutes
+```
+
+This is a safety boundary awaiting calibration, not a performance claim.
+
 ### Stage 1 promotion gate
 
 Promotion target: Stage 2, persistent control-plane database.
@@ -339,5 +385,12 @@ qwen2.5-coder:7b
 + exact-line and two-line diff gates
 ```
 
-The first pilot suggests keeping whole-file tasks below roughly 400–500 lines
-until more evidence supports a higher limit.
+That historical combination is retired for unattended work. Run 3 showed that
+a one-line task against a 1,053-line, 46,155-byte file produced a 23,812-token
+context, partially spilled inference to CPU, and hit LiteLLM's 600-second
+request timeout while Aider retried the same whole-file request. The remaining
+plan also contained files up to 244,194 bytes, demonstrating that semantic task
+safety alone was not a sufficient planning gate.
+
+The replacement streamed-`udiff` envelope above must collect fresh evidence
+before its limits are expanded or its task classes are promoted.

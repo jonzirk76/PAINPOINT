@@ -1,0 +1,1 @@
+func spawn_cat(spawn_position: Vector2, movement_seed: int = 0) -> Node:

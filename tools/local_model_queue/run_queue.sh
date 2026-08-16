@@ -8,7 +8,11 @@ RUNS_ROOT="$REPO_ROOT/.local-model-runs"
 WORKTREES_ROOT="/tmp/shooty-local-model-worktrees"
 OLLAMA_MODEL_NAME="${OVERNIGHT_MODEL:-qwen2.5-coder:7b}"
 AIDER_MODEL_NAME="ollama_chat/$OLLAMA_MODEL_NAME"
-TASK_TIMEOUT_MINUTES="${OVERNIGHT_TASK_TIMEOUT_MINUTES:-45}"
+TASK_TIMEOUT_MINUTES="${OVERNIGHT_TASK_TIMEOUT_MINUTES:-15}"
+AIDER_API_TIMEOUT_SECONDS="${OVERNIGHT_AIDER_API_TIMEOUT_SECONDS:-300}"
+AIDER_EDIT_FORMAT="${OVERNIGHT_EDIT_FORMAT:-udiff}"
+MAX_SOURCE_BYTES="${OVERNIGHT_MAX_SOURCE_BYTES:-24000}"
+REQUIRE_CANARY_PASS="${OVERNIGHT_REQUIRE_CANARY_PASS:-true}"
 OLLAMA_API_BASE="${OLLAMA_API_BASE:-http://127.0.0.1:11434}"
 export OLLAMA_API_BASE
 
@@ -29,7 +33,11 @@ Usage:
 
 Environment overrides:
   OVERNIGHT_MODEL=qwen2.5-coder:7b
-  OVERNIGHT_TASK_TIMEOUT_MINUTES=45
+  OVERNIGHT_TASK_TIMEOUT_MINUTES=15
+  OVERNIGHT_AIDER_API_TIMEOUT_SECONDS=300
+  OVERNIGHT_EDIT_FORMAT=udiff
+  OVERNIGHT_MAX_SOURCE_BYTES=24000
+  OVERNIGHT_REQUIRE_CANARY_PASS=true
   OLLAMA_API_BASE=http://127.0.0.1:11434
 EOF
 }
@@ -103,6 +111,7 @@ validate_plan_definition() {
 	local forbidden_count
 	local required_count
 	local expected_changed_lines
+	local source_bytes
 	local task_count=0
 	declare -A seen_task_ids=()
 
@@ -136,6 +145,11 @@ validate_plan_definition() {
 		fi
 		if ! git -C "$REPO_ROOT" cat-file -e "$base_commit:$editable_file" 2>/dev/null; then
 			echo "error: editable file is absent from plan base $base_commit: $editable_file" >&2
+			return 1
+		fi
+		source_bytes="$(git -C "$REPO_ROOT" cat-file -s "$base_commit:$editable_file")"
+		if (( source_bytes > MAX_SOURCE_BYTES )); then
+			echo "error: task '$task_id' source is ${source_bytes} bytes, above the ${MAX_SOURCE_BYTES}-byte worker ceiling: $editable_file" >&2
 			return 1
 		fi
 
@@ -190,10 +204,34 @@ for command_name in git aider ollama timeout; do
 	fi
 done
 
-if [[ ! "$TASK_TIMEOUT_MINUTES" =~ ^[1-9][0-9]*$ ]]; then
-	echo "error: OVERNIGHT_TASK_TIMEOUT_MINUTES must be a positive integer" >&2
-	exit 2
-fi
+validate_worker_settings() {
+	if [[ ! "$TASK_TIMEOUT_MINUTES" =~ ^[1-9][0-9]*$ ]]; then
+		echo "error: OVERNIGHT_TASK_TIMEOUT_MINUTES must be a positive integer" >&2
+		return 1
+	fi
+	if [[ ! "$AIDER_API_TIMEOUT_SECONDS" =~ ^[1-9][0-9]*$ ]]; then
+		echo "error: OVERNIGHT_AIDER_API_TIMEOUT_SECONDS must be a positive integer" >&2
+		return 1
+	fi
+	if [[ ! "$MAX_SOURCE_BYTES" =~ ^[1-9][0-9]*$ ]]; then
+		echo "error: OVERNIGHT_MAX_SOURCE_BYTES must be a positive integer" >&2
+		return 1
+	fi
+	case "$AIDER_EDIT_FORMAT" in
+		diff|diff-fenced|patch|udiff|udiff-simple|whole)
+			;;
+		*)
+			echo "error: OVERNIGHT_EDIT_FORMAT must be a bounded file-edit format (diff, diff-fenced, patch, udiff, udiff-simple, or whole)" >&2
+			return 1
+			;;
+	esac
+	if [[ "$REQUIRE_CANARY_PASS" != "true" && "$REQUIRE_CANARY_PASS" != "false" ]]; then
+		echo "error: OVERNIGHT_REQUIRE_CANARY_PASS must be true or false" >&2
+		return 1
+	fi
+}
+
+validate_worker_settings
 
 if [[ -n "$(git -C "$REPO_ROOT" status --porcelain --untracked-files=no)" ]]; then
 	if [[ "$DRY_RUN" == true ]]; then
@@ -221,18 +259,28 @@ if [[ "$DRY_RUN" == true ]]; then
 	echo "Aider model: $AIDER_MODEL_NAME"
 	echo "Ollama preflight: $OLLAMA_PREFLIGHT"
 	echo "Per-task timeout: ${TASK_TIMEOUT_MINUTES}m"
+	echo "Aider API timeout: ${AIDER_API_TIMEOUT_SECONDS}s"
+	echo "Edit format: $AIDER_EDIT_FORMAT (streaming)"
+	echo "Maximum source size: ${MAX_SOURCE_BYTES} bytes"
+	echo "Require first-task canary pass: $REQUIRE_CANARY_PASS"
 	echo "Tasks:"
+	total_source_bytes=0
+	largest_source_bytes=0
+	largest_source_file=""
 	while IFS=$'\t' read -r task_id task_class editable_file max_changed_lines commit_message; do
 		[[ -z "$task_id" || "$task_id" == \#* || "$task_id" == "task_id" ]] && continue
-		printf '  - %s | %s | %s | max %s changed lines\n' \
-			"$task_id" "$task_class" "$editable_file" "$max_changed_lines"
+		source_bytes="$(git -C "$REPO_ROOT" cat-file -s "$BASE_COMMIT:$editable_file")"
+		total_source_bytes="$((total_source_bytes + source_bytes))"
+		if (( source_bytes > largest_source_bytes )); then
+			largest_source_bytes="$source_bytes"
+			largest_source_file="$editable_file"
+		fi
+		printf '  - %s | %s | %s | %s bytes | max %s changed lines\n' \
+			"$task_id" "$task_class" "$editable_file" "$source_bytes" "$max_changed_lines"
 	done < "$QUEUE_FILE"
+	echo "Plan source total: ${total_source_bytes} bytes"
+	echo "Largest source: ${largest_source_bytes} bytes | $largest_source_file"
 	exit 0
-fi
-
-if ! ollama show "$OLLAMA_MODEL_NAME" >/dev/null 2>&1; then
-	echo "error: Ollama cannot load '$OLLAMA_MODEL_NAME'; ensure the server is running and the model is pulled" >&2
-	exit 1
 fi
 
 if [[ -n "$RESUME_RUN_ID" ]]; then
@@ -252,8 +300,40 @@ if [[ -n "$RESUME_RUN_ID" ]]; then
 			PLAN_ID="$(<"$RUN_ROOT/plan_id.txt")"
 		fi
 	fi
+	if [[ -f "$RUN_ROOT/task_timeout_minutes.txt" ]]; then
+		TASK_TIMEOUT_MINUTES="$(<"$RUN_ROOT/task_timeout_minutes.txt")"
+	fi
+	if [[ -f "$RUN_ROOT/model.txt" ]]; then
+		AIDER_MODEL_NAME="$(<"$RUN_ROOT/model.txt")"
+		if [[ "$AIDER_MODEL_NAME" != ollama_chat/* ]]; then
+			echo "error: saved run model is not an Ollama chat model: $AIDER_MODEL_NAME" >&2
+			exit 1
+		fi
+		OLLAMA_MODEL_NAME="${AIDER_MODEL_NAME#ollama_chat/}"
+	fi
+	if [[ -f "$RUN_ROOT/aider_api_timeout_seconds.txt" ]]; then
+		AIDER_API_TIMEOUT_SECONDS="$(<"$RUN_ROOT/aider_api_timeout_seconds.txt")"
+	fi
+	if [[ -f "$RUN_ROOT/edit_format.txt" ]]; then
+		AIDER_EDIT_FORMAT="$(<"$RUN_ROOT/edit_format.txt")"
+	fi
+	if [[ -f "$RUN_ROOT/max_source_bytes.txt" ]]; then
+		MAX_SOURCE_BYTES="$(<"$RUN_ROOT/max_source_bytes.txt")"
+	fi
+	if [[ -f "$RUN_ROOT/require_canary_pass.txt" ]]; then
+		REQUIRE_CANARY_PASS="$(<"$RUN_ROOT/require_canary_pass.txt")"
+	fi
+	validate_worker_settings
+	if ! ollama show "$OLLAMA_MODEL_NAME" >/dev/null 2>&1; then
+		echo "error: Ollama cannot load '$OLLAMA_MODEL_NAME'; ensure the server is running and the model is pulled" >&2
+		exit 1
+	fi
 	validate_plan_definition "$BASE_COMMIT"
 else
+	if ! ollama show "$OLLAMA_MODEL_NAME" >/dev/null 2>&1; then
+		echo "error: Ollama cannot load '$OLLAMA_MODEL_NAME'; ensure the server is running and the model is pulled" >&2
+		exit 1
+	fi
 	validate_plan_definition "$BASE_COMMIT"
 	RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
 	RUN_ROOT="$RUNS_ROOT/$RUN_ID"
@@ -266,6 +346,10 @@ else
 	printf '%s\n' "$PLAN_ID" > "$RUN_ROOT/plan_id.txt"
 	printf '%s\n' "$AIDER_MODEL_NAME" > "$RUN_ROOT/model.txt"
 	printf '%s\n' "$TASK_TIMEOUT_MINUTES" > "$RUN_ROOT/task_timeout_minutes.txt"
+	printf '%s\n' "$AIDER_API_TIMEOUT_SECONDS" > "$RUN_ROOT/aider_api_timeout_seconds.txt"
+	printf '%s\n' "$AIDER_EDIT_FORMAT" > "$RUN_ROOT/edit_format.txt"
+	printf '%s\n' "$MAX_SOURCE_BYTES" > "$RUN_ROOT/max_source_bytes.txt"
+	printf '%s\n' "$REQUIRE_CANARY_PASS" > "$RUN_ROOT/require_canary_pass.txt"
 	date -u +%Y-%m-%dT%H:%M:%SZ > "$RUN_ROOT/run_started_at.txt"
 	cp "$QUEUE_FILE" "$RUN_ROOT/plan/queue.tsv"
 	cp -R "$TASKS_ROOT" "$RUN_ROOT/plan/tasks"
@@ -358,10 +442,13 @@ echo "Run ID: $RUN_ID"
 echo "Base commit: $BASE_COMMIT"
 echo "Plan: $PLAN_ID"
 echo "Aider model: $AIDER_MODEL_NAME"
+echo "Worker envelope: format=$AIDER_EDIT_FORMAT streaming=true api_timeout=${AIDER_API_TIMEOUT_SECONDS}s task_timeout=${TASK_TIMEOUT_MINUTES}m max_source_bytes=$MAX_SOURCE_BYTES require_canary_pass=$REQUIRE_CANARY_PASS"
 echo "Results: $RUN_ROOT"
 
+TASK_INDEX=0
 while IFS=$'\t' read -r task_id task_class editable_file max_changed_lines commit_message; do
 	[[ -z "$task_id" || "$task_id" == \#* || "$task_id" == "task_id" ]] && continue
+	TASK_INDEX="$((TASK_INDEX + 1))"
 
 	TASK_DEFINITION_ROOT="$TASKS_ROOT/$task_id"
 	TASK_RUN_ROOT="$RUN_ROOT/$task_id"
@@ -383,18 +470,30 @@ while IFS=$'\t' read -r task_id task_class editable_file max_changed_lines commi
 	if [[ -e "$WORKTREE_PATH" ]] || git -C "$REPO_ROOT" show-ref --verify --quiet "refs/heads/$BRANCH_NAME"; then
 		echo "[$task_id] preserving an existing incomplete branch/worktree"
 		record_result "$task_id" "$task_class" "$editable_file" "INTERRUPTED" "$BRANCH_NAME" "-" "$WORKTREE_PATH" "$LOG_PATH"
+		if (( TASK_INDEX == 1 )) && [[ "$REQUIRE_CANARY_PASS" == "true" ]]; then
+			echo "[$task_id] canary did not pass; stopping queue before larger tasks"
+			break
+		fi
 		continue
 	fi
 
 	if [[ ! -f "$TASK_DEFINITION_ROOT/prompt.md" || ! -f "$TASK_DEFINITION_ROOT/required_lines.txt" || ! -f "$TASK_DEFINITION_ROOT/forbidden_lines.txt" ]]; then
 		echo "[$task_id] task definition is incomplete" >&2
 		record_result "$task_id" "$task_class" "$editable_file" "CONFIG_ERROR" "$BRANCH_NAME" "-" "$WORKTREE_PATH" "$LOG_PATH"
+		if (( TASK_INDEX == 1 )) && [[ "$REQUIRE_CANARY_PASS" == "true" ]]; then
+			echo "[$task_id] canary did not pass; stopping queue before larger tasks"
+			break
+		fi
 		continue
 	fi
 
 	if [[ ! -f "$REPO_ROOT/$editable_file" ]]; then
 		echo "[$task_id] editable file does not exist: $editable_file" >&2
 		record_result "$task_id" "$task_class" "$editable_file" "CONFIG_ERROR" "$BRANCH_NAME" "-" "$WORKTREE_PATH" "$LOG_PATH"
+		if (( TASK_INDEX == 1 )) && [[ "$REQUIRE_CANARY_PASS" == "true" ]]; then
+			echo "[$task_id] canary did not pass; stopping queue before larger tasks"
+			break
+		fi
 		continue
 	fi
 
@@ -410,7 +509,8 @@ while IFS=$'\t' read -r task_id task_class editable_file max_changed_lines commi
 		timeout --signal=TERM "${TASK_TIMEOUT_MINUTES}m" \
 			aider \
 			--model "$AIDER_MODEL_NAME" \
-			--edit-format whole \
+			--timeout "$AIDER_API_TIMEOUT_SECONDS" \
+			--edit-format "$AIDER_EDIT_FORMAT" \
 			--map-tokens 0 \
 			--no-restore-chat-history \
 			--no-auto-commits \
@@ -424,7 +524,7 @@ while IFS=$'\t' read -r task_id task_class editable_file max_changed_lines commi
 			--no-show-model-warnings \
 			--yes-always \
 			--no-pretty \
-			--no-stream \
+			--stream \
 			--input-history-file "$TASK_RUN_ROOT/input.history" \
 			--chat-history-file "$TASK_RUN_ROOT/chat.history.md" \
 			--llm-history-file "$TASK_RUN_ROOT/llm.history" \
@@ -441,6 +541,10 @@ while IFS=$'\t' read -r task_id task_class editable_file max_changed_lines commi
 	if (( AIDER_EXIT_CODE != 0 )); then
 		echo "[$task_id] Aider failed with exit code $AIDER_EXIT_CODE; preserving worktree"
 		record_result "$task_id" "$task_class" "$editable_file" "AIDER_FAILED" "$BRANCH_NAME" "-" "$WORKTREE_PATH" "$LOG_PATH"
+		if (( TASK_INDEX == 1 )) && [[ "$REQUIRE_CANARY_PASS" == "true" ]]; then
+			echo "[$task_id] canary did not pass; stopping queue before larger tasks"
+			break
+		fi
 		continue
 	fi
 
@@ -448,6 +552,10 @@ while IFS=$'\t' read -r task_id task_class editable_file max_changed_lines commi
 		> "$TASK_RUN_ROOT/validation.log" 2>&1; then
 		echo "[$task_id] static validation failed; preserving worktree"
 		record_result "$task_id" "$task_class" "$editable_file" "VALIDATION_FAILED" "$BRANCH_NAME" "-" "$WORKTREE_PATH" "$LOG_PATH"
+		if (( TASK_INDEX == 1 )) && [[ "$REQUIRE_CANARY_PASS" == "true" ]]; then
+			echo "[$task_id] canary did not pass; stopping queue before larger tasks"
+			break
+		fi
 		continue
 	fi
 

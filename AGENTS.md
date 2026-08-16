@@ -17,6 +17,7 @@ This project is a Godot 4.x GDScript top-down arena shooter. Keep the architectu
 ## Agent Cost Control
 
 - For usage-estimation, local-model delegation, and calibration rules, read `docs/usage_policy_calibration.md` before non-trivial work. After each non-trivial handoff, ask the user for optional weekly usage feedback so future estimates can improve.
+- Before drafting or reviewing a local-model maintenance queue, read `docs/autonomous_maintenance_workplan.md`, plan against its current measured worker envelope, and require `run_queue.sh --dry-run` to pass. Semantic safety does not override model, context, file-size, edit-format, or timeout limits.
 - Do not run tests unless the user explicitly asks for testing or grants test permission for the current task.
 - When tests are allowed, prefer targeted checks first. Run the full smoke suite only before a commit/final handoff, and only when permitted.
 - Avoid repeated smoke-test loops after every tiny change. If a smoke test fails, inspect the relevant failure, make one focused fix, and stop unless the user has authorized another run.
