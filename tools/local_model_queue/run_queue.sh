@@ -73,22 +73,27 @@ if [[ ! "$TASK_TIMEOUT_MINUTES" =~ ^[1-9][0-9]*$ ]]; then
 fi
 
 if [[ -n "$(git -C "$REPO_ROOT" status --porcelain --untracked-files=no)" ]]; then
-	echo "error: tracked changes exist; commit or stash them before starting the queue" >&2
-	exit 1
-fi
-
-if ! ollama show "$OLLAMA_MODEL_NAME" >/dev/null 2>&1; then
-	echo "error: Ollama cannot load '$OLLAMA_MODEL_NAME'; ensure the server is running and the model is pulled" >&2
-	exit 1
+	if [[ "$DRY_RUN" == true ]]; then
+		echo "warning: tracked changes exist; a real queue run would refuse to start" >&2
+	else
+		echo "error: tracked changes exist; commit or stash them before starting the queue" >&2
+		exit 1
+	fi
 fi
 
 BASE_COMMIT="$(git -C "$REPO_ROOT" rev-parse HEAD)"
 
 if [[ "$DRY_RUN" == true ]]; then
+	if ollama show "$OLLAMA_MODEL_NAME" >/dev/null 2>&1; then
+		OLLAMA_PREFLIGHT="ready"
+	else
+		OLLAMA_PREFLIGHT="offline or model unavailable (required for a real run)"
+	fi
 	echo "Mode: dry run"
 	echo "Repository: $REPO_ROOT"
 	echo "Base commit: $BASE_COMMIT"
 	echo "Aider model: $AIDER_MODEL_NAME"
+	echo "Ollama preflight: $OLLAMA_PREFLIGHT"
 	echo "Per-task timeout: ${TASK_TIMEOUT_MINUTES}m"
 	echo "Tasks:"
 	while IFS=$'\t' read -r task_id editable_file max_changed_lines commit_message; do
@@ -96,6 +101,11 @@ if [[ "$DRY_RUN" == true ]]; then
 		printf '  - %s | %s | max %s changed lines\n' "$task_id" "$editable_file" "$max_changed_lines"
 	done < "$QUEUE_FILE"
 	exit 0
+fi
+
+if ! ollama show "$OLLAMA_MODEL_NAME" >/dev/null 2>&1; then
+	echo "error: Ollama cannot load '$OLLAMA_MODEL_NAME'; ensure the server is running and the model is pulled" >&2
+	exit 1
 fi
 
 if [[ -n "$RESUME_RUN_ID" ]]; then
