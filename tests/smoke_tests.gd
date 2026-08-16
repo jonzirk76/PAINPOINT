@@ -178,90 +178,184 @@ const DUNGEON_DIRECTION_OFFSETS := {
 	"west": Vector2i(-1, 0)
 }
 
+const VALID_SMOKE_SUITES := ["fast", "full"]
+const FAST_SMOKE_TEST_NAMES := [
+	"architecture_rules",
+	"presentation_settings",
+	"scripts_instantiate",
+	"level_resources",
+	"scene_loads"
+]
+const SMOKE_TEST_NAMES := [
+	"architecture_rules",
+	"presentation_settings",
+	"character_svg_assets",
+	"character_art_applied_to_entities",
+	"cat_fauna_behavior",
+	"player_shoot_pose_relaxes_to_movement",
+	"scripts_instantiate",
+	"enemy_and_spawner_profiles",
+	"level_resources",
+	"arena_geometry_boundaries",
+	"arena_wall_generation",
+	"scene_loads",
+	"character_hud_visibility",
+	"character_hud_feedback_and_manual_layout",
+	"aim_change_logic",
+	"restart_signal",
+	"parry_input_and_cooldown",
+	"player_disable_stops_movement",
+	"pause_menu_flow",
+	"upgrade_modifiers_and_expiry",
+	"ammo_type_balance",
+	"low_ammo_bar_warning",
+	"parry_absorbs_hostile_projectiles_for_ammo",
+	"parry_absorb_visuals_and_ammo_flash",
+	"projectile_impact_visuals",
+	"projectile_visual_reveal_delay",
+	"audio_assets_and_pitch_variation",
+	"reward_driven_pickup_drops",
+	"health_pickup_and_player_healing",
+	"projectile_knockback_packet",
+	"charged_super_shot",
+	"projectile_reset_clears_visible_projectiles",
+	"destructible_props",
+	"parry_pushes_enemies_without_damage",
+	"tank_ignores_knockback",
+	"fast_enemy_contact_range",
+	"enemy_pathing_steers_around_walls",
+	"enemy_soft_separation_without_hard_collision",
+	"water_projectile_hits_each_enemy_once",
+	"damageable_spawner",
+	"projectile_hits_spawner",
+	"general_and_boss_projectile_shields",
+	"spawner_pressure_damage",
+	"typed_spawner_spawn_profile",
+	"floor_scaled_spawner_rates",
+	"hostile_shot_signals",
+	"spawner_special_attacks",
+	"hostile_shots_respect_walls",
+	"shooter_shot_tracks_target",
+	"hostile_projectile_damage_path",
+	"hostile_projectile_range_matches_player",
+	"hostile_rocket_detonation_damage",
+	"spawner_explosion_effect",
+	"room_piece_resources",
+	"room_interior_generator_determinism_and_budget",
+	"room_interior_generator_validation",
+	"dungeon_room_interiors_persist",
+	"void_blockers_are_movement_only",
+	"dungeon_floor_recipe",
+	"dungeon_run_seed",
+	"dungeon_layout_solver",
+	"room_manager_doors",
+	"agent_boss_generation_and_behavior",
+	"boss_add_replenishment",
+	"boss_test_level_select",
+	"generated_encounter_test_level_select",
+	"orchestrator_dungeon_start_and_boss",
+	"dungeon_room_clear_resolution_is_deferred",
+	"boss_exit_portal_preview_and_safe_position",
+	"orchestrator_main_loop_floor_progression"
+]
+
+var _smoke_suite: String = "full"
+var _smoke_test_filter: String = ""
+var _suite_started_msec: int = 0
+var _tests_completed: int = 0
+var _tests_skipped: int = 0
+var _progress_file: FileAccess = null
+
 
 func _init() -> void:
 	paused = false
+	_smoke_suite = OS.get_environment("SHOOTY_SMOKE_SUITE").strip_edges().to_lower()
+	_smoke_test_filter = OS.get_environment("SHOOTY_SMOKE_TEST_FILTER").strip_edges().to_lower()
+	if _smoke_suite.is_empty():
+		_smoke_suite = "full"
+	_open_progress_file()
+	if not VALID_SMOKE_SUITES.has(_smoke_suite):
+		_report_smoke_progress("SMOKE SUITE ERROR unsupported_suite=%s valid_suites=fast,full" % _smoke_suite)
+		_close_progress_file()
+		quit(2)
+		return
+
+	_suite_started_msec = Time.get_ticks_msec()
 	var failures: Array[String] = []
-	_test_architecture_rules(failures)
-	_test_presentation_settings(failures)
-	_test_character_svg_assets(failures)
-	_test_character_art_applied_to_entities(failures)
-	_test_cat_fauna_behavior(failures)
-	_test_player_shoot_pose_relaxes_to_movement(failures)
-	_test_scripts_instantiate(failures)
-	_test_enemy_and_spawner_profiles(failures)
-	_test_level_resources(failures)
-	_test_arena_geometry_boundaries(failures)
-	_test_arena_wall_generation(failures)
-	_test_scene_loads(failures)
-	_test_character_hud_visibility(failures)
-	_test_character_hud_feedback_and_manual_layout(failures)
-	_test_aim_change_logic(failures)
-	_test_restart_signal(failures)
-	_test_parry_input_and_cooldown(failures)
-	_test_player_disable_stops_movement(failures)
-	_test_pause_menu_flow(failures)
-	_test_upgrade_modifiers_and_expiry(failures)
-	_test_ammo_type_balance(failures)
-	_test_low_ammo_bar_warning(failures)
-	_test_parry_absorbs_hostile_projectiles_for_ammo(failures)
-	_test_parry_absorb_visuals_and_ammo_flash(failures)
-	_test_projectile_impact_visuals(failures)
-	_test_projectile_visual_reveal_delay(failures)
-	_test_audio_assets_and_pitch_variation(failures)
-	_test_reward_driven_pickup_drops(failures)
-	_test_health_pickup_and_player_healing(failures)
-	_test_projectile_knockback_packet(failures)
-	_test_charged_super_shot(failures)
-	_test_projectile_reset_clears_visible_projectiles(failures)
-	_test_destructible_props(failures)
-	_test_parry_pushes_enemies_without_damage(failures)
-	_test_tank_ignores_knockback(failures)
-	_test_fast_enemy_contact_range(failures)
-	_test_enemy_pathing_steers_around_walls(failures)
-	_test_enemy_soft_separation_without_hard_collision(failures)
-	_test_water_projectile_hits_each_enemy_once(failures)
-	_test_damageable_spawner(failures)
-	_test_projectile_hits_spawner(failures)
-	_test_general_and_boss_projectile_shields(failures)
-	_test_spawner_pressure_damage(failures)
-	_test_typed_spawner_spawn_profile(failures)
-	_test_floor_scaled_spawner_rates(failures)
-	_test_hostile_shot_signals(failures)
-	_test_spawner_special_attacks(failures)
-	_test_hostile_shots_respect_walls(failures)
-	_test_shooter_shot_tracks_target(failures)
-	_test_hostile_projectile_damage_path(failures)
-	_test_hostile_projectile_range_matches_player(failures)
-	_test_hostile_rocket_detonation_damage(failures)
-	_test_spawner_explosion_effect(failures)
-	_test_room_piece_resources(failures)
-	_test_room_interior_generator_determinism_and_budget(failures)
-	_test_room_interior_generator_validation(failures)
-	_test_dungeon_room_interiors_persist(failures)
-	_test_void_blockers_are_movement_only(failures)
-	_test_dungeon_floor_recipe(failures)
-	_test_dungeon_run_seed(failures)
-	_test_dungeon_layout_solver(failures)
-	_test_room_manager_doors(failures)
-	_test_agent_boss_generation_and_behavior(failures)
-	_test_boss_add_replenishment(failures)
-	_test_boss_test_level_select(failures)
-	_test_generated_encounter_test_level_select(failures)
-	_test_orchestrator_dungeon_start_and_boss(failures)
-	_test_dungeon_room_clear_resolution_is_deferred(failures)
-	_test_boss_exit_portal_preview_and_safe_position(failures)
-	_test_orchestrator_main_loop_floor_progression(failures)
+	_report_smoke_progress(
+		"SMOKE SUITE START suite=%s filter=%s"
+		% [_smoke_suite, _smoke_test_filter if not _smoke_test_filter.is_empty() else "none"]
+	)
+	for test_name in SMOKE_TEST_NAMES:
+		_run_smoke_test(test_name, failures, FAST_SMOKE_TEST_NAMES.has(test_name))
+
+	if _tests_completed == 0:
+		failures.append("Smoke suite selection matched no tests.")
+	var suite_duration_msec := Time.get_ticks_msec() - _suite_started_msec
+	var suite_status := "PASS" if failures.is_empty() else "FAIL"
+	_report_smoke_progress(
+		"SMOKE SUITE END suite=%s status=%s duration_ms=%d completed=%d skipped=%d failures=%d"
+		% [_smoke_suite, suite_status, suite_duration_msec, _tests_completed, _tests_skipped, failures.size()]
+	)
 
 	if failures.is_empty():
-		print("Smoke tests passed.")
+		_report_smoke_progress("Smoke tests passed.")
+		_close_progress_file()
 		paused = false
 		quit(0)
 	else:
 		for failure in failures:
 			push_error(failure)
+		_close_progress_file()
 		paused = false
 		quit(1)
+
+
+func _run_smoke_test(test_name: String, failures: Array[String], include_in_fast: bool = false) -> void:
+	if not _smoke_test_filter.is_empty() and not test_name.contains(_smoke_test_filter):
+		_tests_skipped += 1
+		return
+	if _smoke_suite == "fast" and not include_in_fast:
+		_tests_skipped += 1
+		return
+	var started_msec := Time.get_ticks_msec()
+	var failures_before := failures.size()
+	_report_smoke_progress("SMOKE TEST START name=%s" % test_name)
+	var method_name := StringName("_test_%s" % test_name)
+	if not has_method(method_name):
+		failures.append("Smoke test method is missing: %s" % method_name)
+	else:
+		call(method_name, failures)
+	var duration_msec := Time.get_ticks_msec() - started_msec
+	var failures_added := failures.size() - failures_before
+	var test_status := "PASS" if failures_added == 0 else "FAIL"
+	_tests_completed += 1
+	_report_smoke_progress(
+		"SMOKE TEST END name=%s status=%s duration_ms=%d failures_added=%d"
+		% [test_name, test_status, duration_msec, failures_added]
+	)
+
+
+func _open_progress_file() -> void:
+	var progress_path := OS.get_environment("SHOOTY_SMOKE_PROGRESS_FILE").strip_edges()
+	if progress_path.is_empty():
+		return
+	_progress_file = FileAccess.open(progress_path, FileAccess.WRITE)
+	if _progress_file == null:
+		push_warning("Could not open smoke progress file: %s" % progress_path)
+
+
+func _report_smoke_progress(message: String) -> void:
+	print(message)
+	if _progress_file != null:
+		_progress_file.store_line(message)
+		_progress_file.flush()
+
+
+func _close_progress_file() -> void:
+	if _progress_file != null:
+		_progress_file.close()
+		_progress_file = null
 
 
 func _test_architecture_rules(failures: Array[String]) -> void:

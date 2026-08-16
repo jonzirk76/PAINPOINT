@@ -39,6 +39,7 @@ art/generated/characters/velora/base/*
 *.log
 /logs/
 /.local-model-runs/
+/.smoke-test-runtime/
 
 # Extra export/build artifacts
 /exports/

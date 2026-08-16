@@ -96,6 +96,40 @@ Prefer user-performed or design-tool work for tasks that are expensive for Codex
 
 Codex should usually provide architecture, scene hierarchy, signal/data flow, exported tuning fields, scripts, validators, and exact manual steps for these tasks.
 
+## Smoke Test Operation
+
+The smoke runner has two explicit tiers:
+
+- `SMOKE_SUITE=fast ./smoke_test.sh` runs architecture, presentation-setting,
+  script-loading, level-loading, and scene-loading checks. Use this as the first
+  integration gate for narrow mechanical maintenance candidates.
+- `./smoke_test.sh` runs the full suite and remains the final handoff gate when
+  full smoke coverage is authorized.
+
+Both tiers emit a terminal heartbeat and write exact per-test progress and
+elapsed timings under the ignored `.smoke-test-runtime/` directory. Keeping the
+logs inside the project makes them visible to both the Snap-packaged Godot build
+and the host shell. The fast suite defaults to a 180-second limit; the full
+suite defaults to 900 seconds. Override a bounded run only when prior timing
+evidence justifies it:
+
+```bash
+SMOKE_SUITE=full SMOKE_TIMEOUT_SECONDS=1200 ./smoke_test.sh
+```
+
+`SMOKE_HEARTBEAT_SECONDS`, `SMOKE_LOG_FILE`, and `SMOKE_PROGRESS_FILE` may also
+be overridden. A timeout is a diagnostic result, not permission to rerun or
+raise the limit repeatedly. Inspect the final `SMOKE TEST START` record to find
+the test that failed to complete, then make one focused decision.
+
+After identifying a suspect test, an exact-name substring filter can run it in
+isolation for diagnosis. This does not replace the final full suite:
+
+```bash
+SMOKE_SUITE=full SMOKE_TEST_FILTER=dungeon_layout_solver \
+  SMOKE_TIMEOUT_SECONDS=120 ./smoke_test.sh
+```
+
 ## Local Model Delegation
 
 The user may have access to a weaker local coding model such as Qwen 2.5 Coder. Use local-model delegation to reduce Codex token spend when the task can be bounded and checked cheaply.
@@ -124,7 +158,7 @@ Avoid delegating:
 - test design for important invariants,
 - tasks requiring broad repository context.
 
-Smoke testing is a good trial delegation task when the user has a local model/operator loop available. The local model may run `./smoke_test.sh`, wait for completion, save or locate `/tmp/shooty-smoke.log`, report pass/fail, extract major errors, and summarize the relevant failure lines. It should not make fixes, rerun repeatedly, edit files, or interpret gameplay correctness. Codex should use the summarized result as input, then decide the next engineering step.
+Smoke testing is a good trial delegation task when the user has a local model/operator loop available. The local model may run `./smoke_test.sh`, wait for completion, locate `.smoke-test-runtime/smoke.log`, report pass/fail, extract major errors, and summarize the relevant failure lines. It should not make fixes, rerun repeatedly, edit files, or interpret gameplay correctness. Codex should use the summarized result as input, then decide the next engineering step.
 
 Use this prompt shape:
 
@@ -179,7 +213,7 @@ Content:
 Run delegated smoke test:
 You are acting as a local test runner for a Godot 4 GDScript project.
 Task:
-Run ./smoke_test.sh from the repository root. Wait for it to finish. Report whether it passed or failed. If it failed, locate /tmp/shooty-smoke.log and summarize only the most relevant error lines, file paths, line numbers, and failing subsystem.
+Run ./smoke_test.sh from the repository root. Wait for it to finish. Report whether it passed or failed. If it failed, locate .smoke-test-runtime/smoke.log and summarize only the most relevant error lines, file paths, line numbers, and failing subsystem.
 
 Constraints:
 - Do not edit files.
@@ -225,5 +259,7 @@ Add concrete observations here when the user reports useful before/after data.
 | Local-model delegation policy edit | Low | Weekly around 2%, meters unreliable | User requested handoff delegation suggestions and ready-to-copy Qwen prompts to reduce Codex token spend. |
 | Legacy reset-aware schema update | Low | Time 4:03 AM, medium reasoning, weekly 99% | Historical reset fields were later removed in favor of weekly-usage-only reporting. |
 | Delegated smoke-test policy edit | Low | Unknown | Added Qwen/local-model smoke-test runner guidance; local model may run and summarize tests, but not fix or rerun repeatedly. |
+| Stage 1 Run 2 review and integration | Low | Weekly 89% -> 88% | Principal review covered three narrow candidates, accepted and integrated two, and rejected one scope violation; local execution used 15.7k local tokens, while cloud review and integration consumed about one reported weekly percentage point. No tests were run during this measurement. |
+| Smoke harness observability refactor | Medium | Weekly 88% -> 85% | Added bounded fast/full execution, heartbeats, per-test timing, retained progress, and targeted filtering; the first user-run attempt exposed a pre-initialization compile/loading bottleneck and prompted one focused dispatch simplification. Godot execution remained user-run. |
 | Parry chain feature overhaul | High | Unknown | Multi-system gameplay/UI/stat work; should remain high-cost unless scoped tightly. |
 | SVG/visual asset iteration | High to Very High | User reported it felt token-hungry | Prefer user/design-tool iteration, then Codex wiring. |
