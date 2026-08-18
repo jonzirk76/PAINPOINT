@@ -1,10 +1,18 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://bjwg81ts4f4lu"]
 
-[node name="TorsoHalf" type="Polygon2D"]
-z_index = 0
-z_as_relative = true
+[ext_resource type="Texture2D" uid="uid://dv3wfrlmrg2bq" path="res://art/concept_art/female_character_template.png" id="1_mvyxv"]
+
+[node name="TorsoHalf" type="Polygon2D" unique_id=964220681]
 color = Color(0.84705883, 0.6862745, 0.627451, 1)
 antialiased = true
-polygon = PackedVector2Array(-34, -86.79999, -61, -79.79999, -64, -79.79999, -77, -67.79999, -53, -14.799988, -53, -15.799988, -51, -11.799988, -50, -11.799988, -51, -5.7999878, -51, -3.7999878, -48, -5.7999878, -46, -5.7999878, -29, 2.2000122, -29, 3.2000122, -3, 9.200012, 0, 9.200012, 0, -79.79999, -34, -87.79999)
+polygon = PackedVector2Array(-47, -81, -58, -77, -66, -70, -72, -59, -51, -42, -46, -30, -38, -16, -48, 5, -34, 12, -16, 14, 0, 15, 0, -92, -21, -92, -21, -85)
 metadata/editable_polygon_base = true
 metadata/symmetry_source = "left"
+
+[node name="FemaleCharacterReference" type="Sprite2D" parent="." unique_id=562697669]
+visible = false
+modulate = Color(1, 1, 1, 0.25882354)
+z_index = 999
+position = Vector2(-152, -250)
+scale = Vector2(0.8, 0.8)
+texture = ExtResource("1_mvyxv")
