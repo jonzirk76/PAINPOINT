@@ -1,18 +1,18 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://beut4al8nh1nd"]
 
-[node name="TorsoHalf" type="Polygon2D"]
-z_index = 0
-z_as_relative = true
+[ext_resource type="Texture2D" uid="uid://dv3wfrlmrg2bq" path="res://art/concept_art/female_character_template.png" id="1_y2ym8"]
+
+[node name="TorsoHalf" type="Polygon2D" unique_id=1684890013]
 color = Color(0.84705883, 0.6862745, 0.627451, 1)
 antialiased = true
-polygon = PackedVector2Array(-55, -94, -62, -88, -64, -76, -61, -62, -57, -48, -51, -32, -46, -18, -44, -6, -1, 10, 0, 10, 0, -51, -29, -66, -34, -66, -52, -92, -55, -94)
+polygon = PackedVector2Array(-60, -77, -69, -70, -76, -57, -71, -55, -61, -44, -53, -31, -51, -27, -52, -15, -51, -5, -47, 5, -41, 13, -32, 18, -20, 19, -11, 17, 0, 14, 0, -51, 0, -63, -21, -70, -39, -76, -50, -79)
 metadata/editable_polygon_base = true
 metadata/symmetry_source = "left"
 
-[node name="FrontEmblemHalf" type="Polygon2D" parent="."]
-z_as_relative = true
-z_index = 1
-color = Color(0.34, 0.88, 1, 1)
-antialiased = true
-polygon = PackedVector2Array(-31, -54, -9, -43, 0, -31, 0, -15, -13, -30, -29, -38)
-metadata/orientation_marker = true
+[node name="FemaleCharacterReference2" type="Sprite2D" parent="." unique_id=111707647]
+visible = false
+modulate = Color(1, 1, 1, 0.25882354)
+z_index = 999
+position = Vector2(299, 201)
+scale = Vector2(0.8, 0.8)
+texture = ExtResource("1_y2ym8")

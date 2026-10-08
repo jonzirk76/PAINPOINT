@@ -1,10 +1,18 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://b16r3gi3l1sa7"]
 
-[node name="HipsHalf" type="Polygon2D"]
-z_index = 0
-z_as_relative = true
+[ext_resource type="Texture2D" uid="uid://dv3wfrlmrg2bq" path="res://art/concept_art/female_character_template.png" id="1_d8gax"]
+
+[node name="HipsHalf" type="Polygon2D" unique_id=1087746554]
 color = Color(0.7, 0.72, 0.76, 1)
 antialiased = true
-polygon = PackedVector2Array(-56, -10, -62, 2, -63, 14, -50, 30, -17, 48, -6, 48, 0, 47, 0, -10)
+polygon = PackedVector2Array(-38, 7, -47, 21, -53, 31, -60, 49, -34, 61, -20, 70, -6, 77, 0, 77, 0, 7)
 metadata/editable_polygon_base = true
 metadata/symmetry_source = "left"
+
+[node name="FemaleCharacterReference" type="Sprite2D" parent="." unique_id=923330092]
+visible = false
+modulate = Color(1, 1, 1, 0.25882354)
+z_index = 999
+position = Vector2(299, 203.33333)
+scale = Vector2(0.8, 0.8)
+texture = ExtResource("1_d8gax")

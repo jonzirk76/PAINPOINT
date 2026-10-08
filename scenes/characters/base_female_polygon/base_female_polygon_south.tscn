@@ -1,11 +1,11 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://57mj3nw51tbo"]
 
-[ext_resource type="PackedScene" path="res://scenes/characters/base_female_polygon/symmetry_parts/base_female_polygon_south_hips_half.tscn" id="1_hips_half"]
-[ext_resource type="PackedScene" path="res://scenes/characters/base_female_polygon/symmetry_parts/base_female_polygon_south_torso_half.tscn" id="2_torso_half"]
+[ext_resource type="PackedScene" uid="uid://b16r3gi3l1sa7" path="res://scenes/characters/base_female_polygon/symmetry_parts/base_female_polygon_south_hips_half.tscn" id="1_hips_half"]
+[ext_resource type="PackedScene" uid="uid://beut4al8nh1nd" path="res://scenes/characters/base_female_polygon/symmetry_parts/base_female_polygon_south_torso_half.tscn" id="2_torso_half"]
 [ext_resource type="PackedScene" path="res://scenes/characters/base_female_polygon/symmetry_parts/base_female_polygon_south_left_arm.tscn" id="3_left_arm"]
 [ext_resource type="PackedScene" path="res://scenes/characters/base_female_polygon/symmetry_parts/base_female_polygon_south_head_half.tscn" id="4_head_half"]
 [ext_resource type="PackedScene" path="res://scenes/characters/base_female_polygon/symmetry_parts/base_female_polygon_south_left_leg.tscn" id="5_left_leg"]
-[ext_resource type="Texture2D" path="res://art/concept_art/female_character_template.png" id="6_riomj"]
+[ext_resource type="Texture2D" uid="uid://dv3wfrlmrg2bq" path="res://art/concept_art/female_character_template.png" id="6_riomj"]
 
 [sub_resource type="Animation" id="Animation_n0btn"]
 length = 0.001
@@ -274,11 +274,13 @@ position = Vector2(200.33333, 299.66666)
 rest = Transform2D(1, 0, 0, 1, 200.33333, 299.66666)
 
 [node name="AuthoredHipsHalf" parent="Skeleton2D/Hips" unique_id=1026780417 instance=ExtResource("1_hips_half")]
+position = Vector2(0, -17)
 
 [node name="HipsMirrorAxis" type="Node2D" parent="Skeleton2D/Hips" unique_id=333109028]
 scale = Vector2(-1, 1)
 
 [node name="MirroredHipsHalf" parent="Skeleton2D/Hips/HipsMirrorAxis" unique_id=811820004 instance=ExtResource("1_hips_half")]
+position = Vector2(0, -17)
 
 [node name="Torso" type="Bone2D" parent="Skeleton2D/Hips" unique_id=1988226583]
 z_index = 10
@@ -351,6 +353,6 @@ autoplay = &"walk"
 visible = false
 modulate = Color(1, 1, 1, 0.25882354)
 z_index = 999
-position = Vector2(298, 9)
+position = Vector2(299, 21)
 scale = Vector2(0.8, 0.8)
 texture = ExtResource("6_riomj")

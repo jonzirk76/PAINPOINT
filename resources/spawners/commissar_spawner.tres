@@ -1,8 +1,8 @@
-[gd_resource type="Resource" script_class="EnemyProfile" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="EnemyProfile" format=3 uid="uid://dbd6xgaefwhtg"]
 
-[ext_resource type="Script" path="res://scripts/resources/enemy_profile.gd" id="1_profile"]
-[ext_resource type="Script" path="res://scripts/resources/enemy_spawn_profile.gd" id="2_spawn"]
-[ext_resource type="Script" path="res://scripts/resources/commissar_program.gd" id="3_program"]
+[ext_resource type="Script" uid="uid://dlpts8v3bgbx4" path="res://scripts/resources/enemy_profile.gd" id="1_profile"]
+[ext_resource type="Script" uid="uid://w7n2vndnppoo" path="res://scripts/resources/enemy_spawn_profile.gd" id="2_spawn"]
+[ext_resource type="Script" uid="uid://mjwae8w3ku1o" path="res://scripts/resources/commissar_program.gd" id="3_program"]
 [ext_resource type="Resource" path="res://resources/enemies/repair_drone.tres" id="4_drone"]
 
 [sub_resource type="Resource" id="CommissarProgram_tier_1"]
@@ -39,6 +39,5 @@ shot_cooldown = 1.85
 projectile_speed = 520.0
 projectile_damage = 2
 projectile_radius = 12.0
-max_simultaneous_repairers = 2
 spawn_profile = SubResource("EnemySpawnProfile_commissar")
 commissar_program = SubResource("CommissarProgram_tier_1")

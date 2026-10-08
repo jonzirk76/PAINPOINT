@@ -1,6 +1,7 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://b7gi8bg0rw5px"]
 
-[ext_resource type="Texture2D" path="res://art/concept_art/female_character_template.png" id="1_gvn0a"]
+[ext_resource type="Texture2D" uid="uid://dv3wfrlmrg2bq" path="res://art/concept_art/female_character_template.png" id="1_gvn0a"]
+[ext_resource type="PackedScene" uid="uid://btpj4vlt8qyp0" path="res://scenes/characters/base_female_polygon/base_female_polygon_north.tscn" id="2_rjwpf"]
 
 [node name="LeftLegMasses" type="Node2D" unique_id=1449148634]
 metadata/editable_polygon_base = true
@@ -41,3 +42,7 @@ z_index = 999
 position = Vector2(354, 162)
 scale = Vector2(0.8, 0.8)
 texture = ExtResource("1_gvn0a")
+
+[node name="BaseFemalePolygonNorth" parent="." unique_id=236017283 instance=ExtResource("2_rjwpf")]
+modulate = Color(1, 1, 1, 0.42352942)
+position = Vector2(134, 147)
